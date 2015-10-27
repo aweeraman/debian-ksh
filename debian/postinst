@@ -1,0 +1,29 @@
+#!/bin/sh
+
+set -e
+
+case "$1" in
+    configure)
+	# continue below
+    ;;
+
+    abort-upgrade|abort-remove|abort-deconfigure)
+	exit 0
+    ;;
+
+    *)
+	echo "postinst called with unknown argument \`$1'" >&2
+	exit 0
+    ;;
+esac
+
+#DEBHELPER#
+
+update-alternatives --install /bin/ksh ksh /bin/ksh93 20 \
+                    --slave /usr/bin/ksh usr.bin.ksh /bin/ksh93 \
+                    --slave /usr/share/man/man1/ksh.1.gz ksh.1.gz \
+                            /usr/share/man/man1/ksh93.1.gz
+
+add-shell /bin/ksh93
+
+exit 0

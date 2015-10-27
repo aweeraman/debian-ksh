@@ -1,0 +1,19 @@
+--- a/src/cmd/ksh93/sh.1
++++ b/src/cmd/ksh93/sh.1
+@@ -19,15 +19,7 @@
+ .TH KSH93 1
+ .\}
+ .SH NAME
+-.if \nZ=0 \{\
+-sh, rsh, pfsh \- shell, the standard/restricted command and programming language
+-.\}
+-.if \nZ=1 \{\
+-ksh, rksh, pfksh \- KornShell, a standard/restricted command and programming language
+-.\}
+-.if \nZ=2 \{\
+-ksh93, rksh93, pfksh93 \- KornShell, a standard/restricted command and programming language
+-.\}
++ksh, ksh93 \- KornShell, a command and programming language
+ .SH SYNOPSIS
+ .if \nZ=0 \{\
+ .B sh
