@@ -2,3 +2,4 @@ shell-options.patch
 cleanup-man-title.patch
 no-rpath.patch
 ftbs.patch
+spelling.patch
