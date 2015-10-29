@@ -1,7 +1,7 @@
 Source: ksh
 Section: shells
 Priority: optional
-Maintainer: Oliver Kiddle <okiddle@yahoo.co.uk>
+Maintainer: Nicholas Bamber <nicholas@periapt.co.uk>
 Homepage: http://www.kornshell.com/
 Build-Depends: dpkg-dev (>= 1.16.1), debhelper (>= 7)
 Standards-Version: 3.9.4
