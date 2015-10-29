@@ -2,6 +2,7 @@ ksh (93u+20120801-2) UNRELEASED; urgency=medium
 
   * Adopted package (Closes: #691199)
   * Created alioth git repository and added VCS fields
+  * Removed Conflicts clause versus pdksh as it is no longer relevant
 
  -- Nicholas Bamber <nicholas@periapt.co.uk>  Thu, 29 Oct 2015 10:55:27 +0000
 

@@ -11,7 +11,6 @@ Vcs-Browser: http://anonscm.debian.org/cgit/collab-maint/ksh.git
 Package: ksh
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Conflicts: pdksh (<< 5.2.14-18)
 Description: Real, AT&T version of the Korn shell
  Ksh is a UNIX command interpreter (shell) that is intended for both
  interactive and shell script use. Its command language is a superset of
