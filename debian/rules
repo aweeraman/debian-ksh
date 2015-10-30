@@ -37,11 +37,10 @@ override_dh_installchangelogs:
 clean:
 	dh_testdir
 	dh_clean
-	-test -f bin/ignore.old && mv bin/ignore.old bin/ignore
-	-test -f bin/silent.old && mv bin/silent.old bin/silent
-	-test -f bin/package.old && mv bin/package.old bin/package
-	-test -f bin/mamprobe.old && mv bin/mamprobe.old bin/mamprobe
-	-rm -rf arch
+	for i in ignore silent package mamprobe ; do \
+		sed -i -e '/^#.\{70\}#/ d'  bin/$$i ; \
+	done
+	rm -rf arch bin/*.old
 
 get-orig-source:
 	rm -rf $(SRC_DIR) $(TARBALL)
