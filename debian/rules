@@ -22,6 +22,14 @@ include /usr/share/hardening-includes/hardening.make
 CCFLAGS += $(HARDENING_CFLAGS)
 LDFLAGS += $(HARDENING_LDFLAGS)
 
+# reproducibility
+LC_ALL=C
+LANG=C
+TZ=/usr/share/zoneinfo/Etc/GMT
+export LC_ALL
+export LANG
+export TZ
+
 %:
 	dh $@
 
