@@ -15,13 +15,18 @@ INSTALL_PROGRAM = $(INSTALL) -p    -o root -g root  -m  755
 
 DH_VERBOSE=1
 
+# hardening
+CCFLAGS:=$(shell dpkg-buildflags --get CFLAGS)
+LDFLAGS:=$(shell dpkg-buildflags --get LDFLAGS)
+include /usr/share/hardening-includes/hardening.make
+CCFLAGS += $(HARDENING_CFLAGS)
+LDFLAGS += $(HARDENING_LDFLAGS)
+
 %:
 	dh $@
 
-override_dh_auto_configure:
-
-override_dh_auto_build:
-	bin/package make strip=0
+override_dh_auto_build:	
+	bin/package make strip=0 CCFLAGS="$(CCFLAGS)" LDFLAGS="$(LDFLAGS)"
 
 override_dh_auto_install:
 	$(INSTALL_PROGRAM) arch/$(ARCH)/bin/ksh debian/ksh/bin/ksh93
