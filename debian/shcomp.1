@@ -73,21 +73,6 @@ Successful completion.
 .TP
 >0
 An error occurred.
-.SH DEBIAN WARNING
-On a
-.B Debian
-.B GNU/Linux
-system, more than one package may provide ksh. the output of
-.B shcomp
-can only be used by
-.BR ksh93 .
-Any other ksh will be unable to run the compiled script.
-.SH EXAMPLE
-.nf
-( echo '#! /bin/ksh93' ; shcomp myscript ) > myscript.bin &&
-chmod 755 myscript.bin
-\&./myscript.bin
-.fi
 .SH SEE ALSO
 .BR ksh (1)
 .SH IMPLEMENTATION

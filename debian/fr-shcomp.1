@@ -73,21 +73,6 @@ Le programme a réussi.
 .TP
 >0
 Une erreur s'est produite.
-.SH ALERTE DEBIAN
-Sur un système
-.B Debian
-.B GNU/Linux
-plus d'un paquet fournit ksh. Seul
-.B ksh93
-peut exécuter les scripts compilés avec
-.BR shcomp .
-Les autres ksh échoueront.
-.SH EXEMPLE
-.nf
-( echo '#! /bin/ksh93' ; shcomp monscript ) > monscript.bin &&
-chmod 755 monscript.bin
-\&./monscript.bin
-.fi
 .SH VOIR AUSSI
 .BR ksh (1)
 .SH IMPLEMENTATION
