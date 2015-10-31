@@ -21,3 +21,5 @@ Description: Real, AT&T version of the Korn shell
  commercial UNIX variants. For example, it has lexical scoping, compound
  variables, associative arrays, named references and floating point
  math.
+ .
+ The shcomp tool can be used to compile ksh scripts into a binary format.
