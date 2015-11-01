@@ -1,9 +1,6 @@
 # This file contains examples of some of the things you may want to
 # include in a user startup file.
 
-# handle bash/zsh SHLVL variable
-(( SHLVL++ ))
-
 # skip this setup for non-interactive shells
 [[ -o interactive && -t 0 ]] || return
 
@@ -15,7 +12,6 @@ export VISUAL=vi
 export EDITOR=$VISUAL
 export PAGER=less
 export GZIP=-9
-export GREP_OPTIONS='-d skip'
 
 # set some shell options
 set -o emacs -o trackall -o globstar
@@ -41,9 +37,21 @@ alias rd=rmdir
 alias cp='command -x cp'  mv='command -x mv'  grep='command -x grep'
 
 # some short functions
+
+# empty line
 empty() { echo $'\e[3J'; }
+
+# man page viewer
 mere() { nroff -man -Tman $1 | ${MANPAGER:-less}; }
-setenv() { export "${1}${2:+=$2}"; }
+
+# view/manipulate and export environment variables
+setenv() {
+        case $# in
+        0) export ;;
+        1) export "$1"= ;;
+        *) export "$1"="$2" ;;
+        esac
+    }
 
 # Use keyboard trap to map keys to other keys
 # note that escape sequences vary for different terminals so these

@@ -15,6 +15,9 @@ ksh (93u+20120801-2) UNRELEASED; urgency=medium
   * Moved example.kshrc to /etc/skel/.kshrc 
   * Reviewed cleanup-man-title.patch and enabled rksh
   * Small correction to formatting of man page (Closes: #755486)
+  * Removed deprecated GREP_OPTIONS from example.kshrc 
+  * Removed SHLVL increment from example.kshrc as it was doubling increment
+  * Rewrote setenv() in example.kshrc (Closes: #792733)
 
  -- Nicholas Bamber <nicholas@periapt.co.uk>  Thu, 29 Oct 2015 10:55:27 +0000
 
