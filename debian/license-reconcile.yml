@@ -1,0 +1,14 @@
+Rules:
+ rules:
+  -
+   Glob: src/cmd/ksh93/tests/treemove.sh
+   License: Eclipse
+   Justification: licensecheck just gets this one wrong
+  -
+   Glob: src/lib/libsum/sum-md5.c
+   License: RSA
+   Copyright: 1991-1992, RSA Data Security, Inc.
+   Justification: single awkward file
+ChangeLog:
+ license: BSD-3-clause
+
