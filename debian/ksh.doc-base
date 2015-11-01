@@ -6,5 +6,5 @@ Abstract: ksh is the original AT&T Korn shell
 Section: Programming/ksh
 
 Format: Text
-Files: /usr/share/doc/ksh/*.gz /usr/share/doc/ksh/OBSOLETE
+Files: /usr/share/doc/ksh/*.gz /usr/share/doc/ksh/OBSOLETE 
 
