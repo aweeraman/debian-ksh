@@ -28,6 +28,7 @@ update-alternatives --install /bin/ksh ksh /bin/ksh93 20 \
 
 # For a discussion of what we put in /etc/shells see #790118.
 add-shell /bin/ksh93
+add-shell /bin/rksh93
 
 # This was put in to resolve bug #687343.
 update-binfmts --import ksh
