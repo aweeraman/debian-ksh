@@ -1,4 +1,4 @@
 src/cmd/ksh93/COMPATIBILITY
 src/cmd/ksh93/OBSOLETE
-src/cmd/ksh93/PROMO.mm
-debian/example.kshrc
+src/cmd/ksh93/RELEASE88
+src/cmd/ksh93/RELEASE93
