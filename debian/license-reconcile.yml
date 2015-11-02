@@ -1,9 +1,9 @@
 Rules:
  rules:
   -
-   Glob: src/cmd/ksh93/tests/treemove.sh
-   License: Eclipse
-   Justification: licensecheck just gets this one wrong
+   Glob: bin/* lib/* src/*
+   Contains: Eclipse Public License, Version 1.0
+   License: Eclipse_Public_License_1.0
   -
    Glob: src/lib/libsum/sum-md5.c
    License: RSA
