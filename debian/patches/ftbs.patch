@@ -5,7 +5,7 @@ Description: Enable compiling with gcc5
 Author: Antti Järvinen <antti.jarvinen@katiska.org>
 Bug-Debian: https://bugs.debian.org/777930
 Forwarded: no
-Reviewed-By: Nicholas Bamber <nicholas@peiapt.co.uk>
+Reviewed-By: Nicholas Bamber <nicholas@periapt.co.uk>
 Last-Update: 2015-10-15
 
 --- ksh-93u+20120801.orig/src/lib/libast/comp/tmpnam.c
