@@ -1,3 +1,10 @@
+ksh (93u+20120801-3.1) unstable; urgency=medium
+
+  * Non-maintainer upload.
+  * fix postinst with merged /usr using patch from mksh (Closes: #810158)
+
+ -- Christoph Martin <martin@uni-mainz.de>  Wed, 31 May 2017 11:57:56 +0200
+
 ksh (93u+20120801-2) unstable; urgency=medium
 
   * Adopted package (Closes: #691199)

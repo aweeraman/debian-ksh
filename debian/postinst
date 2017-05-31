@@ -22,9 +22,11 @@ esac
 # The alternative is the mksh package.
 # For a discussion on interactions between ksh and mksh, see #764401.
 update-alternatives --install /bin/ksh ksh /bin/ksh93 20 \
-                    --slave /usr/bin/ksh usr.bin.ksh /bin/ksh93 \
                     --slave /usr/share/man/man1/ksh.1.gz ksh.1.gz \
                             /usr/share/man/man1/ksh93.1.gz
+# create compatibility symlink if necessary
+test -e /usr/bin/ksh || test -h /usr/bin/ksh || \
+    ln -s /bin/ksh /usr/bin/ksh
 
 # For a discussion of what we put in /etc/shells see #790118.
 add-shell /bin/ksh93
