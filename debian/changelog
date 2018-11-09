@@ -4,8 +4,9 @@ ksh (93u+20120801-3.3) unstable; urgency=medium
   * debian/control: Update Vcs-* fields and use git repo under Salsa
     Debian group.
   * debian/patches: Refresh last patch.
+  * debian/changelog: Remove trailing spaces.
 
- -- Boyuan Yang <byang@debian.org>  Fri, 09 Nov 2018 10:37:55 -0500
+ -- Boyuan Yang <byang@debian.org>  Fri, 09 Nov 2018 10:52:17 -0500
 
 ksh (93u+20120801-3.2) unstable; urgency=medium
 
@@ -35,10 +36,10 @@ ksh (93u+20120801-2) unstable; urgency=medium
   * Added binary format support for compiled scripts (Closes: #687343)
   * Reviewed package description - added note about shcomp
   * Registered with doc-base and added extra documents
-  * Moved example.kshrc to /etc/skel/.kshrc 
+  * Moved example.kshrc to /etc/skel/.kshrc
   * Reviewed cleanup-man-title.patch and enabled rksh
   * Small correction to formatting of man page (Closes: #755486)
-  * Removed deprecated GREP_OPTIONS from example.kshrc 
+  * Removed deprecated GREP_OPTIONS from example.kshrc
   * Removed SHLVL increment from example.kshrc as it was doubling increment
   * Rewrote setenv() in example.kshrc (Closes: #792733)
   * Reviewed copyright file and added license-reconcile config
@@ -197,4 +198,3 @@ ksh (93q-1) unstable; urgency=low
   * Initial Release.
 
  -- Oliver Kiddle <okiddle@yahoo.co.uk>  Wed,  9 Feb 2005 22:54:12 +0100
-
