@@ -1,3 +1,12 @@
+ksh (93u+20120801-3.3) unstable; urgency=medium
+
+  * Non-maintainer upload.
+  * debian/control: Update Vcs-* fields and use git repo under Salsa
+    Debian group.
+  * debian/patches: Refresh last patch.
+
+ -- Boyuan Yang <byang@debian.org>  Fri, 09 Nov 2018 10:37:55 -0500
+
 ksh (93u+20120801-3.2) unstable; urgency=medium
 
   * Non-maintainer upload.
