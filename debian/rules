@@ -64,6 +64,10 @@ clean:
 	rm -rf arch bin/*.old
 
 get-orig-source:
+	@echo 'Old get-orig-source target is no longer usable.'
+	@echo 'Please find latest ksh source code at:'
+	@echo 'https://github.com/att/ast'
+	@exit 1
 	rm -rf $(SRC_DIR) $(TARBALL)
 	mkdir $(SRC_DIR)
 	wget --http-user 'I accept www.opensource.org/licenses/cpl' \
