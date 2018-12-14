@@ -1,3 +1,17 @@
+ksh (93u+20120801-3.4) unstable; urgency=medium
+
+  [ Boyuan Yang ]
+  * debian/menu: Replace menu entry with a .desktop file that only shows under Old menu systems
+  * debian/rules: get-orig-source: Add notes about retrieving src
+  * debian/watch: Add a watch file to monitor upstream version
+  * debian/watch: Fix matching
+
+  [ Aron Xu ]
+  * Non-maintainer upload.
+  * Fix FTBFS with glibc >= 2.28 by Juhani Numminen (Closes: #915326)
+
+ -- Aron Xu <aron@debian.org>  Fri, 14 Dec 2018 15:26:58 +0800
+
 ksh (93u+20120801-3.3) unstable; urgency=medium
 
   * Non-maintainer upload.
