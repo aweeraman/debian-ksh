@@ -1,7 +1,7 @@
 ########################################################################
 #                                                                      #
 #               This software is part of the ast package               #
-#          Copyright (c) 1982-2012 AT&T Intellectual Property          #
+#          Copyright (c) 1982-2014 AT&T Intellectual Property          #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -14,629 +14,667 @@
 #                            AT&T Research                             #
 #                           Florham Park NJ                            #
 #                                                                      #
-#                  David Korn <dgk@research.att.com>                   #
+#                    David Korn <dgkorn@gmail.com>                     #
 #                                                                      #
 ########################################################################
-function err_exit
-{
-	print -u2 -n "\t"
-	print -u2 -r ${Command}[$1]: "${@:2}"
-	let Errors+=1
-}
-alias err_exit='err_exit $LINENO'
 
-Command=${0##*/}
-integer Errors=0
+# ==========
+for name in $(builtin -l | grep -Ev '(echo|test|true|false|login|newgrp|uname|getconf|\[|:)'); do
+    # Extract builtin name from /opt path
+    if [[ "$name" =~ "/opt" ]];
+    then
+        name="${name##*/}"
+    fi
 
-tmp=$(mktemp -dt) || { err_exit mktemp -dt failed; exit 1; }
-trap "cd /; rm -rf $tmp" EXIT
+    actual=$($name --this-option-does-not-exist 2>&1)
+    expect="Usage: $name"
+    [[ "$actual" =~ "$expect" ]] ||
+        log_error "$name should show usage info on unrecognized options" "$expect" "$actual"
+done
+
+# ==========
+for name in $(builtin -l | grep -Ev '(echo|test|true|false|login|newgrp|hash|type|source|\[|:)')
+do
+    # Extract builtin name from /opt path
+    if [[ "$name" =~ "/opt" ]];
+    then
+        name="${name##*/}"
+    fi
+
+    actual=$($name --man 2>&1 | head -5 | sed $'s,\x1B\[[0-9;]*[a-zA-Z],,g'  | tr -s '\n ' ' ')
+    expect="NAME $name - "
+    [[ "$actual" =~ "^$expect" ]] ||
+        log_error "$name --man should show documentation" "$expect" "$actual"
+done
 
 # test shell builtin commands
-builtin getconf
-: ${foo=bar} || err_exit ": failed"
-[[ $foo == bar ]] || err_exit ": side effects failed"
-set -- - foobar
-[[ $# == 2 && $1 == - && $2 == foobar ]] || err_exit "set -- - foobar failed"
-set -- -x foobar
-[[ $# == 2 && $1 == -x && $2 == foobar ]] || err_exit "set -- -x foobar failed"
-getopts :x: foo || err_exit "getopts :x: returns false"
-[[ $foo == x && $OPTARG == foobar ]] || err_exit "getopts :x: failed"
-OPTIND=1
-getopts :r:s var -r
-if	[[ $var != : || $OPTARG != r ]]
-then	err_exit "'getopts :r:s var -r' not working"
-fi
-OPTIND=1
-getopts :d#u OPT -d 16177
-if	[[ $OPT != d || $OPTARG != 16177 ]]
-then	err_exit "'getopts :d#u OPT=d OPTARG=16177' failed -- OPT=$OPT OPTARG=$OPTARG"
-fi
-OPTIND=1
-while getopts 'ab' option -a -b
-do	[[ $OPTIND == $((OPTIND)) ]] || err_exit "OPTIND optimization bug"
-done
+: ${foo=bar} || log_error ": failed"
+[[ $foo == bar ]] || log_error ": side effects failed"
 
-USAGE=$'[-][S:server?Operate on the specified \asubservice\a:]:[subservice:=pmserver]
-    {
-        [p:pmserver]
-        [r:repserver]
-        [11:notifyd]
-    }'
-set pmser p rep r notifyd -11
-while	(( $# > 1 ))
-do	OPTIND=1
-	getopts "$USAGE" OPT -S $1
-	[[ $OPT == S && $OPTARG == $2 ]] || err_exit "OPT=$OPT OPTARG=$OPTARG -- expected OPT=S OPTARG=$2"
-	shift 2
-done
+false ${foo=bar} &&  log_error "false failed"
 
-false ${foo=bar} &&  err_exit "false failed"
-read <<!
-hello world
-!
-[[ $REPLY == 'hello world' ]] || err_exit "read builtin failed"
-print x:y | IFS=: read a b
-if	[[ $a != x ]]
-then	err_exit "IFS=: read ... not working"
-fi
-read <<!
-hello \
-world
-!
-[[ $REPLY == 'hello world' ]] || err_exit "read continuation failed"
-read -d x <<!
-hello worldxfoobar
-!
-[[ $REPLY == 'hello world' ]] || err_exit "read builtin failed"
-read <<\!
-hello \
-	world \
-
-!
-[[ $REPLY == 'hello 	world' ]] || err_exit "read continuation2 failed"
-print "one\ntwo" | { read line
-	print $line | /bin/cat > /dev/null
-	read line
-}
-read <<\!
-\
-a\
-\
-\
-b
-!
-if	[[ $REPLY != ab ]]
-then	err_exit "read multiple continuation failed"
-fi
-if	[[ $line != two ]]
-then	err_exit "read from pipeline failed"
-fi
-line=two
-read line < /dev/null
-if	[[ $line != "" ]]
-then	err_exit "read from /dev/null failed"
-fi
-if	[[ $(print -R -) != - ]]
-then	err_exit "print -R not working correctly"
-fi
-if	[[ $(print -- -) != - ]]
-then	err_exit "print -- not working correctly"
-fi
-print -f "hello%nbar\n" size > /dev/null
-if	((	size != 5 ))
-then	err_exit "%n format of printf not working"
-fi
 print -n -u2 2>&1-
-[[ -w /dev/fd/1 ]] || err_exit "2<&1- with built-ins has side effects"
+[[ -w /dev/fd/1 ]] || log_error "2<&1- with built-ins has side effects"
 x=$0
-if	[[ $(eval 'print $0') != $x ]]
-then	err_exit '$0 not correct for eval'
+if [[ $(eval 'print $0') != $x ]]
+then
+    log_error '$0 not correct for eval'
 fi
-$SHELL -c 'read x <<< hello' 2> /dev/null || err_exit 'syntax <<< not recognized'
-($SHELL -c 'read x[1] <<< hello') 2> /dev/null || err_exit 'read x[1] not working'
+
+$SHELL -c 'read x <<< hello' 2> /dev/null || log_error 'syntax <<< not recognized'
 unset x
 readonly x
 set -- $(readonly)
-if      [[ " $@ " != *" x "* ]]
-then    err_exit 'unset readonly variables are not displayed'
+if   [[ " $@ " != *" x "* ]]
+then
+    log_error 'unset readonly variables are not displayed'
 fi
-if	[[ $(	for i in foo bar
-		do	print $i
-			continue 10
-		done
-	    ) != $'foo\nbar' ]]
-then	err_exit 'continue breaks out of loop'
+
+if [[ $(    for i in foo bar
+        do
+            print $i
+            continue 10
+        done
+        ) != $'foo\nbar' ]]
+then
+    log_error 'continue breaks out of loop'
 fi
-(continue bad 2>/dev/null && err_exit 'continue bad should return an error')
-(break bad 2>/dev/null && err_exit 'break bad should return an error')
-(continue 0 2>/dev/null && err_exit 'continue 0 should return an error')
-(break 0 2>/dev/null && err_exit 'break 0 should return an error')
+
+(continue bad 2>/dev/null && log_error 'continue bad should return an error')
+(break bad 2>/dev/null && log_error 'break bad should return an error')
+(continue 0 2>/dev/null && log_error 'continue 0 should return an error')
+(break 0 2>/dev/null && log_error 'break 0 should return an error')
 breakfun() { break;}
 continuefun() { continue;}
 for fun in break continue
-do	if	[[ $(	for i in foo
-			do	${fun}fun
-				print $i
-			done
-		) != foo ]]
-	then	err_exit "$fun call in ${fun}fun breaks out of for loop"
-	fi
+do
+    if [[ $(    for i in foo
+            do
+                ${fun}fun
+                print $i
+            done
+        ) != foo ]]
+    then
+        log_error "$fun call in ${fun}fun breaks out of for loop"
+    fi
 done
-if	[[ $(print -f "%b" "\a\n\v\b\r\f\E\03\\oo") != $'\a\n\v\b\r\f\E\03\\oo' ]]
-then	err_exit 'print -f "%b" not working'
-fi
-if	[[ $(print -f "%P" "[^x].*b\$") != '*[!x]*b' ]]
-then	err_exit 'print -f "%P" not working'
-fi
-if	[[ $(print -f "%(pattern)q" "[^x].*b\$") != '*[!x]*b' ]]
-then	err_exit 'print -f "%(pattern)q" not working'
-fi
-if	[[ $(abc: for i in foo bar;do print $i;break abc;done) != foo ]]
-then	err_exit 'break labels not working'
-fi
-if	[[ $(command -v if)	!= if ]]
-then	err_exit	'command -v not working'
-fi
-read -r var <<\!
 
-!
-if	[[ $var != "" ]]
-then	err_exit "read -r of blank line not working"
-fi
-mkdir -p $tmp/a/b/c 2>/dev/null || err_exit  "mkdir -p failed"
-$SHELL -c "cd $tmp/a/b; cd c" 2>/dev/null || err_exit "initial script relative cd fails"
+[[ $(for ((i=0;i<10;i++))
+do
+    for ((j=0;j<10;j++))
+    do
+        echo $i $j
+        break 2
+    done
+done) == "0 0" ]] || log_error "break [n] does not break to outer loop"
 
-trap 'print TERM' TERM
-exp=$'trap -- \'print TERM\' TERM\ntrap -- \'cd /; rm -rf '$tmp$'\' EXIT'
-got=$(trap)
-[[ $got == $exp ]] || err_exit "\$(trap) failed -- expected \"$exp\", got \"$got\""
-exp='print TERM'
-got=$(trap -p TERM)
-[[ $got == $exp ]] || err_exit "\$(trap -p TERM) failed -- expected \"$exp\", got \"$got\""
+[[ $(for ((i=0;i<2;i++))
+do
+    for ((j=0;j<10;j++))
+    do
+        echo $i $j
+        continue 2
+    done
+done) == $'0 0\n1 0' ]] || log_error "continue [n] does not continue to outer loop"
 
-[[ $($SHELL -c 'trap "print ok" SIGTERM; kill -s SIGTERM $$' 2> /dev/null) == ok ]] || err_exit 'SIGTERM not recognized'
-[[ $($SHELL -c 'trap "print ok" sigterm; kill -s sigterm $$' 2> /dev/null) == ok ]] || err_exit 'SIGTERM not recognized'
-[[ $($SHELL -c '( trap "" TERM);kill $$;print bad' == bad) ]] 2> /dev/null && err_exit 'trap ignored in subshell causes it to be ignored by parent'
-${SHELL} -c 'kill -1 -$$' 2> /dev/null
-[[ $(kill -l $?) == HUP ]] || err_exit 'kill -1 -pid not working'
-${SHELL} -c 'kill -1 -$$' 2> /dev/null
-[[ $(kill -l $?) == HUP ]] || err_exit 'kill -n1 -pid not working'
-${SHELL} -c 'kill -s HUP -$$' 2> /dev/null
-[[ $(kill -l $?) == HUP ]] || err_exit 'kill -HUP -pid not working'
-n=123
-typeset -A base
-base[o]=8#
-base[x]=16#
-base[X]=16#
-for i in d i o u x X
-do	if	(( $(( ${base[$i]}$(printf "%$i" $n) )) != n  ))
-	then	err_exit "printf %$i not working"
-	fi
-done
-if	[[ $( trap 'print done' EXIT) != done ]]
-then	err_exit 'trap on EXIT not working'
+if [[ $(abc: for i in foo bar;do print $i;break abc;done) != foo ]]
+then
+    log_error 'break labels not working'
 fi
-if	[[ $( trap 'print done' EXIT; trap - EXIT) == done ]]
-then	err_exit 'trap on EXIT not being cleared'
+
+mkdir -p $TEST_DIR/a/b/c 2>/dev/null || log_error  "mkdir -p failed"
+$SHELL -c "cd $TEST_DIR/a/b; cd c" || log_error "initial script relative cd fails"
+
+#   trap - trap signals and conditions
+
+# ==========
+# -a append the current trap setting to the specified action.
+trap false SIGHUP
+trap -a true SIGHUP
+actual=$(trap -p SIGHUP)
+expect="true;false"
+[[ "$actual" = "$expect" ]] || log_error "trap -a does not append to trap settings" "$expect" "$actual"
+trap - SIGHUP
+
+# ==========
+# -p Causes the current traps to be output in a format that can be
+#    processed as input to the shell to recreate the current traps
+trap : SIGHUP
+trap : EXIT
+actual=$(trap -p)
+expect=$'trap -- : HUP\ntrap -- : EXIT'
+[[ "$actual" == "$expect" ]] || log_error "trap -p fails to print traps" "$expect" "$actual"
+trap - SIGHUP EXIT
+
+# ==========
+# -l Output the list of signals and their numbers to standard
+#    output.
+# Check only a subset of signals.
+expect=$'HUP\nINT\nQUIT\nILL\nTRAP\nIOT'
+actual=$(trap -l | cut -d ')' -f2 | cut -d ' ' -f2)
+[[ "$actual" =~ "$expect" ]] || log_error "trap -l does not list signals" "$expect" "$actual"
+
+# ==========
+actual=$(trap -a -p 2>&1)
+expect="trap -a and -p are mutually exclusive"
+[[ "$actual" =~ "$expect" ]] || log_error "Mixing trap -a and -p should give an error"
+
+# ==========
+# The `| sort` is because ksh doesn't guarantee the order of the output of the `trap` command.
+expect="trap -- 'print TERM' TERM trap -- 'print USR1' USR1"
+actual=$(echo $($SHELL -c 'trap "print TERM" TERM; trap "print USR1" USR1; trap' | sort) )
+[[ $actual == $expect ]] || log_error "'trap' failed" "$expect" "$actual"
+
+expect='print TERM'
+actual=$(echo $($SHELL -c 'trap "print TERM" TERM; trap "print USR1" USR1; trap -p TERM') )
+[[ $actual == $expect ]] || log_error "'trap -p TERM' failed" "$expect" "$actual"
+
+[[ $($SHELL -c 'trap "print ok" SIGTERM; kill -s SIGTERM $$' 2> /dev/null) == ok ]] || log_error 'SIGTERM not recognized'
+[[ $($SHELL -c 'trap "print ok" sigterm; kill -s sigterm $$' 2> /dev/null) == ok ]] || log_error 'SIGTERM not recognized'
+[[ $($SHELL -c '( trap "" TERM);kill $$;print bad' == bad) ]] 2> /dev/null && log_error 'trap ignored in subshell causes it to be ignored by parent'
+
+if [[ $( trap 'print done' EXIT) != done ]]
+then
+    log_error 'trap on EXIT not working'
 fi
-if	[[ $(LC_MESSAGES=C type test) != 'test is a shell builtin' ]]
-then	err_exit 'whence -v test not a builtin'
+
+if [[ $( trap 'print done' EXIT; trap - EXIT) == done ]]
+then
+    log_error 'trap on EXIT not being cleared'
 fi
+
+if [[ $(LC_MESSAGES=C type test) != 'test is a shell builtin' ]]
+then
+    log_error 'whence -v test not a builtin'
+fi
+
 builtin -d test
-if	[[ $(type test) == *builtin* ]]
-then	err_exit 'whence -v test after builtin -d incorrect'
+if [[ $(type test) == *builtin* ]]
+then
+    log_error 'whence -v test after builtin -d incorrect'
 fi
-typeset -Z3 percent=$(printf '%o\n' "'%'")
-forrmat=\\${percent}s
-if      [[ $(printf "$forrmat") != %s ]]
-then    err_exit "printf $forrmat not working"
+
+if [[ $(trap --version 2> /dev/null;print done) != done ]]
+then
+    log_error 'trap builtin terminating after --version'
 fi
-if	(( $(printf 'x\0y' | wc -c) != 3 ))
-then	err_exit 'printf \0 not working'
+
+if [[ $(set --version 2> /dev/null;print done) != done ]]
+then
+    log_error 'set builtin terminating after --veresion'
 fi
-if	[[ $(printf "%bx%s\n" 'f\to\cbar') != $'f\to' ]]
-then	err_exit 'printf %bx%s\n  not working'
-fi
-alpha=abcdefghijklmnop
-if	[[ $(printf "%10.*s\n" 5 $alpha) != '     abcde' ]]
-then	err_exit 'printf %10.%s\n  not working'
-fi
-float x2=.0000625
-if	[[ $(printf "%10.5E\n" x2) != 6.25000E-05 ]]
-then	err_exit 'printf "%10.5E" not normalizing correctly'
-fi
-x2=.000000001
-if	[[ $(printf "%g\n" x2 2>/dev/null) != 1e-09 ]]
-then	err_exit 'printf "%g" not working correctly'
-fi
-#FIXME#($SHELL read -s foobar <<\!
-#FIXME#testing
-#FIXME#!
-#FIXME#) 2> /dev/null || err_exit ksh read -s var fails
-if	[[ $(printf +3 2>/dev/null) !=   +3 ]]
-then	err_exit 'printf is not processing formats beginning with + correctly'
-fi
-if	printf "%d %d\n" 123bad 78 >/dev/null 2>/dev/null
-then	err_exit "printf not exiting non-zero with conversion errors"
-fi
-if	[[ $(trap --version 2> /dev/null;print done) != done ]]
-then	err_exit 'trap builtin terminating after --version'
-fi
-if	[[ $(set --version 2> /dev/null;print done) != done ]]
-then	err_exit 'set builtin terminating after --veresion'
-fi
-unset -f foobar
-function foobar
-{
-	print 'hello world'
-}
-OPTIND=1
-if	[[ $(getopts  $'[+?X\ffoobar\fX]' v --man 2>&1) != *'Xhello world'X* ]]
-then	err_exit '\f...\f not working in getopts usage strings'
-fi
-if	[[ $(printf '%H\n' $'<>"& \'\tabc') != '&lt;&gt;&quot;&amp;&nbsp;&apos;&#9;abc' ]]
-then	err_exit 'printf %H not working'
-fi
-if	[[ $(printf '%(html)q\n' $'<>"& \'\tabc') != '&lt;&gt;&quot;&amp;&nbsp;&apos;&#9;abc' ]]
-then	err_exit 'printf %(html)q not working'
-fi
-if	[[ $( printf 'foo://ab_c%(url)q\n' $'<>"& \'\tabc') != 'foo://ab_c%3C%3E%22%26%20%27%09abc' ]]
-then	err_exit 'printf %(url)q not working'
-fi
-if	[[ $(printf '%R %R %R %R\n' 'a.b' '*.c' '^'  '!(*.*)') != '^a\.b$ \.c$ ^\^$ ^(.*\..*)!$' ]]
-then	err_exit 'printf %T not working'
-fi
-if	[[ $(printf '%(ere)q %(ere)q %(ere)q %(ere)q\n' 'a.b' '*.c' '^'  '!(*.*)') != '^a\.b$ \.c$ ^\^$ ^(.*\..*)!$' ]]
-then	err_exit 'printf %(ere)q not working'
-fi
-if	[[ $(printf '%..:c\n' abc) != a:b:c ]]
-then	err_exit "printf '%..:c' not working"
-fi
-if	[[ $(printf '%..*c\n' : abc) != a:b:c ]]
-then	err_exit "printf '%..*c' not working"
-fi
-if	[[ $(printf '%..:s\n' abc def ) != abc:def ]]
-then	err_exit "printf '%..:s' not working"
-fi
-if	[[ $(printf '%..*s\n' : abc def) != abc:def ]]
-then	err_exit "printf '%..*s' not working"
-fi
-[[ $(printf '%q\n') == '' ]] || err_exit 'printf "%q" with missing arguments'
-# we won't get hit by the one second boundary twice, right?
-[[ $(printf '%T\n' now) == "$(date)" ]] ||
-[[ $(printf '%T\n' now) == "$(date)" ]] ||
-err_exit 'printf "%T" now'
-behead()
-{
-	read line
-	left=$(cat)
-}
-print $'line1\nline2' | behead
-if	[[ $left != line2 ]]
-then	err_exit "read reading ahead on a pipe"
-fi
-read -n1 y <<!
-abc
-!
-exp=a
-if      [[ $y != $exp ]]
-then    err_exit "read -n1 failed -- expected '$exp', got '$y'"
-fi
-print -n $'{ read -r line;print $line;}\nhello' > $tmp/script
-chmod 755 $tmp/script
-if	[[ $($SHELL < $tmp/script) != hello ]]
-then	err_exit 'read of incomplete line not working correctly'
-fi
+
+
 set -f
 set -- *
-if      [[ $1 != '*' ]]
-then    err_exit 'set -f not working'
+if   [[ $1 != '*' ]]
+then
+    log_error 'set -f not working'
 fi
-unset pid1 pid2
-false &
-pid1=$!
-pid2=$(
-	wait $pid1
-	(( $? == 127 )) || err_exit "job known to subshell"
-	print $!
-)
-wait $pid1
-(( $? == 1 )) || err_exit "wait not saving exit value"
-wait $pid2
-(( $? == 127 )) || err_exit "subshell job known to parent"
+
 env=
-v=$(getconf LIBPATH)
+v=$(getconf LIBPATH 2> /dev/null)
 for v in ${v//,/ }
-do	v=${v#*:}
-	v=${v%%:*}
-	eval [[ \$$v ]] && env="$env $v=\"\$$v\""
-done
-if	[[ $(foo=bar; eval foo=\$foo $env exec -c \$SHELL -c \'print \$foo\') != bar ]]
-then	err_exit '"name=value exec -c ..." not working'
-fi
-$SHELL -c 'OPTIND=-1000000; getopts a opt -a' 2> /dev/null
-[[ $? == 1 ]] || err_exit 'getopts with negative OPTIND not working'
-getopts 'n#num' opt  -n 3
-[[ $OPTARG == 3 ]] || err_exit 'getopts with numerical arguments failed'
-if	[[ $($SHELL -c $'printf \'%2$s %1$s\n\' world hello') != 'hello world' ]]
-then	err_exit 'printf %2$s %1$s not working'
-fi
-val=$(( 'C' ))
-set -- \
-	"'C"	$val	0	\
-	"'C'"	$val	0	\
-	'"C'	$val	0	\
-	'"C"'	$val	0	\
-	"'CX"	$val	1	\
-	"'CX'"	$val	1	\
-	"'C'X"	$val	1	\
-	'"CX'	$val	1	\
-	'"CX"'	$val	1	\
-	'"C"X'	$val	1
-while (( $# >= 3 ))
-do	arg=$1 val=$2 code=$3
-	shift 3
-	for fmt in '%d' '%g'
-	do	out=$(printf "$fmt" "$arg" 2>/dev/null)
-		err=$(printf "$fmt" "$arg" 2>&1 >/dev/null)
-		printf "$fmt" "$arg" >/dev/null 2>&1
-		ret=$?
-		[[ $out == $val ]] || err_exit "printf $fmt $arg failed -- expected '$val', got '$out'"
-		if	(( $code ))
-		then	[[ $err ]] || err_exit "printf $fmt $arg failed, error message expected"
-		else	[[ $err ]] && err_exit "$err: printf $fmt $arg failed, error message not expected -- got '$err'"
-		fi
-		(( $ret == $code )) || err_exit "printf $fmt $arg failed -- expected exit code $code, got $ret"
-	done
-done
-((n=0))
-((n++)); ARGC[$n]=1 ARGV[$n]=""
-((n++)); ARGC[$n]=2 ARGV[$n]="-a"
-((n++)); ARGC[$n]=4 ARGV[$n]="-a -v 2"
-((n++)); ARGC[$n]=4 ARGV[$n]="-a -v 2 x"
-((n++)); ARGC[$n]=4 ARGV[$n]="-a -v 2 x y"
-for ((i=1; i<=n; i++))
-do	set -- ${ARGV[$i]}
-	OPTIND=0
-	while	getopts -a tst "av:" OPT
-	do	:
-	done
-	if	[[ $OPTIND != ${ARGC[$i]} ]]
-	then	err_exit "\$OPTIND after getopts loop incorrect -- expected ${ARGC[$i]}, got $OPTIND"
-	fi
-done
-options=ab:c
-optarg=foo
-set -- -a -b $optarg -c bar
-while	getopts $options opt
-do	case $opt in
-	a|c)	[[ $OPTARG ]] && err_exit "getopts $options \$OPTARG for flag $opt failed, expected \"\", got \"$OPTARG\"" ;;
-	b)	[[ $OPTARG == $optarg ]] || err_exit "getopts $options \$OPTARG failed -- \"$optarg\" expected, got \"$OPTARG\"" ;;
-	*)	err_exit "getopts $options failed -- got flag $opt" ;;
-	esac
+do
+    v=${v#*:}
+    v=${v%%:*}
+    eval [[ \$$v ]] && env="$env $v=\"\$$v\""
 done
 
-[[ $($SHELL 2> /dev/null -c 'readonly foo; getopts a: foo -a blah; echo foo') == foo ]] || err_exit 'getopts with readonly variable causes script to abort'
+if [[ $(foo=bar; eval foo=\$foo $env exec -c \$SHELL -c \'print \$foo\') != bar ]]
+then
+    log_error '"name=value exec -c ..." not working'
+fi
 
-unset a
-{ read -N3 a; read -N1 b;}  <<!
-abcdefg
-!
-exp=abc
-[[ $a == $exp ]] || err_exit "read -N3 here-document failed -- expected '$exp', got '$a'"
-exp=d
-[[ $b == $exp ]] || err_exit "read -N1 here-document failed -- expected '$exp', got '$b'"
-read -n3 a <<!
-abcdefg
-!
-exp=abc
-[[ $a == $exp ]] || err_exit "read -n3 here-document failed -- expected '$exp', got '$a'"
 #(print -n a;sleep 1; print -n bcde) | { read -N3 a; read -N1 b;}
-#[[ $a == $exp ]] || err_exit "read -N3 from pipe failed -- expected '$exp', got '$a'"
+#[[ $a == $exp ]] || log_error "read -N3 from pipe failed -- expected '$exp', got '$a'"
 #exp=d
-#[[ $b == $exp ]] || err_exit "read -N1 from pipe failed -- expected '$exp', got '$b'"
+#[[ $b == $exp ]] || log_error "read -N1 from pipe failed -- expected '$exp', got '$b'"
 #(print -n a;sleep 1; print -n bcde) | read -n3 a
 #exp=a
-#[[ $a == $exp ]] || err_exit "read -n3 from pipe failed -- expected '$exp', got '$a'"
-#rm -f $tmp/fifo
-#if	mkfifo $tmp/fifo 2> /dev/null
-#then	(print -n a; sleep 1;print -n bcde)  > $tmp/fifo &
-#	{
-#	read -u5 -n3 -t2 a || err_exit 'read -n3 from fifo timedout'
-#	read -u5 -n1 -t2 b || err_exit 'read -n1 from fifo timedout'
-#	} 5< $tmp/fifo
-#	exp=a
-#	[[ $a == $exp ]] || err_exit "read -n3 from fifo failed -- expected '$exp', got '$a'"
-#	rm -f $tmp/fifo
-#	mkfifo $tmp/fifo 2> /dev/null
-#	(print -n a; sleep 1;print -n bcde) > $tmp/fifo &
-#	{
-#	read -u5 -N3 -t2 a || err_exit 'read -N3 from fifo timed out'
-#	read -u5 -N1 -t2 b || err_exit 'read -N1 from fifo timedout'
-#	} 5< $tmp/fifo
-#	exp=abc
-#	[[ $a == $exp ]] || err_exit "read -N3 from fifo failed -- expected '$exp', got '$a'"
-#	exp=d
-#	[[ $b == $exp ]] || err_exit "read -N1 from fifo failed -- expected '$exp', got '$b'"
+#[[ $a == $exp ]] || log_error "read -n3 from pipe failed -- expected '$exp', got '$a'"
+#rm -f $TEST_DIR/fifo
+#if mkfifo $TEST_DIR/fifo 2> /dev/null
+#then
+#    (print -n a; sleep 1;print -n bcde)  > $TEST_DIR/fifo &
+#    {
+#    read -u5 -n3 -t2 a || log_error 'read -n3 from fifo timedout'
+#    read -u5 -n1 -t2 b || log_error 'read -n1 from fifo timedout'
+#    } 5< $TEST_DIR/fifo
+#    exp=a
+#    [[ $a == $exp ]] || log_error "read -n3 from fifo failed -- expected '$exp', got '$a'"
+#    rm -f $TEST_DIR/fifo
+#    mkfifo $TEST_DIR/fifo 2> /dev/null
+#    (print -n a; sleep 1;print -n bcde) > $TEST_DIR/fifo &
+#    {
+#    read -u5 -N3 -t2 a || log_error 'read -N3 from fifo timed out'
+#    read -u5 -N1 -t2 b || log_error 'read -N1 from fifo timedout'
+#    } 5< $TEST_DIR/fifo
+#    exp=abc
+#    [[ $a == $exp ]] || log_error "read -N3 from fifo failed -- expected '$exp', got '$a'"
+#    exp=d
+#    [[ $b == $exp ]] || log_error "read -N1 from fifo failed -- expected '$exp', got '$b'"
 #fi
-#rm -f $tmp/fifo
 
-function longline
-{
-	integer i
-	for((i=0; i < $1; i++))
-	do	print argument$i
-	done
-}
-# test command -x option
-integer sum=0 n=10000
-if	! ${SHELL:-ksh} -c 'print $#' count $(longline $n) > /dev/null  2>&1
-then	for i in $(command command -x ${SHELL:-ksh} -c 'print $#;[[ $1 != argument0 ]]' count $(longline $n) 2> /dev/null)
-	do	((sum += $i))
-	done
-	(( sum == n )) || err_exit "command -x processed only $sum arguments"
-	command -p command -x ${SHELL:-ksh} -c 'print $#;[[ $1 == argument0 ]]' count $(longline $n) > /dev/null  2>&1
-	[[ $? != 1 ]] && err_exit 'incorrect exit status for command -x'
-fi
-# test command -x option with extra arguments
-integer sum=0 n=10000
-if      ! ${SHELL:-ksh} -c 'print $#' count $(longline $n) > /dev/null  2>&1
-then    for i in $(command command -x ${SHELL:-ksh} -c 'print $#;[[ $1 != argument0 ]]' count $(longline $n) one two three) #2> /dev/null)
-	do      ((sum += $i))
-	done
-	(( sum  > n )) || err_exit "command -x processed only $sum arguments"
-	(( (sum-n)%3==0 )) || err_exit "command -x processed only $sum arguments"
-	(( sum == n+3)) && err_exit "command -x processed only $sum arguments"
-	command -p command -x ${SHELL:-ksh} -c 'print $#;[[ $1 == argument0 ]]' count $(longline $n) > /dev/null  2>&1
-	[[ $? != 1 ]] && err_exit 'incorrect exit status for command -x'
-fi
+#rm -f $TEST_DIR/fifo
+
 # test for debug trap
 [[ $(typeset -i i=0
-	trap 'print $i' DEBUG
-	while (( i <2))
-	do	(( i++))
-	done) == $'0\n0\n1\n1\n2' ]]  || err_exit  "DEBUG trap not working"
-getconf UNIVERSE - ucb
-[[ $($SHELL -c 'echo -3') == -3 ]] || err_exit "echo -3 not working in ucb universe"
-typeset -F3 start_x=SECONDS total_t delay=0.02
-typeset reps=50 leeway=5
-sleep $(( 2 * leeway * reps * delay )) |
-for (( i=0 ; i < reps ; i++ ))
-do	read -N1 -t $delay
-done
-(( total_t = SECONDS - start_x ))
-if	(( total_t > leeway * reps * delay ))
-then	err_exit "read -t in pipe taking $total_t secs - $(( reps * delay )) minimum - too long"
-elif	(( total_t < reps * delay ))
-then	err_exit "read -t in pipe taking $total_t secs - $(( reps * delay )) minimum - too fast"
-fi
-$SHELL -c 'sleep $(printf "%a" .95)' 2> /dev/null || err_exit "sleep doesn't except %a format constants"
-$SHELL -c 'test \( ! -e \)' 2> /dev/null ; [[ $? == 1 ]] || err_exit 'test \( ! -e \) not working'
-[[ $(ulimit) == "$(ulimit -fS)" ]] || err_exit 'ulimit is not the same as ulimit -fS'
-tmpfile=$tmp/file.2
-print $'\nprint -r -- "${.sh.file} ${LINENO} ${.sh.lineno}"' > $tmpfile
-[[ $( . "$tmpfile") == "$tmpfile 2 1" ]] || err_exit 'dot command not working'
-print -r -- "'xxx" > $tmpfile
-[[ $($SHELL -c ". $tmpfile"$'\n print ok' 2> /dev/null) == ok ]] || err_exit 'syntax error in dot command affects next command'
+    trap 'print $i' DEBUG
+    while (( i <2))
+    do
+        (( i++))
+    done) == $'0\n0\n1\n1\n2' ]]  || log_error  "DEBUG trap not working"
 
-float sec=$SECONDS del=4
-exec 3>&2 2>/dev/null
-$SHELL -c "( sleep 1; kill -ALRM \$\$ ) & sleep $del" 2> /dev/null
-exitval=$?
-(( sec = SECONDS - sec ))
-exec 2>&3-
-(( exitval )) && err_exit "sleep doesn't exit 0 with ALRM interupt"
-(( sec > (del - 1) )) || err_exit "ALRM signal causes sleep to terminate prematurely -- expected 3 sec, got $sec"
+$SHELL -c 'test \( ! -e \)' 2> /dev/null ; [[ $? == 1 ]] || log_error 'test \( ! -e \) not working'
+[[ $(ulimit) == "$(ulimit -fS)" ]] || log_error 'ulimit is not the same as ulimit -fS'
+
+tmpfile=$TEST_DIR/file.2
+print $'\nprint -r -- "${.sh.file} ${LINENO} ${.sh.lineno}"' > $tmpfile
+actual="$(. $tmpfile)"
+expect="$tmpfile 2 1"
+[[ $actual == $expect ]] || log_error 'dot command not working' "$expect" "$actual"
+
+tmpfile=$TEST_DIR/file.3
+print -r -- "'xxx" > $tmpfile
+actual="$($SHELL -c ". $tmpfile"$'\n print ok' 2> /dev/null)"
+expect="ok"
+[[ $actual == $expect ]] ||
+    log_error 'syntax error in dot command affects next command' "$expect" "$actual"
+
 typeset -r z=3
 y=5
 for i in 123 z  %x a.b.c
-do	( unset $i)  2>/dev/null && err_exit "unset $i should fail"
+do
+    ( unset $i)  2>/dev/null && log_error "unset $i should fail"
 done
+
 a=()
 for i in y y  y[8] t[abc] y.d a.b  a
-do	unset $i ||  print -u2  "err_exit unset $i should not fail"
+do
+    unset $i ||  print -u2  "log_error unset $i should not fail"
 done
-[[ $($SHELL -c 'y=3; unset 123 y;print $?$y') == 1 ]] 2> /dev/null ||  err_exit 'y is not getting unset with unset 123 y'
-[[ $($SHELL -c 'trap foo TERM; (trap;(trap) )') == 'trap -- foo TERM' ]] || err_exit 'traps not getting reset when subshell is last process'
 
-n=$(printf "%b" 'a\0b\0c' | wc -c)
-(( n == 5 )) || err_exit '\0 not working with %b format with printf'
+[[ $($SHELL -c 'y=3; unset 123 y;print $?$y') == 1 ]] 2> /dev/null ||  log_error 'y is not getting unset with unset 123 y'
+[[ $($SHELL -c 'trap foo TERM; (trap;(trap) )') == 'trap -- foo TERM' ]] || log_error 'traps not getting reset when subshell is last process'
 
 t=$(ulimit -t)
-[[ $($SHELL -c 'ulimit -v 15000 2>/dev/null; ulimit -t') == "$t" ]] || err_exit 'ulimit -v changes ulimit -t'
+[[ $($SHELL -c 'ulimit -v 15000 2>/dev/null; ulimit -t') == "$t" ]] || log_error 'ulimit -v changes ulimit -t'
 
-$SHELL 2> /dev/null -c 'cd ""' && err_exit 'cd "" not producing an error'
-[[ $($SHELL 2> /dev/null -c 'cd "";print hi') != hi ]] && err_exit 'cd "" should not terminate script'
+$SHELL 2> /dev/null -c 'cd ""' && log_error 'cd "" not producing an error'
+[[ $($SHELL 2> /dev/null -c 'cd "";print hi') != hi ]] && log_error 'cd "" should not terminate script'
 
-bincat=$(whence -p cat)
-builtin cat
-out=$tmp/seq.out
+out=$TEST_DIR/seq.out
 seq 11 >$out
-cmp -s <(print -- "$($bincat<( $bincat $out ) )") <(print -- "$(cat <( cat $out ) )") || err_exit "builtin cat differs from $bincat"
-
-[[ $($SHELL -c '{ printf %R "["; print ok;}' 2> /dev/null) == ok ]] || err_exit $'\'printf %R "["\' causes shell to abort'
+cmp -s <(print -- "$($bin_cat<( $bin_cat $out ) )") <(print -- "$(cat <( cat $out ) )") || \
+    log_error "builtin cat differs from $bin_cat"
 
 v=$( $SHELL -c $'
-	trap \'print "usr1"\' USR1
-	trap exit USR2
-	sleep 1 && {
-		kill -USR1 $$ && sleep 1
-		kill -0 $$ 2>/dev/null && kill -USR2 $$
-	} &
-	sleep 2 | read
-	echo done
-' ) 2> /dev/null
-[[ $v == $'usr1\ndone' ]] ||  err_exit 'read not terminating when receiving USR1 signal'
+    trap \'print "usr1"\' USR1
+    trap exit USR2
+    sleep 1 && {
+        kill -USR1 $$ && sleep 1
+        kill -0 $$ 2>/dev/null && kill -USR2 $$
+    } &
+    sleep 2 | read
+    echo done
 
-mkdir $tmp/tmpdir1
-cd $tmp/tmpdir1
+' ) 2> /dev/null
+[[ $v == $'usr1\ndone' ]] ||  log_error 'read not terminating when receiving USR1 signal'
+
+mkdir $TEST_DIR/tmpdir1
+cd $TEST_DIR/tmpdir1
 pwd=$PWD
 cd ../tmpdir1
-[[ $PWD == "$pwd" ]] || err_exit 'cd ../tmpdir1 causes directory to change'
+[[ $PWD == "$pwd" ]] || log_error 'cd ../tmpdir1 causes directory to change'
 cd "$pwd"
-mv $tmp/tmpdir1 $tmp/tmpdir2
-cd ..  2> /dev/null || err_exit 'cannot change directory to .. after current directory has been renamed'
-[[ $PWD == "$tmp" ]] || err_exit 'after "cd $tmp/tmpdir1; cd .." directory is not $tmp'
+mv $TEST_DIR/tmpdir1 $TEST_DIR/tmpdir2
+cd ..  2> /dev/null || log_error 'cannot change directory to .. after current directory has been renamed'
+[[ $PWD == "$TEST_DIR" ]] || log_error 'after "cd $TEST_DIR/tmpdir1; cd .." directory is not $TEST_DIR'
 
-cd "$tmp"
-mkdir $tmp/tmpdir2/foo
+cd "$TEST_DIR"
+mkdir $TEST_DIR/tmpdir2/foo
 pwd=$PWD
-cd $tmp/tmpdir2/foo
-mv $tmp/tmpdir2 $tmp/tmpdir1
-cd ../.. 2> /dev/null || err_exit 'cannot change directory to ../.. after current directory has been renamed'
-[[ $PWD == "$tmp" ]] || err_exit 'after "cd $tmp/tmpdir2; cd ../.." directory is not $tmp'
-cd "$tmp"
+cd $TEST_DIR/tmpdir2/foo
+mv $TEST_DIR/tmpdir2 $TEST_DIR/tmpdir1
+cd ../.. 2> /dev/null || log_error 'cannot change directory to ../.. after current directory has been renamed'
+[[ $PWD == "$TEST_DIR" ]] || log_error 'after "cd $TEST_DIR/tmpdir2; cd ../.." directory is not $TEST_DIR'
+cd "$TEST_DIR"
 rm -rf tmpdir1
 
 cd /etc
 cd ..
-[[ $(pwd) == / ]] || err_exit 'cd /etc;cd ..;pwd is not /'
+[[ $(pwd) == / ]] || log_error 'cd /etc;cd ..;pwd is not /'
 cd /etc
 cd ../..
-[[ $(pwd) == / ]] || err_exit 'cd /etc;cd ../..;pwd is not /'
+[[ $(pwd) == / ]] || log_error 'cd /etc;cd ../..;pwd is not /'
 cd /etc
 cd .././..
-[[ $(pwd) == / ]] || err_exit 'cd /etc;cd .././..;pwd is not /'
+[[ $(pwd) == / ]] || log_error 'cd /etc;cd .././..;pwd is not /'
 cd /usr/bin
 cd ../..
-[[ $(pwd) == / ]] || err_exit 'cd /usr/bin;cd ../..;pwd is not /'
+[[ $(pwd) == / ]] || log_error 'cd /usr/bin;cd ../..;pwd is not /'
 cd /usr/bin
 cd ..
-[[ $(pwd) == /usr ]] || err_exit 'cd /usr/bin;cd ..;pwd is not /usr'
-cd "$tmp"
-if	mkdir $tmp/t1
-then	(
-		cd $tmp/t1
-		> real_t1
-		(
-			cd ..
-			mv t1 t2
-			mkdir t1
-		)
-		[[ -f real_t1 ]] || err_exit 'real_t1 not found after parent directory renamed in subshell'
-	)
-fi
-cd "$tmp"
+[[ $(pwd) == /usr ]] || log_error 'cd /usr/bin;cd ..;pwd is not /usr'
 
-$SHELL +E -i <<- \! && err_exit 'interactive shell should not exit 0 after false'
-	false
-	exit
+cd "$TEST_DIR"
+if [[ $OS_NAME == CYGWIN* ]]
+then
+    # This test fails on Cygwin due to underlying MS Windows behavior that makes it impossible for
+    # this to work without special support for Cygwin (and perhaps not even then).
+    log_warning 'skipping parent dir rename on Cygwin'
+else
+    (
+        cd $TEST_DIR/t1
+        > real_t1
+        (
+            cd ..
+            mv t1 t2
+            mkdir t1
+        )
+        [[ -f real_t1 ]] || log_error 'real_t1 not found after parent directory renamed in subshell'
+    )
+fi
+
+cd "$TEST_DIR"
+
+> foobar
+CDPATH= $SHELL 2> /dev/null -c 'cd foobar' && log_error "cd to a regular file should fail"
+
+cd "$TEST_DIR"
+mkdir foo .bar
+cd foo
+cd ../.bar 2> /dev/null || log_error 'cd ../.bar when ../.bar exists should not fail'
+
+$SHELL +E -i <<- \! && log_error 'interactive shell should not exit 0 after false'
+    false
+    exit
 !
 
-if	kill -L > /dev/null 2>&1
-then	[[ $(kill -l HUP) == "$(kill -L HUP)" ]] || err_exit 'kill -l and kill -L are not the same when given a signal name'
-	[[ $(kill -l 9) == "$(kill -L 9)" ]] || err_exit 'kill -l and kill -L are not the same when given a signal number'
-	[[ $(kill -L) == *'9) KILL'* ]] || err_exit 'kill -L output does not contain 9) KILL'
-fi
-
 unset ENV
-v=$($SHELL 2> /dev/null +o rc -ic $'getopts a:bc: opt --man\nprint $?')
-[[ $v == 2* ]] || err_exit 'getopts --man does not exit 2 for interactive shells'
-
-read baz <<< 'foo\\\\bar'
-[[ $baz == 'foo\\bar' ]] || err_exit 'read of foo\\\\bar not getting foo\\bar'
 
 : ~root
-[[ $(builtin) == *.sh.tilde* ]] &&  err_exit 'builtin contains .sh.tilde'
+[[ $(builtin) == *.sh.tilde* ]] &&  log_error 'builtin contains .sh.tilde'
 
-exit $((Errors<125?Errors:125))
+# This series of tests is sensitive to the specific content and order of `PATH`.
+PATH=/opt/ast/bin:/bin:/usr/bin
+
+.sh.op_astbin=/opt/ast/bin
+[[ ${SH_OPTIONS} == *astbin=/opt/ast/bin* ]] || \
+    log_error "SH_OPTIONS=${SH_OPTIONS} but should contain astbin=/opt/ast/bin"
+
+actual=$(whence basename)
+expect="/opt/ast/bin/basename"
+[[ $actual == $expect ]] || log_error "basename bound to wrong path" "$expect" "$actual"
+actual=$(whence cmp)
+expect="/opt/ast/bin/cmp"
+[[ $actual == $expect ]] || log_error "cmp bound to wrong path" "$expect" "$actual"
+
+.sh.op_astbin=/bin
+SH_OPTIONS=astbin=/bin
+[[ ${SH_OPTIONS} == *astbin=/bin* ]] || \
+    log_error "SH_OPTIONS=${SH_OPTIONS} but should contain astbin=/bin"
+
+actual=$(whence basename)
+expect="/bin/basename"
+[[ $actual == $expect ]] || log_error "basename bound to wrong path" "$expect" "$actual"
+actual=$(whence cmp)
+expect="/bin/cmp"
+[[ $actual == $expect ]] || log_error "cmp bound to wrong path" "$expect" "$actual"
+
+.sh.op_astbin=/opt/ast/bin
+actual=$(whence basename)
+expect="/opt/ast/bin/basename"
+[[ $actual == $expect ]] || log_error "basename bound to wrong path" "$expect" "$actual"
+actual=$(whence cmp)
+expect="/opt/ast/bin/cmp"
+[[ $actual == $expect ]] || log_error "cmp bound to wrong path" "$expect" "$actual"
+
+# These two tests do something unusual. The PATH when the unit test was run may have had /bin before
+# /usr/bin or vice versa. So make sure this handles both possibilities. That's because on some
+# platforms these two commands may be found in both directories.  Here we don't care which directory
+# prefixes the command other than it not being /opt/ast/bin.
+PATH=/bin:/usr/bin:/opt/ast/bin
+actual=$(whence basename)
+actual="${actual#/usr}"
+expect="${bin_basename#/usr}"
+[[ $actual == $expect ]] || log_error "basename bound to wrong path" "$expect" "$actual"
+actual=$(whence cmp)
+actual="${actual#/usr}"
+expect="${bin_cmp#/usr}"
+[[ $actual == $expect ]] || log_error "cmp bound to wrong path" "$expect" "$actual"
+
+PATH=$FULL_PATH  # restore the PATH defined by the test harness
+
+# tests with cd
+pwd=$PWD
+exec {fd}</dev
+
+cd /dev
+if cd ~-
+then
+    [[ $PWD == "$pwd" ]] || log_error "directory is $PWD, should be $pwd"
+else
+    log_error "unable to cd ~- back to $pwd"
+fi
+
+if cd -f $fd
+then
+    [[ -r null ]] || log_error 'cannot find "null" file in /dev'
+else
+    log_error 'cannot cd to ~{fd} when fd is /dev'
+fi
+
+mkdir $TEST_DIR/oldpwd
+OLDPWD=$TEST_DIR/oldpwd
+cd - > $TEST_DIR/cd.out
+actual=$(< $TEST_DIR/cd.out)
+expect="$TEST_DIR/oldpwd"
+[[ $actual == $expect ]] || log_error "cd - does not recognize overridden OLDPWD variable"
+[[ $PWD == $expect ]] || log_error "cd - does not recognize overridden OLDPWD variable"
+
+cd $TEST_DIR
+[[ $(OLDPWD="$TEST_DIR/oldpwd" cd -) == "$TEST_DIR/oldpwd" ]] ||
+    log_error "cd - does not recognize overridden OLDPWD variable if it is overridden in new scope"
+
+[[ $(pwd -f $fd) == /dev ]] || log_error "pwd -f $fd should be /dev"
+
+$SHELL <<- \EOF
+    # $HOME is set to a temporary directory by test framework
+    # Get actual home directory of the user
+    home=~$USER
+    unset HOME
+    cd
+    [[ $(pwd) == "$home" ]]
+EOF
+[[ $? == 0 ]] || log_error 'cd with no arguments fails if HOME is unset'
+
+cd "$TEST_DIR"
+if mkdir -p f1
+then
+    redirect {d}<f1
+    pwd=$(pwd)
+    ( cd -f $d && [[ $(pwd) == "$pwd/f1" ]]) || log_error '$(pwd) does not show new directory'
+    [[ $(pwd) == "$pwd" ]] || log_error '$(pwd) is not $pwd'
+    [[ $(/bin/pwd) == "$pwd" ]] || log_error  '/bin/pwd is not "$pwd"'
+    [[ $(/bin/pwd) == "$(pwd)" ]] || log_error  '/bin/pwd is not pwd'
+    cd "$pwd"
+    rmdir "$pwd/f1"
+fi
+
+TESTDIRSYMLINK="$TEST_DIR/testdirsymlink"
+ln -s "$TEST_DIR" "$TEST_DIR/testdirsymlink"
+
+cd -L "$TESTDIRSYMLINK"
+actual="$(pwd)"
+expected="$TEST_DIR/testdirsymlink"
+[[ "$actual" = "$expected" ]] || log_error "cd -L should enter logical path" "$expected" "$actual"
+
+# Enter physical path to skip resolving multiple symlinks while testing
+cd -P "$TEST_DIR"
+cd -P "$TESTDIRSYMLINK" || log_error "cd -P to symlink failed"
+actual="$(pwd)"
+expected="$OLDPWD"
+[[ "$actual" = "$expected"  ]] || log_error "cd -P should enter physical path." "$expected" "$actual"
+
+# Enter physical path to skip resolving multiple symlinks while testing
+cd $(pwd -P)
+cd "$TESTDIRSYMLINK"
+
+actual="$(pwd)"
+expected="$TEST_DIR/testdirsymlink"
+[[ "$actual" = "$expected" ]] || log_error "pwd should print logical path" "$expected" "$actual"
+
+actual="$(pwd -L)"
+expected="$TEST_DIR/testdirsymlink"
+[[ "$actual" = "$expected"  ]] || log_error "pwd -L should print logical path" "$expected" "$actual"
+
+actual="$(pwd -P)"
+expected="$OLDPWD"
+[[ "$actual" = "$expected"  ]] || log_error "pwd -P should print physical path." "$expected" "$actual"
+
+# test for eval bug when called from . script in a startup file.
+print $'eval : foo\nprint ok' > $TEST_DIR/evalbug
+print ". $TEST_DIR/evalbug" >$TEST_DIR/envfile
+[[ $(ENV=$TEST_DIR/envfile $SHELL -i -c : 2> /dev/null) == ok ]] || log_error 'eval inside dot script called from profile file not working'
+
+# test cd to a directory that doesn't have execute permission
+if [[ $OS_NAME == CYGWIN* ]]
+then
+    log_warning 'skipping test of cd to dir without execute permission on Cygwin'
+else
+    mkdir -p $TEST_DIR/a/b
+    chmod -x $TEST_DIR/a/b
+    cd $TEST_DIR/a/b 2> /dev/null && log_error 'cd to directory without execute should fail'
+    chmod +x $TEST_DIR/a/b  # so the test temp dir can be removed when the test completes
+fi
+
+builtin  -d set 2> /dev/null && log_error 'buitin -d allows special builtins to be deleted'
+
+builtin -f $LIBSAMPLE_PATH sample || log_error "Failed to load sample builtin"
+
+sample >/dev/null || log_error "Sample builtin should exit with 0 status"
+
+# List special builtins.
+# The locale affects the order of listing builtins.
+expect=". : _Bool alias break continue enum eval exec exit export hash login newgrp readonly"
+expect="$expect return set shift trap typeset unalias unset "
+actual=$(LC_ALL=C builtin -s | tr '\n' ' ')
+[[ "$actual" == "$expect" ]] ||
+    log_error "builtin -s mismatches list of special builtins" "$expect" "$actual"
+
+builtin -d alias 2>/dev/null && log_error "Deleting a special builtin should fail"
+
+[[ $(builtin -p | grep -v "^builtin") = "" ]] || log_error "builtin -p does not prepend all lines with 'builtin'"
+
+# The -p option causes the word export to be inserted before each one.
+[[ $(export -p | grep -v "^export") = "" ]] || log_error "export -p does not prepend all lines with 'export'"
+
+# ==========
+# shift should left shift positional parameters by 1 starting from $1
+set -- This is a message
+actual=$(while [[ $# -ne 0 ]]
+do
+    echo $1
+    shift
+done)
+expect=$'This\nis\na\nmessage'
+[[ "$actual" = "$expect" ]] || log_error "shift does not rename parameters" "$expect" "$actual"
+
+# ==========
+# shift [n] should shift n parameters
+set -- This is a message
+shift 3
+actual="$1"
+expect=$'message'
+[[ "$actual" = "$expect" ]] || log_error "shift [n] does not shift n parameters" "$expect" "$actual"
+
+# ==========
+# shift <arithmetic expression> should shift result of arithmetic expression
+set -- This is a message
+shift 1+2
+actual="$1"
+expect=$'message'
+[[ "$actual" = "$expect" ]] || log_error "shift does not work with arithmetic expressions" "$expect" "$actual"
+
+# ==========
+# Check what happens if history file is unreadable
+touch "$TEST_DIR/unreadable_history"
+chmod 000 "$TEST_DIR/unreadable_history"
+env HISTFILE="$TEST_DIR/unreadable_history" $SHELL -i -c "[[ $(history | wc -l) -eq 0 ]] && exit 0 || exit 1"
+
+# ==========
+# Check what happens if history file is corrupt
+touch "$TEST_DIR/corrupted_history"
+echo "sa;lfjsa;fj;sajfjs;fjdf" > "$TEST_DIR/corrupted_history"
+env HISTFILE="$TEST_DIR/corrupted_history" $SHELL -i -c "[[ $(history | wc -l) -eq 0 ]] && exit 0 || exit 1"
+
+# ==========
+# umask - get or set the file creation mask
+set -- \
+    go+r    0000    \
+    go-r    0044    \
+    ug=r    0330    \
+    go+w    0000    \
+    go-w    0022    \
+    ug=w    0550    \
+    go+x    0000    \
+    go-x    0011    \
+    ug=x    0660    \
+    go-rx    0055    \
+    uo-wx    0303    \
+    ug-rw    0660    \
+    o=    0007
+while (( $# >= 2 ))
+do
+    umask 0
+    umask $1
+    expect=$2
+    actual=$(umask)
+    [[ $actual == $expect ]] || log_error "umask 0; umask $1 failed" "$expect" "$actual"
+    shift 2
+done
+
+umask u=rwx,go=rx || log_error "umask u=rws,go=rx failed"
+
+# ==========
+#  -S Causes the file creation mask to be written or treated as a
+#     symbolic value rather than an octal number.
+actual=$(umask -S)
+expect="u=rwx,g=rx,o=rx"
+[[ "$actual" = "$expect" ]] || log_error 'umask -S incorrect' "$expect" "$actual"
+
+# ==========
+# -p Write the file creation mask in a format that can be use for
+#    re-input.
+actual=$(umask -p)
+expect="umask 0022"
+[[ "$actual" = "$expect" ]] || log_error "umask -p failed" "$expect" "$actual"
+
+# ==========
+actual=$(umask 999 2>&1)
+expect="umask: 999: bad number"
+[[ "$actual" =~ "$expect" ]] || log_error "umask fails to detect invalid octal numbers" "$expect" "$actual"
+
+# ==========
+actual=$(umask foo 2>&1)
+expect="umask: foo: bad format"
+[[ "$actual" =~ "$expect" ]] || log_error "umask fails to detect invalid format" "$expect" "$actual"
+
+# ==========
+actual=$(logname)
+expect=$(command logname)
+[[ "$actual" = "$expect" ]] || log_error "logname failed" "$expect" "$actual"
+
+# ==========
+# Verify that the POSIX `test` builtin complains loudly when the `=~` operator is used rather than
+# failing silently. See //github.com/att/ast/issues/1152.
+actual=$($SHELL -c 'test foo =~ foo' 2>&1)
+actual_status=$?
+actual=${actual#*: }
+expect='test: =~ operator not supported; use [[...]]'
+expect_status=2
+[[ "$actual" = "$expect" ]] || log_error "test =~ failed" "$expect" "$actual"
+[[ "$actual_status" = "$expect_status" ]] ||
+    log_error "test =~ failed with wrong status" "$expect_status" "$actual_status"

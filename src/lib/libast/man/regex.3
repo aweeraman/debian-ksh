@@ -53,7 +53,6 @@ int        regaddclass(const char* \fIname\fP, regclass_t \fIclassf\fP);
 int        regcollate(const char* \fIstr\fP, char** \fIend\fP, char* \fIbuf\fP, int \fIsize\fP);
 
 int        regcomb(regex_t* \fIre_1\fP, regex_t* \fIre_2\fP);
-size_t     regdecomp(regex_t* \fIre\fP, regflags_t \fIflags\fP, char* \fIbuf\fP, size_t \fIsize\fP);
 int        regdup(regex_t* \fIre_old\fP, regex_t* \fIre_new\fP);
 regstat_t* regstat(const regex_t* \fIre\fP);
 
@@ -66,8 +65,6 @@ int        regrexec(const regex_t* \fIre\fP, const char* \fIbuf\fP, size_t \fIsi
 void       regfatal(regex_t* \fIre\fP, int \fIlevel\fP, int \fIcode\fP);
 void       regfatalpat(regex_t* \fIre\fP, int \fIlevel\fP, int \fIcode\fP, const char* \fIpattern\fP);
 
-int        regsubcomp(regex_t* \fIre\fP, const char* \fIstr\fP, const regflags_t* \fImap\fP, int \fIminmatch\fP, regflags_t \fIflags\fP);
-int        regsubexec(const regex_t* \fIre\fP, const char* \fIsubject\fP, size_t \fInmatch\fP, regmatch_t* match);
 int        regsubflags(regex_t* \fIre\fP, const char* \fIstr\fP, char** \fIend\fP, int \fIdelim\fP, const regflags_t* \fImap\fP, int* \fIpm\fP, regflags_t* \fIpf\fP);
 void       regsubfree(regex_t* \fIre\fP);
 .EE

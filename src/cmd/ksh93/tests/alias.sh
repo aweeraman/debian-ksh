@@ -1,7 +1,7 @@
 ########################################################################
 #                                                                      #
 #               This software is part of the ast package               #
-#          Copyright (c) 1982-2011 AT&T Intellectual Property          #
+#          Copyright (c) 1982-2012 AT&T Intellectual Property          #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -14,89 +14,131 @@
 #                            AT&T Research                             #
 #                           Florham Park NJ                            #
 #                                                                      #
-#                  David Korn <dgk@research.att.com>                   #
+#                    David Korn <dgkorn@gmail.com>                     #
 #                                                                      #
 ########################################################################
-function err_exit
-{
-	print -u2 -n "\t"
-	print -u2 -r ${Command}[$1]: "${@:2}"
-	let Errors+=1
-}
-alias err_exit='err_exit $LINENO'
-
-Command=${0##*/}
-integer Errors=0
-
-tmp=$(mktemp -dt) || { err_exit mktemp -dt failed; exit 1; }
-trap "cd /; rm -rf $tmp" EXIT
 
 alias foo='print hello'
-if	[[ $(foo) != hello ]]
-then	err_exit 'foo, where foo is alias for "print hello" failed'
+if [[ $(foo) != hello ]]
+then
+    log_error 'foo, where foo is alias for "print hello" failed'
 fi
-if	[[ $(foo world) != 'hello world' ]]
-then	err_exit 'foo world, where foo is alias for "print hello" failed'
+
+if [[ $(foo world) != 'hello world' ]]
+then
+    log_error 'foo world, where foo is alias for "print hello" failed'
 fi
+
 alias foo='print hello '
 alias bar=world
-if	[[ $(foo bar) != 'hello world' ]]
-then	err_exit 'foo bar, where foo is alias for "print hello " failed'
+if [[ $(foo bar) != 'hello world' ]]
+then
+    log_error 'foo bar, where foo is alias for "print hello " failed'
 fi
-if	[[ $(foo \bar) != 'hello bar' ]]
-then	err_exit 'foo \bar, where foo is alias for "print hello " failed'
+
+if [[ $(foo \bar) != 'hello bar' ]]
+then
+    log_error 'foo \bar, where foo is alias for "print hello " failed'
 fi
+
 alias bar='foo world'
-if	[[ $(bar) != 'hello world' ]]
-then	err_exit 'bar, where bar is alias for "foo world" failed'
+if [[ $(bar) != 'hello world' ]]
+then
+    log_error 'bar, where bar is alias for "foo world" failed'
 fi
-if	[[ $(alias bar) != "bar='foo world'" ]]
-then	err_exit 'alias bar, where bar is alias for "foo world" failed'
+
+if [[ $(alias bar) != "bar='foo world'" ]]
+then
+    log_error 'alias bar, where bar is alias for "foo world" failed'
 fi
-unalias foo  || err_exit  "unalias foo failed"
-alias foo 2> /dev/null  && err_exit "alias for non-existent alias foo returns true"
+
+unalias foo  || log_error  "unalias foo failed"
+alias foo 2> /dev/null  && log_error "alias for non-existent alias foo returns true"
 unset bar
 alias bar="print foo$bar"
 bar=bar
-if	[[ $(bar) != foo ]]
-then	err_exit 'alias bar, where bar is alias for "print foo$bar" failed'
+if [[ $(bar) != foo ]]
+then
+    log_error 'alias bar, where bar is alias for "print foo$bar" failed'
 fi
+
 unset bar
 alias bar='print hello'
-if	[[ $bar != '' ]]
-then	err_exit 'alias bar cause variable bar to be set'
+if [[ $bar != '' ]]
+then
+    log_error 'alias bar cause variable bar to be set'
 fi
+
 alias !!=print
-if	[[ $(!! hello 2>/dev/null) != hello ]]
-then	err_exit 'alias for !!=print not working'
+if [[ $(!! hello 2>/dev/null) != hello ]]
+then
+    log_error 'alias for !!=print not working'
 fi
+
 alias foo=echo
-if	[[ $(print  "$(foo bar)" ) != bar  ]]
-then	err_exit 'alias in command substitution not working'
+if [[ $(print  "$(foo bar)" ) != bar  ]]
+then
+    log_error 'alias in command substitution not working'
 fi
-( unalias foo)
-if	[[ $(foo bar 2> /dev/null)  != bar  ]]
-then	err_exit 'alias not working after unalias in subshell'
+
+(unalias foo)
+if [[ $(foo bar 2> /dev/null)  != bar  ]]
+then
+    log_error 'alias not working after unalias in subshell'
 fi
+
 builtin -d rm 2> /dev/null
-if	whence rm > /dev/null
-then	[[ ! $(alias -t | grep rm= ) ]] && err_exit 'tracked alias not set'
-	PATH=$PATH
-	[[ $(alias -t | grep rm= ) ]] && err_exit 'tracked alias not cleared'
+if whence rm > /dev/null
+then
+    [[ ! $(alias -t | grep rm= ) ]] && log_error 'tracked alias not set'
+    PATH=$PATH
+    [[ $(alias -t | grep rm= ) ]] && log_error 'tracked alias not cleared'
 fi
-if	hash -r 2>/dev/null && [[ ! $(hash) ]]
-then	PATH=$tmp:/bin:/usr/bin
-	for i in foo -foo --
-	do	print ':' > $tmp/$i
-		chmod +x $tmp/$i
-		hash -r -- $i 2>/dev/null || err_exit "hash -r -- $i failed"
-		[[ $(hash) == $i=$tmp/$i ]] || err_exit "hash -r -- $i failed, expected $i=$tmp/$i, got $(hash)"
-	done
-else	err_exit 'hash -r failed'
+
+if hash -r 2>/dev/null && [[ ! $(hash) ]]
+then
+    PATH=$TEST_DIR:/bin:/usr/bin
+    for i in foo -foo --
+    do
+        print ':' > $TEST_DIR/$i
+        chmod +x $TEST_DIR/$i
+        hash -r -- $i 2>/dev/null || log_error "hash -r -- $i failed"
+        expect="$i=$TEST_DIR/$i"
+        actual="$(hash)"
+        [[ $actual == $expect ]] || log_error "hash -r -- $i failed" "$expect" "$actual"
+    done
+else
+    log_error 'hash -r failed'
 fi
-( alias :pr=print) 2> /dev/null || err_exit 'alias beginning with : fails'
-( alias p:r=print) 2> /dev/null || err_exit 'alias with : in name fails'
 
-unalias no_such_alias &&  err_exit 'unalias should return non-zero for unknown alias'
+( alias :pr=print) 2> /dev/null || log_error 'alias beginning with : fails'
+( alias p:r=print) 2> /dev/null || log_error 'alias with : in name fails'
 
-exit $((Errors<125?Errors:125))
+unalias no_such_alias &&  log_error 'unalias should return non-zero for unknown alias'
+
+for i in compound float integer nameref
+do
+    [[ $i=$(whence $i) == "$(alias $i)" ]] || log_error "whence $i not matching $(alias $i)"
+done
+
+# TODO: alias -t and -x are obsolete options. Shall we add test case for them ?
+# =======
+# Ensure we have at least one alias to test alias -p
+alias foo=bar
+alias -p | grep -qv "^alias" && log_error "alias -p does not prepend every line with 'alias'"
+
+# =======
+# This should remove foo alias
+unalias foo
+alias | grep -q "^foo" && log_error "unalias does not remove aliases"
+
+# =======
+# This should remove all aliases
+unalias -a
+[[ $(alias) == "" ]] || log_error "unalias -a does not remove all aliases"
+
+# =======
+# https://github.com/att/ast/issues/909
+alias foo=bar
+unalias foo
+unalias foo && log_error "Unaliasing undefined alias should exit with non-zero status"

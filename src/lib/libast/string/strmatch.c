@@ -1,26 +1,24 @@
 /***********************************************************************
-*                                                                      *
-*               This software is part of the ast package               *
-*          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*                      and is licensed under the                       *
-*                 Eclipse Public License, Version 1.0                  *
-*                    by AT&T Intellectual Property                     *
-*                                                                      *
-*                A copy of the License is available at                 *
-*          http://www.eclipse.org/org/documents/epl-v10.html           *
-*         (with md5 checksum b35adb5213ca9657e911e9befb180842)         *
-*                                                                      *
-*              Information and Software Systems Research               *
-*                            AT&T Research                             *
-*                           Florham Park NJ                            *
-*                                                                      *
-*                 Glenn Fowler <gsf@research.att.com>                  *
-*                  David Korn <dgk@research.att.com>                   *
-*                   Phong Vo <kpv@research.att.com>                    *
-*                                                                      *
-***********************************************************************/
-#pragma prototyped
-
+ *                                                                      *
+ *               This software is part of the ast package               *
+ *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
+ *                      and is licensed under the                       *
+ *                 Eclipse Public License, Version 1.0                  *
+ *                    by AT&T Intellectual Property                     *
+ *                                                                      *
+ *                A copy of the License is available at                 *
+ *          http://www.eclipse.org/org/documents/epl-v10.html           *
+ *         (with md5 checksum b35adb5213ca9657e911e9befb180842)         *
+ *                                                                      *
+ *              Information and Software Systems Research               *
+ *                            AT&T Research                             *
+ *                           Florham Park NJ                            *
+ *                                                                      *
+ *               Glenn Fowler <glenn.s.fowler@gmail.com>                *
+ *                    David Korn <dgkorn@gmail.com>                     *
+ *                     Phong Vo <phongvo@gmail.com>                     *
+ *                                                                      *
+ ***********************************************************************/
 /*
  * D. G. Korn
  * G. S. Fowler
@@ -55,16 +53,19 @@
  *
  */
 
-#include <ast.h>
-#include <regex.h>
+#include "config_ast.h"  // IWYU pragma: keep
 
-static struct State_s
-{
-	regmatch_t*	match;
-	int		nmatch;
+#include <stddef.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "ast.h"
+#include "ast_regex.h"
+
+static struct State_s {
+    regmatch_t *match;
+    int nmatch;
 } matchstate;
-
-#define STR_INT		040000
 
 /*
  * subgroup match
@@ -76,96 +77,80 @@ static struct State_s
  * including s+sub[1]
  */
 
-int
-strgrpmatch(const char* b, const char* p, ssize_t* sub, int n, register int flags)
-{
-	register regex_t*	re;
-	register ssize_t*	end;
-	register int		i;
-	register regflags_t	reflags;
+int strngrpmatch(const char *b, size_t z, const char *p, ssize_t *sub, int n, int flags) {
+    regex_t *re;
+    ssize_t *end;
+    int i;
+    regflags_t reflags;
 
-	/*
-	 * 0 and empty patterns are special
-	 */
+    /*
+     * 0 and empty patterns are special
+     */
 
-	if (!p || !b)
-	{
-		if (!p && !b)
-			regcache(NiL, 0, NiL);
-		return 0;
-	}
-	if (!*p)
-	{
-		if (sub && n > 0)
-		{
-			if (flags & STR_INT)
-			{
-				int*	subi = (int*)sub;
+    if (!p || !b) {
+        if (!p && !b) regcache(NULL, 0, NULL);
+        return 0;
+    }
+    if (!*p) {
+        if (sub && n > 0) {
+            if (flags & STR_INT) {
+                int *subi = (int *)sub;
 
-				subi[0] = subi[1] = 0;
-			}
-			else
-				sub[0] = sub[1] = 0;
-		}
-		return *b == 0;
-	}
+                subi[0] = subi[1] = 0;
+            } else {
+                sub[0] = sub[1] = 0;
+            }
+        }
+        return *b == 0;
+    }
 
-	/*
-	 * convert flags
-	 */
+    /*
+     * convert flags
+     */
 
-	if (flags & REG_ADVANCE)
-		reflags = flags & ~REG_ADVANCE;
-	else
-	{
-		reflags = REG_SHELL|REG_AUGMENTED;
-		if (!(flags & STR_MAXIMAL))
-			reflags |= REG_MINIMAL;
-		if (flags & STR_GROUP)
-			reflags |= REG_SHELL_GROUP;
-		if (flags & STR_LEFT)
-			reflags |= REG_LEFT;
-		if (flags & STR_RIGHT)
-			reflags |= REG_RIGHT;
-		if (flags & STR_ICASE)
-			reflags |= REG_ICASE;
-	}
-	if (!sub || n <= 0)
-		reflags |= REG_NOSUB;
-	if (!(re = regcache(p, reflags, NiL)))
-		return 0;
-	if (n > matchstate.nmatch)
-	{
-		if (!(matchstate.match = newof(matchstate.match, regmatch_t, n, 0)))
-			return 0;
-		matchstate.nmatch = n;
-	}
-	if (regexec(re, b, n, matchstate.match, reflags & ~(REG_MINIMAL|REG_SHELL_GROUP|REG_LEFT|REG_RIGHT|REG_ICASE)))
-		return 0;
-	if (!sub || n <= 0)
-		return 1;
-	i = re->re_nsub;
-	if (flags & STR_INT)
-	{
-		int*	subi = (int*)sub;
-		int*	endi = subi + n * 2;
+    if (flags & REG_ADVANCE) {
+        reflags = flags & ~REG_ADVANCE;
+    } else {
+        reflags = REG_SHELL | REG_AUGMENTED;
+        if (!(flags & STR_MAXIMAL)) reflags |= REG_MINIMAL;
+        if (flags & STR_GROUP) reflags |= REG_SHELL_GROUP;
+        if (flags & STR_LEFT) reflags |= REG_LEFT;
+        if (flags & STR_RIGHT) reflags |= REG_RIGHT;
+        if (flags & STR_ICASE) reflags |= REG_ICASE;
+    }
+    if (!sub || n <= 0) reflags |= REG_NOSUB;
+    if (!(re = regcache(p, reflags, NULL))) return 0;
+    if (n > matchstate.nmatch) {
+        matchstate.match = realloc(matchstate.match, n * sizeof(regmatch_t));
+        if (!matchstate.match) return 0;
+        matchstate.nmatch = n;
+    }
+    if (regnexec(re, b, z, n, matchstate.match,
+                 reflags & ~(REG_MINIMAL | REG_SHELL_GROUP | REG_LEFT | REG_RIGHT | REG_ICASE))) {
+        return 0;
+    }
+    if (!sub || n <= 0) return 1;
+    i = re->re_nsub;
+    if (flags & STR_INT) {
+        int *subi = (int *)sub;
+        int *endi = subi + n * 2;
 
-		for (n = 0; subi < endi && n <= i; n++)
-		{
-			*subi++ = matchstate.match[n].rm_so;
-			*subi++ = matchstate.match[n].rm_eo;
-		}
-	}
-	else
-	{
-		end = sub + n * 2;
-		for (n = 0; sub < end && n <= i; n++)
-		{
-			*sub++ = matchstate.match[n].rm_so;
-			*sub++ = matchstate.match[n].rm_eo;
-		}
-	}
-	return i + 1;
+        for (n = 0; subi < endi && n <= i; n++) {
+            *subi++ = matchstate.match[n].rm_so;
+            *subi++ = matchstate.match[n].rm_eo;
+        }
+    } else {
+        end = sub + n * 2;
+        for (n = 0; sub < end && n <= i; n++) {
+            *sub++ = matchstate.match[n].rm_so;
+            *sub++ = matchstate.match[n].rm_eo;
+        }
+    }
+    return i + 1;
+}
+
+int strgrpmatch(const char *b, const char *p, ssize_t *sub, int n, int flags) {
+    return strngrpmatch(b, strlen(b), p, sub, n, flags);
 }
 
 /*
@@ -173,35 +158,6 @@ strgrpmatch(const char* b, const char* p, ssize_t* sub, int n, register int flag
  * returns 1 for match 0 otherwise
  */
 
-int
-strmatch(const char* s, const char* p)
-{
-	return strgrpmatch(s, p, NiL, 0, STR_MAXIMAL|STR_LEFT|STR_RIGHT);
-}
-
-/*
- * leading substring match
- * first char after end of substring returned
- * 0 returned if no match
- *
- * OBSOLETE: use strgrpmatch()
- */
-
-char*
-strsubmatch(const char* s, const char* p, int flags)
-{
-	ssize_t	match[2];
-
-	return strgrpmatch(s, p, match, 1, (flags ? STR_MAXIMAL : 0)|STR_LEFT) ? (char*)s + match[1] : (char*)0;
-}
-
-#undef	strgrpmatch
-#if _map_libc
-#define strgrpmatch	_ast_strgrpmatch
-#endif
-
-int
-strgrpmatch(const char* b, const char* p, int* sub, int n, int flags)
-{
-	return strgrpmatch_20120528(b, p, (ssize_t*)sub, n, flags|STR_INT);
+int strmatch(const char *s, const char *p) {
+    return strngrpmatch(s, strlen(s), p, NULL, 0, STR_MAXIMAL | STR_LEFT | STR_RIGHT);
 }
