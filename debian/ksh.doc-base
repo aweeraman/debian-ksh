@@ -7,4 +7,3 @@ Section: Programming/ksh
 
 Format: Text
 Files: /usr/share/doc/ksh/*.gz /usr/share/doc/ksh/OBSOLETE 
-

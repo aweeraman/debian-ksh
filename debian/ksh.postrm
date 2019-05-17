@@ -15,7 +15,7 @@ esac
 
 #DEBHELPER#
 
-remove-shell /bin/ksh93
-remove-shell /bin/rksh93
+remove-shell /usr/bin/ksh93
+remove-shell /usr/bin/rksh93
 
 exit 0

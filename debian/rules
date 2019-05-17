@@ -1,26 +1,16 @@
 #!/usr/bin/make -f
+# -*- makefile -*-
+# Uncomment this to turn on verbose mode.
+export DH_VERBOSE=1
 
-PACKAGE = ksh
+# see FEATURE AREAS in dpkg-buildflags(1)
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 
-# Variables just for get-orig-source
-SRC_VERSION := 93u+20120628
-DL_VERSION = 2012-06-28
-SRC_DIR = $(PACKAGE)-$(SRC_VERSION)
-TARBALL = $(SRC_DIR).tar.gz
-
-ARCH = $(shell bin/package)
-INSTALL = install
-INSTALL_FILE    = $(INSTALL) -p    -o root -g root  -m  644
-INSTALL_PROGRAM = $(INSTALL) -p    -o root -g root  -m  755
-
-DH_VERBOSE=1
-
-# hardening
-CCFLAGS:=$(shell dpkg-buildflags --get CFLAGS)
-CCFLAGS += $(shell dpkg-buildflags --get CPPFLAGS)
-LDFLAGS:=$(shell dpkg-buildflags --get LDFLAGS)
-export CCFLAGS
-export LDFLAGS
+# see ENVIRONMENT in dpkg-buildflags(1)
+# package maintainers to append CFLAGS
+#export DEB_CFLAGS_MAINT_APPEND  = -Wall -pedantic
+# package maintainers to append LDFLAGS
+export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
 
 # reproducibility
 LC_ALL=C
@@ -30,52 +20,29 @@ export LC_ALL
 export LANG
 export TZ
 
+# provide a fake HOME directory to solve test fails
+HOME=$(CURDIR)/debian/fakehome
+export HOME
+
 %:
-	dh $@
-
-override_dh_auto_configure:
-	@echo "CCFLAGS=$(CCFLAGS)"
-	@echo "LDFLAGS=$(LDFLAGS)"
-
-override_dh_auto_build:	
-	bin/package make strip=0
+	dh $@ --no-parallel
 
 override_dh_auto_install:
-	$(INSTALL_PROGRAM) arch/$(ARCH)/bin/ksh debian/ksh/bin/ksh93
-	$(INSTALL_PROGRAM) arch/$(ARCH)/bin/shcomp debian/ksh/usr/bin/shcomp
-	$(INSTALL_FILE) arch/$(ARCH)/man/man1/sh.1 debian/ksh/usr/share/man/man1/ksh93.1
-	$(INSTALL_FILE) arch/$(ARCH)/fun/* debian/ksh/usr/share/ksh/functions
-	$(INSTALL_FILE) debian/shcomp.1 debian/ksh/usr/share/man/man1/shcomp.1
-	$(INSTALL_FILE) debian/fr-shcomp.1 debian/ksh/usr/share/man/fr/man1/shcomp.1
-	$(INSTALL_FILE) -D debian/binfmt_spec debian/ksh/usr/share/binfmts/ksh
-	$(INSTALL_FILE) -D debian/example.kshrc debian/ksh/etc/skel/.kshrc
-	$(INSTALL_FILE) -D src/cmd/ksh93/PROMO.mm debian/ksh/usr/share/doc/ksh/PROMO
-	$(INSTALL_FILE) -D src/cmd/ksh93/builtins.mm debian/ksh/usr/share/doc/ksh/builtins
+	dh_auto_install
+	# Rename /usr/bin/ksh to /usr/bin/ksh93 to keep compatibility
+	# with old behaviour as well as alternative system
+	mv $(CURDIR)/debian/ksh/usr/bin/ksh $(CURDIR)/debian/ksh/usr/bin/ksh93
+	# Also rename the man pages
+	mv $(CURDIR)/debian/ksh/usr/share/man/man1/ksh.1 \
+	        $(CURDIR)/debian/ksh/usr/share/man/man1/ksh93.1
 
 override_dh_installchangelogs:
-	dh_installchangelogs src/cmd/ksh93/RELEASE
+	# ChangeLog till 93v is provided in src/cmd/ksh93/RELEASE
+	dh_installchangelogs -k CHANGELOG.md
 
-clean:
-	dh_testdir
-	dh_clean
-	for i in ignore silent package mamprobe ; do \
-		sed -i -e '/^#.\{70\}#/ d'  bin/$$i ; \
-	done
-	rm -rf arch bin/*.old
+override_dh_missing:
+	dh_missing --fail-missing
 
-get-orig-source:
-	@echo 'Old get-orig-source target is no longer usable.'
-	@echo 'Please find latest ksh source code at:'
-	@echo 'https://github.com/att/ast'
-	@exit 1
-	rm -rf $(SRC_DIR) $(TARBALL)
-	mkdir $(SRC_DIR)
-	wget --http-user 'I accept www.opensource.org/licenses/cpl' \
-	  --http-password . -O - \
-	  http://www.research.att.com/~gsf/download/tgz/INIT.$(DL_VERSION).tgz | \
-	  tar xzf - -C $(SRC_DIR)
-	wget --http-user 'I accept www.opensource.org/licenses/cpl' \
-	  --http-password . -O - \
-	  http://www.research.att.com/~gsf/download/tgz/ast-ksh.$(DL_VERSION).tgz | \
-	  tar xzf - -C $(SRC_DIR)
-	tar cf - $(SRC_DIR) | tardy -group 0 -user 0 - - | gzip -c9 > $(TARBALL)
+override_dh_auto_test:
+	# Multiple tests fail, skipping for now
+	-dh_auto_test

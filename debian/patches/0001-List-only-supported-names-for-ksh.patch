@@ -1,0 +1,107 @@
+From: Oliver Kiddle <okiddle@yahoo.co.uk>
+Date: Fri, 17 May 2019 12:52:14 -0400
+Subject: List only supported names for ksh
+
+The Korn Shell will never be the default shell
+on Debian, so we strip out references to that.
+The pfksh variant is solaris specific so we strip
+out references to that.
+
+Reviewed-by: Nicholas Bamber <nicholas@periapt.co.uk>
+Bug-Debian: https://bugs.debian.org/463022
+Forwarded: no
+Last-Updated: 2019-05-17
+---
+ src/cmd/ksh93/ksh.1 | 39 +--------------------------------------
+ 1 file changed, 1 insertion(+), 38 deletions(-)
+
+diff --git a/src/cmd/ksh93/ksh.1 b/src/cmd/ksh93/ksh.1
+index e98603a..f52254b 100644
+--- a/src/cmd/ksh93/ksh.1
++++ b/src/cmd/ksh93/ksh.1
+@@ -19,12 +19,7 @@
+ .TH KSH93 1
+ .\}
+ .SH NAME
+-.if \nZ=0 \{\
+-sh, rsh, pfsh \- shell, the standard/restricted command and programming language
+-.\}
+-.if \nZ=1 \{\
+-ksh, rksh, pfksh \- KornShell, a standard/restricted command and programming language
+-.\}
++ksh, rksh, ksh93, rksh93 \- KoreShell, a standard/restricted command and programming language
+ .SH NOTE
+ Currently,
+ .I rksh
+@@ -54,35 +49,18 @@ option ] .\|.\|. [
+ .B \-
+ ] [ arg .\|.\|. ]
+ .SH DESCRIPTION
+-.if \nZ=0 .I Sh\^
+ .if \nZ=1 .I Ksh\^
+ .if \nZ=2 .I Ksh93\^
+ is a command and programming language
+ that executes commands read from a terminal
+ or a file.
+-.if \nZ=0 .I Rsh\^
+ .if \nZ=1 .I Rksh\^
+ .if \nZ=2 .I Rksh93\^
+ is a restricted version of the
+ .if \nZ=0 standard
+ command interpreter
+-.if \nZ=0 .IR sh ;
+ .if \nZ=1 .IR ksh ;
+ .if \nZ=2 .IR ksh93 ;
+-it is used to set up login names and execution environments whose
+-capabilities are more controlled than those of the standard shell.
+-.if \nZ=0 .I Rpfsh\^
+-.if \nZ=1 .I Rpfksh\^
+-.if \nZ=2 .I Rpfksh93\^
+-is a profile shell version of the
+-.if \nZ=0 standard
+-command interpreter
+-.if \nZ=0 .IR sh ;
+-.if \nZ=1 .IR ksh ;
+-.if \nZ=2 .IR ksh93 ;
+-it is used to execute commands with the attributes specified by
+-the user's profiles (see
+-.IR pfexec (1)).
+ See
+ .I Invocation\^
+ below
+@@ -2243,12 +2221,6 @@ At invocation, if the basename of this variable is
+ or
+ .BR krsh ,
+ then the shell becomes restricted.
+-If it is
+-.BR pfsh
+-or
+-.BR pfksh ,
+-then the shell becomes a profile shell (see
+-.IR pfexec (1)).
+ .TP
+ .SM
+ .B TIMEFORMAT
+@@ -8215,14 +8187,6 @@ If the
+ .B \-r
+ option is present, the shell is a restricted shell.
+ .TP
+-.B \-P
+-If
+-.B \-P
+-or
+-.B \-o profile
+-is present, the shell is a profile shell (see
+-.IR pfexec (1)).
+-.TP
+ .BI \-R " filename\^"
+ The
+ .B \-R
+@@ -8393,7 +8357,6 @@ fgrep(1),
+ gmacs(1),
+ grep(1),
+ newgrp(1),
+-pfexec(1),
+ stty(1),
+ test(1),
+ touch(1),

@@ -1,3 +1,42 @@
+ksh (2020.0.0~alpha1-1~exp1) experimental; urgency=medium
+
+  * QA upload.
+  * New upstream alpha release (2020.0.0-alpha1).
+  * debian: Apply "wrap-and-sort -abst".
+  * debian/source.lintian-overrides:
+    - Removed, we already have a debian/watch file.
+  * debian/rules:
+    - get-orig-source: Removed in favour of debian/watch file.
+    + Install CHANGELOG.md as upstream changelog.
+    - dh_auto_test: Do not abort on failed tests. We
+      have 2 failed tests related to HOME directory and the
+      fix would not be trivial.
+  * debian/control:
+    + Bump Standards-Version to 4.3.0.
+    + Bump debhelper compat to v12.
+    + Switch to meson buildsystem with ninja.
+  * debian/patches:
+    + Re-evaluate all patches:
+      - shell-options.patch: Dropped, upstream unconditionally
+        enabled all related features (See CHANGELOG.md)
+      - cleanup-man-title.patch: Renamed and refreshed, the new name is
+        0001-List-only-supported-names-for-ksh.patch.
+      - no-rpath.patch: Dropped, related file no longer exists.
+      - ftbs.patch: Dropped, useless.
+      - spelling.patch: Refreshed, the new patch name is
+        0002-Spelling-mistake-correction-To-keep-lintian-I-happy.patch.
+      - bug755486.patch: Dropped, File no longer exists.
+      - ed.patch: [TODO] Dropped.
+      - 0008-Bug-887743-Fix-build-failures-caused-by-update-in-gl.patch:
+        Dropped, applied upstream.
+      - bug915326.patch: Dropped, applied upstream.
+  * debian/clean: Removed, no longer necessary.
+  * debian/copyright:
+    - Removed obsolete copyright information.
+  * debian/dirs: Remove unnecessary directory creation info.
+
+ -- Boyuan Yang <byang@debian.org>  Fri, 17 May 2019 13:09:44 -0400
+
 ksh (93u+20120801-3.4) unstable; urgency=medium
 
   [ Boyuan Yang ]

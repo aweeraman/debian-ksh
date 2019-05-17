@@ -1,0 +1,2 @@
+The fakehome directory is used during ksh testing to provide
+a fake HOME directory.

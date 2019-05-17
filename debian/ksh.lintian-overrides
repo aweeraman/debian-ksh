@@ -1,0 +1,2 @@
+# ksh command handled by update-alternatives
+ksh: desktop-command-not-in-package usr/share/applications/ksh.desktop ksh
