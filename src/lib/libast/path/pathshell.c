@@ -1,25 +1,24 @@
 /***********************************************************************
-*                                                                      *
-*               This software is part of the ast package               *
-*          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*                      and is licensed under the                       *
-*                 Eclipse Public License, Version 1.0                  *
-*                    by AT&T Intellectual Property                     *
-*                                                                      *
-*                A copy of the License is available at                 *
-*          http://www.eclipse.org/org/documents/epl-v10.html           *
-*         (with md5 checksum b35adb5213ca9657e911e9befb180842)         *
-*                                                                      *
-*              Information and Software Systems Research               *
-*                            AT&T Research                             *
-*                           Florham Park NJ                            *
-*                                                                      *
-*                 Glenn Fowler <gsf@research.att.com>                  *
-*                  David Korn <dgk@research.att.com>                   *
-*                   Phong Vo <kpv@research.att.com>                    *
-*                                                                      *
-***********************************************************************/
-#pragma prototyped
+ *                                                                      *
+ *               This software is part of the ast package               *
+ *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
+ *                      and is licensed under the                       *
+ *                 Eclipse Public License, Version 1.0                  *
+ *                    by AT&T Intellectual Property                     *
+ *                                                                      *
+ *                A copy of the License is available at                 *
+ *          http://www.eclipse.org/org/documents/epl-v10.html           *
+ *         (with md5 checksum b35adb5213ca9657e911e9befb180842)         *
+ *                                                                      *
+ *              Information and Software Systems Research               *
+ *                            AT&T Research                             *
+ *                           Florham Park NJ                            *
+ *                                                                      *
+ *               Glenn Fowler <glenn.s.fowler@gmail.com>                *
+ *                    David Korn <dgkorn@gmail.com>                     *
+ *                     Phong Vo <phongvo@gmail.com>                     *
+ *                                                                      *
+ ***********************************************************************/
 /*
  * G. S. Fowler
  * D. G. Korn
@@ -27,86 +26,87 @@
  *
  * shell library support
  */
+#include "config_ast.h"  // IWYU pragma: keep
 
-#include <ast.h>
+#include <limits.h>
+#include <string.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
-/*
- * return pointer to the full path name of the shell
- *
- * SHELL is read from the environment and must start with /
- *
- * if set-uid or set-gid then the executable and its containing
- * directory must not be owned by the real user/group
- *
- * root/administrator has its own test
- *
- * astconf("SH",NiL,NiL) is returned by default
- *
- * NOTE: csh is rejected because the bsh/csh differentiation is
- *       not done for `csh script arg ...'
- */
+#include "ast.h"
 
-char*
-pathshell(void)
-{
-	register char*	sh;
-	int		ru;
-	int		eu;
-	int		rg;
-	int		eg;
-	struct stat	st;
+//
+// Return pointer to the full path name of the shell
+//
+// SHELL is read from the environment and must start with /
+//
+// if set-uid or set-gid then the executable and its containing
+// directory must not be owned by the real user/group
+//
+// root/administrator has its own test
+//
+// astconf("SH",NULL,NULL) is returned by default
+//
+// NOTE: csh is rejected because the bsh/csh differentiation is
+//       not done for `csh script arg ...'
+//
+char *pathshell(void) {
+    char *shell;
+    int real_uid;
+    int effective_uid;
+    int real_gid;
+    int effective_gid;
+    struct stat statbuf;
 
-	static char*	val;
+    static char *val = NULL;
 
-	if ((sh = getenv("SHELL")) && *sh == '/' && strmatch(sh, "*/(sh|*[!cC]sh)*([[:digit:]])?(-+([.[:alnum:]]))?(.exe)"))
-	{
-		if (!(ru = getuid()) || !eaccess("/bin", W_OK))
-		{
-			if (stat(sh, &st))
-				goto defshell;
-			if (ru != st.st_uid && !strmatch(sh, "?(/usr)?(/local)/?([ls])bin/?([[:lower:]])sh?(.exe)"))
-				goto defshell;
-		}
-		else
-		{
-			eu = geteuid();
-			rg = getgid();
-			eg = getegid();
-			if (ru != eu || rg != eg)
-			{
-				char*	s;
-				char	dir[PATH_MAX];
+    shell = getenv("SHELL");
+    if (shell && *shell == '/' &&
+        strmatch(shell, "*/(sh|*[!cC]sh)*([[:digit:]])?(-+([.[:alnum:]]))?(.exe)")) {
+        real_uid = getuid();
+        if (!real_uid || !eaccess("/bin", W_OK)) {
+            if (stat(shell, &statbuf)) goto defshell;
+            if (real_uid != statbuf.st_uid &&
+                !strmatch(shell, "?(/usr)?(/local)/?([ls])bin/?([[:lower:]])sh?(.exe)")) {
+                goto defshell;
+            }
+        } else {
+            effective_uid = geteuid();
+            real_gid = getgid();
+            effective_gid = getegid();
 
-				s = sh;
-				for (;;)
-				{
-					if (stat(s, &st))
-						goto defshell;
-					if (ru != eu && st.st_uid == ru)
-						goto defshell;
-					if (rg != eg && st.st_gid == rg)
-						goto defshell;
-					if (s != sh)
-						break;
-					if (strlen(s) >= sizeof(dir))
-						goto defshell;
-					strcpy(dir, s);
-					if (!(s = strrchr(dir, '/')))
-						break;
-					*s = 0;
-					s = dir;
-				}
-			}
-		}
-		return sh;
-	}
- defshell:
-	if (!(sh = val))
-	{
-		if (!*(sh = astconf("SH", NiL, NiL)) || *sh != '/' || eaccess(sh, X_OK) || !(sh = strdup(sh)))
-			sh = "/bin/sh";
-		val = sh;
-	}
-	return sh;
+            // Check if we are executing in setuid or setgid mode
+            if (real_uid != effective_uid || real_gid != effective_gid) {
+                char *s;
+                char dir[PATH_MAX];
+
+                s = shell;
+
+                // Check the uid and gid on shell and it's parent directory
+                for (;;) {
+                    if (stat(s, &statbuf)) goto defshell;
+                    if (real_uid != effective_uid && statbuf.st_uid == real_uid) goto defshell;
+                    if (real_gid != effective_gid && statbuf.st_gid == real_gid) goto defshell;
+                    if (s != shell) break;
+                    if (strlen(s) >= sizeof(dir)) goto defshell;
+                    strcpy(dir, s);
+                    s = strrchr(dir, '/');
+                    if (!s) break;
+                    *s = 0;
+                    s = dir;
+                }
+            }
+        }
+        return shell;
+    }
+defshell:
+    shell = val;
+    if (!shell) {
+        shell = astconf("SH", NULL, NULL);
+        if (!*shell || *shell != '/' || eaccess(shell, X_OK) || !(shell = strdup(shell))) {
+            shell = "/bin/sh";
+        }
+        val = shell;
+    }
+    return shell;
 }

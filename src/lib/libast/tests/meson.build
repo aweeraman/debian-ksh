@@ -1,0 +1,10 @@
+sh_exe = find_program('sh')
+test_driver = join_paths(meson.current_source_dir(), 'run_test.sh')
+
+subdir('aso')
+subdir('cdt')
+subdir('misc')
+subdir('path')
+subdir('sfio')
+subdir('string')
+subdir('tm')
