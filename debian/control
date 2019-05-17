@@ -6,9 +6,11 @@ Homepage: http://www.kornshell.com/
 Build-Depends:
  debhelper-compat (= 12),
  dh-exec,
- meson,
- ninja-build,
+ expect,
  locales-all,
+ meson,
+ netcat-openbsd,
+ ninja-build,
  procps,
 Standards-Version: 4.3.0
 Vcs-Git: https://salsa.debian.org/debian/ksh.git
