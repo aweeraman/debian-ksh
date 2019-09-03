@@ -8,17 +8,18 @@ The pfksh variant is solaris specific so we strip
 out references to that.
 
 Reviewed-by: Nicholas Bamber <nicholas@periapt.co.uk>
+Signed-off-by: Boyuan Yang <byang@debian.org>
 Bug-Debian: https://bugs.debian.org/463022
 Forwarded: no
-Last-Updated: 2019-05-17
+Last-Updated: 2019-09-03
 ---
- src/cmd/ksh93/ksh.1 | 39 +--------------------------------------
+ src/cmd/ksh93/docs/ksh.1 | 39 +--------------------------------------
  1 file changed, 1 insertion(+), 38 deletions(-)
 
-diff --git a/src/cmd/ksh93/ksh.1 b/src/cmd/ksh93/ksh.1
+diff --git a/src/cmd/ksh93/docs/ksh.1 b/src/cmd/ksh93/docs/ksh.1
 index e98603a..f52254b 100644
---- a/src/cmd/ksh93/ksh.1
-+++ b/src/cmd/ksh93/ksh.1
+--- a/src/cmd/ksh93/docs/ksh.1
++++ b/src/cmd/ksh93/docs/ksh.1
 @@ -19,12 +19,7 @@
  .TH KSH93 1
  .\}
