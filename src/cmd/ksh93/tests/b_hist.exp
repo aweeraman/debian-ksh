@@ -1,0 +1,175 @@
+# vim: set filetype=expect:
+#
+# Interactive tests for hist builtin
+set pid [spawn $ksh]
+expect_prompt
+# Terminal rows and columns may default to zero so ensure sane values.
+send "stty rows 24 cols 80\r"
+expect_prompt
+
+# ==========
+# hist -l lists commands on standard output
+log_test_entry
+send "hist -l\r"
+expect -re "\r\n13(\t| +)echo hello world\r\n.*\r\n23(\t| +)stty rows 24 cols 80\r\n24(\t| +)hist -l\r\n" {
+    puts "hist -l lists commands on standard output"
+}
+expect_prompt
+
+# ==========
+# hist -lr lists commands on standard output in reverse order
+log_test_entry
+send "hist -lr\r"
+expect -re "hist -lr\r\n25(\t| +)hist -lr\r\n.*\r\n13(\t| +)echo hello world\r\n" {
+    puts "hist -lr lists commands on standard output in reverse order"
+}
+expect_prompt
+
+# ==========
+# hist -ln skips command numbers while listing commands
+log_test_entry
+send "hist -ln\r"
+expect -re "\r\necho hello world\r\n.*\r\nstty rows 24 cols 80\r\nhist -l\r\nhist -lr\r\nhist -ln\r\n" {
+    puts "hist -ln skips command numbers while listing commands"
+}
+expect_prompt
+
+# ==========
+# hist -s old=new replaces text 'old' with 'new' in command
+log_test_entry
+send "hist -s hello=bye 13\r"
+expect -re "bye world\r\n" {
+    puts "hist -s old=new replaces text 'old' with 'new' in command"
+}
+expect_prompt
+
+# ==========
+# `hist echo` finds last echo command
+log_test_entry
+send "hist echo\r"
+# Give `ed` time to start then quit it which will cause the last echo command to be run.
+sleep 0.1
+send "q\r"
+expect -re "bye world\r\n" {
+    puts "hist echo finds last echo command"
+}
+expect_prompt
+
+# ==========
+# hist -N starts N commands back
+# This test also checks for negative indexes.
+log_test_entry
+send "hist -N 1\r"
+sleep 0.5
+send "Q\r"
+expect -re "bye world\r\n" {
+    puts "hist -N starts N commands back"
+}
+expect_prompt
+
+# ==========
+# hist command triggers ed editor.
+# This test also checks for negative indexes.
+log_test_entry
+send "hist -1\r"
+sleep 0.5
+send "Q\r"
+expect -re "bye world\r\n" {
+    puts "hist command triggers ed editor"
+}
+expect_prompt
+
+# ==========
+# hist -p writes history expansion on standard output
+log_test_entry
+send "hist -p '!!'\r"
+expect -re "echo bye world\r\n" {
+    puts "hist -p writes history expansion on standard output"
+}
+expect_prompt
+
+# ==========
+# hist -e vi triggers vi editor
+log_test_entry
+send "hist -e vi 13\r"
+sleep 0.5
+send ":q!\r"
+expect -re "hello world\r\n" {
+    puts "hist -e vi triggers vi editor"
+}
+expect_prompt
+
+# ==========
+# HISTEDIT=vi triggers vi editor
+log_test_entry
+send "HISTEDIT=vi hist 13\r"
+sleep 0.5
+send ":q!\r"
+expect -re "hello world\r\n" {
+    puts "HISTEDIT=vi triggers vi editor"
+}
+expect_prompt
+
+# ==========
+# When both HISTEDIT and FCEDIT are set, HISTEDIT should take priority
+log_test_entry
+send "HISTEDIT=vi FCEDIT=ed hist 13\r"
+sleep 0.5
+send ":q!\r"
+expect -re "hello world\r\n" {
+    puts "When both HISTEDIT and FCEDIT are set, HISTEDIT takes priority"
+}
+expect_prompt
+
+# ==========
+# Enable csh style ! history expansion
+log_test_entry
+# This is also `set -H`.
+send "set -o histexpand\r"
+expect_prompt
+
+# ==========
+# Executing the previous command.
+log_test_entry
+send "print hello abc\r"
+expect_prompt
+send "!!\r"
+expect -re "\r\nprint hello abc\r\nhello abc\r\n" {
+    puts "!! executes prev command"
+}
+expect_prompt
+
+# ==========
+# Executing the previous command with text substitution.
+log_test_entry
+send "!!:s/hello/goodbye/\r"
+expect -re "\r\nprint goodbye abc\r\ngoodbye abc\r\n" {
+    puts "!!:s/// executes prev command w/substitution"
+}
+expect_prompt
+
+# ==========
+# Spawn a new shell to hopefully force the history file to be trimmed. Note that we're not actually
+# testing anything. We're just hoping to trigger the execution of some code to ensure it doesn't
+# blow up and to get some test coverage of function hist_trim().
+log_test_entry
+# The sleep duration is meant to be greater than HIST_RECENT to trigger hist_trim().
+send "cp sh_history sh_history_to_trim\r"
+expect_prompt
+sleep 5.1
+send [concat "env HISTFILE=sh_history_to_trim " $ksh]
+send "\r"
+# We can't use `expect_prompt` here because the subshell will reset the prompt counter to one.
+expect -re "\r\nKSH PROMPT:1:"
+send "ls -l sh_history*\r"
+send "exit\r"
+expect_prompt
+send "ls -l sh_history*\r"
+expect_prompt
+
+# ==========
+# Verify that asking the shell to exit works.
+log_test_entry
+send "exit\r"
+catch {expect default exp_continue} output
+catch {wait}

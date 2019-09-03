@@ -19,7 +19,8 @@
 ########################################################################
 
 # ==========
-for name in $(builtin -l | grep -Ev '(echo|test|true|false|login|newgrp|uname|getconf|\[|:)'); do
+for name in $(builtin -l |
+    grep -Ev '(local|declare|echo|test|true|false|login|newgrp|uname|getconf|\[|:)'); do
     # Extract builtin name from /opt path
     if [[ "$name" =~ "/opt" ]];
     then
@@ -33,7 +34,9 @@ for name in $(builtin -l | grep -Ev '(echo|test|true|false|login|newgrp|uname|ge
 done
 
 # ==========
-for name in $(builtin -l | grep -Ev '(echo|test|true|false|login|newgrp|hash|type|source|\[|:)')
+# Verify --man works for the builtins.
+for name in $(builtin -l |
+    grep -Ev '(local|declare|echo|test|true|false|login|newgrp|type|source|\[|:)')
 do
     # Extract builtin name from /opt path
     if [[ "$name" =~ "/opt" ]];
@@ -359,14 +362,15 @@ cd ..
 [[ $(pwd) == /usr ]] || log_error 'cd /usr/bin;cd ..;pwd is not /usr'
 
 cd "$TEST_DIR"
-if [[ $OS_NAME == CYGWIN* ]]
+if [[ $OS_NAME == cygwin* ]]
 then
     # This test fails on Cygwin due to underlying MS Windows behavior that makes it impossible for
     # this to work without special support for Cygwin (and perhaps not even then).
     log_warning 'skipping parent dir rename on Cygwin'
 else
+    mkdir t1
     (
-        cd $TEST_DIR/t1
+        cd t1
         > real_t1
         (
             cd ..
@@ -378,7 +382,6 @@ else
 fi
 
 cd "$TEST_DIR"
-
 > foobar
 CDPATH= $SHELL 2> /dev/null -c 'cd foobar' && log_error "cd to a regular file should fail"
 
@@ -435,7 +438,7 @@ expect="/opt/ast/bin/cmp"
 # /usr/bin or vice versa. So make sure this handles both possibilities. That's because on some
 # platforms these two commands may be found in both directories.  Here we don't care which directory
 # prefixes the command other than it not being /opt/ast/bin.
-PATH=/bin:/usr/bin:/opt/ast/bin
+PATH=$NO_BUILTINS_PATH:/opt/ast/bin
 actual=$(whence basename)
 actual="${actual#/usr}"
 expect="${bin_basename#/usr}"
@@ -540,7 +543,7 @@ print ". $TEST_DIR/evalbug" >$TEST_DIR/envfile
 [[ $(ENV=$TEST_DIR/envfile $SHELL -i -c : 2> /dev/null) == ok ]] || log_error 'eval inside dot script called from profile file not working'
 
 # test cd to a directory that doesn't have execute permission
-if [[ $OS_NAME == CYGWIN* ]]
+if [[ $OS_NAME == cygwin* ]]
 then
     log_warning 'skipping test of cd to dir without execute permission on Cygwin'
 else
@@ -558,8 +561,8 @@ sample >/dev/null || log_error "Sample builtin should exit with 0 status"
 
 # List special builtins.
 # The locale affects the order of listing builtins.
-expect=". : _Bool alias break continue enum eval exec exit export hash login newgrp readonly"
-expect="$expect return set shift trap typeset unalias unset "
+expect=". : _Bool alias break continue declare enum eval exec exit export login newgrp"
+expect="$expect readonly return set shift trap typeset unalias unset "
 actual=$(LC_ALL=C builtin -s | tr '\n' ' ')
 [[ "$actual" == "$expect" ]] ||
     log_error "builtin -s mismatches list of special builtins" "$expect" "$actual"
@@ -666,15 +669,3 @@ expect="umask: foo: bad format"
 actual=$(logname)
 expect=$(command logname)
 [[ "$actual" = "$expect" ]] || log_error "logname failed" "$expect" "$actual"
-
-# ==========
-# Verify that the POSIX `test` builtin complains loudly when the `=~` operator is used rather than
-# failing silently. See //github.com/att/ast/issues/1152.
-actual=$($SHELL -c 'test foo =~ foo' 2>&1)
-actual_status=$?
-actual=${actual#*: }
-expect='test: =~ operator not supported; use [[...]]'
-expect_status=2
-[[ "$actual" = "$expect" ]] || log_error "test =~ failed" "$expect" "$actual"
-[[ "$actual_status" = "$expect_status" ]] ||
-    log_error "test =~ failed with wrong status" "$expect_status" "$actual_status"

@@ -1,14 +1,14 @@
-cpu = host_machine.cpu()
-system = host_machine.system()
-bash_machtype = cpu + '-unknown-'+ system
-feature_data.set_quoted('BASH_MACHTYPE', bash_machtype)
-
 # On WSL (Windows Subsystem for Linux) some behavior may be different than on
 # a real Linux system. For example, the `sigqueue()` function doesn't work at
 # the time I write this (see https://github.com/Microsoft/WSL/issues/1880).
 # So it's necessary to detect if we're running on that platform.
 wsl_result = run_command('detect_wsl.sh')
-feature_data.set10('_WSL_', wsl_result.returncode() == 0)
+if wsl_result.returncode() == 0
+    feature_data.set('_WSL_', 1)
+    system = 'wsl'  # this would otherwise be "linux"
+else
+    feature_data.set('_WSL_', 0)
+endif
 
 # Several unit tests need to know how many processors are available. For those
 # tests to run reliably, especially on a VM which might have only one or two
@@ -39,6 +39,11 @@ endif
 # libc, on others they are found in libm.
 libm_dep = cc.find_library('m', required: false, dirs: lib_dirs)
 
+# On some platforms the network functions (e.g., `socket()`) that we need are found in
+# libc, on others they are found in libsocket and libnsl.
+libsocket_dep = cc.find_library('socket', required: false, dirs: lib_dirs)
+libnsl_dep = cc.find_library('nsl', required: false, dirs: lib_dirs)
+
 # On some platforms `dladdr()` and related functions are found in libc,
 # on others they are found in libdl.
 libdl_dep = cc.find_library('dl', required: false, dirs: lib_dirs)
@@ -47,6 +52,10 @@ libdl_dep = cc.find_library('dl', required: false, dirs: lib_dirs)
 # on others they are found in libexecinfo.
 libexecinfo_dep = cc.find_library('execinfo', required: false, dirs: lib_dirs)
 
+# On some platforms `fts` functions are found in libc,
+# on others they are found in musl-fts.
+libfts_dep = cc.find_library('fts', required: false, dirs: lib_dirs)
+
 # On some systems (e.g., OpenBSD) `iconv()` is in libiconv.
 libiconv_dep = cc.find_library('iconv', required: false, dirs: lib_dirs)
 
@@ -54,22 +63,36 @@ libiconv_dep = cc.find_library('iconv', required: false, dirs: lib_dirs)
 libcatgets_dep = cc.find_library('catgets', required: false, dirs: lib_dirs)
 
 feature_data.set10('_hdr_execinfo', cc.has_header('execinfo.h', args: feature_test_args))
-
-feature_data.set10('_hdr_stdlib', cc.has_header('stdlib.h', args: feature_test_args))
-feature_data.set10('_hdr_malloc', cc.has_header('malloc.h', args: feature_test_args))
 feature_data.set10('_hdr_filio', cc.has_header('filio.h', args: feature_test_args))
-feature_data.set10('_sys_filio', cc.has_header('sys/filio.h', args: feature_test_args))
+feature_data.set10('_hdr_malloc', cc.has_header('malloc.h', args: feature_test_args))
+feature_data.set10('_hdr_stdlib', cc.has_header('stdlib.h', args: feature_test_args))
+feature_data.set10('_hdr_sys_filio', cc.has_header('sys/filio.h', args: feature_test_args))
+feature_data.set10('_hdr_sys_ldr', cc.has_header('sys/ldr.h', args: feature_test_args))
+feature_data.set10('_hdr_sys_pstat', cc.has_header('sys/pstat.h', args: feature_test_args))
+feature_data.set10('_hdr_sys_ptem', cc.has_header('sys/ptem.h', args: feature_test_args))
+feature_data.set10('_hdr_sys_stream', cc.has_header('stream.h', args: feature_test_args))
 
+# The `lchmod()` function is a bit of a special-case. The platform may not provide it
+# directly but might provide the means to implement it.
 feature_data.set10('_lib_lchmod',
     cc.has_function('lchmod', prefix: '\n'.join(['#include <unistd.h>', '#include <sys/stat.h>']),
     args: feature_test_args))
+if feature_data.get('_lib_lchmod', 0) == 0
+    feature_file = files('lchmod_fallback.c')
+    feature_result = cc.run(feature_file, name: 'lchmod() fallback using fchmodat()',
+                            args: feature_test_args)
+    if feature_result.returncode() == 0
+        feature_data.set10('_lib_lchmod_fchmodat_fallback', 1)
+        feature_data.set10('_lib_lchmod', 1)
+    endif
+endif
+
+feature_data.set10('_lib_getrusage',
+    cc.has_function('getrusage',
+        prefix: '\n'.join(['#include <sys/resource.h>', '#include <sys/time.h>']),
+        args: feature_test_args))
 feature_data.set10('_lib_sigqueue',
     cc.has_function('sigqueue', prefix: '#include <signal.h>', args: feature_test_args))
-# TODO: Enable iswprint() detection when we understand why doing so causes the
-# `wchar` unit test to fail. For now we force it to false to use the AST definition.
-# feature_data.set10('_lib_iswprint',
-#     cc.has_function('iswprint', prefix: '#include <wctype.h>', args: feature_test_args))
-feature_data.set10('_lib_iswprint', 0)
 
 if not cc.has_function('isnanl', prefix: '#include <math.h>', args: feature_test_args)
     feature_data.set('isnanl', 'isnan')
@@ -97,20 +120,24 @@ feature_data.set10('_lib_syncfs',
 
 # https://github.com/att/ast/issues/1096
 # These math functions are not available on NetBSD
-feature_data.set10('_lib_nexttowardl',
-    cc.has_function('nexttowardl', prefix: '#include <math.h>', args: feature_test_args, dependencies: [libm_dep]))
 feature_data.set10('_lib_expm1l',
-    cc.has_function('expm1l', prefix: '#include <math.h>', args: feature_test_args, dependencies: [libm_dep]))
+    cc.has_function('expm1l', prefix: '#include <math.h>', args: feature_test_args,
+                    dependencies: [libm_dep]))
 feature_data.set10('_lib_log1pl',
-    cc.has_function('log1pl', prefix: '#include <math.h>', args: feature_test_args, dependencies: [libm_dep]))
+    cc.has_function('log1pl', prefix: '#include <math.h>', args: feature_test_args,
+                    dependencies: [libm_dep]))
 feature_data.set10('_lib_remainderl',
-    cc.has_function('remainderl', prefix: '#include <math.h>', args: feature_test_args, dependencies: [libm_dep]))
+    cc.has_function('remainderl', prefix: '#include <math.h>', args: feature_test_args,
+                    dependencies: [libm_dep]))
 feature_data.set10('_lib_log2l',
-    cc.has_function('log2l', prefix: '#include <math.h>', args: feature_test_args, dependencies: [libm_dep]))
+    cc.has_function('log2l', prefix: '#include <math.h>', args: feature_test_args,
+                    dependencies: [libm_dep]))
 feature_data.set10('_lib_tgammal',
-    cc.has_function('tgammal', prefix: '#include <math.h>', args: feature_test_args, dependencies: [libm_dep]))
+    cc.has_function('tgammal', prefix: '#include <math.h>', args: feature_test_args,
+                    dependencies: [libm_dep]))
 feature_data.set10('_lib_lgammal',
-    cc.has_function('lgammal', prefix: '#include <math.h>', args: feature_test_args, dependencies: [libm_dep]))
+    cc.has_function('lgammal', prefix: '#include <math.h>', args: feature_test_args,
+                    dependencies: [libm_dep]))
 
 
 socketpair_shutdown_feature_file = files('socketpair_shutdown.c')
@@ -135,6 +162,10 @@ else
     # signal number larger than 64.
     feature_data.set('MAX_SIGNUM', '64')
 endif
+
+# Does the platform provide a `sighandler_t` type?
+feature_data.set10('_has_sighandler_t',
+    cc.has_type('sighandler_t', prefix: '#include <signal.h>', args: feature_test_args))
 
 feature_data.set10('_mem_d_fileno_dirent',
     cc.has_member('struct dirent', 'd_fileno', prefix: '#include <dirent.h>',
@@ -167,7 +198,14 @@ libpath_result = run_command('libpath.sh')
 if libpath_result.returncode() == 0
     libpath_output = libpath_result.stdout().strip()
     feature_data.set_quoted('CONF_LIBPATH', libpath_output)
+else
+    feature_data.set_quoted('CONF_LIBPATH', '')
 endif
+# TODO: Properly detect these values. For now just use the defaults from
+# astconf.c so we can eventually remove that module. Note that we've been
+# using these defaults since switching to Meson two years ago.
+feature_data.set_quoted('CONF_LIBPREFIX', 'lib')
+feature_data.set_quoted('CONF_LIBSUFFIX', '.so')
 
 prog_result = run_command('prog.sh')
 if prog_result.returncode() == 0
@@ -187,13 +225,13 @@ posix_spawn_feature_result = cc.run(posix_spawn_feature_file,
                                     args: feature_test_args)
 feature_data.set10('_lib_posix_spawn', posix_spawn_feature_result.returncode() == 0)
 
-# Meson adds -D_FILE_OFFSET_BITS=64 flag by default, but it does not work with fts functions in older versions
-# of glibc. This feature test undefines it on such systems.
-# https://github.com/mesonbuild/meson/issues/3519
+# Meson adds -D_FILE_OFFSET_BITS=64 flag by default, but it does not work with
+# fts functions in older versions of glibc. This feature test undefines it on
+# such systems. https://github.com/mesonbuild/meson/issues/3519
 fts_feature_file = files('fts.c')
 fts_feature_result = cc.compiles(fts_feature_file,
-                                    name: 'Check if -D_FILE_OFFSET_BITS=64 works with fts functions',
-                                    args: feature_test_args + ['-D_FILE_OFFSET_BITS=64'])
+                                 name: 'Check if -D_FILE_OFFSET_BITS=64 works with fts functions',
+                                 args: feature_test_args + ['-D_FILE_OFFSET_BITS=64'])
 if not fts_feature_result
     add_global_arguments('-U_FILE_OFFSET_BITS', language: 'c')
 endif

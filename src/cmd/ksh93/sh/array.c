@@ -29,7 +29,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "argnod.h"
 #include "ast.h"
 #include "ast_assert.h"
 #include "cdt.h"
@@ -174,14 +173,14 @@ int array_isempty(Namval_t *np) { return array_maxindex(np) <= 0; }
 static_fn struct Value *array_getup(Namval_t *np, Namarr_t *arp, int update) {
     struct index_array *ap = (struct index_array *)arp;
     struct Value *up;
-    int nofree = 0;
+    bool nofree = false;
 
     if (!arp) return &np->nvalue;
     if (is_associative(&ap->namarr)) {
         Namval_t *mp;
         mp = (*arp->fun)(np, NULL, ASSOC_OP_CURRENT);
         if (mp) {
-            nofree = nv_isattr(mp, NV_NOFREE);
+            nofree = nv_isattr(mp, NV_NOFREE) == NV_NOFREE;
             up = &(mp->nvalue);  // parens are to silence false positive from cppcheck
         } else {
             return (*arp->fun)(np, NULL, ASSOC_OP_ADD2);
@@ -233,14 +232,14 @@ static_fn Namval_t *array_find(Namval_t *np, Namarr_t *arp, int flag) {
     struct index_array *ap = (struct index_array *)arp;
     struct Value *up;
     Namval_t *mp;
-    int wasundef;
 
     if (flag & ARRAY_LOOKUP) {
         ap->namarr.flags &= ~ARRAY_NOSCOPE;
     } else {
         ap->namarr.flags |= ARRAY_NOSCOPE;
     }
-    wasundef = ap->namarr.flags & ARRAY_UNDEF;
+
+    bool wasundef = nv_isflag(ap->namarr.flags, ARRAY_UNDEF);
     if (wasundef) {
         ap->namarr.flags &= ~ARRAY_UNDEF;
         // Delete array is the same as delete array[@].
@@ -329,11 +328,11 @@ static_fn Namval_t *array_find(Namval_t *np, Namarr_t *arp, int flag) {
     return np;
 }
 
-bool nv_arraysettype(Namval_t *np, Namval_t *tp, const char *sub, int flags) {
+bool nv_arraysettype(Namval_t *np, Namval_t *tp, const char *sub, nvflag_t flags) {
     Shell_t *shp = sh_ptr(np);
     Namval_t *nq;
-    int rdonly = nv_isattr(np, NV_RDONLY);
-    int xtrace = sh_isoption(shp, SH_XTRACE);
+    bool rdonly = nv_isattr(np, NV_RDONLY) == NV_RDONLY;
+    bool xtrace = sh_isoption(shp, SH_XTRACE);
 
     shp->last_table = NULL;
     if (!tp->nvfun) return true;
@@ -379,7 +378,7 @@ bool nv_arraysettype(Namval_t *np, Namval_t *tp, const char *sub, int flags) {
     return false;
 }
 
-static_fn Namfun_t *array_clone(Namval_t *np, Namval_t *mp, int flags, Namfun_t *fp) {
+static_fn Namfun_t *array_clone(Namval_t *np, Namval_t *mp, nvflag_t flags, Namfun_t *fp) {
     Namarr_t *ap = (Namarr_t *)fp;
     Namval_t *nq, *mq;
     char *name;
@@ -507,15 +506,16 @@ static_fn Sfdouble_t array_getnum(Namval_t *np, Namfun_t *disc) {
     return nv_getn(np, &ap->namfun);
 }
 
-static_fn void array_putval(Namval_t *np, const void *string, int flags, Namfun_t *dp) {
+static_fn void array_putval(Namval_t *np, const void *string, nvflag_t flags, Namfun_t *dp) {
     Namarr_t *ap = (Namarr_t *)dp;
     struct Value *up;
     Namval_t *mp;
     struct index_array *aq = (struct index_array *)ap;
-    int scan, nofree = nv_isattr(np, NV_NOFREE);
+    int scan;
+    bool nofree = nv_isattr(np, NV_NOFREE) == NV_NOFREE;
 
     do {
-        int xfree = is_associative(ap) ? 0 : array_isbit(aq->bits, aq->cur, ARRAY_NOFREE);
+        bool xfree = is_associative(ap) ? false : array_isbit(aq->bits, aq->cur, ARRAY_NOFREE);
         mp = array_find(np, ap, string ? ARRAY_ASSIGN : ARRAY_DELETE);
         scan = ap->flags & ARRAY_SCAN;
         if (mp && mp != np) {
@@ -808,7 +808,7 @@ static_fn Namarr_t *nv_changearray(Namval_t *np,
 //
 Namarr_t *nv_setarray(Namval_t *np, void *(*fun)(Namval_t *, const char *, Nvassoc_op_t)) {
     Namarr_t *ap;
-    int flags = 0;
+    nvflag_t flags = 0;
 
     if (fun) {
         ap = nv_arrayptr(np);
@@ -954,7 +954,7 @@ bool nv_nextsub(Namval_t *np) {
 //   ARRAY_ADD is specified and there is no value or sets all
 // the elements up to the number specified if ARRAY_ADD is not specified.
 //
-Namval_t *nv_putsub(Namval_t *np, char *sp, long size, int flags) {
+Namval_t *nv_putsub(Namval_t *np, char *sp, long size, nvflag_t flags) {
     Shell_t *shp = sh_ptr(np);
     struct index_array *ap = (struct index_array *)nv_arrayptr(np);
     if (!ap || !is_associative(&ap->namarr)) {
@@ -981,22 +981,6 @@ Namval_t *nv_putsub(Namval_t *np, char *sp, long size, int flags) {
         }
         ap->namarr.flags &= ~ARRAY_UNDEF;
         ap->namarr.flags |= (flags & (ARRAY_SCAN | ARRAY_NOCHILD | ARRAY_UNDEF | ARRAY_NOSCOPE));
-#if 0
-		if(array_isbit(ap->bits,oldsize,ARRAY_CHILD))
-			mp = ap->val[oldsize].np;
-		if(size != oldsize && FETCH_VT(mp->nvalue, const_cp))
-		{
-			Namfun_t *nfp;
-			for(nfp=np->nvfun; nfp; nfp=nfp->next)
-			{
-				if(nfp->disc && nfp->disc->readf)
-				{
-					(*nfp->disc->readf)(mp,(Sfio_t*)0,0,nfp);
-					break;
-				}
-			}
-		}
-#endif
         ap->cur = size;
         if ((flags & ARRAY_SCAN) && (ap->cur--, !nv_nextsub(np))) np = NULL;
         if (flags & (ARRAY_FILL | ARRAY_ADD)) {
@@ -1073,7 +1057,7 @@ Namval_t *nv_putsub(Namval_t *np, char *sp, long size, int flags) {
 // Process an array subscript for node <np> given the subscript <cp>.
 // Returns pointer to character after the subscript.
 //
-char *nv_endsubscript(Namval_t *np, char *cp, int mode, void *context) {
+char *nv_endsubscript(Namval_t *np, char *cp, nvflag_t mode, void *context) {
     int count = 1, quoted = 0, c;
     char *sp = cp + 1;
     Shell_t *shp = context;
@@ -1098,13 +1082,16 @@ char *nv_endsubscript(Namval_t *np, char *cp, int mode, void *context) {
     }
     if (mode && np) {
         Namarr_t *ap = nv_arrayptr(np);
-        int scan = 0;
-        if (ap) scan = ap->flags & ARRAY_SCAN;
+        bool scan = false;
+        if (ap) scan = nv_isflag(ap->flags, ARRAY_SCAN);
         if ((mode & NV_ASSIGN) && (cp[1] == '=' || cp[1] == '+')) mode |= NV_ADD;
         nv_putsub(np, sp, 0,
                   ((mode & NV_ADD) ? ARRAY_ADD : 0) |
                       (cp[1] && (mode & NV_ADD) ? ARRAY_FILL : mode & ARRAY_FILL));
-        if (scan) ap->flags |= scan;
+        // The nv_putsub() can invalidate `ap` but only if `scan` is zero. So don't use `if (ap)`
+        // since that can result in dereferencing a stale pointer. But if `scan` is non-zero then
+        // `ap` should still be valid.  See https://github.com/att/ast/issues/828.
+        if (scan) ap->flags |= ARRAY_SCAN;
     }
     if (quoted) stkseek(shp->stk, count);
     *cp++ = c;
@@ -1329,8 +1316,9 @@ static_fn void *nv_assoc_op_add(Namval_t *np, const char *sp, bool add) {
         Namval_t *mp = NULL;
         ap->cur = NULL;
         if (sp == (char *)np) return NULL;
-        int type = nv_isattr(np, ~(NV_NOFREE | NV_ARRAY | NV_CHILD | NV_MINIMAL));
-        int mode = 0;
+        nvflag_t type = nv_isattr(np, ~(NV_NOFREE | NV_ARRAY | NV_CHILD | NV_MINIMAL));
+        nvflag_t mode = 0;
+
         if (add) {
             mode = NV_ADD | NV_NOSCOPE;
         } else if (ap->namarr.flags & ARRAY_NOSCOPE) {
@@ -1354,10 +1342,10 @@ static_fn void *nv_assoc_op_add(Namval_t *np, const char *sp, bool add) {
                 ap->namarr.nelem++;
             }
             if (nv_isnull(mp)) {
-                if (ap->namarr.flags & ARRAY_TREE) nv_setvtree(mp);
+                if (nv_isflag(ap->namarr.flags, ARRAY_TREE)) nv_setvtree(mp);
                 STORE_VT(mp->nvalue, const_cp, Empty);
             }
-        } else if (ap->namarr.flags & ARRAY_SCAN) {
+        } else if (nv_isflag(ap->namarr.flags, ARRAY_SCAN)) {
             Namval_t fake;
             memset(&fake, 0, sizeof(fake));
             fake.nvname = (char *)sp;
@@ -1371,7 +1359,7 @@ static_fn void *nv_assoc_op_add(Namval_t *np, const char *sp, bool add) {
         np = mp;
         if (ap->pos && ap->pos == np) {
             ap->namarr.flags |= ARRAY_SCAN;
-        } else if (!(ap->namarr.flags & ARRAY_SCAN)) {
+        } else if (!nv_isflag(ap->namarr.flags, ARRAY_SCAN)) {
             ap->pos = NULL;
         }
         ap->cur = np;

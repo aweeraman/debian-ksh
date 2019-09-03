@@ -31,7 +31,6 @@
 #include <math.h>
 #include <stdbool.h>
 #include <string.h>
-#include <sys/types.h>
 
 #include "ast.h"
 #include "ast_float.h"
@@ -186,7 +185,7 @@ Sfdouble_t arith_exec(Arith_t *ep) {
     if (ep->staksize < SMALL_STACK) {
         sp = small_stack;
     } else {
-        sp = (Sfdouble_t *)stkalloc(shp->stk, ep->staksize * (sizeof(Sfdouble_t) + 1));
+        sp = stkalloc(shp->stk, ep->staksize * (sizeof(Sfdouble_t) + 1));
     }
     tp = (char *)(sp + ep->staksize);
     tp--, sp--;
@@ -930,12 +929,7 @@ again:
                     if (vp->errmsg.value) vp->errstr = pos;
                     ERROR(vp, op == A_LIT ? e_charconst : e_synbad);
                 }
-#if 0
-			if(op==A_DIG || op==A_LIT)
-#else
-                if (op == A_DIG || op == A_LIT || lvalue.isfloat == TYPE_LD)
-#endif
-                {
+                if (op == A_DIG || op == A_LIT || lvalue.isfloat == TYPE_LD) {
                     sfputc(shp->stk, A_PUSHN);
                     if (vp->staksize++ >= vp->stakmaxsize) vp->stakmaxsize = vp->staksize;
                     stkpush(shp->stk, vp, d, Sfdouble_t);

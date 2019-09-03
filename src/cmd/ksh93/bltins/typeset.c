@@ -17,39 +17,21 @@
  *                    David Korn <dgkorn@gmail.com>                     *
  *                                                                      *
  ***********************************************************************/
-//
-// export [-p] [arg...]
-// readonly [-p] [arg...]
-// typeset [options]  [arg...]
-// alias [-ptx] [arg...]
-// unalias [arg...]
-// builtin [-sd] [-f file] [name...]
-// set [options] [name...]
-// unset [-fnv] [name...]
-//
-//   David Korn
-//   AT&T Labs
-//
 #include "config_ast.h"  // IWYU pragma: keep
 
-#include <dlfcn.h>
 #include <float.h>
-#include <limits.h>
-#include <setjmp.h>
+#include <limits.h>  // IWYU pragma: keep
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
 #include <wctype.h>
 
-#include "argnod.h"
 #include "ast.h"
+#include "ast_assert.h"
 #include "builtins.h"
 #include "cdt.h"
 #include "defs.h"
-#include "dlldefs.h"
 #include "error.h"
-#include "fault.h"
 #include "history.h"
 #include "name.h"
 #include "option.h"
@@ -57,175 +39,21 @@
 #include "sfio.h"
 #include "shcmd.h"
 #include "stk.h"
-#include "variables.h"
-
-struct tdata {
-    Shell_t *sh;
-    Namval_t *tp;
-    const char *wctname;
-    Sfio_t *outfile;
-    char *prefix;
-    char *tname;
-    char *help;
-    char aflag;
-    bool pflag;
-    int argnum;
-    int scanmask;
-    Dt_t *scanroot;
-    char **argnam;
-    int indent;
-    int noref;
-};
 
 static_fn int print_namval(Sfio_t *, Namval_t *, bool, struct tdata *);
 static_fn void print_attribute(Namval_t *, void *);
 static_fn void print_all(Sfio_t *, Dt_t *, struct tdata *);
-static_fn void print_scan(Sfio_t *, int, Dt_t *, bool, struct tdata *);
-static_fn int unall(int, char **, Dt_t *, Shell_t *);
-static_fn int setall(char **, int, Dt_t *, struct tdata *);
 static_fn void pushname(Namval_t *, void *);
 
-//
-// Note the `export` and `readonly` builtins are handled by this function.
-//
-// TODO: Refactor the function so that each builtin has a distinct function. 99% of the shared code
-// is boilerplate for things like parsing the command line. And even that has two explicit tests for
-// which variant is being handled.
-//
-int b_readonly(int argc, char *argv[], Shbltin_t *context) {
-    int flag;
-    char *command = argv[0];
-    struct tdata tdata;
-    UNUSED(argc);
-
-    memset(&tdata, 0, sizeof(tdata));
-    tdata.sh = context->shp;
-    tdata.aflag = '-';
-    // Do not change size.
-    tdata.argnum = -1;
-    while ((flag = optget(argv, *command == 'e' ? sh_optexport : sh_optreadonly))) {
-        switch (flag) {
-            case 'n': {
-                if (*command != 'e') {
-                    errormsg(SH_DICT, ERROR_usage(0), "%s", opt_info.arg);
-                    return 2;
-                }
-                tdata.aflag = '+';
-                break;
-            }
-            case 'p': {
-                tdata.prefix = command;
-                break;
-            }
-            case ':': {
-                errormsg(SH_DICT, 2, "%s", opt_info.arg);
-                break;
-            }
-            case '?': {
-                errormsg(SH_DICT, ERROR_usage(0), "%s", opt_info.arg);
-                return 2;
-            }
-            default: { break; }
-        }
-    }
-    if (error_info.errors) {
-        errormsg(SH_DICT, ERROR_usage(2), optusage(NULL));
-        __builtin_unreachable();
-    }
-
-    argv += (opt_info.index - 1);
-    if (*command == 'r') {
-        flag = (NV_ASSIGN | NV_RDONLY | NV_VARNAME);
-    } else {
-        flag = (NV_ASSIGN | NV_EXPORT | NV_IDENT);
-        if (!tdata.sh->prefix) tdata.sh->prefix = "";
-    }
-    return setall(argv, flag, tdata.sh->var_tree, &tdata);
-}
-
-int b_alias(int argc, char *argv[], Shbltin_t *context) {
-    unsigned flag = NV_NOARRAY | NV_NOSCOPE | NV_ASSIGN;
-    Dt_t *troot;
-    int n;
-    struct tdata tdata;
-    UNUSED(argc);
-
-    memset(&tdata, 0, sizeof(tdata));
-    tdata.sh = context->shp;
-    troot = tdata.sh->alias_tree;
-    if (*argv[0] == 'h') flag = NV_TAGGED;
-    if (sh_isoption(tdata.sh, SH_BASH)) tdata.prefix = argv[0];
-    if (!argv[1]) return setall(argv, flag, troot, &tdata);
-
-    opt_info.offset = 0;
-    opt_info.index = 1;
-    *opt_info.option = 0;
-    tdata.argnum = 0;
-    tdata.aflag = *argv[1];
-    while ((n = optget(argv, sh_optalias))) {
-        switch (n) {
-            case 'p': {
-                tdata.prefix = argv[0];
-                break;
-            }
-            case 't': {
-                flag |= NV_TAGGED;
-                break;
-            }
-            case 'x': {
-                flag |= NV_EXPORT;
-                break;
-            }
-            case ':': {
-                errormsg(SH_DICT, 2, "%s", opt_info.arg);
-                break;
-            }
-            case '?': {
-                errormsg(SH_DICT, ERROR_usage(0), "%s", opt_info.arg);
-                return 2;
-            }
-            default: { break; }
-        }
-    }
-    if (error_info.errors) {
-        errormsg(SH_DICT, ERROR_usage(2), "%s", optusage(NULL));
-        __builtin_unreachable();
-    }
-
-    argv += (opt_info.index - 1);
-    if (!(flag & NV_TAGGED)) return setall(argv, flag, troot, &tdata);
-
-    // Hacks to handle hash -r | --.
-    if (argv[1] && argv[1][0] == '-') {
-        if (argv[1][1] == 'r' && argv[1][2] == 0) {
-            Namval_t *np = nv_search_namval(PATHNOD, tdata.sh->var_tree, 0);
-            nv_putval(np, nv_getval(np), NV_RDONLY);
-            argv++;
-            if (!argv[1]) return 0;
-        }
-        if (argv[1][0] == '-') {
-            if (argv[1][1] == '-' && argv[1][2] == 0) {
-                argv++;
-            } else {
-                errormsg(SH_DICT, ERROR_exit(1), e_option, argv[1]);
-                __builtin_unreachable();
-            }
-        }
-    }
-    troot = tdata.sh->track_tree;
-    return setall(argv, flag, troot, &tdata);
-}
-
 int b_typeset(int argc, char *argv[], Shbltin_t *context) {
-    int n, flag = NV_VARNAME | NV_ASSIGN;
+    int n;
+    nvflag_t nvflags = NV_VARNAME | NV_ASSIGN;
     struct tdata tdata;
     const char *optstring = sh_opttypeset;
     Namdecl_t *ntp = (Namdecl_t *)context->ptr;
     Dt_t *troot;
     bool isfloat = false, isshort = false, sflag = false;
-#if SHOPT_BASH
-    bool local = *argv[0] == 'l' && strcmp(argv[0], "local") == 0;
-#endif  // SHOPT_BASH
+    bool local = strcmp(argv[0], "local") == 0;
     UNUSED(argc);
 
     memset(&tdata, 0, sizeof(tdata));
@@ -239,9 +67,9 @@ int b_typeset(int argc, char *argv[], Shbltin_t *context) {
     opt_info.index = 0;
     while ((n = optget(argv, optstring))) {
         if (tdata.aflag == 0) tdata.aflag = *opt_info.option;
-        switch (n) {
+        switch (n) {  //!OCLINT(MissingDefaultStatement)
             case 'a': {
-                flag |= NV_IARRAY;
+                nvflags |= NV_IARRAY;
                 if (opt_info.arg && *opt_info.arg != '[') {
                     opt_info.index--;
                     goto endargs;
@@ -250,11 +78,11 @@ int b_typeset(int argc, char *argv[], Shbltin_t *context) {
                 break;
             }
             case 'A': {
-                flag |= NV_ARRAY;
+                nvflags |= NV_ARRAY;
                 break;
             }
             case 'C': {
-                flag |= NV_COMVAR;
+                nvflags |= NV_COMVAR;
                 break;
             }
             case 'E': {
@@ -269,43 +97,45 @@ int b_typeset(int argc, char *argv[], Shbltin_t *context) {
             case 'X': {
                 if (!opt_info.arg || (tdata.argnum = opt_info.num) < 0) {
                     if (n == 'X') {
-                        tdata.argnum =
-                            2 * ((flag & NV_LONG) ? sizeof(Sfdouble_t)
-                                                  : (isshort ? sizeof(float) : sizeof(double)));
+                        tdata.argnum = 2 * (nv_isflag(nvflags, NV_LONG)
+                                                ? sizeof(Sfdouble_t)
+                                                : (isshort ? sizeof(float) : sizeof(double)));
                     } else {
                         tdata.argnum =
-                            ((flag & NV_LONG) ? LDBL_DIG : (isshort ? FLT_DIG : DBL_DIG)) - 2;
+                            (nv_isflag(nvflags, NV_LONG) ? LDBL_DIG
+                                                         : (isshort ? FLT_DIG : DBL_DIG)) -
+                            2;
                     }
                 }
                 isfloat = true;
                 if (n == 'E') {
-                    flag &= ~NV_HEXFLOAT;
-                    flag |= NV_EXPNOTE;
+                    nvflags &= ~NV_HEXFLOAT;
+                    nvflags |= NV_EXPNOTE;
                 } else if (n == 'X') {
-                    flag &= ~NV_EXPNOTE;
-                    flag |= NV_HEXFLOAT;
+                    nvflags &= ~NV_EXPNOTE;
+                    nvflags |= NV_HEXFLOAT;
                 }
                 break;
             }
             case 'b': {
-                flag |= NV_BINARY;
+                nvflags |= NV_BINARY;
                 break;
             }
             case 'm': {
-                flag |= NV_MOVE;
+                nvflags |= NV_MOVE;
                 break;
             }
             case 'n': {
-                flag &= ~NV_VARNAME;
-                flag |= (NV_REF | NV_IDENT);
+                nvflags &= ~NV_VARNAME;
+                nvflags |= (NV_REF | NV_IDENT);
                 break;
             }
             case 'H': {
-                flag |= NV_HOST;
+                nvflags |= NV_HOST;
                 break;
             }
             case 'T': {
-                flag |= NV_TYPE;
+                nvflags |= NV_TYPE;
                 tdata.prefix = opt_info.arg;
                 break;
             }
@@ -318,10 +148,10 @@ int b_typeset(int argc, char *argv[], Shbltin_t *context) {
                     __builtin_unreachable();
                 }
                 if (n == 'Z') {
-                    flag |= NV_ZFILL;
+                    nvflags |= NV_ZFILL;
                 } else {
-                    flag &= ~(NV_LJUST | NV_RJUST);
-                    flag |= (n == 'L' ? NV_LJUST : NV_RJUST);
+                    nvflags &= ~(NV_LJUST | NV_RJUST);
+                    nvflags |= (n == 'L' ? NV_LJUST : NV_RJUST);
                 }
                 break;
             }
@@ -332,36 +162,36 @@ int b_typeset(int argc, char *argv[], Shbltin_t *context) {
                     __builtin_unreachable();
                 }
                 if (tdata.wctname && strcmp(tdata.wctname, e_tolower) == 0) {
-                    flag |= NV_UTOL;
+                    nvflags |= NV_UTOL;
                 } else {
-                    flag |= NV_LTOU;
+                    nvflags |= NV_LTOU;
                 }
-                if (!tdata.wctname) flag |= NV_UTOL;
+                if (!tdata.wctname) nvflags |= NV_UTOL;
                 break;
             }
             case 'f': {
-                flag &= ~(NV_VARNAME | NV_ASSIGN);
+                nvflags &= ~(NV_VARNAME | NV_ASSIGN);
                 troot = tdata.sh->fun_tree;
                 break;
             }
             case 'i': {
                 if (!opt_info.arg || (tdata.argnum = opt_info.num) < 0) tdata.argnum = 10;
-                flag |= NV_INTEGER;
+                nvflags |= NV_INTEGER;
                 break;
             }
             case 'l': {
                 tdata.wctname = e_tolower;
-                flag |= NV_UTOL;
+                nvflags |= NV_UTOL;  // same as: nvflags |= NV_LONG
                 break;
             }
             case 'p': {
                 tdata.prefix = argv[0];
                 tdata.pflag = true;
-                flag &= ~NV_ASSIGN;
+                nvflags &= ~NV_ASSIGN;
                 break;
             }
             case 'r': {
-                flag |= NV_RDONLY;
+                nvflags |= NV_RDONLY;
                 break;
             }
             case 'S': {
@@ -377,17 +207,17 @@ int b_typeset(int argc, char *argv[], Shbltin_t *context) {
                 break;
             }
             case 't': {
-                flag |= NV_TAGGED;
+                nvflags |= NV_TAGGED;
                 break;
             }
             case 'u': {
                 tdata.wctname = e_toupper;
-                flag |= NV_LTOU;
+                nvflags |= NV_LTOU;  // same as: nvflags |= NV_UNSIGN
                 break;
             }
             case 'x': {
-                flag &= ~NV_VARNAME;
-                flag |= (NV_EXPORT | NV_IDENT);
+                nvflags &= ~NV_VARNAME;
+                nvflags |= (NV_EXPORT | NV_IDENT);
                 break;
             }
             case ':': {
@@ -399,17 +229,16 @@ int b_typeset(int argc, char *argv[], Shbltin_t *context) {
                 opt_info.disc = NULL;
                 return 2;
             }
-            default: { break; }
         }
     }
 endargs:
     argv += opt_info.index;
-#if SHOPT_BASH
+
     if (local && context->shp->var_base == context->shp->var_tree) {
         errormsg(SH_DICT, ERROR_exit(1), "local can only be used in a function");
         __builtin_unreachable();
     }
-#endif  // SHOPT_BASH
+
     opt_info.disc = NULL;
     // Handle argument of + and - specially.
     if (*argv && argv[0][1] == 0 && (*argv[0] == '+' || *argv[0] == '-')) {
@@ -417,20 +246,37 @@ endargs:
     } else if (opt_info.index) {
         argv--;
     }
-    if ((flag & NV_ZFILL) && !(flag & NV_LJUST)) flag |= NV_RJUST;
-    if ((flag & NV_INTEGER) && (flag & (NV_LJUST | NV_RJUST | NV_ZFILL))) error_info.errors++;
-    if ((flag & NV_BINARY) && (flag & (NV_LJUST | NV_UTOL | NV_LTOU))) error_info.errors++;
-    if ((flag & NV_MOVE) && (flag & ~(NV_MOVE | NV_VARNAME | NV_ASSIGN))) error_info.errors++;
-    if ((flag & NV_REF) && (flag & ~(NV_REF | NV_IDENT | NV_ASSIGN))) error_info.errors++;
-    if ((flag & NV_TYPE) && (flag & ~(NV_TYPE | NV_VARNAME | NV_ASSIGN))) error_info.errors++;
+    if (nv_isflag(nvflags, NV_ZFILL) && !nv_isflag(nvflags, NV_LJUST)) nvflags |= NV_RJUST;
+    if (nv_isflag(nvflags, NV_INTEGER) &&
+        (nv_isflag(nvflags, NV_LJUST) || nv_isflag(nvflags, NV_RJUST) ||
+         nv_isflag(nvflags, NV_ZFILL))) {
+        error_info.errors++;
+    }
+    if (nv_isflag(nvflags, NV_BINARY) &&
+        (nv_isflag(nvflags, NV_LJUST) || nv_isflag(nvflags, NV_UTOL) ||
+         nv_isflag(nvflags, NV_LTOU))) {
+        error_info.errors++;
+    }
+    if (nv_isflag(nvflags, NV_MOVE) && !nv_isflag(nvflags, NV_MOVE) &&
+        !nv_isflag(nvflags, NV_VARNAME) && !nv_isflag(nvflags, NV_ASSIGN)) {
+        error_info.errors++;
+    }
+    if (nv_isflag(nvflags, NV_REF) && !nv_isflag(nvflags, NV_REF) &&
+        !nv_isflag(nvflags, NV_IDENT) && !nv_isflag(nvflags, NV_ASSIGN)) {
+        error_info.errors++;
+    }
+    if (nv_isflag(nvflags, NV_TYPE) && !nv_isflag(nvflags, NV_TYPE) &&
+        !nv_isflag(nvflags, NV_VARNAME) && !nv_isflag(nvflags, NV_ASSIGN)) {
+        error_info.errors++;
+    }
     if (troot == tdata.sh->fun_tree &&
-        ((isfloat || flag & ~(NV_FUNCT | NV_TAGGED | NV_EXPORT | NV_LTOU)))) {
+        ((isfloat || nvflags & ~(NV_FUNCT | NV_TAGGED | NV_EXPORT | NV_LTOU)))) {
         error_info.errors++;
     }
     if (sflag && troot == tdata.sh->fun_tree) {
         // Static function.
         sflag = false;
-        flag |= NV_STATICF;
+        nvflags |= NV_STATICF;
     }
     if (error_info.errors) {
         errormsg(SH_DICT, ERROR_usage(2), "%s", optusage(NULL));
@@ -444,21 +290,21 @@ endargs:
     }
 #endif
 
-    if (isfloat) flag |= NV_DOUBLE;
+    if (isfloat) nvflags |= NV_DOUBLE;
     if (isshort) {
-        flag &= ~NV_LONG;
-        flag |= NV_SHORT | NV_INTEGER;
+        nvflags &= ~NV_LONG;
+        nvflags |= NV_INT16;
     }
     if (sflag) {
         if (tdata.sh->mktype) {
-            flag |= NV_REF | NV_TAGGED;
+            nvflags |= NV_REF | NV_TAGGED;
         } else if (!tdata.sh->typeinit) {
-            flag |= NV_STATIC | NV_IDENT;
+            nvflags |= NV_STATIC | NV_IDENT;
         }
     }
-    if (tdata.sh->fn_depth && !tdata.pflag) flag |= NV_NOSCOPE;
+    if (tdata.sh->fn_depth && !tdata.pflag) nvflags |= NV_NOSCOPE;
     if (tdata.help) tdata.help = strdup(tdata.help);
-    if (flag & NV_TYPE) {
+    if (nv_isflag(nvflags, NV_TYPE)) {
         Stk_t *stkp = tdata.sh->stk;
         int off = 0, offset = stktell(stkp);
         if (!tdata.prefix) return sh_outtype(tdata.sh, sfstdout);
@@ -484,7 +330,7 @@ endargs:
         }
         tdata.tp->nvenv = (Namval_t *)tdata.help;
         tdata.tp->nvenv_is_cp = true;
-        flag &= ~NV_TYPE;
+        nvflags &= ~NV_TYPE;
         if (nv_isattr(tdata.tp, NV_TAGGED)) {
             nv_offattr(tdata.tp, NV_TAGGED);
             return 0;
@@ -493,11 +339,18 @@ endargs:
         tdata.aflag = '-';
     }
     if (!tdata.sh->mktype) tdata.help = NULL;
-    if (tdata.aflag == '+' && (flag & (NV_ARRAY | NV_IARRAY | NV_COMVAR)) && argv[1]) {
+    if (tdata.aflag == '+' && argv[1] &&
+        (nv_isflag(nvflags, NV_ARRAY) || nv_isflag(nvflags, NV_IARRAY) ||
+         nv_isflag(nvflags, NV_COMVAR))) {
         errormsg(SH_DICT, ERROR_exit(1), e_nounattr);
         __builtin_unreachable();
     }
-    return setall(argv, flag, troot, &tdata);
+
+    // The setall() function dereferences argv[0]; i.e., it requires at least one value. But the
+    // `if (*argv ...)` test above implies that may not be true when we reach this statement.
+    // Tell lint tools we know that can't happen. Coverity Scan CID#340038.
+    assert(*argv);
+    return setall(argv, nvflags, troot, &tdata);
 }
 
 static_fn void print_value(Sfio_t *iop, Namval_t *np, struct tdata *tp) {
@@ -554,12 +407,14 @@ static_fn void print_value(Sfio_t *iop, Namval_t *np, struct tdata *tp) {
     }
 }
 
-static_fn int setall(char **argv, int flag, Dt_t *troot, struct tdata *tp) {
+int setall(char **argv, nvflag_t flag, Dt_t *troot, struct tdata *tp) {
     char *name;
     char *last = NULL;
-    int nvflags =
+    nvflag_t nvflags =
         (flag & (NV_ARRAY | NV_NOARRAY | NV_VARNAME | NV_IDENT | NV_ASSIGN | NV_STATIC | NV_MOVE));
-    int r = 0, ref = 0, comvar = (flag & NV_COMVAR), iarray = (flag & NV_IARRAY);
+    int r = 0, ref = 0;
+    bool comvar = nv_isflag(flag, NV_COMVAR);
+    bool iarray = nv_isflag(flag, NV_IARRAY);
     size_t len;
     Shell_t *shp = tp->sh;
 
@@ -584,11 +439,11 @@ static_fn int setall(char **argv, int flag, Dt_t *troot, struct tdata *tp) {
             Namval_t *np;
             Namarr_t *ap;
             Namval_t *mp;
-            unsigned curflag;
+            nvflag_t curflag;
             if (troot == shp->fun_tree) {
                 // Functions can be exported or traced but not set.
                 flag &= ~NV_ASSIGN;
-                if (flag & NV_LTOU) {
+                if (nv_isflag(flag, NV_LTOU)) {
                     // Function names cannot be special builtin.
                     if ((np = nv_search(name, shp->bltin_tree, 0)) && nv_isattr(np, BLT_SPC)) {
                         errormsg(SH_DICT, ERROR_exit(1), e_badfun, name);
@@ -597,7 +452,7 @@ static_fn int setall(char **argv, int flag, Dt_t *troot, struct tdata *tp) {
                     if (shp->namespace) {
                         np = sh_fsearch(shp, name, NV_ADD | NV_NOSCOPE);
                     } else {
-                        np = nv_open(name, sh_subfuntree(shp, 1),
+                        np = nv_open(name, sh_subfuntree(shp, true),
                                      NV_NOARRAY | NV_IDENT | NV_NOSCOPE);
                     }
                 } else {
@@ -616,7 +471,7 @@ static_fn int setall(char **argv, int flag, Dt_t *troot, struct tdata *tp) {
                         }
                     }
                 }
-                if (np && ((flag & NV_LTOU) || !nv_isnull(np) || nv_isattr(np, NV_LTOU))) {
+                if (np && (nv_isflag(flag, NV_LTOU) || !nv_isnull(np) || nv_isattr(np, NV_LTOU))) {
                     if (flag == 0 && !tp->help) {
                         print_namval(sfstdout, np, tp->aflag == '+', tp);
                         continue;
@@ -651,7 +506,7 @@ static_fn int setall(char **argv, int flag, Dt_t *troot, struct tdata *tp) {
             if (shp->nodelist && (len = strlen(name)) && name[len - 1] == '@') {
                 np = *shp->nodelist++;
             } else {
-                np = nv_open(name, troot, nvflags | ((nvflags & NV_ASSIGN) ? 0 : NV_ARRAY));
+                np = nv_open(name, troot, nvflags | (nv_isflag(nvflags, NV_ASSIGN) ? 0 : NV_ARRAY));
             }
             if (!np) continue;
             if (nv_isnull(np) && !nv_isarray(np) && nv_isattr(np, NV_NOFREE)) {
@@ -669,7 +524,7 @@ static_fn int setall(char **argv, int flag, Dt_t *troot, struct tdata *tp) {
                 errormsg(SH_DICT, ERROR_exit(1),
                          "cannot change associative array %s to index array", nv_name(np));
                 __builtin_unreachable();
-            } else if ((iarray || (flag & NV_ARRAY)) && nv_isvtree(np) && !nv_type(np)) {
+            } else if ((iarray || nv_isflag(flag, NV_ARRAY)) && nv_isvtree(np) && !nv_type(np)) {
                 _nv_unset(np, NV_EXPORT);
             }
             if (tp->pflag) {
@@ -677,12 +532,7 @@ static_fn int setall(char **argv, int flag, Dt_t *troot, struct tdata *tp) {
                 print_value(sfstdout, np, tp);
                 continue;
             }
-#if 0
-            if(flag==NV_ASSIGN && !ref && tp->aflag!='-' && (shp->nodelist || !strchr(name,'=')))
-#else
-            if (flag == NV_ASSIGN && !ref && tp->aflag != '-' && !strchr(name, '='))
-#endif
-            {
+            if (flag == NV_ASSIGN && !ref && tp->aflag != '-' && !strchr(name, '=')) {
                 if (troot != shp->var_tree &&
                     (nv_isnull(np) || !print_namval(sfstdout, np, false, tp))) {
                     sfprintf(sfstderr, sh_translate(e_noalias), name);
@@ -742,7 +592,7 @@ static_fn int setall(char **argv, int flag, Dt_t *troot, struct tdata *tp) {
             if (last) *last = 0;
             if (shp->typeinit) continue;
             curflag = np->nvflag;
-            if (!(flag & NV_INTEGER) && (flag & (NV_LTOU | NV_UTOL))) {
+            if (!(flag & NV_INTEGER) && (flag & (NV_UNSIGN | NV_LONG))) {
                 Namfun_t *fp;
                 char *cp;
                 if (!tp->wctname) {
@@ -756,11 +606,11 @@ static_fn int setall(char **argv, int flag, Dt_t *troot, struct tdata *tp) {
                         if (cp && strcmp(cp, tp->wctname) == 0) {
                             nv_disc(np, fp, DISC_OP_POP);
                             if (!(fp->nofree & 1)) free(fp);
-                            nv_offattr(np, flag & (NV_LTOU | NV_UTOL));
+                            nv_offattr(np, flag & (NV_UNSIGN | NV_LONG));
                         }
                     } else if (!cp || strcmp(cp, tp->wctname)) {
                         nv_disc(np, fp, DISC_OP_LAST);
-                        nv_onattr(np, flag & (NV_LTOU | NV_UTOL));
+                        nv_onattr(np, flag & (NV_UNSIGN | NV_LONG));
                     }
                 }
             }
@@ -857,396 +707,6 @@ static_fn int setall(char **argv, int flag, Dt_t *troot, struct tdata *tp) {
         }
         sfsync(sfstdout);
     }
-    return r;
-}
-
-typedef struct Libcomp_s {
-    void *dll;
-    char *lib;
-    dev_t dev;
-    ino_t ino;
-    unsigned int attr;
-} Libcomp_t;
-
-static Libcomp_t *liblist = NULL;
-static int nlib = 0;
-
-typedef void (*Libinit_f)(int, void *);
-
-#define GROWLIB 4
-
-static int maxlib;
-
-//
-// Add library to loaded list. Call (*lib_init)() on first load if defined. Always move to head of
-// search list.
-//
-// Return: 0: already loaded 1: first load
-//
-int sh_addlib(Shell_t *shp, void *dll, char *name, Pathcomp_t *pp) {
-    int n;
-    int r;
-    Libinit_f initfn;
-    Shbltin_t *sp = &shp->bltindata;
-
-    sp->nosfio = 0;
-    for (n = r = 0; n < nlib; n++) {
-        if (r) {
-            liblist[n - 1] = liblist[n];
-        } else if (liblist[n].dll == dll) {
-            r++;
-        }
-    }
-    if (r) {
-        nlib--;
-    } else if ((initfn = (Libinit_f)dlllook(dll, "lib_init"))) {
-        (*initfn)(0, sp);
-    }
-    if (nlib >= maxlib) {
-        maxlib += GROWLIB;
-        liblist = realloc(liblist, (maxlib + 1) * sizeof(Libcomp_t));
-    }
-    liblist[nlib].dll = dll;
-    liblist[nlib].attr = (sp->nosfio ? BLT_NOSFIO : 0);
-    if (name) liblist[nlib].lib = strdup(name);
-    if (pp) {
-        liblist[nlib].dev = pp->dev;
-        liblist[nlib].ino = pp->ino;
-    }
-    nlib++;
-    return !r;
-}
-
-Shbltin_f sh_getlib(Shell_t *shp, char *sym, Pathcomp_t *pp) {
-    UNUSED(shp);
-    int n;
-
-    for (n = 0; n < nlib; n++) {
-        if (liblist[n].ino == pp->ino && liblist[n].dev == pp->dev) {
-            return (Shbltin_f)dlllook(liblist[n].dll, sym);
-        }
-    }
-    return 0;
-}
-
-//
-// Add change or list built-ins. Adding builtins requires dlopen() interface.
-//
-int b_builtin(int argc, char *argv[], Shbltin_t *context) {
-    char *arg = NULL, *name;
-    int n, r = 0, flag = 0;
-    Namval_t *np = NULL;
-    void *disable = NULL;
-    struct tdata tdata;
-    Shbltin_f addr;
-    Stk_t *stkp;
-    char *errmsg;
-    void *library = NULL;
-    unsigned long ver;
-    int list = 0;
-    char path[PATH_MAX];
-    UNUSED(argc);
-
-    memset(&tdata, 0, sizeof(tdata));
-    tdata.sh = context->shp;
-    stkp = tdata.sh->stk;
-    if (!tdata.sh->pathlist) path_absolute(tdata.sh, argv[0], NULL);
-    while ((n = optget(argv, sh_optbuiltin))) {
-        switch (n) {
-            case 's': {
-                flag = BLT_SPC;
-                break;
-            }
-            case 'n': {
-                flag = BLT_DISABLE;
-                disable = builtin_disable;
-                break;
-            }
-            case 'd': {
-                disable = builtin_delete;
-                break;
-            }
-            case 'f': {
-                arg = opt_info.arg;
-                break;
-            }
-            case 'l': {
-                list = 1;
-                break;
-            }
-            case 'p': {
-                tdata.prefix = argv[0];
-                break;
-            }
-            case ':': {
-                errormsg(SH_DICT, 2, "%s", opt_info.arg);
-                break;
-            }
-            case '?': {
-                errormsg(SH_DICT, ERROR_usage(2), "%s", opt_info.arg);
-                __builtin_unreachable();
-            }
-            default: { break; }
-        }
-    }
-    argv += opt_info.index;
-    if (error_info.errors) {
-        errormsg(SH_DICT, ERROR_usage(2), "%s", optusage(NULL));
-        __builtin_unreachable();
-    }
-
-    if (arg || *argv) {
-        if (sh_isoption(tdata.sh, SH_RESTRICTED)) {
-            errormsg(SH_DICT, ERROR_exit(1), e_restricted, argv[-opt_info.index]);
-            __builtin_unreachable();
-        }
-        if (tdata.sh->subshell && !tdata.sh->subshare) sh_subfork();
-    }
-    if (tdata.prefix && disable == builtin_disable) {
-        if (*tdata.prefix == 'e') {
-            tdata.prefix = "enable -n";
-        } else {
-            tdata.prefix = "builtin -n";
-        }
-    }
-
-    if (arg) {
-        if (!(library = dllplugin(SH_ID, arg, NULL, SH_PLUGIN_VERSION, &ver, RTLD_LAZY, path,
-                                  sizeof(path)))) {
-            errormsg(SH_DICT, ERROR_exit(0), "%s: %s", arg, dllerror(0));
-            return 1;
-        }
-        if (list) sfprintf(sfstdout, "%s %08lu %s\n", arg, ver, path);
-        sh_addlib(tdata.sh, library, arg, NULL);
-    } else {
-        if (*argv == 0 && disable != builtin_delete) {
-            if (tdata.prefix) {
-                for (n = 0; n < nlib; n++) {
-                    sfprintf(sfstdout, "%s -f %s\n", tdata.prefix, liblist[n].lib);
-                }
-            }
-            print_scan(sfstdout, flag, tdata.sh->bltin_tree, true, &tdata);
-            return 0;
-        }
-    }
-    flag = stktell(stkp);
-    r = 0;
-    while (*argv) {
-        arg = *argv;
-        if (tdata.prefix) {
-            sfprintf(sfstdout, "%s %s\n", tdata.prefix, arg);
-            argv++;
-            continue;
-        }
-        name = path_basename(arg);
-        sfwrite(stkp, "b_", 2);
-        sfputr(stkp, name, 0);
-        errmsg = 0;
-        addr = NULL;
-        if (disable || nlib) {
-            for (n = (nlib ? nlib : disable ? 1 : 0); --n >= 0;) {
-                if (!disable && !liblist[n].dll) continue;
-                if (disable || (addr = (Shbltin_f)dlllook(liblist[n].dll, stkptr(stkp, flag)))) {
-                    np = sh_addbuiltin(tdata.sh, arg, addr, disable);
-                    if (np) {
-                        if (disable || nv_isattr(np, BLT_SPC)) {
-                            errmsg = "restricted name";
-                        } else {
-                            nv_onattr(np, liblist[n].attr);
-                        }
-                    }
-                    break;
-                }
-            }
-        }
-        if (!addr) {
-            np = nv_search(arg, context->shp->bltin_tree, 0);
-            if (np) {
-                if (nv_isattr(np, BLT_SPC)) errmsg = "restricted name";
-                addr = FETCH_VT(np->nvalue, shbltinp);
-            }
-        }
-        if (!disable && !addr) {
-            np = sh_addbuiltin(tdata.sh, arg, NULL, 0);
-            if (!np) errmsg = "not found";
-        }
-        if (errmsg) {
-            errormsg(SH_DICT, ERROR_exit(0), "%s: %s", *argv, errmsg);
-            r = 1;
-        }
-        if (!disable && np) nv_offattr(np, BLT_DISABLE);
-        stkseek(stkp, flag);
-        argv++;
-    }
-    return r;
-}
-
-int b_set(int argc, char *argv[], Shbltin_t *context) {
-    Shell_t *shp = context->shp;
-    struct tdata tdata;
-    int was_monitor = sh_isoption(shp, SH_MONITOR);
-
-    memset(&tdata, 0, sizeof(tdata));
-    tdata.sh = shp;
-    tdata.prefix = NULL;
-    if (argv[1]) {
-        if (sh_argopts(argc, argv, tdata.sh) < 0) return 2;
-        if (sh_isoption(shp, SH_VERBOSE)) {
-            sh_onstate(shp, SH_VERBOSE);
-        } else {
-            sh_offstate(shp, SH_VERBOSE);
-        }
-        if (sh_isoption(shp, SH_MONITOR) && !was_monitor) {
-            sh_onstate(shp, SH_MONITOR);
-        } else if (!sh_isoption(shp, SH_MONITOR) && was_monitor) {
-            sh_offstate(shp, SH_MONITOR);
-        }
-    } else {
-        // Scan name chain and print.
-        print_scan(sfstdout, 0, tdata.sh->var_tree, false, &tdata);
-    }
-    return 0;
-}
-
-//
-// The removing of Shell variable names, aliases, and functions is performed here. Unset functions
-// with unset -f. Non-existent items being deleted give non-zero exit status.
-//
-int b_unalias(int argc, char *argv[], Shbltin_t *context) {
-    Shell_t *shp = context->shp;
-    return unall(argc, argv, shp->alias_tree, shp);
-}
-
-int b_unset(int argc, char *argv[], Shbltin_t *context) {
-    Shell_t *shp = context->shp;
-    return unall(argc, argv, shp->var_tree, shp);
-}
-
-static_fn int unall(int argc, char **argv, Dt_t *troot, Shell_t *shp) {
-    Namval_t *np;
-    const char *name;
-    volatile int r;
-    Dt_t *dp;
-    int nflag = 0, all = 0, isfun, jmpval;
-    struct checkpt buff;
-    enum { ALIAS, VARIABLE } type;
-    UNUSED(argc);
-
-    if (troot == shp->alias_tree) {
-        type = ALIAS;
-        name = sh_optunalias;
-        if (shp->subshell) troot = sh_subaliastree(shp, 0);
-    } else {
-        type = VARIABLE;
-        name = sh_optunset;
-    }
-    while ((r = optget(argv, name))) {
-        switch (r) {
-            case 'f': {
-                troot = sh_subfuntree(shp, 1);
-                break;
-            }
-            case 'a': {
-                all = 1;
-                break;
-            }
-            case 'n': {
-                nflag = NV_NOREF;
-            }
-            // FALLTHRU
-            case 'v': {
-                troot = shp->var_tree;
-                break;
-            }
-            case ':': {
-                errormsg(SH_DICT, 2, "%s", opt_info.arg);
-                break;
-            }
-            case '?': {
-                errormsg(SH_DICT, ERROR_usage(0), "%s", opt_info.arg);
-                return 2;
-            }
-            default: { break; }
-        }
-    }
-    argv += opt_info.index;
-    if (error_info.errors || (*argv == 0 && !all)) {
-        errormsg(SH_DICT, ERROR_usage(2), "%s", optusage(NULL));
-        __builtin_unreachable();
-    }
-    if (!troot) return 1;
-    r = 0;
-    if (troot == shp->var_tree) {
-        nflag |= NV_VARNAME;
-    } else {
-        nflag = NV_NOSCOPE;
-    }
-    if (all) {
-        dtclear(troot);
-        return r;
-    }
-    sh_pushcontext(shp, &buff, 1);
-    while (*argv) {
-        name = *argv++;
-        jmpval = sigsetjmp(buff.buff, 0);
-        np = NULL;
-        if (jmpval == 0) {
-            if (shp->namespace && troot != shp->var_tree) {
-                np = sh_fsearch(shp, name, nflag ? NV_NOSCOPE : 0);
-            }
-            if (!np) np = nv_open(name, troot, NV_NOADD | nflag);
-        } else {
-            r = 1;
-            continue;
-        }
-        if (np) {
-            if (is_abuiltin(np) || nv_isattr(np, NV_RDONLY)) {
-                if (nv_isattr(np, NV_RDONLY)) {
-                    errormsg(SH_DICT, ERROR_warn(0), e_readonly, nv_name(np));
-                }
-                r = 1;
-                continue;
-            }
-            isfun = is_afunction(np);
-            if (troot == shp->var_tree) {
-                if (nv_isarray(np) && name[strlen(name) - 1] == ']' && !nv_getsub(np)) {
-                    r = 1;
-                    continue;
-                }
-
-                if (shp->subshell) np = sh_assignok(np, 0);
-            }
-            if (!nv_isnull(np) || nv_size(np) || nv_isattr(np, ~(NV_MINIMAL | NV_NOFREE))) {
-                _nv_unset(np, 0);
-            }
-            if (troot == shp->var_tree && shp->st.real_fun && (dp = shp->var_tree->walk) &&
-                dp == shp->st.real_fun->sdict) {
-                nv_delete(np, dp, NV_NOFREE);
-            } else if (isfun) {
-                struct Ufunction *rp = FETCH_VT(np->nvalue, rp);
-                if (!rp || !rp->running) nv_delete(np, troot, 0);
-            } else if (type == ALIAS) {
-                // Alias has been unset by call to _nv_unset, remove it from the tree.
-                nv_delete(np, troot, 0);
-            }
-#if 0
-            // Causes unsetting local variable to expose global.
-            else if(shp->var_tree == troot && shp->var_tree != shp->var_base &&
-                    nv_search_namval(np, shp->var_tree, NV_NOSCOPE)) {
-                    nv_delete(np,shp->var_tree,0);
-            }
-#endif
-            else {
-                nv_close(np);
-            }
-
-        } else if (type == ALIAS) {
-            // Alias not found
-            sfprintf(sfstderr, sh_translate(e_noalias), name);
-            r = 1;
-        }
-    }
-    sh_popcontext(shp, &buff);
     return r;
 }
 
@@ -1381,8 +841,7 @@ static_fn void print_attribute(Namval_t *np, void *data) {
 // Print the nodes in tree <root> which have attributes <flag> set of <option> is non-zero, no
 // subscript or value is printed.
 //
-
-static_fn void print_scan(Sfio_t *file, int flag, Dt_t *root, bool omit_attrs, struct tdata *tp) {
+void print_scan(Sfio_t *file, nvflag_t flag, Dt_t *root, bool omit_attrs, struct tdata *tp) {
     char **argv;
     Namval_t *np;
     int namec;
@@ -1396,11 +855,11 @@ static_fn void print_scan(Sfio_t *file, int flag, Dt_t *root, bool omit_attrs, s
     tp->scanroot = root;
     tp->outfile = file;
     if (!tp->prefix && tp->tp) tp->prefix = nv_name(tp->tp);
-    if (flag & NV_INTEGER) tp->scanmask |= (NV_DOUBLE | NV_EXPNOTE);
+    if (nv_isflag(flag, NV_INTEGER)) tp->scanmask |= (NV_DOUBLE | NV_EXPNOTE);
     if (flag == NV_LTOU || flag == NV_UTOL) tp->scanmask |= NV_UTOL | NV_LTOU;
     if (root == tp->sh->bltin_tree) tp->scanmask |= BLT_DISABLE;
     namec = nv_scan(root, NULL, tp, tp->scanmask, flag & ~NV_IARRAY);
-    argv = tp->argnam = (char **)stkalloc(tp->sh->stk, (namec + 1) * sizeof(char *));
+    argv = tp->argnam = stkalloc(tp->sh->stk, (namec + 1) * sizeof(char *));
     namec = nv_scan(root, pushname, tp, tp->scanmask, flag & ~NV_IARRAY);
     strsort(argv, namec, strcoll);
     if (namec == 0 && tp->sh->namespace && nv_dict(tp->sh->namespace) == root) {

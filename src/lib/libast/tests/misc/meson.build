@@ -1,19 +1,36 @@
 test_dir = meson.current_source_dir()
-tests = ['opt']
-
+# TODO: Enable 'opt' tests
+tests = [ 'debug', 'glob', 'stk', 'environ' ]
 incdir = include_directories('..', '../../include/')
+#
+# Some tests fail for inexplicable reasons on some platforms. In some cases, such as Cygwin, things
+# simply don't work as expected and probably never will due to quirks of the platform. Another
+# example is sunos/solaris has /proc but doesn't support manipulating directory fd's.
+tests_to_skip = [
+    ['freebsd', 'debug'],
+]
 
 foreach test_name: tests
-    test_target = executable(
-        test_name, test_name + '.c',
-        c_args: shared_c_args,
-        include_directories: [configuration_incdir, incdir],
-        link_with: [libast, libenv],
-        install: false)
-    # TODO: Enable all these test cases.
-    #
-    # For the moment we only build the programs to verify they can be built and to enable linting
-    # them. Running the tests will require converting the *.rt and *.tst files into scripts.
-    #
-    # test('API/misc/' + test_name, sh_exe, args: [test_driver, test_target, test_dir])
+    # If the platform doesn't have an execinfo.h header there is no point in trying to run the
+    # debug.c unit test.
+    if feature_data.get('_hdr_execinfo', 0) == 0
+        continue
+    endif
+    skip_test = false
+    foreach skip : tests_to_skip
+        if system == skip[0] and test_name == skip[1]
+            warning('skipping ' + test_name + ' on ' + system)
+            skip_test = true
+            # break  # Not until meson 0.49
+        endif
+    endforeach
+    if not skip_test
+        test_target = executable(
+            test_name, test_name + '.c',
+            c_args: shared_c_args,
+            include_directories: [configuration_incdir, incdir],
+            link_with: [libast, libenv],
+            install: false)
+        test('API/misc/' + test_name, sh_exe, args: [test_driver, test_target, test_dir])
+    endif
 endforeach

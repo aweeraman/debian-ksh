@@ -22,15 +22,14 @@
 #include "config_ast.h"  // IWYU pragma: keep
 
 #include <stdio.h>
-#include <sys/types.h>
 
 #include "sfhdr.h"
 #include "sfio.h"
 
-/*	Synchronize data in buffers with the file system.
-**	If f is nil, all streams are sync-ed
+/*      Synchronize data in buffers with the file system.
+**      If f is nil, all streams are sync-ed
 **
-**	Written by Kiem-Phong Vo.
+**      Written by Kiem-Phong Vo.
 */
 
 static_fn int _sfall(void) {

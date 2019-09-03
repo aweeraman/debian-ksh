@@ -1,4 +1,15 @@
+# vim: set filetype=expect:
+#
 # Test for vi keybindings
+set pid [spawn $ksh]
+expect_prompt
+# Terminal rows and columns may default to zero so ensure sane values.
+send "stty rows 24 cols 80\r"
+expect_prompt
+
+# TODO: Figure out why some of these tests (starting with the test of `^` behavior) doesn't work on
+# Solaris. Interactively everything works fine. It's only this unit test where it fails. Presumably
+# this is due to a quirk of the `expect` utility.
 
 # vi mode requires being in control mode for ctrl-l to work
 # Send a [ctrl-L] to force the shell to redraw the prompt and command line. Doing so makes
@@ -35,9 +46,6 @@ proc clear_prompt args {
     send [ctrl C]
     expect_prompt
 }
-
-set pid [spawn $ksh]
-expect_prompt
 
 # Enter vi mode
 send "set -o vi\r"

@@ -46,355 +46,110 @@
 # This test module tests the .sh.match pattern matching facility
 #
 
+# Start with basic character class matching tests. This is primarily to verify that the underlying
+# AST regex code is working as expected before moving on to more complex tests.
+#
+# TODO: Add richer tests. Especially tests of non-ASCII characters.
+[[ 1 =~ [[:digit:]] ]] || log_error 'pattern [[:digit:]] broken'
+[[ x =~ [[:digit:]] ]] && log_error 'pattern [[:digit:]] broken'
+[[ 5 =~ [[:alpha:]] ]] && log_error 'pattern [[:alpha:]] broken'
+[[ z =~ [[:alpha:]] ]] || log_error 'pattern [[:alpha:]] broken'
+[[ 3 =~ [[:alnum:]] ]] || log_error 'pattern [[:alnum:]] broken'
+[[ y =~ [[:alnum:]] ]] || log_error 'pattern [[:alnum:]] broken'
+[[ / =~ [[:alnum:]] ]] && log_error 'pattern [[:alnum:]] broken'
+[[ 3 =~ [[:lower:]] ]] && log_error 'pattern [[:lower:]] broken'
+[[ y =~ [[:lower:]] ]] || log_error 'pattern [[:lower:]] broken'
+[[ B =~ [[:lower:]] ]] && log_error 'pattern [[:lower:]] broken'
+[[ 3 =~ [[:upper:]] ]] && log_error 'pattern [[:upper:]] broken'
+[[ y =~ [[:upper:]] ]] && log_error 'pattern [[:upper:]] broken'
+[[ B =~ [[:upper:]] ]] || log_error 'pattern [[:upper:]] broken'
+[[ 7 =~ [[:word:]] ]] || log_error 'pattern [[:word:]] broken'
+[[ x =~ [[:word:]] ]] || log_error 'pattern [[:word:]] broken'
+[[ _ =~ [[:word:]] ]] || log_error 'pattern [[:word:]] broken'
+[[ + =~ [[:word:]] ]] && log_error 'pattern [[:word:]] broken'
+[[ . =~ [[:space:]] ]] && log_error 'pattern [[:space:]] broken'
+[[ X =~ [[:space:]] ]] && log_error 'pattern [[:space:]] broken'
+[[ ' ' =~ [[:space:]] ]] || log_error 'pattern [[:space:]] broken'
+[[ $'\t' =~ [[:space:]] ]] || log_error 'pattern [[:space:]] broken'
+[[ $'\v' =~ [[:space:]] ]] || log_error 'pattern [[:space:]] broken'
+[[ $'\f' =~ [[:space:]] ]] || log_error 'pattern [[:space:]] broken'
+[[ $'\n' =~ [[:space:]] ]] || log_error 'pattern [[:space:]] broken'
+[[ . =~ [[:blank:]] ]] && log_error 'pattern [[:blank:]] broken'
+[[ X =~ [[:blank:]] ]] && log_error 'pattern [[:blank:]] broken'
+[[ ' ' =~ [[:blank:]] ]] || log_error 'pattern [[:blank:]] broken'
+[[ $'\t' =~ [[:blank:]] ]] || log_error 'pattern [[:blank:]] broken'
+if [[ $OS_NAME == openbsd ]]
+then
+    log_warning 'skipping two [[:blank:]] tests because isblank() is broken on openbsd'
+else
+    [[ $'\v' =~ [[:blank:]] ]] && log_error 'pattern [[:blank:]] broken'
+    [[ $'\f' =~ [[:blank:]] ]] && log_error 'pattern [[:blank:]] broken'
+fi
+[[ $'\n' =~ [[:blank:]] ]] && log_error 'pattern [[:blank:]] broken'
+[[ Z =~ [[:print:]] ]] || log_error 'pattern [[:print:]] broken'
+[[ ' ' =~ [[:print:]] ]] || log_error 'pattern [[:print:]] broken'
+[[ $'\cg' =~ [[:print:]] ]] && log_error 'pattern [[:print:]] broken'
+[[ Z =~ [[:cntrl:]] ]] && log_error 'pattern [[:cntrl:]] broken'
+[[ ' ' =~ [[:cntrl:]] ]] && log_error 'pattern [[:cntrl:]] broken'
+[[ $'\cg' =~ [[:cntrl:]] ]] || log_error 'pattern [[:cntrl:]] broken'
+[[ \$ =~ [[:graph:]] ]] || log_error 'pattern [[:graph:]] broken'
+[[ ' ' =~ [[:graph:]] ]] && log_error 'pattern [[:graph:]] broken'
+[[ \$ =~ [[:punct:]] ]] || log_error 'pattern [[:punct:]] broken'
+[[ / =~ [[:punct:]] ]] || log_error 'pattern [[:punct:]] broken'
+[[ ' ' =~ [[:punct:]] ]] && log_error 'pattern [[:punct:]] broken'
+[[ x =~ [[:punct:]] ]] && log_error 'pattern [[:punct:]] broken'
+[[ ' ' =~ [[:xdigit:]] ]] && log_error 'pattern [[:xdigit:]] broken'
+[[ x =~ [[:xdigit:]] ]] && log_error 'pattern [[:xdigit:]] broken'
+[[ 0 =~ [[:xdigit:]] ]] || log_error 'pattern [[:xdigit:]] broken'
+[[ 9 =~ [[:xdigit:]] ]] || log_error 'pattern [[:xdigit:]] broken'
+[[ A =~ [[:xdigit:]] ]] || log_error 'pattern [[:xdigit:]] broken'
+[[ a =~ [[:xdigit:]] ]] || log_error 'pattern [[:xdigit:]] broken'
+[[ F =~ [[:xdigit:]] ]] || log_error 'pattern [[:xdigit:]] broken'
+[[ f =~ [[:xdigit:]] ]] || log_error 'pattern [[:xdigit:]] broken'
+[[ G =~ [[:xdigit:]] ]] && log_error 'pattern [[:xdigit:]] broken'
+[[ g =~ [[:xdigit:]] ]] && log_error 'pattern [[:xdigit:]] broken'
+
+[[ 3 =~ \w ]] || log_error 'pattern \w broken'
+[[ y =~ \w ]] || log_error 'pattern \w broken'
+[[ / =~ \w ]] && log_error 'pattern \w broken'
+[[ 3 =~ \W ]] && log_error 'pattern \w broken'
+[[ y =~ \W ]] && log_error 'pattern \w broken'
+[[ / =~ \W ]] || log_error 'pattern \w broken'
+[[ . =~ \s ]] && log_error 'pattern \s broken'
+[[ X =~ \s ]] && log_error 'pattern \s broken'
+[[ ' ' =~ \s ]] || log_error 'pattern \s broken'
+[[ $'\t' =~ \s ]] || log_error 'pattern \s broken'
+[[ $'\v' =~ \s ]] || log_error 'pattern \s broken'
+[[ $'\f' =~ \s ]] || log_error 'pattern \s broken'
+[[ $'\n' =~ \s ]] || log_error 'pattern \s broken'
+[[ x =~ \d ]] && log_error 'pattern \d broken'
+[[ 9 =~ \d ]] || log_error 'pattern \d broken'
+[[ x =~ \D ]] || log_error 'pattern \D broken'
+[[ 9 =~ \D ]] && log_error 'pattern \D broken'
+[[ 7 =~ \b ]] || log_error 'pattern \b broken'
+[[ x =~ \b ]] || log_error 'pattern \b broken'
+[[ _ =~ \b ]] || log_error 'pattern \b broken'
+[[ + =~ \b ]] || log_error 'pattern \b broken'
+[[ 'x y ' =~ .\b.\b ]] || log_error 'pattern \b broken'
+[[ ' xy ' =~ .\b.\b ]] && log_error 'pattern \b broken'
+[[ 7 =~ \B ]] && log_error 'pattern \B broken'
+[[ x =~ \B ]] && log_error 'pattern \B broken'
+[[ _ =~ \B ]] && log_error 'pattern \B broken'
+[[ + =~ \B ]] || log_error 'pattern \B broken'
+
 # tests
 function test_xmlfragment1
 {
     typeset -r testscript='test1_script.sh'
 
-    cat >"${testscript}" <<-TEST1SCRIPT
-	# input text
-	xmltext="\$( < "\$1" )"
-
-	print -f "%d characters to process...\\n" "\${#xmltext}"
-
-	#
-	# parse the XML data
-	#
-	typeset dummy
-	function parse_xmltext
-	{
-		typeset xmltext="\$2"
-		nameref ar="\$1"
-
-		# fixme:
-		# - We want to enforce standard conformance - does ~(Exp) or ~(Ex-p) does that ?
-		dummy="\${xmltext//~(Ex-p)(?:
-			(<!--.*-->)+?|			# xml comments
-			(<[:_[:alnum:]-]+
-				(?: # attributes
-					[[:space:]]+
-					(?: # four different types of name=value syntax
-						(?:[:_[:alnum:]-]+=[^\\"\\'[:space:]]+?)|	#x='foo=bar huz=123'
-						(?:[:_[:alnum:]-]+=\\"[^\\"]*?\\")|		#x='foo="ba=r o" huz=123'
-						(?:[:_[:alnum:]-]+=\\'[^\\']*?\\')|		#x="foox huz=123"
-						(?:[:_[:alnum:]-]+)				#x="foox huz=123"
-					)
-				)*
-				[[:space:]]*
-				\\/?	# start tags which are end tags, too (like <foo\\/>)
-			>)+?|				# xml start tags
-			(<\\/[:_[:alnum:]-]+>)+?|	# xml end tags
-			([^<]+)				# xml text
-			)/D}"
-
-		# copy ".sh.match" to array "ar"
-		integer i j
-		for i in "\${!.sh.match[@]}" ; do
-			for j in "\${!.sh.match[i][@]}" ; do
-				[[ -v .sh.match[i][j] ]] && ar[i][j]="\${.sh.match[i][j]}"
-			done
-		done
-
-		return 0
-	}
-
-	function rebuild_xml_and_verify
-	{
-		nameref ar="\$1"
-		typeset xtext="\$2" # xml text
-
-		#
-		# rebuild the original text from "ar" (copy of ".sh.match")
-		# and compare it to the content of "xtext"
-		#
-		{
-			# rebuild the original text, based on our matches
-			nameref nodes_all=ar[0]		# contains all matches
-			nameref nodes_comments=ar[1]	# contains only XML comment matches
-			nameref nodes_start_tags=ar[2]	# contains only XML start tag matches
-			nameref nodes_end_tags=ar[3]	# contains only XML end tag matches
-			nameref nodes_text=ar[4]	# contains only XML text matches
-			integer i
-			for (( i = 0 ; i < \${#nodes_all[@]} ; i++ )) ; do
-				[[ -v nodes_comments[i]		]] && printf '%s' "\${nodes_comments[i]}"
-				[[ -v nodes_start_tags[i]	]] && printf '%s' "\${nodes_start_tags[i]}"
-				[[ -v nodes_end_tags[i]		]] && printf '%s' "\${nodes_end_tags[i]}"
-				[[ -v nodes_text[i]		]] && printf '%s' "\${nodes_text[i]}"
-			done
-			printf '\\n'
-		} > tmp_file
-
-		diff -u <( printf '%s\\n' "\${xtext}")  tmp_file
-		if cmp <( printf '%s\\n' "\${xtext}")  tmp_file ; then
-			printf "#input and output OK (%d characters).\\n" "\$(wc -m < tmp_file)"
-		else
-			printf "#difference between input and output found.\\n"
-		fi
-
-		return 0
-	}
-
-	# main
-	set -o nounset
-
-	typeset -a xar
-	parse_xmltext xar "\$xmltext"
-	rebuild_xml_and_verify xar "\$xmltext"
-TEST1SCRIPT
-
-    cat >'testfile1.xml' <<-EOF
-	<refentry>
-		<refentryinfo>
-			<title>&dhtitle;</title>
-			<productname>&dhpackage;</productname>
-			<releaseinfo role="version">&dhrelease;</releaseinfo>
-			<date>&dhdate;</date>
-			<authorgroup>
-				<author>
-					<firstname>XXXX</firstname>
-					<surname>YYYYYYYYYYYY</surname>
-					<contrib>Wrote this example manpage for the &quot;SunOS Man Page Howto&quot;, available at <ulink url="http://www.YYYYYYYYYYYY.xxx/foo_batt_12345.abcd"/> or <ulink url="http://www.1234.xxx/info/SunOS-mini/123-4567.hhhh"/>.</contrib>
-					<address>
-						<email>mailmail@YYYYYYYYYYYY.xxx</email>
-					</address>
-				</author>
-				<author>
-					<firstname>&dhfirstname;</firstname>
-					<surname>&dhsurname;</surname>
-					<contrib>Rewrote and extended the example manpage in DocBook XML for the Zebras distribution.</contrib>
-					<address>
-						<email>&dhemail;</email>
-					</address>
-				</author>
-			</authorgroup>
-			<copyright>
-				<year>1995</year>
-				<year>1996</year>
-				<year>1997</year>
-				<year>1998</year>
-				<year>1999</year>
-				<year>2000</year>
-				<year>2001</year>
-				<year>2002</year>
-				<year>2003</year>
-				<holder>XXXX YYYYYYYYYYYY</holder>
-			</copyright>
-			<copyright>
-				<year>2006</year>
-				<holder>&dhusername;</holder>
-			</copyright>
-			<legalnotice>
-				<para>The Howto containing this example, was offered under the following conditions:</para>
-				<para>Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:</para>
-				<orderedlist>
-					<listitem>
-						<para>Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.</para>
-					</listitem>
-					<listitem>
-						<para>Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.</para>
-					</listitem>
-				</orderedlist>
-				<para>THIS SOFTWARE IS PROVIDED BY THE AUTHOR &quot;AS IS&quot; AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.</para>
-			</legalnotice>
-		</refentryinfo>
-		<refmeta>
-			<refentrytitle>&dhucpackage;</refentrytitle>
-			<manvolnum>&dhsection;</manvolnum>
-		</refmeta>
-		<refnamediv>
-			<refname>&dhpackage;</refname>
-			<refpurpose>frobnicate the bar library</refpurpose>
-		</refnamediv>
-		<refsynopsisdiv>
-			<cmdsynopsis>
-				<command>&dhpackage;</command>
-				<arg choice="opt"><option>-bar</option></arg>
-				<group choice="opt">
-					<arg choice="plain"><option>-b</option></arg>
-					<arg choice="plain"><option>--busy</option></arg>
-				</group>
-				<group choice="opt">
-					<arg choice="plain"><option>-c <replaceable>config-file</replaceable></option></arg>
-					<arg choice="plain"><option>--config=<replaceable>config-file</replaceable></option></arg>
-				</group>
-				<arg choice="opt">
-					<group choice="req">
-						<arg choice="plain"><option>-e</option></arg>
-						<arg choice="plain"><option>--example</option></arg>
-					</group>
-					<replaceable class="option">this</replaceable>
-				</arg>
-				<arg choice="opt">
-					<group choice="req">
-						<arg choice="plain"><option>-e</option></arg>
-						<arg choice="plain"><option>--example</option></arg>
-					</group>
-					<group choice="req">
-						<arg choice="plain"><replaceable>this</replaceable></arg>
-						<arg choice="plain"><replaceable>that</replaceable></arg>
-					</group>
-				</arg>
-				<arg choice="plain" rep="repeat"><replaceable>file(s)</replaceable></arg>
-			</cmdsynopsis>
-			<cmdsynopsis>
-				<command>&dhpackage;</command>
-	      <!-- Normally the help and version options make the programs stop
-				     right after outputting the requested information. -->
-				<group choice="opt">
-					<arg choice="plain">
-						<group choice="req">
-							<arg choice="plain"><option>-h</option></arg>
-							<arg choice="plain"><option>--help</option></arg>
-						</group>
-					</arg>
-					<arg choice="plain">
-						<group choice="req">
-							<arg choice="plain"><option>-v</option></arg>
-							<arg choice="plain"><option>--version</option></arg>
-						</group>
-					</arg>
-				</group>
-			</cmdsynopsis>
-		</refsynopsisdiv>
-		<refsect1 id="description">
-			<title>DESCRIPTION</title>
-			<para><command>&dhpackage;</command> frobnicates the <application>bar</application> library by tweaking internal symbol tables. By default it parses all baz segments and rearranges them in reverse order by time for the <citerefentry><refentrytitle>xyzzy</refentrytitle><manvolnum>1</manvolnum></citerefentry> linker to find them. The symdef entry is then compressed using the <abbrev>WBG</abbrev> (Whiz-Bang-Gizmo) algorithm. All files are processed in the order specified.</para>
-		</refsect1>
-		<refsect1 id="options">
-			<title>OPTIONS</title>
-			<variablelist>
-				<!-- Use the variablelist.term.separator and the
-				     variablelist.term.break.after parameters to
-				     control the term elements. -->
-				<varlistentry>
-					<term><option>-b</option></term>
-					<term><option>--busy</option></term>
-					<listitem>
-						<para>Do not write <quote>busy</quote> to <filename class="devicefile">stdout</filename> while processing.</para>
-					</listitem>
-				</varlistentry>
-				<varlistentry>
-					<term><option>-c <replaceable class="parameter">config-file</replaceable></option></term>
-					<term><option>--config=<replaceable class="parameter">config-file</replaceable></option></term>
-					<listitem>
-						<para>Use the alternate system wide <replaceable>config-file</replaceable> instead of the <filename>/etc/foo.conf</filename>. This overrides any <envar>FOOCONF</envar> environment variable.</para>
-					</listitem>
-				</varlistentry>
-				<varlistentry>
-					<term><option>-a</option></term>
-					<listitem>
-						<para>In addition to the baz segments, also parse the <citerefentry><refentrytitle>blurfl</refentrytitle><manvolnum>3</manvolnum></citerefentry> headers.</para>
-					</listitem>
-				</varlistentry>
-				<varlistentry>
-					<term><option>-r</option></term>
-					<listitem>
-						<para>Recursive mode. Operates as fast as lightning at the expense of a megabyte of virtual memory.</para>
-					</listitem>
-				</varlistentry>
-			</variablelist>
-		</refsect1>
-		<refsect1 id="files">
-			<title>FILES</title>
-			<variablelist>
-				<varlistentry>
-					<term><filename>/etc/foo.conf</filename></term>
-					<listitem>
-						<para>The system-wide configuration file. See <citerefentry><refentrytitle>foo.conf</refentrytitle><manvolnum>5</manvolnum></citerefentry> for further details.</para>
-					</listitem>
-				</varlistentry>
-				<varlistentry>
-					<term><filename>\${HOME}/.foo.conf</filename></term>
-					<listitem>
-						<para>The per-user configuration file. See <citerefentry><refentrytitle>foo.conf</refentrytitle><manvolnum>5</manvolnum></citerefentry> for further details.</para>
-					</listitem>
-				</varlistentry>
-			</variablelist>
-		</refsect1>
-		<refsect1 id="environment">
-			<title>ENVIONMENT</title>
-			<variablelist>
-				<varlistentry>
-				<term><envar>FOOCONF</envar></term>
-					<listitem>
-						<para>The full pathname for an alternate system wide configuration file <citerefentry><refentrytitle>foo.conf</refentrytitle><manvolnum>5</manvolnum></citerefentry> (see also <xref linkend="files"/>). Overridden by the <option>-c</option> option.</para>
-					</listitem>
-				</varlistentry>
-			</variablelist>
-		</refsect1>
-		<refsect1 id="diagnostics">
-			<title>DIAGNOSTICS</title>
-			<para>The following diagnostics may be issued on <filename class="devicefile">stderr</filename>:</para>
-			<variablelist>
-				<varlistentry>
-					<term><quote><errortext>Bad magic number.</errortext></quote></term>
-					<listitem>
-						<para>The input file does not look like an archive file.</para>
-					</listitem>
-				</varlistentry>
-				<varlistentry>
-					<term><quote><errortext>Old style baz segments.</errortext></quote></term>
-					<listitem>
-						<para><command>&dhpackage;</command> can only handle new style baz segments. <acronym>COBOL</acronym> object libraries are not supported in this version.</para>
-					</listitem>
-				</varlistentry>
-			</variablelist>
-			<para>The following return codes can be used in scripts:</para>
-			<segmentedlist>
-				<segtitle>Errorcode</segtitle>
-				<segtitle>Errortext</segtitle>
-				<segtitle>Diagnostic</segtitle>
-				<seglistitem>
-					<seg><errorcode>0</errorcode></seg>
-					<seg><errortext>Program exited normally.</errortext></seg>
-					<seg>No error. Program ran successfully.</seg>
-				</seglistitem>
-				<seglistitem>
-					<seg><errorcode>1</errorcode></seg>
-					<seg><errortext>Bad magic number.</errortext></seg>
-					<seg>The input file does not look like an archive file.</seg>
-				</seglistitem>
-				<seglistitem>
-					<seg><errorcode>2</errorcode></seg>
-					<seg><errortext>Old style baz segments.</errortext></seg>
-					<seg><command>&dhpackage;</command> can only handle new style baz segments. <acronym>COBOL</acronym> object libraries are not supported in this version.</seg>
-				</seglistitem>
-			</segmentedlist>
-		</refsect1>
-		<refsect1 id="bugs">
-			<!-- Or use this section to tell about upstream BTS. -->
-			<title>BUGS</title>
-			<para>The command name should have been chosen more carefully to reflect its purpose.</para>
-			<para>The upstreams <acronym>BTS</acronym> can be found at <ulink url="http://bugzilla.foo.tld"/>.</para>
-		</refsect1>
-		<refsect1 id="see_also">
-			<title>SEE ALSO</title>
-			<!-- In alpabetical order. -->
-			<para><citerefentry>
-					<refentrytitle>bar</refentrytitle>
-					<manvolnum>1</manvolnum>
-				</citerefentry>, <citerefentry>
-					<refentrytitle>foo</refentrytitle>
-					<manvolnum>1</manvolnum>
-				</citerefentry>, <citerefentry>
-					<refentrytitle>foo.conf</refentrytitle>
-					<manvolnum>5</manvolnum>
-				</citerefentry>, <citerefentry>
-					<refentrytitle>xyzzy</refentrytitle>
-					<manvolnum>1</manvolnum>
-				</citerefentry></para>
-			<para>The programs are documented fully by <citetitle>The Rise and Fall of a Fooish Bar</citetitle> available via the <application>Info</application> system.</para>
-		</refsect1>
-	</refentry>
-EOF
-
-# Note: Standalone '>' is valid XML text
-printf "%s" $'<h1 style=\'nice\' h="bar">> <oook:banana color="<yellow />"><oook:apple-mash color="<green />"><div style="some green"><illegal tag /><br /> a text </div>More [TEXT].<!-- a comment (<disabled>) --></h1>' >'testfile2.xml'
+    cp $TEST_ROOT/data/sh_match_test.sh $testscript
+    cp $TEST_ROOT/data/sh_match1.xml testfile1.xml
+    cp $TEST_ROOT/data/sh_match2.xml testfile2.xml
 
     compound -r -a tests=(
         (
             file='testfile1.xml'
-            expected_output=$'9762 characters to process...\n#input and output OK (9763 characters).'
+            expected_output=$'12822 characters to process...\n#input and output OK (12823 characters).'
         )
         (
             file='testfile2.xml'
@@ -413,14 +168,10 @@ printf "%s" $'<h1 style=\'nice\' h="bar">> <oook:banana color="<yellow />"><oook
 
         out.stderr="${ { out.stdout="${ ${SHELL} -o nounset "${testscript}" "${tst.file}" ; (( out.res=$? )) ; }" ; } 2>&1 ; }"
 
-        [[ "${out.stdout}" == "${expected_output}" ]] || log_error "${testname}: Expected stdout==${ printf '%q\n' "${expected_output}" ;}, got ${ printf '%q\n' "${out.stdout}" ; }"
-        [[ "${out.stderr}" == ''           ]] || log_error "${testname}: Expected empty stderr, got ${ printf '%q\n' "${out.stderr}" ; }"
+        [[ "${out.stdout}" == "${expected_output}" ]] || log_error "${testname}" "${ printf '%q\n' "${expected_output}" ;}, got ${ printf '%q\n' "${out.stdout}" ; }"
+        [[ "${out.stderr}" == '' ]] || log_error "${testname}: Expected empty stderr, got ${ printf '%q\n' "${out.stderr}" ; }"
         (( out.res == 0 )) || log_error "${testname}: Unexpected exit code ${out.res}"
     done
-
-    rm "${testscript}"
-    rm 'testfile1.xml'
-    rm 'testfile2.xml'
 
     return 0
 }
@@ -435,7 +186,7 @@ function test_testop_v1
 
     compound -r -a tests=(
         (
-            cmd='s="aaa bbb 333 ccc 555" ; s="${s//~(E)([[:alpha:]]+)|([[:digit:]]+)/NOP}" ;                   [[ -v .sh.match[2][3]   ]] || print "OK"'
+            cmd='s="aaa bbb 333 ccc 555" ; s="${s//~(E)([[:alpha:]]+)|([[:digit:]]+)/NOP}" ;                   [[ -v .sh.match[2][3] ]] || print "OK"'
             expected_output='OK'
         )
         (
@@ -443,7 +194,7 @@ function test_testop_v1
             expected_output='OK'
         )
         (
-            cmd='s="aaa bbb 333 ccc 555" ; s="${s//~(E)([[:alpha:]]+)|([[:digit:]]+)/NOP}" ; integer i=2 j=3 ; [[ -v .sh.match[i][j]   ]] || print "OK"'
+            cmd='s="aaa bbb 333 ccc 555" ; s="${s//~(E)([[:alpha:]]+)|([[:digit:]]+)/NOP}" ; integer i=2 j=3 ; [[ -v .sh.match[i][j] ]] || print "OK"'
             expected_output='OK'
         )
     )
@@ -456,7 +207,7 @@ function test_testop_v1
         out.stderr="${ { out.stdout="${ ${SHELL} -o nounset -c "${tst.cmd}" ; (( out.res=$? )) ; }" ; } 2>&1 ; }"
 
         [[ "${out.stdout}" == "${expected_output}" ]] || log_error "${testname}: Expected stdout==${ printf '%q\n' "${expected_output}" ;}, got ${ printf '%q\n' "${out.stdout}" ; }"
-        [[ "${out.stderr}" == ''           ]] || log_error "${testname}: Expected empty stderr, got ${ printf '%q\n' "${out.stderr}" ; }"
+        [[ "${out.stderr}" == '' ]] || log_error "${testname}: Expected empty stderr, got ${ printf '%q\n' "${out.stderr}" ; }"
         (( out.res == 0 )) || log_error "${testname}: Unexpected exit code ${out.res}"
     done
 
@@ -500,7 +251,7 @@ function test_testop_v2
         out.stderr="${ { out.stdout="${ ${SHELL} -o nounset -c "${cmd}" ; (( out.res=$? )) ; }" ; } 2>&1 ; }"
 
         [[ "${out.stdout}" == "${tst.expected_output_1d}" ]] || log_error "${testname}: Expected stdout==${ printf '%q\n' "${tst.expected_output_1d}" ;}, got ${ printf '%q\n' "${out.stdout}" ; }"
-        [[ "${out.stderr}" == ''           ]] || log_error "${testname}: Expected empty stderr, got ${ printf '%q\n' "${out.stderr}" ; }"
+        [[ "${out.stderr}" == '' ]] || log_error "${testname}: Expected empty stderr, got ${ printf '%q\n' "${out.stderr}" ; }"
         (( out.res == 0 )) || log_error "${testname}: Unexpected exit code ${out.res}"
 
 
@@ -520,7 +271,7 @@ function test_testop_v2
         out.stderr="${ { out.stdout="${ ${SHELL} -o nounset -c "${cmd}" ; (( out.res=$? )) ; }" ; } 2>&1 ; }"
 
         [[ "${out.stdout}" == "${tst.expected_output_2d}" ]] || log_error "${testname}: Expected stdout==${ printf '%q\n' "${tst.expected_output_2d}" ;}, got ${ printf '%q\n' "${out.stdout}" ; }"
-        [[ "${out.stderr}" == ''           ]] || log_error "${testname}: Expected empty stderr, got ${ printf '%q\n' "${out.stderr}" ; }"
+        [[ "${out.stderr}" == '' ]] || log_error "${testname}: Expected empty stderr, got ${ printf '%q\n' "${out.stderr}" ; }"
         (( out.res == 0 )) || log_error "${testname}: Unexpected exit code ${out.res}"
 
         #
@@ -537,7 +288,7 @@ function test_testop_v2
         out.stderr="${ { out.stdout="${ ${SHELL} -o nounset -c "${cmd}" ; (( out.res=$? )) ; }" ; } 2>&1 ; }"
 
         [[ "${out.stdout}" == "${tst.expected_output_1d}" ]] || log_error "${testname}: Expected stdout==${ printf '%q\n' "${tst.expected_output_1d}" ;}, got ${ printf '%q\n' "${out.stdout}" ; }"
-        [[ "${out.stderr}" == ''           ]] || log_error "${testname}: Expected empty stderr, got ${ printf '%q\n' "${out.stderr}" ; }"
+        [[ "${out.stderr}" == '' ]] || log_error "${testname}: Expected empty stderr, got ${ printf '%q\n' "${out.stderr}" ; }"
         (( out.res == 0 )) || log_error "${testname}: Unexpected exit code ${out.res}"
 
 
@@ -557,7 +308,7 @@ function test_testop_v2
         out.stderr="${ { out.stdout="${ ${SHELL} -o nounset -c "${cmd}" ; (( out.res=$? )) ; }" ; } 2>&1 ; }"
 
         [[ "${out.stdout}" == "${tst.expected_output_2d}" ]] || log_error "${testname}: Expected stdout==${ printf '%q\n' "${tst.expected_output_2d}" ;}, got ${ printf '%q\n' "${out.stdout}" ; }"
-        [[ "${out.stderr}" == ''           ]] || log_error "${testname}: Expected empty stderr, got ${ printf '%q\n' "${out.stderr}" ; }"
+        [[ "${out.stderr}" == '' ]] || log_error "${testname}: Expected empty stderr, got ${ printf '%q\n' "${out.stderr}" ; }"
         (( out.res == 0 )) || log_error "${testname}: Unexpected exit code ${out.res}"
 
     done
@@ -596,7 +347,7 @@ function test_num_elements1
         out.stderr="${ { out.stdout="${ ${SHELL} -o nounset -c "${tst.cmd}" ; (( out.res=$? )) ; }" ; } 2>&1 ; }"
 
         [[ "${out.stdout}" == "${expected_output}" ]] || log_error "${testname}: Expected stdout==${ printf '%q\n' "${expected_output}" ; }, got ${ printf '%q\n' "${out.stdout}" ; }"
-        [[ "${out.stderr}" == ''           ]] || log_error "${testname}: Expected empty stderr, got ${ printf '%q\n' "${out.stderr}" ; }"
+        [[ "${out.stderr}" == '' ]] || log_error "${testname}: Expected empty stderr, got ${ printf '%q\n' "${out.stderr}" ; }"
         (( out.res == 0 )) || log_error "${testname}: Unexpected exit code ${out.res}"
     done
 
@@ -660,13 +411,121 @@ function test_nomatch
     [[ $got == "$expect" ]] || log_error 'unset submatches not handled correctly'
 }
 
-# run tests
+# ========
+# This is a regexp to extract pattern to pattern entries from related API unit test source. It emits
+# the patterns in a form this script can easily use; i.e., the two patterns separated by a tab.
+# See the next two test functions.
+p2p_sep=$'\t'
+p2p_re=$'/ tests\\[\\] =/,/NULL, NULL/s/^.*{"\\(.*\\)", "\\(.*\\)"},$/\\1\t\\2/p'
+# Generate a list of files from the source tree of the project. Then generate a file containing some
+# text from those files.
+find "$SRC_ROOT/src" -type f > glob2ere.files
+: > glob2ere.txt
+while read file
+do
+    sort --random-sort $file | head -5 >> glob2ere.txt
+done < glob2ere.files
+# These patterns are known not to be correctly converted to a glob. We still test them but only
+# issue a warning rather than failing the test. See https://github.com/att/ast/issues/1367.
+typeset -A ere2glob_blacklist
+ere2glob_blacklist['^x\!y$']=1
+ere2glob_blacklist['^x|y$']=1
+ere2glob_blacklist['^x\a|b$']=1
+# These patterns are known not to be correctly converted to a ere. We still test them but only
+# issue a warning rather than failing the test. See https://github.com/att/ast/issues/1367.
+typeset -A glob2ere_blacklist
+glob2ere_blacklist['x!y']=1
+glob2ere_blacklist['x|y']=1
+glob2ere_blacklist['~(E)z.?a']=1
+glob2ere_blacklist['x\a|b']=1
+
+# ========
+# This is related to unit test API/string/fmtmatch. The difference is this uses ksh to convert the
+# pattern then uses ksh to verify both patterns match the same lines.
+function test_ere2glob {
+    # Extract the patterns from the API test and verify the equivalence of the two forms.
+    IFS="$p2p_sep"
+    integer i=0
+    sed -ne "$p2p_re" "$SRC_ROOT/src/lib/libast/tests/string/fmtmatch.c" |
+        while read ere glob
+        do
+            let i=i+1
+            # log_info "pattern #$i ere=|$ere|  glob=|$glob|"
+            actual=$(print -f '%P' -- "$ere")
+            [[ "$actual" == "$glob" ]] ||
+                log_error "pattern #$i converting ere |$ere| to glob" "$glob" "$actual"
+
+            : > ere2glob.glob
+            : > ere2glob.ere
+            while read line
+            do
+                [[ "$line" = $glob ]] && print -- "$line" >> ere2glob.glob
+                [[ "$line" =~ $ere ]] && print -- "$line" >> ere2glob.ere
+            done < glob2ere.txt
+
+            if ! cmp -s ere2glob.glob ere2glob.ere
+            then
+                if [[ ${ere2glob_blacklist["$ere"]} == 1 ]]
+                then
+                    log_warning "pattern #$i ere |$ere| and glob |$glob| produce diff output"
+                else
+                    mv ere2glob.glob ere2glob.glob.$i
+                    mv ere2glob.ere ere2glob.ere.$i
+                    log_error "pattern #$i ere |$ere| and glob |$glob| produce diff output" \
+                        "see content of ere2glob.glob.$i" "see content of ere2glob.ere.$i"
+                fi
+            fi
+        done
+}
+
+# ========
+# This is related to unit test API/string/fmtre. The difference is this uses ksh to convert the
+# pattern then uses ksh to verify both patterns match the same lines.
+function test_glob2ere {
+    # Extract the patterns from the API test and verify the equivalence of the two forms.
+    IFS="$p2p_sep"
+    integer i=0
+    sed -ne "$p2p_re" "$SRC_ROOT/src/lib/libast/tests/string/fmtre.c" |
+        while read glob ere
+        do
+            let i=i+1
+            # log_info "pattern #$i ere=|$ere|  glob=|$glob|"
+            actual=$(print -f '%R' -- "$glob")
+            [[ "$actual" == "$ere" ]] ||
+                log_error "pattern #$i converting glob |$glob| to ere" "$ere" "$actual"
+
+            : > glob2ere.glob
+            : > glob2ere.ere
+            while read line
+            do
+                [[ "$line" = $glob ]] && print -- "$line" >> glob2ere.glob
+                [[ "$line" =~ $ere ]] && print -- "$line" >> glob2ere.ere
+            done < glob2ere.txt
+
+            if ! cmp -s glob2ere.glob glob2ere.ere
+            then
+                if [[ ${glob2ere_blacklist["$glob"]} == 1 ]]
+                then
+                    log_warning "pattern #$i ere |$ere| and glob |$glob| produce diff output"
+                else
+                    mv glob2ere.glob glob2ere.glob.$i
+                    mv glob2ere.ere glob2ere.ere.$i
+                    log_error "pattern #$i ere |$ere| and glob |$glob| produce diff output" \
+                        "see content of glob2ere.glob.$i" "see content of glob2ere.ere.$i"
+                fi
+            fi
+        done
+}
+
+# ========
+# Run the tests.
 test_xmlfragment1
 test_testop_v1
 test_testop_v2
 test_num_elements1
 test_nomatch
-
+test_ere2glob
+test_glob2ere
 
 set +u
 x=1234

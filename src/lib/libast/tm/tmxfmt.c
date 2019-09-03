@@ -43,9 +43,9 @@
  * format n with padding p into s
  * return end of s
  *
- * p:	<0	blank padding
- *	 0	no padding
- *	>0	0 padding
+ * p:   <0      blank padding
+ *       0      no padding
+ *      >0      0 padding
  */
 
 static_fn char *tmx_number(char *s, char *e, long n, int p, int w, int pad) {
@@ -104,7 +104,6 @@ char *tmxfmt(char *buf, size_t len, const char *format, Time_t t) {
     int flags;
     int alt;
     int pad;
-    int delimiter;
     int width;
     int prec;
     int parts;
@@ -120,6 +119,7 @@ char *tmxfmt(char *buf, size_t len, const char *format, Time_t t) {
     Tm_t ts;
     char argbuf[256];
     char fmt[32];
+    int delimiter = 0;
 
     tmlocale();
     tm = tmxtm(&ts, t, NULL);
@@ -129,10 +129,9 @@ char *tmxfmt(char *buf, size_t len, const char *format, Time_t t) {
     sp = &stack[0];
     cp = buf;
     ep = buf + len;
-    delimiter = 0;
-    for (;;) {
-        if ((c = *format++) == delimiter) {
-            delimiter = 0;
+    while (true) {
+        c = *format++;
+        if (c == delimiter) {
             if (sp <= &stack[0]) break;
             sp--;
             format = sp->format;
@@ -334,8 +333,8 @@ char *tmxfmt(char *buf, size_t len, const char *format, Time_t t) {
                 cp = tmx_number(cp, ep, (long)tm->tm_nsec, 9, width, pad);
                 continue;
 #if 0
-		case 'o':	/* (UNUSED) */
-			continue;
+                case 'o':       /* (UNUSED) */
+                        continue;
 #endif
             case 'p': /* meridian */
                 n = TM_MERIDIAN + (tm->tm_hour >= 12);
@@ -522,8 +521,8 @@ char *tmxfmt(char *buf, size_t len, const char *format, Time_t t) {
                 cp = tmx_number(cp, ep, (long)tmweek(tm, 0, -1, -1), 2, width, pad);
                 continue;
 #if 0
-		case 'v':	/* (UNUSED) */
-			continue;
+                case 'v':       /* (UNUSED) */
+                        continue;
 #endif
             case 'V': /* ISO week number */
                 cp = tmx_number(cp, ep, (long)tmweek(tm, 2, -1, -1), 2, width, pad);

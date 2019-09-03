@@ -28,6 +28,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -129,20 +130,6 @@ int sh_histinit(void *sh_context) {
         histname = stkptr(shp->stk, offset);
     }
 
-#if 0
-// TODO: Figure out if this should be enabled. Originally excluded via `#ifdef future`.
-    if (hp = wasopen) {
-        // Reuse history file if same name.
-        wasopen = 0;
-        shgd->hist_ptr = hist_ptr = hp;
-        if (strcmp(histname, hp->histname) == 0) {
-            return 1;
-        } else {
-            hist_free();
-        }
-    }
-#endif  // future
-
 retry:
     cp = path_relative(shp, histname);
     if (!histinit) histmode = S_IRUSR | S_IWUSR;
@@ -210,7 +197,9 @@ retry:
         hp->histind = first = hist_nearend(hp, hp->histfp, hsize - size);
         histinit = 1;
         hist_eof(hp);  // this sets histind to last command
-        if ((hist_start = (last = (int)hp->histind) - maxlines) <= 0) hist_start = 1;
+        last = hp->histind;
+        hist_start = last - maxlines;
+        if (hist_start <= 0) hist_start = 1;
         mark = hp->histmarker;
         while (first > hist_start) {
             size += size;
@@ -230,16 +219,17 @@ retry:
         unlink(fname);
         free(fname);
     }
+
     if (hist_clean(fd) && hist_start > 1 && hsize > HIST_MAX) {
-#ifdef DEBUG
-        sfprintf(sfstderr, "%d: hist_trim hsize=%d\n", getpid(), hsize);
-        sfsync(sfstderr);
-#endif  // DEBUG
         hp = hist_trim(hp, (int)hp->histind - maxlines);
     }
     sfdisc(hp->histfp, &hp->histdisc);
     STORE_VT((HISTCUR)->nvalue, i32p, &hp->histind);
+#if HIST_RECENT > 30
     sh_timeradd(1000L * (HIST_RECENT - 30), 1, hist_touch, hp->histname);
+#else
+    sh_timeradd(1000L * HIST_RECENT, 1, hist_touch, hp->histname);
+#endif
     hp->auditfp = NULL;
 
     char buff[SF_BUFSIZE];
@@ -304,41 +294,11 @@ static History_t *hist_trim(History_t *hp, int n) {
     char *cp;
     int incmd = 1, c = 0;
     History_t *hist_new, *hist_old = hp;
-    char *buff, *endbuff, *tmpname = NULL;
+    char *buff, *endbuff;
     off_t oldp, newp;
     struct stat statb;
 
     unlink(hist_old->histname);
-    if (access(hist_old->histname, F_OK) >= 0) {
-        // The unlink can fail on windows 95.
-        int fd;
-        char *last, *name = hist_old->histname;
-        sh_close(sffileno(hist_old->histfp));
-        last = strrchr(name, '/');
-        if (last) {
-            *last = 0;
-            tmpname = ast_temp_file(name, "hist", &fd, 0);
-            *last = '/';
-        } else {
-            tmpname = ast_temp_file(".", "hist", &fd, 0);
-        }
-        if (!tmpname) {
-            errormsg(SH_DICT, ERROR_exit(1), e_create, "hist");
-            __builtin_unreachable();
-        }
-        close(fd);
-        if (rename(name, tmpname) < 0) {
-            free(tmpname);
-            tmpname = name;
-        }
-        fd = open(tmpname, O_RDONLY | O_CLOEXEC);
-        // What happens if this fails and returns -1? Coverity Scan #310940.
-        (void)sfsetfd(hist_old->histfp, fd);
-        if (tmpname == name) {
-            free(tmpname);
-            tmpname = NULL;
-        }
-    }
     hist_ptr = NULL;
     if (fstat(sffileno(hist_old->histfp), &statb) >= 0) {
         histinit = 1;
@@ -386,10 +346,6 @@ static History_t *hist_trim(History_t *hp, int n) {
     }
     hist_cancel(hist_new);
     sfclose(hist_old->histfp);
-    if (tmpname) {
-        unlink(tmpname);
-        free(tmpname);
-    }
     free(hist_old);
     hist_ptr = hist_new;
     return hist_ptr;
@@ -485,16 +441,6 @@ again:
                 if (cp > first) {
                     count += (cp - first);
                     n = hist_ind(hp, ++hp->histind);
-#if 0
-// TODO: Figure out if this should be enabled. Originally excluded via `#ifdef future`.
-                    if (count == hp->histcmds[n]) {
-                        sfprintf(sfstderr, "count match n=%d\n", n);
-                        if (histinit) {
-                            histinit = 0;
-                            return;
-                        }
-                    } else if (n >= histinit)
-#endif
                     hp->histcmds[n] = count;
                     first = cp;
                 }
@@ -852,7 +798,7 @@ char *hist_word(char *string, int size, int word) {
     History_t *hp = hist_ptr;
 
     if (!hp) return NULL;
-    hist_copy(string, size, (int)hp->histind - 1, -1);
+    hist_copy(string, size, hp->histind - 1, -1);
     for (; (c = *cp); cp++) {
         c = isspace(c);
         if (c && flag) {
@@ -865,8 +811,12 @@ char *hist_word(char *string, int size, int word) {
         }
     }
     *cp = 0;
-    // We can't use strcpy() because the two buffers may overlap.
+
+    // These strings can overlap if the text preceding the word we want to
+    // return has a length less than or equal to the length of the word to be
+    // returned. Therefore memmove() must be used. See https://github.com/att/ast/issues/1370.
     if (s1 != string) memmove(string, s1, strlen(s1) + 1);
+
     return string;
 }
 

@@ -1,0 +1,112 @@
+# vim: set filetype=expect:
+#
+# Test for echo builtin.
+#
+# This test is somewhat unusual in that it performs each test twice. First time with BSD behavior
+# enabled. Second time with ATT behavior enabled.
+set pid [spawn $ksh]
+expect_prompt
+# Terminal rows and columns may default to zero so ensure sane values.
+send "stty rows 24 cols 80\r"
+expect_prompt
+
+# ==========
+# Start by ensuring the value of PATH will select bsd behavior.
+send "PATH=/bsd:\$PATH\r"
+expect_prompt
+
+# ==========
+log_test_entry
+send "echo -n hello world; echo EOT\r"
+expect "\r\nhello worldEOT\r\n" {
+    puts "bsd echo -n does not print new line"
+}
+expect_prompt
+
+# ==========
+log_test_entry
+send "echo 'hello world\\c\n'; echo EOT\r"
+expect "\r\nhello world\\\\c\r\n\r\nEOT" {
+    puts "bsd echo \\c does print new line"
+}
+expect_prompt
+
+# ==========
+log_test_entry
+send "echo -e 'hello\nworld'\r"
+expect "\r\nhello\r\nworld\r\n" {
+    puts "bsd echo -e interprets escape sequences"
+}
+expect_prompt
+
+# ==========
+log_test_entry
+send "echo -ne 'hello\nworld'; echo EOT\r"
+expect "\r\nhello\r\nworldEOT\r\n" {
+    puts "bsd echo -ne does not print new line and interprets escape sequences"
+}
+expect_prompt
+
+# ==========
+log_test_entry
+send "echo -en 'hello\nworld'; echo EOT\r"
+expect "\r\nhello\r\nworldEOT\r\n" {
+    puts "bsd echo -en does not print new line and interprets escape sequences"
+}
+expect_prompt
+
+# ==========
+# Now ensure the value of PATH will select bsd behavior.
+send "PATH=/argle:/usr/xpg4:\$PATH\r"
+expect_prompt
+
+# ==========
+log_test_entry
+send "echo -n hello world; echo EOT\r"
+expect "\r\n-n hello world\r\nEOT\r\n" {
+    puts "att echo -n does print new line"
+}
+expect_prompt
+
+# ==========
+log_test_entry
+send "echo 'hello world\\c\n'; echo EOT\r"
+expect "\r\nhello worldEOT\r\n" {
+    puts "att echo \\c does not print new line"
+}
+expect_prompt
+
+# ==========
+# Note that in ATT mode `echo -e` is the default behavior and the `-e` flag is not special.
+log_test_entry
+send "echo -e 'hello\nworld'\r"
+expect "\r\n-e hello\r\nworld\r\n" {
+    puts "att echo -e interprets escape sequences"
+}
+expect_prompt
+
+# ==========
+log_test_entry
+send "echo -ne 'hello\nworld'; echo EOT\r"
+expect "\r\n-ne hello\r\nworld\r\nEOT\r\n" {
+    puts "att echo -ne does print new line and interprets escape sequences"
+}
+expect_prompt
+
+# ==========
+log_test_entry
+send "echo -en 'hello\nworld'; echo EOT\r"
+expect "\r\n-en hello\r\nworld\r\nEOT\r\n" {
+    puts "att echo -en does print new line and interprets escape sequences"
+}
+expect_prompt
+
+# ==========
+# Exit shell with ctrl-d
+log_test_entry
+send [ctrl D]
+catch {expect default exp_continue} output
+log_debug "EOF output: $output"
+
+catch {wait}
+exit 0

@@ -47,7 +47,7 @@
 #include "stk.h"
 
 #if USE_SPAWN
-#include "ast_sys.h"
+#include "spawnvex.h"
 #endif
 
 #if SHOPT_BASH
@@ -252,7 +252,7 @@ int sh_argopts(int argc, char *argv[], void *context) {
         argc = -argc;
     }
 
-    while ((n = optget(argv, setflag ? sh_optset : sh_optksh))) {
+    while ((n = optget(argv, setflag ? sh_optset : sh_optksh_mini))) {
         o = 0;
         f = *opt_info.option == '-' && (opt_info.num || opt_info.arg);
         switch (n) {
@@ -630,18 +630,6 @@ void sh_applyopts(Shell_t *shp, Shopt_t newflags) {
     on_option(&newflags, SH_LITHIST);
     on_option(&newflags, SH_NOEMPTYCMDCOMPL);
 
-    if (!is_option(&newflags, SH_XPG_ECHO) && sh_isoption(shp, SH_XPG_ECHO)) {
-        astconf("UNIVERSE", 0, "ucb");
-    }
-    if (is_option(&newflags, SH_XPG_ECHO) && !sh_isoption(shp, SH_XPG_ECHO)) {
-        astconf("UNIVERSE", 0, "att");
-    }
-    if (!is_option(&newflags, SH_PHYSICAL) && sh_isoption(shp, SH_PHYSICAL)) {
-        astconf("PATH_RESOLVE", 0, "metaphysical");
-    }
-    if (is_option(&newflags, SH_PHYSICAL) && !sh_isoption(shp, SH_PHYSICAL)) {
-        astconf("PATH_RESOLVE", 0, "physical");
-    }
     if (is_option(&newflags, SH_HISTORY2) && !sh_isoption(shp, SH_HISTORY2)) {
         sh_onstate(shp, SH_HISTORY);
         sh_onoption(shp, SH_HISTORY);
@@ -894,7 +882,7 @@ char **sh_argbuild(Shell_t *shp, int *nargs, const struct comnod *comptr, int fl
     argn = *nargs;
     argn += 1;  // allow room to prepend args
 
-    comargn = (char **)stkalloc(shp->stk, (unsigned)(argn + 1) * sizeof(char *));
+    comargn = stkalloc(shp->stk, (unsigned)(argn + 1) * sizeof(char *));
     comargm = comargn += argn;
     *comargn = NULL;
     if (!argp) {  // reserve an extra null pointer
@@ -922,21 +910,22 @@ char **sh_argbuild(Shell_t *shp, int *nargs, const struct comnod *comptr, int fl
 
 struct argnod *sh_argprocsub(Shell_t *shp, struct argnod *argp) {
     // Argument of the form <(cmd) or >(cmd).
-    struct argnod *ap;
-    int nn, monitor, fd, pv[3];
+    int nn, monitor, pv[3];
     int subshell = shp->subshell;
     pid_t pid0;
 
-    ap = (struct argnod *)stkseek(shp->stk, ARGVAL);
+    struct argnod *ap = stkseek(shp->stk, ARGVAL);
     ap->argflag |= ARG_MAKE;
     ap->argflag &= ~ARG_RAW;
-    fd = argp->argflag & ARG_RAW;
+
+    int fd = argp->argflag & ARG_RAW;
+    assert(fd == 0 || fd == 1);
     if (fd == 0 && shp->subshell) sh_subtmpfile(shp);
 #if has_dev_fd
     sfwrite(shp->stk, e_devfdNN, 8);
     pv[2] = 0;
     sh_pipe(pv);
-    sfputr(shp->stk, fmtbase((long)pv[fd], 10, 0), 0);
+    sfputr(shp->stk, fmtbase(pv[fd], 10, 0), 0);
 #else   // has_dev_fd
     pv[0] = -1;
     shp->fifo = ast_temp_path("ksh.fifo");
@@ -997,8 +986,7 @@ static_fn int arg_expand(Shell_t *shp, struct argnod *argp, struct argnod **argc
 
     argp->argflag &= ~ARG_MAKE;
     if (*argp->argval == 0 && (argp->argflag & ARG_EXP)) {
-        struct argnod *ap;
-        ap = sh_argprocsub(shp, argp);
+        struct argnod *ap = sh_argprocsub(shp, argp);
         ap->argchn.ap = *argchain;
         *argchain = ap;
         count++;
@@ -1021,7 +1009,7 @@ static_fn int arg_expand(Shell_t *shp, struct argnod *argp, struct argnod **argc
         argp->argchn.ap = *argchain;
         *argchain = argp;
         argp->argflag |= ARG_MAKE;
-        count++;
+        count = 1;
     }
     return count;
 }

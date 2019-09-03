@@ -10,33 +10,17 @@
 #
 set -e
 bin_dir="$MESON_SOURCE_ROOT/bin"
-comp_dir="$MESON_SOURCE_ROOT/src/lib/libast/comp"
 PATH=$bin_dir:$PATH
 INC_DIRS=""
 INC_DIRS="$INC_DIRS -I$MESON_BUILD_ROOT"
 INC_DIRS="$INC_DIRS -I$MESON_SOURCE_ROOT/src/lib/libast/include"
-INC_DIRS="$INC_DIRS -I$MESON_SOURCE_ROOT/src/lib/libast/features"
-INC_DIRS="$INC_DIRS -I$MESON_SOURCE_ROOT/src/cmd/std"
 
-if [ -z "$CC" ];
+if [ -z "$CC" ]
 then
     CC=cc
 fi
 
 cd "$MESON_BUILD_ROOT"
-
-if cc --version | grep -q "GCC"
-then
-    gcc_major_version=$(cc -dumpversion | cut -d. -f1)
-    if [ "$gcc_major_version" -ge 9 ]
-    then
-        extra_flags="-fno-diagnostics-show-line-numbers"
-    fi
-fi
-
-# Generate the conftab.[ch] source files.
-# shellcheck disable=SC2086
-"$comp_dir/conf.sh" $CC -std=gnu99 -D_BLD_DLL $INC_DIRS $extra_flags
 
 # Generate header files whose content depends on the current platform.
 "$MESON_SOURCE_ROOT/scripts/siglist.sh" > features/siglist.h

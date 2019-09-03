@@ -38,7 +38,7 @@
 
 /*
  * 2007-03-19 move tm_info from _tm_info_ to (*_tm_infop_)
- *	      to allow future Tm_info_t growth
+ *            to allow future Tm_info_t growth
  *            by 2009 _tm_info_ can be static
  */
 
@@ -61,7 +61,6 @@ struct tm *tmlocaltime(const time_t *t) {
         }
         environ[0] = TZ;
     }
-    // cppcheck-suppress localtimeCalled
     r = localtime(t);
     if (TZ[0]) {
         if (environ != v) {
@@ -79,7 +78,6 @@ struct tm *tmlocaltime(const time_t *t) {
  * isdst will point to non-zero if DST is in effect
  * this routine also kicks in the local initialization
  */
-
 static_fn int tzwest(time_t *clock, int *isdst) {
     struct tm *tp;
     int n;
@@ -90,16 +88,12 @@ static_fn int tzwest(time_t *clock, int *isdst) {
     /*
      * convert to GMT assuming local time
      */
-
-    // cppcheck-suppress gmtimeCalled
     if (!(tp = gmtime(clock))) {
         /*
          * some systems return 0 for negative time_t
          */
-
         epoch = 0;
         clock = &epoch;
-        // cppcheck-suppress gmtimeCalled
         tp = gmtime(clock);
     }
     n = tp->tm_yday;
@@ -235,36 +229,33 @@ static_fn void tmlocal(void) {
         }
         local.daylight = s;
     } else {
-        /*
-         * tm_data.zone table lookup
-         */
-
-        t = 0;
+        //
+        // tm_data.zone table lookup.
+        //
+        t = NULL;
         for (zp = tm_data.zone; zp->standard; zp++) {
             if (zp->type) t = zp->type;
-            if (zp->west == n && zp->dst == m) {
-                local.type = t;
-                local.standard = zp->standard;
-                s = zp->daylight;
-                if (!s) {
-                    s = buf;
-                    e = s + sizeof(buf);
-                    s = tmpoff(s, e - s, zp->standard, 0, 0);
-                    if (s < e - 1) {
-                        *s++ = ' ';
-                        tmpoff(s, e - s, tm_info.format[TM_DT], m, TM_DST);
-                    }
-                    s = strdup(buf);
-                }
-                local.daylight = s;
-                break;
-            }
+            if (zp->west == n && zp->dst == m) break;
         }
-        if (!zp->standard) {
-            /*
-             * not in the table
-             */
-
+        if (zp->standard) {
+            local.type = t;
+            local.standard = zp->standard;
+            s = zp->daylight;
+            if (!s) {
+                s = buf;
+                e = s + sizeof(buf);
+                s = tmpoff(s, e - s, zp->standard, 0, 0);
+                if (s < e - 1) {
+                    *s++ = ' ';
+                    tmpoff(s, e - s, tm_info.format[TM_DT], m, TM_DST);
+                }
+                s = strdup(buf);
+            }
+            local.daylight = s;
+        } else {
+            //
+            // Not in the table.
+            //
             s = buf;
             e = s + sizeof(buf);
             s = tmpoff(s, e - s, tm_info.format[TM_UT], n, 0);

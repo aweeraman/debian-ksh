@@ -22,16 +22,12 @@
 //
 #include "config_ast.h"  // IWYU pragma: keep
 
-#include <ctype.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <wchar.h>
-
-#if _lib_iswprint
 #include <wctype.h>
-#endif
 
 #include "ast.h"
 #include "ast_assert.h"
@@ -41,12 +37,6 @@
 #include "sfio.h"
 #include "shtable.h"
 #include "stk.h"
-
-#if !_lib_iswprint
-// On some platforms iswprint() may be macro so make sure we don't get a redefinition warning.
-#undef iswprint
-#define iswprint(c) (((c) & ~0377) || isprint(c))
-#endif
 
 #define sep(c) ((c) == '-' || (c) == '_')
 
@@ -412,8 +402,6 @@ char *sh_fmtstr(const char *string, int quote) {
 }
 
 char *sh_fmtq(const char *string) { return sh_fmtstr(string, '\''); }
-
-char *sh_fmtj(const char *string) { return sh_fmtstr(string, '"'); }
 
 //
 // Print <str> quoting chars so that it can be read by the shell. Puts null terminated result on

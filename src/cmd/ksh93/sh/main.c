@@ -116,7 +116,7 @@ int sh_main(int ac, char *av[], Shinit_f userinit) {
     time(&mailtime);
     rshflag = sh_isoption(shp, SH_RESTRICTED);
     if (rshflag) sh_offoption(shp, SH_RESTRICTED);
-    if (sigsetjmp(*((sigjmp_buf *)shp->jmpbuffer), 0)) {
+    if (sigsetjmp(shp->jmpbuffer->buff, 0)) {
         // Begin script execution here.
         sh_reinit(shp, NULL);
         shp->gd->pid = getpid();
@@ -163,7 +163,7 @@ int sh_main(int ac, char *av[], Shinit_f userinit) {
         }
         job_init(shp, sh_isoption(shp, SH_LOGIN_SHELL));
         if (sh_isoption(shp, SH_LOGIN_SHELL)) {
-            //	System profile.
+            //  System profile.
             sh_source(shp, iop, e_sysprofile);
             if (!sh_isoption(shp, SH_NOUSRPROFILE) && !sh_isoption(shp, SH_PRIVILEGED)) {
                 char **files = shp->gd->login_files;
@@ -326,7 +326,7 @@ static_fn void exfile(Shell_t *shp, Sfio_t *iop, int fno) {
     Shnode_t *t;
     int maxtry = IOMAXTRY, tdone = 0, execflags;
     int states, jmpval;
-    struct checkpt buff;
+    checkpt_t buff;
 
     sh_pushcontext(shp, &buff, SH_JMPERREXIT);
     // Open input stream.
@@ -527,7 +527,7 @@ done:
         job_close(shp);
     }
     if (jmpval == SH_JMPSCRIPT) {
-        siglongjmp(*shp->jmplist, jmpval);
+        siglongjmp(shp->jmplist->buff, jmpval);
     } else if (jmpval == SH_JMPEXIT || jmpval == SH_JMPERREXIT) {
         sh_done(shp, 0);
     }
@@ -604,7 +604,7 @@ static_fn void chkmail(Shell_t *shp, char *files) {
 #define EXECARGS 1
 #endif
 
-#if _lib_pstat && _sys_pstat
+#if _lib_pstat && _hdr_sys_pstat
 #include <sys/pstat.h>
 #define PSTAT 1
 #endif

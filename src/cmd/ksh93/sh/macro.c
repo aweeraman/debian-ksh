@@ -36,6 +36,7 @@
 #include <pwd.h>
 #include <setjmp.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -62,7 +63,7 @@
 #include "variables.h"
 
 #if USE_SPAWN
-#include "ast_sys.h"
+#include "spawnvex.h"
 #endif
 
 #if __CYGWIN__
@@ -92,7 +93,7 @@ struct _mac_ {
     char macsub;              // set to 1 when running mac_substitute
     char maccase;             // set to 1 when expanding case pattern
     int dotdot;               // set for .. in subscript
-    void *nvwalk;             // for name space walking
+    struct nvdir *nvwalk;     // for name space walking
 };
 
 #undef ESCAPE
@@ -101,7 +102,6 @@ struct _mac_ {
 #define isqescchar(s) ((s) >= S_QUOTE)
 #define isbracechar(c) \
     ((c) == RBRACE || sh_lexstates[ST_BRACE][c] == S_MOD1 || sh_lexstates[ST_BRACE][c] == S_MOD2)
-#define ltos(x) fmtbase((long)(x), 0, 0)
 
 // Type of macro expansions.
 #define M_BRACE 1      // ${var}
@@ -141,7 +141,7 @@ char *sh_mactry(Shell_t *shp, char *string) {
     if (string) {
         int jmp_val;
         int savexit = shp->savexit;
-        struct checkpt buff;
+        checkpt_t buff;
         sh_pushcontext(shp, &buff, SH_JMPSUB);
         jmp_val = sigsetjmp(buff.buff, 0);
         if (jmp_val == 0) string = sh_mactrim(shp, string, 0);
@@ -775,9 +775,6 @@ static_fn void copyto(Mac_t *mp, int endch, int newquote) {
                     !mp->lit) {
                     tilde = stktell(stkp) + (c + 1);
                 } else if (n == S_SLASH && mp->pattern == 2) {
-#if 0
-                    goto pattern;
-#else
                     if (mp->quote || mp->lit) goto pattern;
                     sfwrite(stkp, first, c + 1);
                     first = fcseek(c + 1);
@@ -787,7 +784,6 @@ static_fn void copyto(Mac_t *mp, int endch, int newquote) {
                     cp = fcseek(-1);
                     sfwrite(stkp, first, cp - first);
                     first = cp;
-#endif
                 }
                 break;
             }
@@ -1045,7 +1041,8 @@ static_fn bool varsub(Mac_t *mp) {
     int dolmax = 0, vsize = -1, offset = -1, nulflg, replen = 0, bysub = 0;
     char idbuff[3], *id = idbuff, *pattern = NULL, *repstr = NULL, *arrmax = NULL;
     char *idx = NULL;
-    int var = 1, addsub = 0, oldpat = mp->pattern, idnum = 0, flag = 0, d;
+    int d, var = 1, addsub = 0, oldpat = mp->pattern, idnum = 0;
+    nvflag_t nvflags = 0;
     Stk_t *stkp = mp->shp->stk;
     Shell_t *shp = sh_getinterp();
 
@@ -1150,7 +1147,7 @@ retry1:
                 d = fcget();
                 fcseek(-1);
                 if (!(d && strchr(":+-?=", d))) {
-                    errormsg(SH_DICT, ERROR_exit(1), e_notset, ltos(c));
+                    errormsg(SH_DICT, ERROR_exit(1), e_notset, fmtbase(c, 0, 0));
                     __builtin_unreachable();
                 }
             }
@@ -1180,7 +1177,7 @@ retry1:
                             sfputc(stkp, mode);
                             sfputc(stkp, RBRACT);
                         } else {
-                            flag = NV_ARRAY;
+                            nvflags = NV_ARRAY;
                         }
                         break;
                     } else {
@@ -1229,17 +1226,17 @@ retry1:
                 }
                 goto nosub;
             }
-            flag |= NV_VARNAME | NV_NOADD;
+            nvflags |= NV_VARNAME | NV_NOADD;
             if (c == '=' || c == '?' || (c == ':' && ((d = fcpeek(0)) == '=' || d == '?'))) {
-                if (c == '=' || (c == ':' && d == '=')) flag |= NV_ASSIGN;
-                flag &= ~NV_NOADD;
+                if (c == '=' || (c == ':' && d == '=')) nvflags |= NV_ASSIGN;
+                nvflags &= ~NV_NOADD;
             }
             if (mp->shp->cur_line && *id == 'R' && strcmp(id, "REPLY") == 0) {
                 mp->shp->argaddr = NULL;
                 np = REPLYNOD;
             } else {
-                if (mp->shp->argaddr) flag &= ~NV_NOADD;
-                np = nv_open(id, mp->shp->var_tree, flag | NV_NOFAIL);
+                if (mp->shp->argaddr) nvflags &= ~NV_NOADD;
+                np = nv_open(id, mp->shp->var_tree, nvflags | NV_NOFAIL);
                 if (!np) {
                     sfprintf(mp->shp->strbuf, "%s%c", id, 0);
                     id = sfstruse(mp->shp->strbuf);
@@ -1270,24 +1267,19 @@ retry1:
                         stkseek(stkp, offset);
                         break;
                     } else {
-                        np = nv_open(v, mp->shp->var_tree, flag | NV_NOFAIL);
-#if 0
-					type = M_BRACE;
-				if(c!='}')
-					mac_error(np);
-#endif
+                        np = nv_open(v, mp->shp->var_tree, nvflags | NV_NOFAIL);
                     }
                 }
             }
             if (isastchar(mode)) var = 0;
-            if ((!np || nv_isnull(np)) && type == M_BRACE && c == RBRACE && !(flag & NV_ARRAY) &&
-                strchr(id, '.')) {
+            if ((!np || nv_isnull(np)) && type == M_BRACE && c == RBRACE &&
+                !nv_isflag(nvflags, NV_ARRAY) && strchr(id, '.')) {
                 if (sh_macfun(mp->shp, id, offset)) {
                     fcmbget(&LEN);
                     return true;
                 }
             }
-            if (np && (flag & NV_NOADD) && nv_isnull(np)) {
+            if (np && nv_isflag(nvflags, NV_NOADD) && nv_isnull(np)) {
                 if (nv_isattr(np, NV_NOFREE)) {
                     nv_offattr(np, NV_NOFREE);
                 } else if (np != REPLYNOD || !mp->shp->cur_line) {
@@ -1323,8 +1315,8 @@ retry1:
                     } else {
                         if ((int)sh_arith(mp->shp, v)) np = NULL;
                     }
-                } else if (ap && (isastchar(mode) || type == M_TREE) && !(ap->flags & ARRAY_SCAN) &&
-                           type != M_SIZE) {
+                } else if (ap && (isastchar(mode) || type == M_TREE) &&
+                           !nv_isflag(ap->flags, ARRAY_SCAN) && type != M_SIZE) {
                     nv_putsub(np, NULL, 0, ARRAY_SCAN);
                 }
                 if (!isbracechar(c)) {
@@ -1360,7 +1352,7 @@ retry1:
                 if (type == M_VNAME || (type == M_SUBNAME && ap)) {
                     type = M_BRACE;
                     v = nv_name(np);
-                    if (ap && !mp->dotdot && !(ap->flags & ARRAY_UNDEF)) addsub = 1;
+                    if (ap && !mp->dotdot && !nv_isflag(ap->flags, ARRAY_UNDEF)) addsub = 1;
                 } else if (type == M_TYPE) {
                     Namval_t *nq = nv_type(np);
                     type = M_BRACE;
@@ -1442,7 +1434,7 @@ retry1:
             stkseek(stkp, offset);
             if (type == M_NAMECOUNT) {
                 c = namecount(mp, id);
-                v = ltos(c);
+                v = fmtbase(c, 0, 0);
             } else {
                 dolmax = (int)strlen(id);
                 dolg = -1;
@@ -1484,7 +1476,7 @@ retry1:
                 c = (v != 0);
             }
             dolg = dolmax = 0;
-            v = ltos(c);
+            v = fmtbase(c, 0, 0);
         }
         c = RBRACE;
     }
@@ -1663,6 +1655,9 @@ skip:
                 type = 0;
             }
         }
+        // The structure of this code causes Coverity Scan to warn that `argp` may be NULL.
+        // Coverity CID#253577. I'm pretty sure this can't happen so make that explicit.
+        assert(argp);
         pattern = strdup(argp);
         if ((type == '/' || c == '/') && (repstr = mac_getstring(pattern))) {
             replen = (int)strlen(repstr);
@@ -1680,7 +1675,7 @@ retry2:
         while (1) {
             if (!v) v = "";
             if (c == '/' || c == '#' || c == '%') {
-                flag = (type || c == '/') ? (STR_GROUP | STR_MAXIMAL) : STR_GROUP;
+                uint32_t flag = (type || c == '/') ? (STR_GROUP | STR_MAXIMAL) : STR_GROUP;
                 if (c != '/') flag |= STR_LEFT;
                 index = nmatch = 0;
                 tsize = (int)strlen(v);
@@ -1734,9 +1729,6 @@ retry2:
                 }
             }
             if (vsize) {
-#if 0
-                if (c == ',' || c == '^') offset = stktell(stkp);
-#endif
                 mac_copy(mp, v, vsize > 0 ? vsize : strlen(v));
 #if 0
                 // This code supports case modification in parameter substitution.
@@ -1830,7 +1822,7 @@ retry2:
             if (np) {
                 id = nv_name(np);
             } else if (idnum) {
-                id = ltos(idnum);
+                id = fmtbase(idnum, 0, 0);
             }
             if (*argp) {
                 sfputc(stkp, 0);
@@ -1913,9 +1905,6 @@ static_fn void comsubst(Mac_t *mp, Shnode_t *t, volatile int type) {
     mp->shp->argaddr = NULL;
     savemac = *mp;
     mp->shp->st.staklist = NULL;
-#if SHOPT_COSHELL
-    if (mp->shp->inpool) return;
-#endif  // SHOPT_COSHELL
     if (type) {
         sp = NULL;
         fcseek(-1);
@@ -1979,7 +1968,7 @@ static_fn void comsubst(Mac_t *mp, Shnode_t *t, volatile int type) {
             // Special case $(<file) and $(<#file).
             int fd;
             int r = 0;
-            struct checkpt buff;
+            checkpt_t buff;
             struct ionod *ip = NULL;
 
             if (sp) sfclose(sp);
@@ -2532,29 +2521,25 @@ static_fn char *special(Shell_t *shp, int c) {
         case '#': {
             if (shp->cur_line) {
                 getdolarg(shp, MAX_ARGN, NULL);
-                return ltos(shp->offsets[0]);
+                return fmtbase(shp->offsets[0], 0, 0);
             }
-            return ltos(shp->st.dolc);
+            return fmtbase(shp->st.dolc, 0, 0);
         }
         case '!': {
             if (shp->bckpid) {
-#if SHOPT_COSHELL
-                return sh_pid2str(shp, shp->bckpid);
-#else
-                return ltos(shp->bckpid);
-#endif /* SHOPT_COSHELL */
+                return fmtbase(shp->bckpid, 0, 0);
             }
             break;
         }
         case '$': {
-            if (nv_isnull(SH_DOLLARNOD)) return ltos(shp->gd->pid);
+            if (nv_isnull(SH_DOLLARNOD)) return fmtbase(shp->gd->pid, 0, 0);
             return nv_getval(SH_DOLLARNOD);
         }
         case '-': {
             return sh_argdolminus(shp);
         }
         case '?': {
-            return ltos(shp->savexit);
+            return fmtbase(shp->savexit, 0, 0);
         }
         case 0: {
             if (sh_isstate(shp, SH_PROFILE) || shp->fn_depth == 0 || !shp->st.cmdname) {

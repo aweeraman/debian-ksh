@@ -84,7 +84,7 @@ static int loop_level;
 static struct argnod *label_list;
 static struct argnod *label_last;
 
-#define getnode(type) ((Shnode_t *)stkalloc(stkstd, sizeof(struct type)))
+#define getnode(type) stkalloc(stkstd, sizeof(struct type))
 
 //
 // Write out entities for each item in the list type=='V' for variable assignment lists. Otherwise
@@ -446,10 +446,10 @@ void sh_funstaks(struct slnod *slp, int flag) {
 
 //
 // cmd
-//	empty
-//	list
-//	list & [ cmd ]
-//	list [ ; cmd ]
+//      empty
+//      list
+//      list & [ cmd ]
+//      list [ ; cmd ]
 //
 static_fn Shnode_t *sh_cmd(Lex_t *lexp, int sym, int flag) {
     Shnode_t *left, *right;
@@ -500,9 +500,9 @@ static_fn Shnode_t *sh_cmd(Lex_t *lexp, int sym, int flag) {
 
 //
 // list
-//	term
-//	list && term
-//	list || term
+//      term
+//      list && term
+//      list || term
 //      unfortunately, these are equal precedence
 //
 static_fn Shnode_t *list(Lex_t *lexp, int flag) {
@@ -517,8 +517,8 @@ static_fn Shnode_t *list(Lex_t *lexp, int flag) {
 
 //
 // term
-//	item
-//	item | term
+//      item
+//      item | term
 //
 static_fn Shnode_t *term(Lex_t *lexp, int flag) {
     Shnode_t *t;
@@ -535,20 +535,10 @@ static_fn Shnode_t *term(Lex_t *lexp, int flag) {
         t->par.partyp = TTIME;
         if (lexp->token == NOTSYM) t->par.partyp |= COMSCAN;
         t->par.partre = term(lexp, 0);
-    }
-#if SHOPT_COSHELL
-    else if ((t = item(lexp, SH_NL | SH_EMPTY | (flag & SH_SEMI))) &&
-             (lexp->token == '|' || lexp->token == PIPESYM2))
-#else   // SHOPT_COSHELL
-    else if ((t = item(lexp, SH_NL | SH_EMPTY | (flag & SH_SEMI))) && lexp->token == '|')
-#endif  // SHOPT_COSHELL
-    {
+    } else if ((t = item(lexp, SH_NL | SH_EMPTY | (flag & SH_SEMI))) && lexp->token == '|') {
         Shnode_t *tt;
         int showme = t->tre.tretyp & FSHOWME;
         t = makeparent(lexp, TFORK | FPOU, t);
-#if SHOPT_COSHELL
-        if (lexp->token == PIPESYM2) t->tre.tretyp |= FALTPIPE;
-#endif  // SHOPT_COSHELL
         tt = term(lexp, SH_NL);
         if (tt) {
             switch (tt->tre.tretyp & COMMSK) {
@@ -576,10 +566,10 @@ static_fn Shnode_t *term(Lex_t *lexp, int flag) {
 //
 static_fn struct regnod *syncase(Lex_t *lexp, int esym) {
     int tok = skipnl(lexp, 0);
-    struct regnod *r;
 
     if (tok == esym) return NULL;
-    r = (struct regnod *)stkalloc(stkstd, sizeof(struct regnod));
+
+    struct regnod *r = stkalloc(stkstd, sizeof(struct regnod));
     r->regptr = NULL;
     r->regflag = 0;
     if (tok == LPAREN) skipnl(lexp, 0);
@@ -629,7 +619,7 @@ static_fn Shnode_t *arithfor(Lex_t *lexp, Shnode_t *tf) {
     // Split ((...)) into three expressions.
     for (n = 0;; n++) {
         int c;
-        argp = (struct argnod *)stkseek(stkp, ARGVAL);
+        argp = stkseek(stkp, ARGVAL);
         argp->argnxt.ap = NULL;
         argp->argchn.cp = NULL;
         argp->argflag = argflag;
@@ -693,7 +683,7 @@ static_fn Shnode_t *funct(Lex_t *lexp) {
     unsigned long current = lexp->current;
     int nargs = 0, size = 0, jmpval, saveloop = loop_level;
     struct argnod *savelabel = label_last;
-    struct checkpt buff;
+    checkpt_t buff;
     int save_optget = opt_get;
     void *in_mktype = shp->mktype;
 
@@ -794,7 +784,7 @@ static_fn Shnode_t *funct(Lex_t *lexp) {
         // Create a new stak frame to compile the command.
         savstak = stkopen(STK_SMALL);
         savstak = stkinstall(savstak, 0);
-        slp = (struct slnod *)stkalloc(stkstd, sizeof(struct slnod) + sizeof(struct functnod));
+        slp = stkalloc(stkstd, sizeof(struct slnod) + sizeof(struct functnod));
         slp->slchild = NULL;
         slp->slnext = shp->st.staklist;
         shp->st.staklist = NULL;
@@ -809,7 +799,7 @@ static_fn Shnode_t *funct(Lex_t *lexp) {
         loop_level = 0;
         label_last = label_list;
         if (size) {
-            struct dolnod *dp = (struct dolnod *)stkalloc(stkstd, size);
+            struct dolnod *dp = stkalloc(stkstd, size);
             char *cp, *sp, **argv;
             char **old = ((struct dolnod *)t->funct.functargs->comarg)->dolval + 1;
             argv = dp->dolval + 1;
@@ -825,7 +815,7 @@ static_fn Shnode_t *funct(Lex_t *lexp) {
             // Copy current word token to current stak frame.
             struct argnod *ap;
             flag = ARGVAL + strlen(lexp->arg->argval);
-            ap = (struct argnod *)stkalloc(stkstd, flag);
+            ap = stkalloc(stkstd, flag);
             memcpy(ap, lexp->arg, flag);
             lexp->arg = ap;
         }
@@ -852,7 +842,7 @@ static_fn Shnode_t *funct(Lex_t *lexp) {
             shp->st.staklist = slp->slnext;
             stkclose(slp->slptr);
         }
-        siglongjmp(*shp->jmplist, jmpval);
+        siglongjmp(shp->jmplist->buff, jmpval);
     }
     shp->st.staklist = (struct slnod *)slp;
     last = fctell();
@@ -903,7 +893,7 @@ static_fn bool check_array(Lex_t *lexp) {
 //
 // Compound assignment.
 //
-static_fn struct argnod *parse_assign(Lex_t *lexp, struct argnod *ap, int type) {
+static_fn struct argnod *parse_assign(Lex_t *lexp, struct argnod *ap, nvflag_t type) {
     int n;
     Shnode_t *t, **tp;
     struct comnod *ac;
@@ -948,7 +938,7 @@ static_fn struct argnod *parse_assign(Lex_t *lexp, struct argnod *ap, int type) 
         settail = &ac->comset;
         ac->comline = sh_getlineno(lexp);
         while (n == LPAREN) {
-            ar = (struct argnod *)stkseek(stkp, ARGVAL);
+            ar = stkseek(stkp, ARGVAL);
             ar->argflag = ARG_ASSIGN;
             sfprintf(stkp, "[%d]=", index++);
             aq = ac->comarg;
@@ -965,7 +955,7 @@ static_fn struct argnod *parse_assign(Lex_t *lexp, struct argnod *ap, int type) 
             settail = &(ar->argnxt.ap);
             if (aq) continue;
             while ((n = skipnl(lexp, 0)) == 0) {
-                ar = (struct argnod *)stkseek(stkp, ARGVAL);
+                ar = stkseek(stkp, ARGVAL);
                 ar->argflag = ARG_ASSIGN;
                 sfprintf(stkp, "[%d]=", index++);
                 sfputr(stkstd, lexp->arg->argval, 0);
@@ -1248,23 +1238,6 @@ static_fn Shnode_t *item(Lex_t *lexp, int flag) {
             t->par.partyp = TPAR;
             break;
         }
-#if SHOPT_COSHELL
-        case '&': {
-            tok = sh_lex(lexp);
-            if (tok) {
-                if (tok != NL) sh_syntax(lexp);
-                t = getnode(comnod);
-                memset(t, 0, sizeof(struct comnod));
-                t->com.comline = sh_getlineno(lexp);
-            } else {
-                t = simple(lexp, SH_NOIO, NULL);
-            }
-            t->com.comtyp |= FAMP;
-            if (lexp->token == '&' || lexp->token == '|') sh_syntax(lexp);
-            return t;
-            break;
-        }
-#endif  // SHOPT_COSHELL
         default: {
             if (io == 0) return NULL;
         }
@@ -1305,7 +1278,7 @@ static_fn struct argnod *process_sub(Lex_t *lexp, int tok) {
     int mode = (tok == OPROCSYM);
 
     t = sh_cmd(lexp, RPAREN, SH_NL);
-    argp = (struct argnod *)stkalloc(lexp->sh->stk, sizeof(struct argnod));
+    argp = stkalloc(lexp->sh->stk, sizeof(struct argnod));
     *argp->argval = 0;
     argp->argchn.ap =
         (struct argnod *)makeparent(lexp, mode ? TFORK | FPIN | FAMP | FPCL : TFORK | FPOU, t);
@@ -1326,7 +1299,7 @@ static_fn Shnode_t *simple(Lex_t *lexp, int flag, struct ionod *io) {
     bool typed = false;
     int cmdarg = 0;
     int argno = 0;
-    int type = 0;
+    nvflag_t type = 0;
     int was_assign = 0;
     int assignment = 0;
     int key_on = (!(flag & SH_NOIO) && sh_isoption(lexp->sh, SH_KEYWORD));
@@ -1521,12 +1494,8 @@ static_fn Shnode_t *simple(Lex_t *lexp, int flag, struct ionod *io) {
             writedefs(lexp, argp, line, 0, NULL);
         } else if (argp && strcmp(argp->argval, "read") == 0) {
             writedefs(lexp, argp, line, 0, NULL);
-        }
-#if 0
-		else if(argp && strcmp(argp->argval,"unset")==0)
-			writedefs(lexp,argp,line,'u', NULL);
-#endif
-        else if (argp && *argp->argval == '.' && argp->argval[1] == 0 && (argp = argp->argnxt.ap)) {
+        } else if (argp && *argp->argval == '.' && argp->argval[1] == 0 &&
+                   (argp = argp->argnxt.ap)) {
             r = kiaentity(lexp, sh_argstr(argp), -1, 'p', 0, 0, lexp->script, 'd', 0, "");
             sfprintf(lexp->kiatmp, "p;%..64d;p;%..64d;%d;%d;d;\n", lexp->current, r, line, line);
         }
@@ -1650,13 +1619,13 @@ static_fn struct ionod *inout(Lex_t *lexp, struct ionod *lastio, int flag) {
         default: { return lastio; }
     }
     lexp->digits = 0;
-    iop = (struct ionod *)stkalloc(stkp, sizeof(struct ionod));
+    iop = stkalloc(stkp, sizeof(struct ionod));
     iop->iodelim = NULL;
     iop->iosize = 0;
     token = sh_lex(lexp);
     if (token) {
         if (token == RPAREN && (iof & IOLSEEK) && lexp->comsub) {
-            lexp->arg = (struct argnod *)stkalloc(stkp, sizeof(struct argnod) + 3);
+            lexp->arg = stkalloc(stkp, sizeof(struct argnod) + 3);
             strcpy(lexp->arg->argval, "CUR");
             lexp->arg->argflag = ARG_RAW;
             iof |= IOARITH;
@@ -1713,7 +1682,7 @@ static_fn struct ionod *inout(Lex_t *lexp, struct ionod *lastio, int flag) {
         sh_lex(lexp);
         if (errout) {
             // Redirect standard output to standard error.
-            ioq = (struct ionod *)stkalloc(stkp, sizeof(struct ionod));
+            ioq = stkalloc(stkp, sizeof(struct ionod));
             memset(ioq, 0, sizeof(*ioq));
             ioq->ioname = "1";
             ioq->iolst = NULL;
@@ -1763,8 +1732,8 @@ static_fn struct argnod *qscan(Lex_t *lp, struct comnod *ac, int argn) {
         if (sh_isoption(lp->sh, SH_NOEXEC)) errormsg(SH_DICT, ERROR_warn(0), message, ac->comline);
     }
     // Leave space for an extra argument at the front.
-    dp = (struct dolnod *)stkalloc(stkstd, (unsigned)sizeof(struct dolnod) +
-                                               ARG_SPARE * sizeof(char *) + argn * sizeof(char *));
+    dp = stkalloc(stkstd,
+                  sizeof(struct dolnod) + ARG_SPARE * sizeof(char *) + argn * sizeof(char *));
     cp = dp->dolval + ARG_SPARE;
     dp->dolnum = argn;
     dp->dolbot = ARG_SPARE;

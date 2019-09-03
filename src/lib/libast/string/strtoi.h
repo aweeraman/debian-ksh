@@ -26,18 +26,18 @@
  *
  * common header and implementation for
  *
- *	strtol		strtoul		strton
- *	strtoll		strtoull	strtonll
+ *      strtol          strtoul         strton
+ *      strtoll         strtoull        strtonll
  *
  * define these macros to instantiate an implementation:
  *
- *	S2I_function	the function name
- *	S2I_number	the signed number type
- *	S2I_unumber	the unsigned number type
- *	S2I_unsigned	1 for unsigned, 0 for signed
- *	S2I_qualifier	1 for optional qualifier suffix, 0 otherwise
- *	S2I_multiplier	1 for optional multiplier suffix, 0 otherwise
- *	S2I_size	the second argument is the input string size
+ *      S2I_function    the function name
+ *      S2I_number      the signed number type
+ *      S2I_unumber     the unsigned number type
+ *      S2I_unsigned    1 for unsigned, 0 for signed
+ *      S2I_qualifier   1 for optional qualifier suffix, 0 otherwise
+ *      S2I_multiplier  1 for optional multiplier suffix, 0 otherwise
+ *      S2I_size        the second argument is the input string size
  *
  * convert string to number
  * errno=ERANGE on overflow (LONG_MAX) or underflow (LONG_MIN)
@@ -54,31 +54,31 @@
  *
  * integer numbers are of the form:
  *
- *	[sign][base][number[qualifier]][multiplier]
+ *      [sign][base][number[qualifier]][multiplier]
  *
- *	base:		nnn#		base nnn
- *			0[xX]		hex
- *			0		octal
- *			[1-9]		decimal
+ *      base:           nnn#            base nnn
+ *                      0[xX]           hex
+ *                      0               octal
+ *                      [1-9]           decimal
  *
- *	number:		[0-9a-zA-Z]*
+ *      number:         [0-9a-zA-Z]*
  *
- *	qualifier:	[lL]
- *			[uU]
- *			[uU][lL]
- *			[lL][uU]
- *			[lL][lL][uU]
- *			[uU][lL][lL]
+ *      qualifier:      [lL]
+ *                      [uU]
+ *                      [uU][lL]
+ *                      [lL][uU]
+ *                      [lL][lL][uU]
+ *                      [uU][lL][lL]
  *
- *	multiplier:	.		pseudo-float if m>1
- *			[bB]		block (512)
- *			[cC]		char (1)
- *			[gG]		giga (1000*1000*1000)
- *			[gG]i		gibi (1024*1024*1024)
- *			[kK]		kilo (1000)
- *			[kK]i		kibi (1024)
- *			[mM]		mega (1000*1000)
- *			[mM]i		mibi (1024*1024)
+ *      multiplier:     .               pseudo-float if m>1
+ *                      [bB]            block (512)
+ *                      [cC]            char (1)
+ *                      [gG]            giga (1000*1000*1000)
+ *                      [gG]i           gibi (1024*1024*1024)
+ *                      [kK]            kilo (1000)
+ *                      [kK]i           kibi (1024)
+ *                      [mM]            mega (1000*1000)
+ *                      [mM]i           mibi (1024*1024)
  */
 #ifndef _STRTOI_H
 #define _STRTOI_H 1
@@ -216,7 +216,7 @@ S2I_function(const char *a, char **e, int base)
     unsigned char *p;
     unsigned char *cv;
     unsigned char *b;
-    unsigned char *k;
+    unsigned char *k = NULL;
     S2I_unumber v;
 #if S2I_multiplier
     int base;
@@ -235,11 +235,7 @@ S2I_function(const char *a, char **e, int base)
         return 0;
     }
     while (S2I_valid(s) && isspace(*s)) s++;
-    if ((negative = S2I_valid(s) && (*s == '-')) || (S2I_valid(s) && *s == '+')) {
-        k = ++s;
-    } else {
-        k = 0;
-    }
+    if ((negative = S2I_valid(s) && (*s == '-')) || (S2I_valid(s) && *s == '+')) k = ++s;
     p = s;
     if (!base) {
         if (S2I_valid(p) && (c = *p++) >= '0' && c <= '9') {

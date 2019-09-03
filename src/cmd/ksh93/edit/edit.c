@@ -20,7 +20,7 @@
 //
 // Common routines for vi and emacs one line editors in shell.
 //
-// David Korn				P.D. Sullivan
+// David Korn                           P.D. Sullivan
 // AT&T Labs
 //
 // Coded April 1983.
@@ -32,10 +32,10 @@
 #include <setjmp.h>
 #include <signal.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <termios.h>
 #include <unistd.h>
 #include <utime.h>
@@ -74,10 +74,6 @@ static int keytrap(Edit_t *, char *, int, int, int);
 #define _POSIX_DISABLE 0
 #endif
 
-#if 0
-// TODO: Figure out if this should be enabled. Originally excluded via `#ifdef future`.
-static int compare(const char *, const char *, int);
-#endif  // future
 #define ttyparm (ep->e_ttyparm)
 #define nttyparm (ep->e_nttyparm)
 static const char bellchr[] = "\a";  // bell char
@@ -122,10 +118,6 @@ int tty_set(int fd, int action, struct termios *tty) {
     Edit_t *ep = shgd->ed_context;
 
     if (fd >= 0) {
-#if 0
-// TODO: Figure out if this should be enabled. Originally excluded via `#ifdef future`.
-        if (ep->e_savefd >= 0 && compare(&ep->e_savetty, tty, sizeof(struct termios))) return 0;
-#endif  // future
         while (tcsetattr(fd, action, tty) == SYSERR) {
             if (errno != EINTR) return SYSERR;
             errno = 0;
@@ -657,8 +649,8 @@ static int putstack(Edit_t *ep, char string[], int nbyte, int type) {
 //
 // Routine to perform read from terminal for vi and emacs mode.
 // <mode> can be one of the following:
-//   -2	 vi insert mode - key binding is in effect
-//   -1	 vi control mode - key binding is in effect
+//   -2  vi insert mode - key binding is in effect
+//   -1  vi control mode - key binding is in effect
 //    0  normal command mode - key binding is in effect
 //    1  edit keys not mapped
 //    2  Next key is literal
@@ -766,8 +758,8 @@ void ed_putchar(Edit_t *ep, int c) {
 // Returns the line and column corresponding to offset <off> in the physical buffer.
 // If <cur> is non-zero and <= <off>, then correspodning <curpos> will start the search.
 //
-Edpos_t ed_curpos(Edit_t *ep, genchar *phys, int off, int cur, Edpos_t curpos) {
-    genchar *sp = phys;
+Edpos_t ed_curpos(Edit_t *ep, wchar_t *phys, int off, int cur, Edpos_t curpos) {
+    wchar_t *sp = phys;
     int c = 1, col = ep->e_plen;
     Edpos_t pos;
     char p[16];
@@ -798,7 +790,7 @@ Edpos_t ed_curpos(Edit_t *ep, genchar *phys, int off, int cur, Edpos_t curpos) {
     return pos;
 }
 
-int ed_setcursor(Edit_t *ep, genchar *physical, int old, int new, int first) {
+int ed_setcursor(Edit_t *ep, wchar_t *physical, int old, int new, int first) {
     static int oldline;
     int delta;
     int clear = 0;
@@ -887,12 +879,12 @@ int ed_setcursor(Edit_t *ep, genchar *physical, int old, int new, int first) {
 //
 // Copy virtual to physical and return the index for cursor in physical buffer.
 //
-int ed_virt_to_phys(Edit_t *ep, genchar *virt, genchar *phys, int cur, int voff, int poff) {
-    genchar *sp = virt;
-    genchar *dp = phys;
+int ed_virt_to_phys(Edit_t *ep, wchar_t *virt, wchar_t *phys, int cur, int voff, int poff) {
+    wchar_t *sp = virt;
+    wchar_t *dp = phys;
     int c;
-    genchar *curp = sp + cur;
-    genchar *dpmax = phys + MAXLINE;
+    wchar_t *curp = sp + cur;
+    wchar_t *dpmax = phys + MAXLINE;
     int d, r;
 
     sp += voff;
@@ -932,20 +924,20 @@ int ed_virt_to_phys(Edit_t *ep, genchar *virt, genchar *phys, int cur, int voff,
 }
 
 //
-// Convert external representation <src> to an array of genchars <dest>. <src> and <dest> can be the
+// Convert external representation <src> to an array of wchar_t <dest>. <src> and <dest> can be the
 // same.
 //
 // Returns number of chars in dest.
 //
-int ed_internal(const char *src, genchar *dest) {
+int ed_internal(const char *src, wchar_t *dest) {
     const unsigned char *cp = (unsigned char *)src;
     int c;
     wchar_t *dp = (wchar_t *)dest;
 
-    if (dest == (genchar *)roundof((ptrdiff_t)cp, sizeof(genchar))) {
-        genchar buffer[MAXLINE];
+    if (dest == (wchar_t *)roundof((ptrdiff_t)cp, sizeof(wchar_t))) {
+        wchar_t buffer[MAXLINE];
         c = ed_internal(src, buffer);
-        ed_gencpy((genchar *)dp, buffer);
+        ed_gencpy((wchar_t *)dp, buffer);
         return c;
     }
     while (*cp) *dp++ = mb1char((char **)&cp);
@@ -959,21 +951,16 @@ int ed_internal(const char *src, genchar *dest) {
 //
 // Returns number of chars in dest.
 //
-int ed_external(const genchar *src, char *dest) {
-    genchar wc;
+int ed_external(const wchar_t *src, char *dest) {
+    wchar_t wc;
     int c, size;
     char *dp = dest;
-    char *dpmax = dp + sizeof(genchar) * MAXLINE - 2;
+    char *dpmax = dp + sizeof(wchar_t) * MAXLINE - 2;
 
     if ((char *)src == dp) {
-        char buffer[MAXLINE * sizeof(genchar)];
+        char buffer[MAXLINE * sizeof(wchar_t)];
         c = ed_external(src, buffer);
-
-#if _lib_wcscpy
         wcscpy((wchar_t *)dest, (const wchar_t *)buffer);
-#else
-        strcpy(dest, buffer);
-#endif
         return c;
     }
     while ((wc = *src++) && dp < dpmax) {
@@ -991,9 +978,9 @@ int ed_external(const genchar *src, char *dest) {
 //
 // Copy <sp> to <dp>.
 //
-void ed_gencpy(genchar *dp, const genchar *sp) {
-    dp = (genchar *)roundof((ptrdiff_t)dp, sizeof(genchar));
-    sp = (const genchar *)roundof((ptrdiff_t)sp, sizeof(genchar));
+void ed_gencpy(wchar_t *dp, const wchar_t *sp) {
+    dp = (wchar_t *)roundof((ptrdiff_t)dp, sizeof(wchar_t));
+    sp = (const wchar_t *)roundof((ptrdiff_t)sp, sizeof(wchar_t));
     while ((*dp++ = *sp++)) {
         ;  // empty loop
     }
@@ -1002,9 +989,9 @@ void ed_gencpy(genchar *dp, const genchar *sp) {
 //
 // Copy at most <n> items from <sp> to <dp>.
 //
-void ed_genncpy(genchar *dp, const genchar *sp, int n) {
-    dp = (genchar *)roundof((ptrdiff_t)dp, sizeof(genchar));
-    sp = (const genchar *)roundof((ptrdiff_t)sp, sizeof(genchar));
+void ed_genncpy(wchar_t *dp, const wchar_t *sp, int n) {
+    dp = (wchar_t *)roundof((ptrdiff_t)dp, sizeof(wchar_t));
+    sp = (const wchar_t *)roundof((ptrdiff_t)sp, sizeof(wchar_t));
     while (n-- > 0 && (*dp++ = *sp++)) {
         ;  // empty loop
     }
@@ -1013,28 +1000,15 @@ void ed_genncpy(genchar *dp, const genchar *sp, int n) {
 //
 // Find the string length of <str>.
 //
-int ed_genlen(const genchar *str) {
-    const genchar *sp;
+int ed_genlen(const wchar_t *str) {
+    const wchar_t *sp;
 
-    sp = (const genchar *)roundof((ptrdiff_t)str, sizeof(genchar));
+    sp = (const wchar_t *)roundof((ptrdiff_t)str, sizeof(wchar_t));
     while (*sp++) {
         ;  // empty loop
     }
     return sp - str - 1;
 }
-
-#if 0
-// TODO: Figure out if this should be enabled. Originally excluded via `#ifdef future`.
-//
-// Returns 1 when <n> bytes starting at <a> and <b> are equal.
-//
-static int compare(const char *a, const char *b, int n) {
-    while (n-- > 0) {
-        if (*a++ != *b++) return 0;
-    }
-    return 1;
-}
-#endif  // future
 
 //
 // Execute keyboard trap on given buffer <inbuff> of given size <isize>.
@@ -1159,7 +1133,7 @@ int ed_histgen(Edit_t *ep, const char *pattern) {
         if (*cp == '#') continue;
         if (strmatch(cp, pattern)) {
             l = ed_histlencopy(cp, NULL);
-            mp = (Histmatch_t *)stkalloc(ep->sh->stk, sizeof(Histmatch_t) + l);
+            mp = stkalloc(ep->sh->stk, sizeof(Histmatch_t) + l);
             mp->next = mplast;
             mplast = mp;
             mp->len = l;
@@ -1172,7 +1146,7 @@ int ed_histgen(Edit_t *ep, const char *pattern) {
     }
     if (ac > 0) {
         l = ac;
-        argv = av = (char **)stkalloc(ep->sh->stk, (ac + 1) * sizeof(char *));
+        argv = av = stkalloc(ep->sh->stk, (ac + 1) * sizeof(char *));
         for (; l >= 0 && (*av = (char *)mp); mp = mp->next, av++) {
             l--;
         }

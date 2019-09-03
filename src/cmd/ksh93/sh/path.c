@@ -56,7 +56,7 @@
 #include "variables.h"
 
 #if USE_SPAWN
-#include "ast_sys.h"
+#include "spawnvex.h"
 #endif
 
 #define LIBCMD "cmd"
@@ -87,6 +87,28 @@ static_fn bool onstdpath(Shell_t *shp, const char *name) {
     return false;
 }
 
+#if __CYGWIN__
+
+// On Cygwin execve() can fail with errno == ENOEXEC when the real problem is that the file does
+// not have an appropriate execute bit. In that case the correct errno is EACCES and the caller
+// of path_pfexecve() requires that specific errno in that situation.
+//
+// Warning: This is a potential security hole since we're checking the permissions after the
+// execve() has failed. In between the two operations the permissions might have been changed.
+// But there isn't much we can do about that.
+static_fn void fixup_execve_errno(const char *path) {
+    if (errno != ENOEXEC) return;
+    if (access(path, X_OK) == 0) return;
+    errno = EACCES;
+    return;
+}
+
+#else  // __CYGWIN__
+
+static_fn void fixup_execve_errno(const char *path) { UNUSED(path); }
+
+#endif  // __CYGWIN__
+
 static_fn pid_t path_pfexecve(Shell_t *shp, const char *path, char *argv[], char *const envp[],
                               int spawn) {
     UNUSED(spawn);
@@ -109,7 +131,9 @@ static_fn pid_t path_pfexecve(Shell_t *shp, const char *path, char *argv[], char
     }
 #endif  // USE_SPAWN
 
-    return execve(path, argv, envp);
+    int rv = execve(path, argv, envp);
+    fixup_execve_errno(path);
+    return rv;
 }
 
 #if !USE_SPAWN
@@ -248,6 +272,9 @@ char *path_pwd(Shell_t *shp) {
             case 3: {
                 cp = getcwd(NULL, 0);
                 if (cp) {
+                    // FWIW: This creates a memory leak since the dynamically allocated buffer is
+                    // never freed. Hopefully this is only executed in rare circumstances where the
+                    // leak doesn't matter. This is also never true on SVr4 systems like Solaris.
                     nv_offattr(PWDNOD, NV_NOFREE);
                     _nv_unset(PWDNOD, 0);
                     STORE_VT(PWDNOD->nvalue, const_cp, cp);
@@ -255,10 +282,11 @@ char *path_pwd(Shell_t *shp) {
                 }
                 break;
             }
-            default: { break; }
+            default: { return (char *)e_dot; }
         }
         if (cp && *cp == '/' && test_inode(cp, e_dot)) break;
     }
+
     if (count > 1) {
         nv_offattr(PWDNOD, NV_NOFREE);
         nv_putval(PWDNOD, cp, NV_RDONLY);
@@ -325,19 +353,6 @@ static_fn char *path_lib(Shell_t *shp, Pathcomp_t *pp, char *path) {
     memcpy(stkptr(shp->stk, PATH_OFFSET + pcomp.len), save, sizeof(save));
     return NULL;
 }
-
-#if 0
-void path_dump(Pathcomp_t *pp)
-{
-	sfprintf(sfstderr,"dump\n");
-	while(pp)
-	{
-		sfprintf(sfstderr,"pp=%x dev=%d ino=%d len=%d flags=%o name=%.*s\n",
-			pp,pp->dev,pp->ino,pp->len,pp->flags,pp->len,pp->name);
-		pp = pp->next;
-	}
-}
-#endif
 
 //
 // Check for duplicate directories on PATH.
@@ -411,9 +426,9 @@ Pathcomp_t *path_nextcomp(Shell_t *shp, Pathcomp_t *pp, const char *name, Pathco
 
 static_fn Pathcomp_t *defpath_init(Shell_t *shp) {
     if (!std_path) {
-        std_path = astconf("PATH", NULL, NULL);
+        std_path = cs_path();
         if (std_path) {
-            // Value returned by astconf() is short lived, duplicate the string.
+            // Value returned by cs_path() is short lived, duplicate the string.
             // https://github.com/att/ast/issues/959
             std_path = strdup(std_path);
         } else {
@@ -538,7 +553,7 @@ static_fn void funload(Shell_t *shp, int fno, const char *name) {
 
     pname = path_fullname(shp, stkptr(shp->stk, PATH_OFFSET));
     if (shp->fpathdict && (rp = dtmatch(shp->fpathdict, pname))) {
-        Dt_t *funtree = sh_subfuntree(shp, 1);
+        Dt_t *funtree = sh_subfuntree(shp, true);
         while (1) {
             rpfirst = dtprev(shp->fpathdict, rp);
             if (!rpfirst || strcmp(pname, rpfirst->fname)) break;
@@ -670,7 +685,8 @@ static_fn bool pwdinfpath(void) {
 // Do a path search and find the full pathname of file name.
 //
 Pathcomp_t *path_absolute(Shell_t *shp, const char *name, Pathcomp_t *pp) {
-    int f, isfun;
+    int isfun;
+    int fd = -1;
     int noexec = 0;
     Pathcomp_t *oldpp;
     Namval_t *np;
@@ -679,7 +695,7 @@ Pathcomp_t *path_absolute(Shell_t *shp, const char *name, Pathcomp_t *pp) {
     shp->path_err = ENOENT;
     if (!pp && !(pp = path_get(shp, ""))) return 0;
     shp->path_err = 0;
-    while (1) {
+    while (true) {
         sh_sigcheck(shp);
         shp->bltin_dir = NULL;
         // In this loop, oldpp is the current pointer
@@ -787,37 +803,48 @@ Pathcomp_t *path_absolute(Shell_t *shp, const char *name, Pathcomp_t *pp) {
         }
         shp->bltin_dir = NULL;
         sh_stats(STAT_PATHS);
-        f = can_execute(shp, stkptr(shp->stk, PATH_OFFSET), isfun);
-        if (isfun && f >= 0 && (cp = strrchr(name, '.'))) {
+        fd = can_execute(shp, stkptr(shp->stk, PATH_OFFSET), isfun);
+        if (isfun && fd >= 0 && (cp = strrchr(name, '.'))) {
             *cp = 0;
-            if (nv_open(name, sh_subfuntree(shp, 1), NV_NOARRAY | NV_IDENT | NV_NOSCOPE)) f = -1;
+            if (nv_open(name, sh_subfuntree(shp, true), NV_NOARRAY | NV_IDENT | NV_NOSCOPE)) {
+                sh_close(fd);
+                fd = -1;
+            }
             *cp = '.';
         }
-        if (isfun && f >= 0) {
-            nv_onattr(nv_open(name, sh_subfuntree(shp, 1), NV_NOARRAY | NV_IDENT | NV_NOSCOPE),
+        if (isfun && fd >= 0) {
+            nv_onattr(nv_open(name, sh_subfuntree(shp, true), NV_NOARRAY | NV_IDENT | NV_NOSCOPE),
                       NV_LTOU | NV_FUNCTION);
-            funload(shp, f, name);
+            funload(shp, fd, name);
             return NULL;
-        } else if (f >= 0 && (oldpp->flags & PATH_STD_DIR)) {
+        } else if (fd >= 0 && (oldpp->flags & PATH_STD_DIR)) {
             int n = stktell(shp->stk);
             sfputr(shp->stk, "/bin/", -1);
             sfputr(shp->stk, name, 0);
             np = nv_search(stkptr(shp->stk, n), shp->bltin_tree, 0);
             stkseek(shp->stk, n);
             if (np) {
-                n = np->nvflag;
+                nvflag_t nvflags = np->nvflag;
                 np = sh_addbuiltin(shp, stkptr(shp->stk, PATH_OFFSET),
                                    FETCH_VT(np->nvalue, shbltinp), nv_context(np));
-                nv_setattr(np, n);
+                nv_setattr(np, nvflags);
             }
         }
-        if (!pp || f >= 0) break;
+        if (!pp || fd >= 0) break;
         if (errno != ENOENT) noexec = errno;
+        // It's not clear this can actually happen but Coverity Scan says it is possible.
+        // No unit test causes this condition to be true. We don't bother to set fd = -1 because
+        // it is set by the `fd = can_execute()` assignment above before being used again.
+        if (fd != -1) sh_close(fd);
     }
-    if (f < 0) {
+
+    if (fd == -1) {
         shp->path_err = (noexec ? noexec : ENOENT);
         return NULL;
     }
+
+    // If we reach this point fd must be stdin (i.e., zero) since we intend to read the file.
+    assert(fd == 0);
     sfputc(shp->stk, 0);
     return oldpp;
 }
@@ -952,7 +979,7 @@ void path_exec(Shell_t *shp, const char *arg0, char *argv[], struct argnod *loca
         } while (pp);
     }
     // Force an exit.
-    ((struct checkpt *)shp->jmplist)->mode = SH_JMPEXIT;
+    shp->jmplist->mode = SH_JMPEXIT;
     if (not_executable) {
         // This will return with status 126.
         errormsg(SH_DICT, ERROR_system(ERROR_NOEXEC), e_exec, arg0);
@@ -1115,14 +1142,9 @@ retry:
                     if (pid > 0) return pid;
                 } while (_sh_fork(shp, pid, 0, NULL) < 0);
 #if USE_SPAWN
-                if (shp->vex) {
-                    spawnvex_apply(shp->vex, 0, 0);
-#if 0
-				spawnvex_apply(shp->vexp,0,SPAWN_RESET);
-#endif
-                }
+                if (shp->vex) spawnvex_apply(shp->vex, 0, 0);
 #endif  // USE_SPAWN
-                ((struct checkpt *)shp->jmplist)->mode = SH_JMPEXIT;
+                shp->jmplist->mode = SH_JMPEXIT;
             }
             exscript(shp, path, argv, envp);
             // TODO: is this supposed to FALL THRU or it is unreachable?
@@ -1212,7 +1234,7 @@ static_fn void exscript(Shell_t *shp, char *path, char *argv[], char *const *env
         err = errno;
     }
     if ((euserid = geteuid()) != shp->gd->userid) {
-        n = strlcpy(name + 9, fmtbase((long)getpid(), 10, 0), sizeof(name) - 9);
+        n = strlcpy(name + 9, fmtbase(getpid(), 10, 0), sizeof(name) - 9);
         if (n >= sizeof(name) - 9) abort();  // this can't happen
         // Create a suid open file with owner equal effective uid.
         n = sh_open(name, O_CREAT | O_TRUNC | O_WRONLY | O_CLOEXEC, S_ISUID | S_IXUSR);
@@ -1276,7 +1298,7 @@ openok:
     }
     sh_offstate(shp, SH_FORKED);
     if (shp->sigflag[SIGCHLD] == SH_SIGOFF) shp->sigflag[SIGCHLD] = SH_SIGFAULT;
-    siglongjmp(*shp->jmplist, SH_JMPSCRIPT);
+    siglongjmp(shp->jmplist->buff, SH_JMPSCRIPT);
 }
 
 //
@@ -1386,6 +1408,10 @@ static_fn bool path_chkpaths(Shell_t *shp, Pathcomp_t *first, Pathcomp_t *old, P
             if (m == 0 || (m == 6 && strncmp(sp, "FPATH=", m) == 0)) {
                 if (first) {
                     char *ptr = stkptr(shp->stk, offset + pp->len + 1);
+                    // This must be memmove() because the buffers will typically overlap. For
+                    // example, if ptr points to "FPATH=../xxfun" then ep will point to the start of
+                    // the path (e.g., the first period) and will copy that path over the "FPATH="
+                    // portion of the buffer to elide that prefix.
                     if (ep) memmove(ptr, ep, strlen(ep) + 1);
                     path_addcomp(shp, first, old, stkptr(shp->stk, offset),
                                  PATH_FPATH | PATH_BFPATH);
@@ -1522,9 +1548,6 @@ void path_newdir(Shell_t *shp, Pathcomp_t *first) {
             pp->next = next;
         }
     }
-#if 0
-	path_dump(first);
-#endif
 }
 
 Pathcomp_t *path_unsetfpath(Shell_t *shp) {
@@ -1591,7 +1614,7 @@ static_fn char *talias_get(Namval_t *np, Namfun_t *nvp) {
     return ptr + PATH_OFFSET;
 }
 
-static_fn void talias_put(Namval_t *np, const void *val, int flags, Namfun_t *fp) {
+static_fn void talias_put(Namval_t *np, const void *val, nvflag_t flags, Namfun_t *fp) {
     if (!val && FETCH_VT(np->nvalue, const_cp)) {
         Pathcomp_t *pp = (Pathcomp_t *)FETCH_VT(np->nvalue, const_cp);
         if (--pp->refcount <= 0) free(pp);

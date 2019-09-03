@@ -28,6 +28,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <setjmp.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
@@ -237,7 +238,7 @@ int b_read(int argc, char *argv[], Shbltin_t *context) {
         goto bypass;
     }
     while ((r = optget(argv, sh_optread))) {
-        switch (r) {
+        switch (r) {  //!OCLINT(MissingDefaultStatement)
             case 'a': {
                 // `read -a` is an alias for `read -A`
                 flags |= A_FLAG;
@@ -342,7 +343,6 @@ int b_read(int argc, char *argv[], Shbltin_t *context) {
                 errormsg(SH_DICT, ERROR_usage(2), "%s", opt_info.arg);
                 __builtin_unreachable();
             }
-            default: { break; }
         }
     }
     argv += opt_info.index;
@@ -450,10 +450,9 @@ int sh_readline(Shell_t *shp, char **names, void *readfn, volatile int fd, int f
     Timer_t *timeslot = NULL;
     int delim = '\n';
     int jmpval = 0;
-    int binary;
-    int oflags = NV_ASSIGN | NV_VARNAME;
-    char inquote = 0;
-    struct checkpt buff;
+    nvflag_t oflags = NV_ASSIGN | NV_VARNAME;
+    bool inquote = false;
+    checkpt_t buff;
     Edit_t *ep = (struct edit *)shp->gd->ed_context;
 
     if (!(iop = shp->sftable[fd]) && !(iop = sh_iostream(shp, fd, fd))) return 1;
@@ -508,7 +507,7 @@ int sh_readline(Shell_t *shp, char **names, void *readfn, volatile int fd, int f
             tty_set(sffileno(iop), TCSADRAIN, &ep->e_nttyparm);
         }
     }
-    binary = nv_isattr(np, NV_BINARY);
+    bool binary = nv_isattr(np, NV_BINARY) == NV_BINARY;
     if (!binary && !(flags & (N_FLAG | NN_FLAG))) {
         Namval_t *mp;
         // Set up state table based on IFS.
@@ -626,6 +625,9 @@ int sh_readline(Shell_t *shp, char **names, void *readfn, volatile int fd, int f
                         cur = var + cx;
                         up = var + ux;
                     }
+                    // There is a theoretical path to here where `cur` could be NULL. That should
+                    // never happen so assert it can't happen. Coverity CID#340037.
+                    assert(cur);
                     if (cur != (char *)cp) memcpy(cur, cp, c);
                     if (f) sfread(iop, cp, c);
                     cur += c;
@@ -936,6 +938,6 @@ done:
     nv_close(np);
     if ((shp->fdstatus[fd] & IOTTY) && !keytrap) tty_cooked(sffileno(iop));
     if (flags & S_FLAG) hist_flush(shp->gd->hist_ptr);
-    if (jmpval > 1) siglongjmp(*shp->jmplist, jmpval);
+    if (jmpval > 1) siglongjmp(shp->jmplist->buff, jmpval);
     return jmpval;
 }

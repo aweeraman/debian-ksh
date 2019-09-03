@@ -22,7 +22,6 @@
 #include "config_ast.h"  // IWYU pragma: keep
 
 #include <errno.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
@@ -33,30 +32,30 @@
 
 #include "ast.h"
 
-/*	Functions to set a given stream to some desired mode
+/*      Functions to set a given stream to some desired mode
 **
-**	Written by Kiem-Phong Vo.
+**      Written by Kiem-Phong Vo.
 **
-**	Modifications:
-**		06/27/1990 (first version)
-**		01/06/1991
-**		07/08/1991
-**		06/18/1992
-**		02/02/1993
-**		05/25/1993
-**		02/07/1994
-**		05/21/1996
-**		08/01/1997
-**		08/01/1998 (extended formatting)
-**		09/09/1999 (thread-safe)
-**		02/01/2001 (adaptive buffering)
-**		05/31/2002 (multi-byte handling in sfvprintf/vscanf)
-**		09/06/2002 (SF_IOINTR flag)
-**		11/15/2002 (%#c for sfvprintf)
-**		05/31/2003 (sfsetbuf(f,f,align_size) to set alignment for data)
-**			   (%I1d is fixed to handle "signed char" correctly)
-**		01/01/2004 Porting issues to various platforms resolved.
-**		06/01/2008 Allowing notify() at entering/exiting thread-safe routines.
+**      Modifications:
+**              06/27/1990 (first version)
+**              01/06/1991
+**              07/08/1991
+**              06/18/1992
+**              02/02/1993
+**              05/25/1993
+**              02/07/1994
+**              05/21/1996
+**              08/01/1997
+**              08/01/1998 (extended formatting)
+**              09/09/1999 (thread-safe)
+**              02/01/2001 (adaptive buffering)
+**              05/31/2002 (multi-byte handling in sfvprintf/vscanf)
+**              09/06/2002 (SF_IOINTR flag)
+**              11/15/2002 (%#c for sfvprintf)
+**              05/31/2003 (sfsetbuf(f,f,align_size) to set alignment for data)
+**                         (%I1d is fixed to handle "signed char" correctly)
+**              01/01/2004 Porting issues to various platforms resolved.
+**              06/01/2008 Allowing notify() at entering/exiting thread-safe routines.
 */
 
 /* the below is for protecting the application from SIGPIPE */
@@ -198,7 +197,7 @@ int _sfpopen(Sfio_t *f, int fd, int pid, int stdio) {
 
 #ifdef SIGPIPE /* protect from broken pipe signal */
     if (p->sigp) {
-        sig_t handler;
+        sighandler_t handler;
 
         (void)vtmtxlock(_Sfmutex);
         if ((handler = signal(SIGPIPE, ignoresig)) != SIG_DFL && handler != ignoresig) {
@@ -240,7 +239,7 @@ int _sfpclose(Sfio_t *f) {
 #ifdef SIGPIPE
         (void)vtmtxlock(_Sfmutex);
         if (p->sigp && (_Sfsigp -= 1) <= 0) {
-            sig_t handler;
+            sighandler_t handler;
             if ((handler = signal(SIGPIPE, SIG_DFL)) != SIG_DFL && handler != ignoresig) {
                 signal(SIGPIPE, handler); /* honor user handler */
             }
@@ -396,10 +395,10 @@ int _sfmode(Sfio_t *f, int wanted, int local) {
         }
     }
 
-    if (wanted == (int)SFMODE(f, 1)) goto done;
+    if (wanted == (int)SFMODE(f, 1)) goto done;  //!OCLINT(constant conditional operator)
 
-    switch (SFMODE(f, 1)) {
-        case SF_WRITE: /* switching to SF_READ */
+    switch (SFMODE(f, 1)) {  //!OCLINT(constant conditional operator)
+        case SF_WRITE:       // switching to SF_READ
             if (wanted == 0 || wanted == SF_WRITE) break;
             if (!(f->flags & SF_READ)) {
                 goto err_notify;

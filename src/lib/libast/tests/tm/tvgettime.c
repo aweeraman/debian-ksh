@@ -1,6 +1,8 @@
 #include "config_ast.h"  // IWYU pragma: keep
 
-#include "ast.h"
+#include <stddef.h>
+#include <sys/time.h>
+
 #include "terror.h"
 #include "tv.h"
 

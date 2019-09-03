@@ -21,7 +21,6 @@
  ***********************************************************************/
 #include "config_ast.h"  // IWYU pragma: keep
 
-#include <stdint.h>
 #include <string.h>
 #include <sys/types.h>
 
@@ -31,7 +30,7 @@
 #include "cdt.h"
 #include "cdtlib.h"
 
-/*	Recursive hashing data structure.
+/*      Recursive hashing data structure.
 **
 **      Written by Kiem-Phong Vo (phongvo@gmail.com) and Adam Edgar (09/06/2010).
 */
@@ -40,10 +39,10 @@
 #define HCLSLOCK(dt, hh, ty, sh) ((sh) == 0 ? 0 : hclslock((dt), (hh), (ty), 1))
 #define HCLSOPEN(dt, hh, ty, sh) ((sh) == 0 ? 0 : hclslock((dt), (hh), (ty), 0))
 
-#define H_TABLE DT_HIBIT                         /* hibit indicates a table	*/
-#define H_NBITS (ssize_t)(DT_NBITS - 1)          /* #bits in a hash value	*/
-#define HTABLE(l) ((l)->_hash & H_TABLE)         /* test for a table	*/
-#define HVALUE(h) (((uint)(h)) & (DT_ONES >> 1)) /* get hash value	*/
+#define H_TABLE DT_HIBIT                         /* hibit indicates a table     */
+#define H_NBITS (ssize_t)(DT_NBITS - 1)          /* #bits in a hash value       */
+#define HTABLE(l) ((l)->_hash & H_TABLE)         /* test for a table    */
+#define HVALUE(h) (((uint)(h)) & (DT_ONES >> 1)) /* get hash value      */
 
 #if 0 /* if needed, remix bad hash values with (lbits*511+rbits) */
 #define LBITS(v) (((uint)(v)) >> 5)
@@ -55,29 +54,18 @@
 #endif
 
 /* number of bits and search steps at different trie levels */
-#define H_BIT0 20 /* this can be reset by app 	*/
+#define H_BIT0 20 /* this can be reset by app   */
 #define H_BIT1 2
 #define H_BIT2 2
-#define H_BITA 2 /* #bits for all other levels	*/
-/* this must be <= H_BIT[012]	*/
+#define H_BITA 2 /* #bits for all other levels  */
+/* this must be <= H_BIT[012]   */
 
-#define H_SRCH0 1 /* 1 to make insert-lock safe	*/
+#define H_SRCH0 1 /* 1 to make insert-lock safe */
 #define H_SRCH1 4
 #define H_SRCH2 4
 #define H_SRCHA 4
 
-#define H_NLEV (ssize_t)(DT_NBITS / H_BITA) /* #levels	*/
-
-/* the base (starting search) position of an element in a given table and #search steps */
-#define HBASP(hh, lv, h) ((lv) >= (hh)->nlev ? 0 : (((h) >> (hh)->shft[lv]) & (hh)->mask[lv]))
-#define HSRCH(hh, lv)    \
-    ((lv) >= (hh)->nlev  \
-         ? (1 << H_BITA) \
-         : (lv) == 0 ? H_SRCH0 : (lv) == 1 ? H_SRCH1 : (lv) == 2 ? H_SRCH2 : H_SRCHA)
-
-/* the actual address of an element supposed to be at location p */
-#define HLNKP(tb, p) \
-    (((tb)->list[p] && HTABLE((tb)->list[p])) ? &((Htbl_t *)(tb)->list[p])->pobj : (tb)->list + (p))
+#define H_NLEV (ssize_t)(DT_NBITS / H_BITA) /* #levels  */
 
 /* convenient short-hands for operation types requiring locks */
 #define H_INSERT (DT_INSERT | DT_INSTALL | DT_APPEND | DT_ATTACH | DT_RELINK)
@@ -85,34 +73,54 @@
 
 typedef struct _htbl_s /* a trie branch or hash table */
 {
-    Dtlink_t link;     /* parent table & position	*/
-    Dtlink_t *pobj;    /* come down from parent list 	*/
-    Dtlink_t *list[1]; /* list of objects or subtables	*/
+    Dtlink_t link;     /* parent table & position       */
+    Dtlink_t *pobj;    /* come down from parent list    */
+    Dtlink_t *list[1]; /* list of objects or subtables  */
 } Htbl_t;
 
 typedef struct _fngr_s /* finger for faster dtnext(), dtstep()  */
 {
-    Dtlink_t *here; /* fingered object		*/
-    Htbl_t *mtbl;   /* table of the fingered object	*/
-    ssize_t mpos;   /* position of object in table	*/
-    ssize_t mlev;   /* level of table in hashtrie	*/
+    Dtlink_t *here; /* fingered object          */
+    Htbl_t *mtbl;   /* table of the fingered object     */
+    ssize_t mpos;   /* position of object in table      */
+    ssize_t mlev;   /* level of table in hashtrie       */
 } Fngr_t;
 
 typedef struct _hash_s /* recursive hashing data */
 {
     Dtdata_t data;
 
-    Htbl_t *root;         /* top-most hash table		*/
-    ssize_t nlev;         /* number of nontrivial levels	*/
-    ssize_t mask[H_NLEV]; /* bit mask per level 	*/
-    ssize_t shft[H_NLEV]; /* shift amount per level	*/
+    Htbl_t *root;         /* top-most hash table                */
+    ssize_t nlev;         /* number of nontrivial levels        */
+    ssize_t mask[H_NLEV]; /* bit mask per level         */
+    ssize_t shft[H_NLEV]; /* shift amount per level     */
 
-    uchar *lock;  /* insertion/deletion locks	*/
-    ssize_t lmax; /* max lock index (2^n -1)	*/
-    uint *refn;   /* reference counts		*/
+    uchar *lock;  /* insertion/deletion locks   */
+    ssize_t lmax; /* max lock index (2^n -1)    */
+    uint *refn;   /* reference counts           */
 
-    Fngr_t fngr; /* finger to help dtnext/dtstep	*/
+    Fngr_t fngr; /* finger to help dtnext/dtstep        */
 } Hash_t;
+
+// The base (starting search) position of an element in a given table and #search steps.
+static inline ssize_t HBASP(Hash_t *hh, ssize_t lv, uint h) {
+    if (lv >= hh->nlev) return 0;
+    return (h >> hh->shft[lv]) & hh->mask[lv];
+}
+
+static inline ssize_t HSRCH(Hash_t *hh, ssize_t lv) {
+    if (lv >= hh->nlev) return 1 << H_BITA;
+    if (lv == 0) return H_SRCH0;
+    if (lv == 1) return H_SRCH1;
+    if (lv == 2) return H_SRCH2;
+    return H_SRCHA;
+}
+
+// The actual address of an element supposed to be at location p.
+static inline Dtlink_t **HLNKP(Htbl_t *tb, ssize_t p) {
+    if (tb->list[p] && HTABLE(tb->list[p])) return &((Htbl_t *)tb->list[p])->pobj;
+    return tb->list + p;
+}
 
 // Return hash table size at a given level.
 // The original implementation was a macro:

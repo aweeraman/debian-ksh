@@ -23,19 +23,18 @@
 
 #include <errno.h>
 #include <stdio.h>
-#include <sys/types.h>
 #include <unistd.h>
 
 #include "ast_assert.h"
 #include "sfhdr.h"
 #include "sfio.h"
 
-/*	Write data with discipline.
-**	In the case of a string stream, this is used mainly to extend
-**	the buffer. However, this is done here so that exception handling
-**	is done uniformly across all stream types.
+/*      Write data with discipline.
+**      In the case of a string stream, this is used mainly to extend
+**      the buffer. However, this is done here so that exception handling
+**      is done uniformly across all stream types.
 **
-**	Written by Kiem-Phong Vo.
+**      Written by Kiem-Phong Vo.
 */
 
 /* hole preserving writes */

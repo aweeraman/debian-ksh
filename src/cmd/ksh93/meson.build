@@ -3,11 +3,11 @@ build_dir = meson.build_root()
 ksh93_files = []
 ksh93_incdir = include_directories('include',
                                    '../../lib/libast/include/',
-                                   '../../lib/libcmd/',
                                    '../../lib/libdll/')
 
 subdir('include')
 subdir('bltins')
+subdir('cmds')
 subdir('data')
 subdir('edit')
 subdir('sh')
@@ -23,8 +23,8 @@ shared_c_args += [
 libksh = library('ksh', ksh93_files,
                  include_directories: [configuration_incdir, ksh93_incdir],
                  c_args: shared_c_args,
-                 dependencies: [libm_dep, libexecinfo_dep, libdl_dep],
-                 install: false)
+                 dependencies: [libm_dep, libexecinfo_dep, libdl_dep, libsocket_dep, libnsl_dep],
+                 install: get_option('default_library') == 'shared')
 
 ksh93_exe = executable('ksh', ['sh/pmain.c'], c_args: shared_c_args,
     include_directories: [configuration_incdir, ksh93_incdir],
@@ -35,15 +35,17 @@ ksh93_exe = executable('ksh', ['sh/pmain.c'], c_args: shared_c_args,
 shcomp_exe = executable('shcomp', ['sh/shcomp.c'], c_args: shared_c_args,
     include_directories: [configuration_incdir, ksh93_incdir],
     link_with: [libksh, libast, libcmd, libdll],
-    dependencies: [libm_dep, libexecinfo_dep, libdl_dep],
+    dependencies: [libm_dep, libexecinfo_dep, libdl_dep, libsocket_dep, libnsl_dep],
     install: true)
 
-install_man('ksh.1')
+install_man('docs/ksh.1')
 
 test_dir = join_paths(meson.current_source_dir(), 'tests')
 test_driver = join_paths(test_dir, 'util', 'run_test.sh')
 
 # This variable is used by some tests while executing subtests
+src_root = 'SRC_ROOT=' + source_dir
+test_root = 'TEST_ROOT=' + test_dir
 shell_var = 'SHELL=' + ksh93_exe.full_path()
 shcomp_var = 'SHCOMP=' + shcomp_exe.full_path()
 

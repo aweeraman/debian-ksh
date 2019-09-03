@@ -5,14 +5,16 @@
 #include "config_ast.h"  // IWYU pragma: keep
 
 #include <dlfcn.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -22,23 +24,34 @@
 #include <string.h>
 #endif
 
-#include "ast_assert.h"
+#include "ast.h"
 #include "tmx.h"
 
 // This is the maximum number of stack frames we'll output from dump_backtrace(). It is also the
-// default if the caller specifies zero for the number of frames to output. It's 21 rather than 20
-// because we want to ignore the frame for the `dump_backtrace()` and still dump 20 frames.
-#define MAX_FRAMES 21
+// default if the caller specifies zero for the number of frames to output. It's 22 rather than 20
+// because we want to ignore the frame for the `dump_backtrace()` and still dump 20 frames. Also,
+// some backtrace() implementations include themselves as the first frame in the call stack.
+#define MAX_FRAMES 22
 
 // It is useful for some API unit tests to be able to make _dprintf() output deterministic with
 // respect to portions of each log line it writes that would otherwise vary with each invocation
 // (e.g., the pid).
 bool _dprintf_debug = false;
+int _dprintf_buf_sz = 1024;  // must match size of buf2[] below
+// Setting _dprint_base_line to a non-zero value will cause that value to be displayed rather than
+// the actual line.
+int _dprint_fixed_line = 0;
+char *_debug_lsof = "lsof";
+int (*_debug_getpid)() = getpid;
 
 // This value is used by the dump_backtrace() code.
 static const char *ksh_pathname = NULL;
 
 void set_debug_filename(const char *pathname) { ksh_pathname = pathname; }
+
+static_fn uintptr_t _debug_addr(int i, void **addrs) {
+    return _dprintf_debug ? ((uintptr_t)i + 1) * 8 : (uintptr_t)addrs[i];
+}
 
 // This is initialized to the current timestamp when the first DPRINTF() is executed. This allows us
 // to print time deltas in the debug print messages. A delta from the previous debug print is
@@ -46,61 +59,71 @@ void set_debug_filename(const char *pathname) { ksh_pathname = pathname; }
 static Time_t _dprintf_base_time = TMX_NOTIME;
 
 void _dprintf(const char *fname, int lineno, const char *funcname, const char *fmt, ...) {
+    int oerrno = errno;
+    // Use long rather than pid_t because pid_t may be an int or long depending on the platform.
+    long pid = _debug_getpid();
+    if (_dprint_fixed_line) lineno = _dprint_fixed_line;
+
     va_list ap;
-    va_start(ap, fmt);
 
     if (_dprintf_base_time == TMX_NOTIME) _dprintf_base_time = tmxgettime();
     Time_t time_delta = _dprintf_debug ? 0.0 : tmxgettime() - _dprintf_base_time;
 
-    // The displayed timestamp will be seconds+milliseconds since the first DPRINTF(). The
+    // The displayed timestamp will be seconds + milliseconds since the first DPRINTF(). The
     // tmxgettime() return value has a theoretical resolution of nanoseconds but that is more
     // precision than we need or want in these debug messages. We could print microsecond
-    // resolution deltas but that is also too fine grained.
+    // resolution deltas but that is also too fine grained for our needs and takes too much space.
     uint64_t ds = time_delta / 1000000000;
     uint64_t dms = (time_delta % 1000000000) / 1000000;
     char buf1[64];
     (void)snprintf(buf1, sizeof(buf1), "%s:%d", strrchr(fname, '/') + 1, lineno);
-    char buf2[512];
-    pid_t pid = _dprintf_debug ? 1234 : getpid();
-    int n = snprintf(buf2, sizeof(buf2), "### %d %3" PRIu64 ".%03" PRIu64 " %-18s %15s() ", pid, ds,
-                     dms, buf1, funcname);
-    (void)vsnprintf(buf2 + n, sizeof(buf2) - n, fmt, ap);
-    n = strlen(buf2);
-    assert(n < sizeof(buf2));
-    if (n < sizeof(buf2) - 1) {
-        buf2[n] = '\n';
-        buf2[n + 1] = '\0';
-        ++n;
-    } else {
-        buf2[n] = '\n';
-    }
-    write(2, buf2, n);
 
+    // We don't do three separate writes (the preamble, the actual message, the newline) because
+    // that would not be atomic. Even though that would be simpler and less likely to truncate the
+    // debug message. We want all three portions of the message to be emitted by a single write()
+    // so the content can't be interleaved with other debug messages.
+    char buf2[1024];
+    int n = snprintf(buf2, sizeof(buf2), "### %ld %3" PRIu64 ".%03" PRIu64 " %-18s %15s() ", pid,
+                     ds, dms, buf1, funcname);
+    va_start(ap, fmt);
+    n += vsnprintf(buf2 + n, sizeof(buf2) - n, fmt, ap);
     va_end(ap);
+    if (n >= _dprintf_buf_sz) {
+        // The message was too large for the buffer so try to make that clear to the reader.
+        n = _dprintf_buf_sz - 4;
+        buf2[n++] = '.';
+        buf2[n++] = '.';
+        buf2[n++] = '.';
+    }
+    buf2[n++] = '\n';
+    write(2, buf2, n);
+    errno = oerrno;
 }
 
 // Run external command `lsof -p $$` and redirect its output to stderr.
 void run_lsof() {
+    int oerrno = errno;
+
     sigset_t sigchld_mask, omask;
     sigemptyset(&sigchld_mask);
     sigaddset(&sigchld_mask, SIGCHLD);
     sigprocmask(SIG_BLOCK, &sigchld_mask, &omask);
 
-    DPRINTF("Running lsof...");
+    DPRINTF("Running lsof:");
     static char pid_str[20];
-    snprintf(pid_str, sizeof(pid_str), "%d", getpid());
+    long pid = _debug_getpid();
+    snprintf(pid_str, sizeof(pid_str), "%ld", pid);
 
-    pid_t pid = fork();
+    pid = fork();
     if (pid == 0) {
         // Setup stdin, stdout, stderr. In this case we want the stdout of lsof
         // to go to our stderr so it is interleaved with DPRINTF() and other
         // diagnostic output.
         close(0);
-        // cppcheck-suppress leakReturnValNotUsed
         (void)open("/dev/null", O_RDONLY);
         dup2(2, 1);
-        // Run the program we hope will give us detailed info about each address.
-        execlp("lsof", "lsof", "-p", pid_str, NULL);
+        // Run the program we hope will give us detailed info about each open file descriptor.
+        execlp(_debug_lsof, "lsof", "-p", pid_str, NULL);
     }
 
     // We ignore the return value because a) it should be impossible for this to fail and b) there
@@ -110,6 +133,7 @@ void run_lsof() {
     (void)waitpid(pid, &status, 0);
 
     sigprocmask(SIG_SETMASK, &omask, NULL);
+    errno = oerrno;
 }
 
 #if _hdr_execinfo
@@ -151,7 +175,7 @@ static const char *find_cached_addr(void *p) {
 
 // Run an external command such as `atos` or `addr2line`, collect its output, and split it into
 // lines. Each line has an entry in the `info[]` array above.
-void run_addr2lines_prog(int n_frames, char *path, const char **argv) {
+static_fn void run_addr2lines_prog(int n_frames, char *path, const char **argv) {
     int fds[2];
     pipe(fds);
 
@@ -166,12 +190,15 @@ void run_addr2lines_prog(int n_frames, char *path, const char **argv) {
         close(0);
         close(2);
         dup2(fds[1], 1);
-        // cppcheck-suppress leakReturnValNotUsed
         (void)open("/dev/null", O_RDONLY);  // stdin
-        // cppcheck-suppress leakReturnValNotUsed
-        (void)open("/dev/null", O_RDONLY);  // stderr
+        (void)open("/dev/null", O_WRONLY);  // stderr
 
         // Run the program we hope will give us detailed info about each address.
+        if (_dprintf_debug) {
+#define msg "hello unit test\n"
+            write(1, msg, sizeof(msg) - 1);
+            _exit(0);
+        }
         execv(path, (char *const *)argv);
     }
     close(fds[1]);
@@ -193,7 +220,7 @@ void run_addr2lines_prog(int n_frames, char *path, const char **argv) {
 
     sigprocmask(SIG_SETMASK, &omask, NULL);
 
-    if (len == sizeof(atos_data)) return;
+    if (len == 0 || len >= sizeof(atos_data)) return;
     // Null terminate the final string. We assume the last character is a newline. That should be a
     // safe assumption since it would be perverse for the program we ran to not newline terminate
     // the final line.
@@ -224,11 +251,11 @@ static_fn char **addrs2info(int n_frames, void *addrs[]) {
     argv[0] = _pth_atos;
     argv[1] = "-p";
     static char pid_str[20];
-    snprintf(pid_str, sizeof(pid_str), "%d", getpid());
+    (void)snprintf(pid_str, sizeof(pid_str), "%d", _debug_getpid());
     argv[2] = pid_str;
     for (int i = 0; i < n_frames; ++i) {
         char *addr = argv_addrs + i * 20;
-        if (snprintf(addr, 20, "%p", addrs[i]) >= 20) *addr = '\0';
+        (void)snprintf(addr, 20, "0x%" PRIXPTR "", _debug_addr(i, addrs));
         argv[i + 3] = addr;
     }
     argv[n_frames + 3] = NULL;
@@ -257,7 +284,7 @@ static_fn char **addrs2info(int n_frames, void *addrs[]) {
     argv[2] = ksh_pathname;
     for (int i = 0; i < n_frames; ++i) {
         char *addr = argv_addrs + i * 20;
-        if (snprintf(addr, 20, "%p", addrs[i]) >= 20) *addr = '\0';
+        (void)snprintf(addr, 20, "0x%" PRIXPTR "", _debug_addr(i, addrs));
         argv[i + 3] = addr;
     }
     argv[n_frames + 3] = NULL;
@@ -268,11 +295,19 @@ static_fn char **addrs2info(int n_frames, void *addrs[]) {
 
 #else  // _pth_addr2line
 
-// We don't seem to have a usable command for converting addresses to symbol info.
+// We don't seem to have a usable command for converting addresses to symbol
+// info. This code is solely for the benefit of the unit tests which might run
+// on a system where this fallback is needed.
 static_fn char **addrs2info(int n_frames, void *addrs[]) {
     UNUSED(n_frames);
     UNUSED(addrs);
-    memset(info, 0, sizeof(info));
+
+    (void)snprintf(info, sizeof(info), "-p %d", _debug_getpid());
+    for (int i = 0; i < n_frames; ++i) {
+        char *addr = argv_addrs + i * 20;
+        (void)snprintf(addr, 20, " 0x%" PRIXPTR "", _debug_addr(i, addrs));
+        strlcat(info, addr, sizeof(info));
+    }
     return info;
 }
 
@@ -280,7 +315,12 @@ static_fn char **addrs2info(int n_frames, void *addrs[]) {
 #endif  // _pth_atos
 
 // Given a single address return info about it; e.g., function name, file name, line number.
-const char *addr2info(void *addr) { return addrs2info(1, &addr)[0]; }
+const char *addr2info(void *addr) {
+    int oerrno = errno;
+    const char *rv = addrs2info(1, &addr)[0];
+    errno = oerrno;
+    return rv;
+}
 
 // Write a backtrace to stderr. This can be called from anyplace in the code where you would like to
 // understand the call sequence leading to that point in the code. It is also called automatically
@@ -288,45 +328,79 @@ const char *addr2info(void *addr) { return addrs2info(1, &addr)[0]; }
 // frames we allow by default. See `MAX_FRAMES` above. If you want fewer lines of context specify a
 // value greater than zero but less than `MAX_FRAMES`.
 void dump_backtrace(int max_frames) {
-    assert(max_frames >= 0);
-    if (max_frames > 0 && max_frames < MAX_FRAMES) {
-        max_frames += 1;  // add room for this function's frame
-    } else {
-        max_frames = MAX_FRAMES;
-    }
-
+    int oerrno = errno;
     void *callstack[MAX_FRAMES];
-    int n_frames = backtrace(callstack, max_frames);
-    // On macOS the top frame has an address of 0x1. Ignore it.
-    if (callstack[n_frames - 1] == (void *)0x1) --n_frames;
-
+    int n_frames = backtrace(callstack, MAX_FRAMES);
     char **details = addrs2info(n_frames, callstack);
     char text[512];
-    int n;
+    long pid = _debug_getpid();
 
-    n = snprintf(text, sizeof(text), "### %d Function backtrace:\n", getpid());
-    write(2, text, n);
+    (void)snprintf(text, sizeof(text), "### %ld Function backtrace:\n", pid);
+    write(2, text, strlen(text));
+
+    // Some backtrace() implementations include that function as the first entry in the call stack;
+    // e.g., OpenBSD. But most implementations do not and instead have this function as the first
+    // entry in the call stack. Enabling ASAN can also affect the results.
+    int bias = 0;
+    if ((char *)callstack[0] >= (char *)backtrace &&
+        (char *)callstack[0] < (char *)backtrace + 0x20) {
+        bias = 1;
+    }
+    if (_dprintf_debug) {  // we're running via a unit test
+        // Only the bottom two frames are consistent across systems. So limit our output to those
+        // two frames when testing this code.
+        n_frames = 3;
+        // When built with ASAN enabled on GNU there is a bogus NULL frame at the bottom of the
+        // stack. If we detect that skip that frame.
+        Dl_info info;
+        dladdr(callstack[0], &info);
+        if (info.dli_sname == NULL) bias += 1;
+    } else {
+        int max = max_frames > 0 ? max_frames : MAX_FRAMES - 2;
+        if (max < n_frames) n_frames = max + 1;
+    }
 
     for (int i = 1; i < n_frames; i++) {
-        if (details[i]) {
-            n = snprintf(text, sizeof(text), "%-3d %s\n", i, details[i]);
+        // On macOS the top frame has an address of 0x1. Ignore it and stop.
+        if (callstack[i] == (void *)0x1) break;
+
+        if (details[i + bias]) {
+            (void)snprintf(text, sizeof(text), "%-3d %s\n", i, details[i + bias]);
         } else {
             Dl_info info;
-            dladdr(callstack[i], &info);
-            n = snprintf(text, sizeof(text), "%-3d %s + %td\n", i, info.dli_sname,
-                         (char *)callstack[i] - (char *)info.dli_saddr);
+            dladdr(callstack[i + bias], &info);
+            ptrdiff_t offset =
+                _dprintf_debug ? 0 : (char *)callstack[i + bias] - (char *)info.dli_saddr;
+            // On some platforms (e.g., macOS) ptrdiff_t is just an alias for signed long.
+            // cppcheck-suppress invalidPrintfArgType_sint
+            (void)snprintf(text, sizeof(text), "%-3d %s + %td\n", i, info.dli_sname, offset);
         }
-        write(2, text, n);
+        write(2, text, strlen(text));
     }
+
+    errno = oerrno;
 }
 
 #else  // _hdr_execinfo
 
-#define header_msg "### Sorry, but dump_backtrace() does not work on your system.\n"
+#define addr2info_msg "### Sorry, but addr2info() does not work on your system.\n"
+#define backtrace_msg "### Sorry, but dump_backtrace() does not work on your system.\n"
+
+const char *addr2info(void *addr) {
+    UNUSED(addr);
+    int oerrno = errno;
+
+    write(2, addr2info_msg, sizeof(addr2info_msg) - 1);
+    errno = oerrno;
+    return "";
+}
 
 void dump_backtrace(int max_frames) {
     UNUSED(max_frames);
-    write(2, header_msg, sizeof(header_msg));
+    int oerrno = errno;
+
+    write(2, backtrace_msg, sizeof(backtrace_msg) - 1);
+    errno = oerrno;
 }
 
 #endif  // _hdr_execinfo

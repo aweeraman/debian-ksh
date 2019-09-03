@@ -31,9 +31,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "argnod.h"
 #include "ast.h"
 #include "ast_assert.h"
+#include "builtins.h"
 #include "cdt.h"
 #include "defs.h"
 #include "error.h"
@@ -43,45 +43,6 @@
 #include "sfio.h"
 #include "stk.h"
 #include "variables.h"
-
-static const char sh_opttype[] =
-    "[-1c?\n@(#)$Id: type (AT&T Labs Research) 2008-07-01 $\n]" USAGE_LICENSE
-    "[+NAME?\f?\f - set the type of variables to \b\f?\f\b]"
-    "[+DESCRIPTION?\b\f?\f\b sets the type on each of the variables specified "
-    "by \aname\a to \b\f?\f\b. If \b=\b\avalue\a is specified, "
-    "the variable \aname\a is set to \avalue\a before the variable "
-    "is converted to \b\f?\f\b.]"
-    "[+?If no \aname\as are specified then the names and values of all "
-    "variables of this type are written to standard output.]"
-    "[+?\b\f?\f\b is built-in to the shell as a declaration command so that "
-    "field splitting and pathname expansion are not performed on "
-    "the arguments.  Tilde expansion occurs on \avalue\a.]"
-    "[r?Enables readonly.  Once enabled, the value cannot be changed or unset.]"
-    "[a]:?[type?Indexed array. Each \aname\a will converted to an index "
-    "array of type \b\f?\f\b.  If a variable already exists, the current "
-    "value will become index \b0\b.  If \b[\b\atype\a\b]]\b is "
-    "specified, each subscript is interpreted as a value of enumeration "
-    "type \atype\a.]"
-    "[A?Associative array.  Each \aname\a will converted to an associate "
-    "array of type \b\f?\f\b.  If a variable already exists, the current "
-    "value will become subscript \b0\b.]"
-    "[h]:[string?Used within a type definition to provide a help string  "
-    "for variable \aname\a.  Otherwise, it is ignored.]"
-    "[S?Used with a type definition to indicate that the variable is shared by "
-    "each instance of the type.  When used inside a function defined "
-    "with the \bfunction\b reserved word, the specified variables "
-    "will have function static scope.  Otherwise, the variable is "
-    "unset prior to processing the assignment list.]"
-    "[+DETAILS]\ftypes\f"
-    "\n"
-    "\n[name[=value]...]\n"
-    "\n"
-    "[+EXIT STATUS?]{"
-    "[+0?Successful completion.]"
-    "[+>0?An error occurred.]"
-    "}"
-
-    "[+SEE ALSO?\fother\f \breadonly\b(1), \btypeset\b(1)]";
 
 struct Namtype;
 typedef struct Namtype Namtype_t;
@@ -111,16 +72,6 @@ struct Namtype {
     unsigned short nref;
 };
 
-#if 0
-struct type
-{
-	Namtype_t	hdr;
-	unsigned short	ndisc;
-	unsigned short	current;
-	unsigned short	nref;
-};
-#endif
-
 typedef struct {
     char _cSfdouble_t;
     Sfdouble_t _dSfdouble_t;
@@ -142,9 +93,9 @@ typedef struct {
 
 #define alignof(t)((char *)&((_Align_ *)0)->_d##t - (char *)&((_Align_ *)0)->_c##t)
 
-static_fn void put_type(Namval_t *, const void *, int, Namfun_t *);
-static_fn Namval_t *create_type(Namval_t *, const void *, int, Namfun_t *);
-static_fn Namfun_t *clone_type(Namval_t *, Namval_t *, int, Namfun_t *);
+static_fn void put_type(Namval_t *, const void *, nvflag_t, Namfun_t *);
+static_fn Namval_t *create_type(Namval_t *, const void *, nvflag_t, Namfun_t *);
+static_fn Namfun_t *clone_type(Namval_t *, Namval_t *, nvflag_t, Namfun_t *);
 static_fn Namval_t *next_type(Namval_t *, Dt_t *, Namfun_t *);
 
 static const Namdisc_t type_disc = {.dsize = sizeof(Namtype_t),
@@ -210,7 +161,7 @@ static_fn char *name_chtype(const Namval_t *np, Namfun_t *fp) {
     return sfstruse(shp->strbuf);
 }
 
-static_fn void put_chtype(Namval_t *np, const void *val, int flag, Namfun_t *fp) {
+static_fn void put_chtype(Namval_t *np, const void *val, nvflag_t flag, Namfun_t *fp) {
     if (!val && nv_isattr(np, NV_REF)) return;
     nv_putv(np, val, flag, fp);
     if (!val) {
@@ -234,7 +185,7 @@ static_fn void put_chtype(Namval_t *np, const void *val, int flag, Namfun_t *fp)
     }
 }
 
-static_fn Namfun_t *clone_chtype(Namval_t *np, Namval_t *mp, int flags, Namfun_t *fp) {
+static_fn Namfun_t *clone_chtype(Namval_t *np, Namval_t *mp, nvflag_t flags, Namfun_t *fp) {
     UNUSED(np);
     UNUSED(mp);
 
@@ -242,7 +193,7 @@ static_fn Namfun_t *clone_chtype(Namval_t *np, Namval_t *mp, int flags, Namfun_t
     return nv_clone_disc(fp, flags);
 }
 
-static_fn Namval_t *create_chtype(Namval_t *np, const void *name, int flag, Namfun_t *fp) {
+static_fn Namval_t *create_chtype(Namval_t *np, const void *name, nvflag_t flag, Namfun_t *fp) {
     Namchld_t *xp = (Namchld_t *)fp;
     Namval_t *pp = xp->ptype->parent, *nq;
     Shell_t *shp = np->nvshell;
@@ -281,7 +232,7 @@ static_fn Namval_t *findref(void *nodes, int n) {
     return NULL;
 }
 
-static_fn int fixnode(Namtype_t *np1, Namtype_t *np2, int i, struct Namref *nrp, int flag) {
+static_fn int fixnode(Namtype_t *np1, Namtype_t *np2, int i, struct Namref *nrp, nvflag_t flag) {
     Namval_t *nq = nv_namptr(np1->nodes, i);
     Namfun_t *fp;
 
@@ -317,18 +268,10 @@ static_fn int fixnode(Namtype_t *np1, Namtype_t *np2, int i, struct Namref *nrp,
             }
             if (fp) nv_disc(np, fp, DISC_OP_LAST);
         }
-#if 0
-        if (FETCH_VT(nq->nvalue, const_cp) >= np2->data &&
-            FETCH_VT(nq->nvalue, const_cp) < (char *)np2 + np2->fun.dsize) {
-            FETCH_VT(nq->nvalue, const_cp) =
-                np1->data + (FETCH_VT(nq->nvalue, const_cp) - np2->data);
-        }
-#else
+
         if (data >= np2->data && data < (char *)np2 + np2->fun.dsize) {
             STORE_VT(nq->nvalue, const_cp, np1->data + (data - np2->data));
-        }
-#endif
-        else if (!nq->nvfun && np2->childfun.ttype != np2->childfun.ptype) {
+        } else if (!nq->nvfun && np2->childfun.ttype != np2->childfun.ptype) {
             Namval_t *nr = nv_namptr(np2->childfun.ttype->nodes, i);
             if (FETCH_VT(nr->nvalue, const_cp) != FETCH_VT(nq->nvalue, const_cp)) {
                 i = nv_size(nq);
@@ -351,7 +294,7 @@ static_fn int fixnode(Namtype_t *np1, Namtype_t *np2, int i, struct Namref *nrp,
     return 0;
 }
 
-static_fn Namfun_t *clone_type(Namval_t *np, Namval_t *mp, int flags, Namfun_t *fp) {
+static_fn Namfun_t *clone_type(Namval_t *np, Namval_t *mp, nvflag_t flags, Namfun_t *fp) {
     Namtype_t *dp, *pp = (Namtype_t *)fp;
     Shell_t *shp = np->nvshell;
     int i;
@@ -378,17 +321,10 @@ static_fn Namfun_t *clone_type(Namval_t *np, Namval_t *mp, int flags, Namfun_t *
         memset(nrp, 0, pp->nref * sizeof(struct Namref));
     }
     memcpy(dp, pp, size);
-#if 0
-	dp->parent = nv_lastdict(np->nvshell);
-#else
     dp->parent = mp;
-#endif
     dp->fun.nofree = (flags & (NV_RDONLY | NV_NOFREE) ? 1 : 0);
     dp->np = mp;
     dp->childfun.ptype = dp;
-#if 0
-	dp->childfun.ttype = (Namtype_t*)nv_hasdisc(dp->fun.type,&type_disc);
-#endif
     dp->nodes = (char *)(dp + 1);
     dp->data = (char *)dp + (pp->data - (char *)pp);
     for (i = dp->numnodes; --i >= 0;) {
@@ -485,7 +421,7 @@ static_fn Namfun_t *clone_type(Namval_t *np, Namval_t *mp, int flags, Namfun_t *
 // Return Namval_t* corresponding to child <name> in <np>.
 // Try complete match first, otherwise find match to first.
 //
-static_fn Namval_t *create_type(Namval_t *np, const void *vp, int flag, Namfun_t *fp) {
+static_fn Namval_t *create_type(Namval_t *np, const void *vp, nvflag_t flag, Namfun_t *fp) {
     const char *name = vp;
     Namtype_t *dp = (Namtype_t *)fp;
     const char *cp = name;
@@ -542,7 +478,7 @@ found:
     return nq;
 }
 
-static_fn void put_type(Namval_t *np, const void *val, int flag, Namfun_t *fp) {
+static_fn void put_type(Namval_t *np, const void *val, nvflag_t flag, Namfun_t *fp) {
     Shell_t *shp = sh_ptr(np);
     Namval_t *nq;
 
@@ -600,7 +536,7 @@ static_fn Namval_t *next_type(Namval_t *np, Dt_t *root, Namfun_t *fp) {
 // when running the unit tests. Which means it is never invoked. The question is whether there is a
 // scenario that would invoke this function. If so, what is that scenario? And why isn't there a
 // unit test for it?
-static_fn Namfun_t *clone_inttype(Namval_t *np, Namval_t *mp, int flags, Namfun_t *fp) {
+static_fn Namfun_t *clone_inttype(Namval_t *np, Namval_t *mp, nvflag_t flags, Namfun_t *fp) {
     UNUSED(flags);
     Namfun_t *pp = malloc(fp->dsize);
 
@@ -1272,9 +1208,9 @@ static_fn void type_init(Namval_t *np) {
 //
 // This function turns variable <np>  to the type <tp>.
 //
-int nv_settype(Namval_t *np, Namval_t *tp, int flags) {
+int nv_settype(Namval_t *np, Namval_t *tp, nvflag_t flags) {
     int isnull = nv_isnull(np);
-    int rdonly = nv_isattr(np, NV_RDONLY);
+    bool rdonly = nv_isattr(np, NV_RDONLY);
     char *val = NULL;
     Namarr_t *ap = NULL;
     Shell_t *shp = sh_ptr(np);
@@ -1479,7 +1415,7 @@ Namval_t *nv_mkstruct(const char *name, int rsize, stat_fields_t *fields, void *
     return mp;
 }
 
-static_fn void put_stat(Namval_t *np, const void *val, int flag, Namfun_t *nfp) {
+static_fn void put_stat(Namval_t *np, const void *val, nvflag_t flag, Namfun_t *nfp) {
     if (val) {
         if (sh_stat(val, (struct stat *)FETCH_VT(np->nvalue, const_cp)) < 0) {
             sfprintf(sfstderr, "stat of %s failed\n", val);

@@ -20,7 +20,6 @@
 #include "config_ast.h"  // IWYU pragma: keep
 
 #include <string.h>
-#include <sys/types.h>
 #include <unistd.h>
 
 #include "sfio.h"
@@ -142,7 +141,7 @@ tmain() {
             if (*s++ != ('0' + (k + i) % 10)) terror("Wrong data i=%d k=%d", i, k);
         }
     }
-    if ((o = sfseek(sfstdin, -15 * ((Sfoff_t)sizeof(bigbuf)), 1)) != sizeof(bigbuf)) {
+    if ((o = sfseek(sfstdin, -15 * (Sfoff_t)sizeof(bigbuf), 1)) != sizeof(bigbuf)) {
         terror("sfseek failed o=%lld", (Sflong_t)o);
     }
     if (sfread(sfstdin, bigbuf, sizeof(bigbuf)) != sizeof(bigbuf)) terror("sfread failed");
