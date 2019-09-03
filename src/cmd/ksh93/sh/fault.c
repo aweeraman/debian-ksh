@@ -32,7 +32,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/resource.h>
-#include <sys/types.h>
 #include <unistd.h>
 
 #include "ast.h"
@@ -51,7 +50,6 @@
 #include "shtable.h"
 #include "stk.h"
 #include "terminal.h"
-#include "ulimit.h"
 #include "variables.h"
 
 #define abortsig(sig) (sig == SIGABRT || sig == SIGBUS || sig == SIGILL || sig == SIGSEGV)
@@ -113,7 +111,7 @@ void sh_fault(int sig, siginfo_t *info, void *context) {
     Shell_t *shp = sh_getinterp();
     int flag = 0;
     char *trap;
-    struct checkpt *pp = (struct checkpt *)shp->jmplist;
+    checkpt_t *pp = shp->jmplist;
 
     if (sig == SIGABRT) {
         sh_signal(sig, (sh_sigfun_t)(SIG_DFL));
@@ -392,8 +390,7 @@ void sh_chktrap(Shell_t *shp) {
         }
         shp->trapnote = sav_trapnote;
         if (sh_isoption(shp, SH_ERREXIT)) {
-            struct checkpt *pp = (struct checkpt *)shp->jmplist;
-            pp->mode = SH_JMPEXIT;
+            shp->jmplist->mode = SH_JMPEXIT;
             sh_exit(shp, shp->exitval);
         }
     }
@@ -423,18 +420,16 @@ void sh_chktrap(Shell_t *shp) {
                 cursig = sig;
                 if (trap) sh_trap(shp, trap, 0);
                 count++;
+                free(ip);
+                ip = ipnext;
                 if (ip) {
-                    free(ip);
-                    ip = ipnext;
-                    if (ip) {
-                        // Handling the trap via sh_trap() may unset the trap (e.g., `trap - INT`)
-                        // or install a different handler. Either will cause the buffer pointed to
-                        // by `trap` to be freed thus invaliding our cached pointer. Ensure we're
-                        // using the current trap text when dealing with another instance of the
-                        // signal. See https://github.com/att/ast/issues/1272.
-                        trap = shp->st.trapcom[sig];
-                        goto again;
-                    }
+                    // Handling the trap via sh_trap() may unset the trap (e.g., `trap - INT`)
+                    // or install a different handler. Either will cause the buffer pointed to
+                    // by `trap` to be freed thus invaliding our cached pointer. Ensure we're
+                    // using the current trap text when dealing with another instance of the
+                    // signal. See https://github.com/att/ast/issues/1272.
+                    trap = shp->st.trapcom[sig];
+                    goto again;
                 }
                 if (shp->siginfo[sig]) goto retry;
                 cursig = -1;
@@ -453,16 +448,16 @@ void sh_chktrap(Shell_t *shp) {
 void sh_exit(Shell_t *shp, int xno) {
     Sfio_t *pool;
     int sig = 0;
-    struct checkpt *pp = (struct checkpt *)shp->jmplist;
-    assert(pp);
+    checkpt_t *pp = shp->jmplist;
 
     shp->exitval = xno;
     if (xno == SH_EXITSIG) shp->exitval |= (sig = shp->lastsig);
-    if (pp->mode > 1) cursig = -1;
+    if (pp && pp->mode > 1) cursig = -1;
     if (shp->procsub) *shp->procsub = 0;
+
 #ifdef SIGTSTP
     if ((shp->trapnote & SH_SIGTSTP) && job.jobcontrol) {
-        /* ^Z detected by the shell */
+        // ^Z detected by the shell.
         shp->trapnote = 0;
         shp->sigflag[SIGTSTP] = 0;
         if (!shp->subshell && sh_isstate(shp, SH_MONITOR) && !sh_isstate(shp, SH_STOPOK)) return;
@@ -483,10 +478,11 @@ void sh_exit(Shell_t *shp, int xno) {
             // Wait for child to stop.
             shp->exitval = (SH_EXITSIG | SIGTSTP);
             // Return to prompt mode.
+            assert(pp);
             pp->mode = SH_JMPERREXIT;
         } else {
             if (shp->subshell) sh_subfork();
-            /* child process, put to sleep */
+            // Child process, put to sleep.
             sh_offstate(shp, SH_STOPOK);
             sh_offstate(shp, SH_MONITOR);
             shp->sigflag[SIGTSTP] = 0;
@@ -498,8 +494,8 @@ void sh_exit(Shell_t *shp, int xno) {
             return;
         }
     }
-
 #endif /* SIGTSTP */
+
     // Unlock output pool.
     sh_offstate(shp, SH_NOTRACK);
     if (!(pool = sfpool(NULL, shp->outpool, SF_WRITE))) pool = shp->outpool;  // can't happen?
@@ -508,6 +504,7 @@ void sh_exit(Shell_t *shp, int xno) {
     if (shp->lastsig == SIGPIPE) sfpurge(pool);
 #endif  // SIGPIPE
     sfclrlock(sfstdin);
+    if (!pp) sh_done(shp, sig);
     shp->intrace = 0;
     shp->prefix = NULL;
     shp->mktype = NULL;
@@ -705,7 +702,7 @@ int sh_trap(Shell_t *shp, const char *trap, int mode) {
     int staktop = stktell(shp->stk);
     char *savptr = stkfreeze(shp->stk, 0);
     char ifstable[256];
-    struct checkpt buff;
+    checkpt_t buff;
     Fcin_t savefc;
 
     fcsave(&savefc);
@@ -745,9 +742,8 @@ int sh_trap(Shell_t *shp, const char *trap, int mode) {
     if (was_history) sh_onstate(shp, SH_HISTORY);
     if (was_verbose) sh_onstate(shp, SH_VERBOSE);
     exitset(shp);
-    if (jmpval > SH_JMPTRAP && (((struct checkpt *)shp->jmpbuffer)->prev ||
-                                ((struct checkpt *)shp->jmpbuffer)->mode == SH_JMPSCRIPT)) {
-        siglongjmp(*shp->jmplist, jmpval);
+    if (jmpval > SH_JMPTRAP && (shp->jmpbuffer->prev || shp->jmpbuffer->mode == SH_JMPSCRIPT)) {
+        siglongjmp(shp->jmplist->buff, jmpval);
     }
     return shp->exitval;
 }

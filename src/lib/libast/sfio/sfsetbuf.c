@@ -26,7 +26,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <unistd.h>
 
 #include "sfhdr.h"
@@ -38,12 +37,12 @@
 
 extern int getpagesize(void);
 
-/*	Set a (new) buffer for a stream.
-**	If size < 0, it is assigned a suitable value depending on the
-**	kind of stream. The actual buffer size allocated is dependent
-**	on how much memory is available.
+/*      Set a (new) buffer for a stream.
+**      If size < 0, it is assigned a suitable value depending on the
+**      kind of stream. The actual buffer size allocated is dependent
+**      on how much memory is available.
 **
-**	Written by Kiem-Phong Vo.
+**      Written by Kiem-Phong Vo.
 */
 
 #define SF_TEST_read 0x01000

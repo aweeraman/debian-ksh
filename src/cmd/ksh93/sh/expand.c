@@ -85,10 +85,6 @@ int path_expand(Shell_t *shp, const char *pattern, struct argnod **arghead) {
     if (sh_isoption(shp, SH_MARKDIRS)) flags |= GLOB_MARK;
     if (sh_isoption(shp, SH_GLOBSTARS)) flags |= GLOB_STARSTAR;
 #if SHOPT_BASH
-#if 0
-	if(sh_isoption(shp,SH_BASH) && !sh_isoption(shp,SH_EXTGLOB))
-		flags &= ~GLOB_AUGMENTED;
-#endif
     if (sh_isoption(shp, SH_NULLGLOB)) flags &= ~GLOB_NOCHECK;
     if (sh_isoption(shp, SH_NOCASEGLOB)) flags |= GLOB_ICASE;
 #endif
@@ -177,7 +173,7 @@ static_fn int scantree(Shell_t *shp, Dt_t *tree, const char *pattern, struct arg
     for (; np && !nv_isnull(np); (np = (Namval_t *)dtnext(tree, np))) {
         cp = nv_name(np);
         if (strmatch(cp, pattern)) {
-            (void)stkseek(shp->stk, ARGVAL);
+            stkseek(shp->stk, ARGVAL);
             sfputr(shp->stk, cp, -1);
             ap = (struct argnod *)stkfreeze(shp->stk, 1);
             ap->argbegin = NULL;
@@ -219,7 +215,8 @@ int path_generate(Shell_t *shp, struct argnod *todo, struct argnod **arghead) {
     char *format = NULL;
     char comma, range = 0;
     int first, last, incr, count = 0;
-    char tmp[32], end[1];
+    char end_char;
+    char tmp[32];
 
     if (!sh_isoption(shp, SH_BRACEEXPAND)) return path_expand(shp, todo->argval, arghead);
     todo->argchn.ap = NULL;
@@ -347,6 +344,7 @@ endloop1:
     rescan = cp;
     cp = pat - 1;
     *cp = 0;
+
     while (1) {
         brace = 0;
         if (range) {
@@ -359,7 +357,8 @@ endloop1:
                 assert(format);
                 sfsprintf(pat, sizeof(tmp), format, first);
                 *(rescan - 1) = '}';
-                *(cp = end) = 0;
+                cp = &end_char;
+                *cp = 0;
             }
             if (incr * (first + incr) > last * incr) {
                 *cp = '}';
@@ -393,7 +392,7 @@ endloop1:
         brace = *cp;
         *cp = 0;
         sh_sigcheck(shp);
-        ap = (struct argnod *)stkseek(shp->stk, ARGVAL);
+        ap = stkseek(shp->stk, ARGVAL);
         ap->argflag = ARG_RAW;
         ap->argchn.ap = todo;
         sfputr(shp->stk, apin->argval, -1);

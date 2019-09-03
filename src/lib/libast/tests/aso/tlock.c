@@ -20,9 +20,7 @@
 #include "config_ast.h"  // IWYU pragma: keep
 
 #include <sched.h>
-#include <stdint.h>
 #include <stdlib.h>
-#include <sys/types.h>
 #include <unistd.h>
 
 #include "aso.h"
@@ -38,15 +36,15 @@
 #define N_PROC 16
 #endif
 
-#define N_SLOT 12            /* number of lock slots		*/
-#define N_STEP 1000          /* number of working steps	*/
-static int Pnum;             /* process number		*/
-static unsigned int *Nproc;  /* number of processes		*/
-static pid_t *Pid;           /* process id			*/
-static unsigned char *Lckc;  /* slots of char locks		*/
-static unsigned short *Lcks; /* slots of short locks		*/
-static unsigned int *Lcki;   /* slots of int  locks		*/
-static unsigned int *Done;   /* count done workloads		*/
+#define N_SLOT 12            /* number of lock slots            */
+#define N_STEP 1000          /* number of working steps */
+static int Pnum;             /* process number          */
+static unsigned int *Nproc;  /* number of processes             */
+static pid_t *Pid;           /* process id                      */
+static unsigned char *Lckc;  /* slots of char locks             */
+static unsigned short *Lcks; /* slots of short locks            */
+static unsigned int *Lcki;   /* slots of int  locks             */
+static unsigned int *Done;   /* count done workloads            */
 
 int lockobj(void *lck, ssize_t size, int locking) {
     int lckv, k, aso;
@@ -160,7 +158,6 @@ tmain() {
     tchild();
 
     Nproc =
-        // cppcheck-suppress leakReturnValNotUsed
         (unsigned int *)tshared(sizeof(*Nproc) + (N_PROC + 1) * sizeof(pid_t) + sizeof(*Done) +
                                 N_SLOT * sizeof(unsigned char) + N_SLOT * sizeof(unsigned short) +
                                 N_SLOT * sizeof(unsigned int));

@@ -22,9 +22,9 @@
 /*
  * file name expansion - posix.2 glob with gnu and ast extensions
  *
- *	David Korn
- *	Glenn Fowler
- *	AT&T Research
+ *      David Korn
+ *      Glenn Fowler
+ *      AT&T Research
  */
 #include "config_ast.h"  // IWYU pragma: keep
 
@@ -105,14 +105,14 @@ static_fn int gl_type(glob_t *gp, const char *path, int flags) {
 static_fn int gl_attr(glob_t *gp, const char *path, int flags) {
     UNUSED(gp);
     UNUSED(flags);
+    UNUSED(path);
 
-    return strchr(astconf("PATH_ATTRIBUTES", path, NULL), 'c') ? GLOB_ICASE : 0;
+    return 0;
 }
 
-/*
- * default gl_nextdir
- */
-
+//
+// Default (glob_t*)->gl_nextdir.
+//
 static_fn char *gl_nextdir(glob_t *gp, char *dir) {
     if (!(dir = gp->gl_nextpath)) dir = gp->gl_nextpath = stkcopy(stkstd, pathbin());
     switch (*gp->gl_nextpath) {
@@ -505,17 +505,17 @@ int ast_glob(const char *pattern, int flags, int (*errfn)(const char *, int), gl
         gp->gl_ignorei = 0;
         gp->gl_starstar = 0;
         if (!(flags & GLOB_DISC)) {
-            gp->gl_fignore = 0;
-            gp->gl_suffix = 0;
-            gp->gl_intr = 0;
+            gp->gl_fignore = NULL;
+            gp->gl_suffix = NULL;
+            gp->gl_intr = NULL;
             gp->gl_delim = 0;
             gp->gl_handle = NULL;
-            gp->gl_diropen = 0;
-            gp->gl_dirnext = 0;
-            gp->gl_dirclose = 0;
-            gp->gl_type = 0;
-            gp->gl_attr = 0;
-            gp->gl_nextdir = 0;
+            gp->gl_diropen = NULL;
+            gp->gl_dirnext = NULL;
+            gp->gl_dirclose = NULL;
+            gp->gl_type = NULL;
+            gp->gl_attr = NULL;
+            gp->gl_nextdir = NULL;
             gp->gl_stat = 0;
             gp->gl_lstat = 0;
             gp->gl_extra = 0;
@@ -615,7 +615,7 @@ int ast_glob(const char *pattern, int flags, int (*errfn)(const char *, int), gl
             }
         }
     }
-    top = ap = (globlist_t *)stkalloc(
+    top = ap = stkalloc(
         stkstd, (optlen ? 2 : 1) * strlen(pattern) + sizeof(globlist_t) + suflen + gp->gl_extra);
     ap->gl_next = NULL;
     ap->gl_flags = 0;
@@ -649,7 +649,7 @@ int ast_glob(const char *pattern, int flags, int (*errfn)(const char *, int), gl
     if (flags & GLOB_LIST) {
         gp->gl_list = gp->gl_match;
     } else {
-        argv = (char **)stkalloc(stkstd, (gp->gl_pathc + extra) * sizeof(char *));
+        argv = stkalloc(stkstd, (gp->gl_pathc + extra) * sizeof(char *));
         if (gp->gl_flags & GLOB_APPEND) {
             skip += --extra;
             memcpy(argv, gp->gl_pathv, skip * sizeof(char *));

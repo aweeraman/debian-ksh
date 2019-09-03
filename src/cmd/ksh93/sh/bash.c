@@ -80,7 +80,7 @@ const char sh_bash2[] =
 
 const char sh_optshopt[] =
     "+[-1c?\n@(#)$Id: shopt (AT&T Research) 2003-02-13 $\n]"
-    "[-author?Karsten Fleischer <K.Fleischer@omnium.de>]" USAGE_LICENSE
+    "[-author?Karsten Fleischer <K.Fleischer@omnium.de>]"
     "[+NAME?shopt - set/unset variables controlling optional shell behavior]"
     "[+DESCRIPTION?\bshopt\b sets or unsets variables controlling optional shell "
     "behavior. With no options, or with the \b-p\b option, a list of all "
@@ -204,7 +204,7 @@ int b_shopt(int argc, char *argv[], Shbltin_t *extra) {
 
     memset(&opt, 0, sizeof(opt));
     while ((n = optget(argv, sh_optshopt))) {
-        switch (n) {
+        switch (n) {  //!OCLINT(MissingDefaultStatement)
             case 'p': {
                 verbose &= ~PRINT_VERBOSE;
                 break;
@@ -328,16 +328,12 @@ void bash_init(Shell_t *shp, int mode) {
         sh_onoption(shp, SH_NOEMPTYCMDCOMPL);
         sh_onoption(shp, SH_POSIX);
         if (shp->login_sh == 2) sh_onoption(shp, SH_LOGIN_SHELL);
-        if (strcmp(astconf("UNIVERSE", 0, 0), "att") == 0) {
+        if (!path_is_bsd_universe()) {
             sh_onoption(shp, SH_XPG_ECHO);
         } else {
             sh_offoption(shp, SH_XPG_ECHO);
         }
-        if (strcmp(astconf("PATH_RESOLVE", 0, 0), "physical") == 0) {
-            sh_onoption(shp, SH_PHYSICAL);
-        } else {
-            sh_offoption(shp, SH_PHYSICAL);
-        }
+        sh_offoption(shp, SH_PHYSICAL);
 
         // Add builtins.
         sh_addbuiltin(shp, "shopt", b_shopt, &sh);
@@ -347,8 +343,8 @@ void bash_init(Shell_t *shp, int mode) {
 // Needs to go here because --version option is parsed before the init script.
 #if 0
         /* This was causing a core dump when running set to display all variables */
-		if(np=nv_open("HOSTTYPE",shp->var_tree,0))
-			nv_putval(np, BASH_HOSTTYPE, NV_NOFREE);
+                if(np=nv_open("HOSTTYPE",shp->var_tree,0))
+                        nv_putval(np, BASH_HOSTTYPE, NV_NOFREE);
 #endif
         np = nv_open("MACHTYPE", shp->var_tree, 0);
         if (np) nv_putval(np, BASH_MACHTYPE, NV_NOFREE);

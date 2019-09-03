@@ -19,11 +19,13 @@
 ########################################################################
 # Test the behavior of co-processes
 
-if [[ $OS_NAME == CYGWIN* ]]
-then
-    log_warning 'coprocess tests disabled on Cygwin - enable at the risk of wedging your system'
-    exit 0
-fi
+# ========
+# Verify we can't have more than one coprocess running.
+# See https://github.com/att/ast/issues/1373
+actual="$($SHELL -c 'sleep 10 |& ; sleep 10 |& ; kill $(jobs -p)' 2>&1)"
+expect="ksh: coprocess is running; cannot create a new coprocess"
+[[ "$actual" == *"$expect" ]] ||
+    log_error "concurrent coprocesses were allowed" "$expect" "$actual"
 
 function ping # id
 {
@@ -83,7 +85,8 @@ do
         *)    log_error "$cat coprocess unknown message +|$REPLY|+" ;;
         esac
     done
-    kill $(jobs -p) 2>/dev/null
+    kill $(jobs -p)
+    wait
 
     file=$TEST_DIR/regress
     $cat > $file  <<-!

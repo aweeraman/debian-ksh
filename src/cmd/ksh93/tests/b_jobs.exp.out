@@ -1,0 +1,11 @@
+disown invalid job ID fails
+bg invalid job ID fails
+fg invalid job ID fails
+background job killed when shell exits
+disowned background job not killed when shell exits
+Ctrl-z stops sleep 60 processs
+jobs lists stopped sleep 60 process
+jobs -l lists pid of stopped sleep 60 process
+jobs -p lists process group of stopped sleep 60 process
+bg brings last stopped process to background
+Warning before exit for stopped jobs works

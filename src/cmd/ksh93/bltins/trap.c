@@ -58,7 +58,7 @@ int b_trap(int argc, char *argv[], Shbltin_t *context) {
     UNUSED(argc);
 
     while ((sig = optget(argv, sh_opttrap))) {
-        switch (sig) {
+        switch (sig) {  //!OCLINT(MissingDefaultStatement)
             case 'a': {
                 aflag = true;
                 break;
@@ -79,7 +79,6 @@ int b_trap(int argc, char *argv[], Shbltin_t *context) {
                 errormsg(SH_DICT, ERROR_usage(0), "%s", opt_info.arg);
                 return 2;
             }
-            default: { break; }
         }
     }
     argv += opt_info.index;
@@ -207,23 +206,16 @@ int b_trap(int argc, char *argv[], Shbltin_t *context) {
 }
 
 int b_kill(int argc, char *argv[], Shbltin_t *context) {
-    char *signame;
-    int sig = SIGTERM, flag = 0, n;
+    UNUSED(argc);
+    char *signame = NULL;
+    int sig = SIGTERM;
+    int flag = 0;
+    int n;
     Shell_t *shp = context->shp;
     int usemenu = 0;
-    UNUSED(argc);
 
     while ((n = optget(argv, sh_optkill))) {
-        switch (n) {
-            case ':': {
-                if ((signame = argv[opt_info.index++]) &&
-                    (sig = sig_number(shp, signame + 1)) >= 0) {
-                    goto endopts;
-                }
-                opt_info.index--;
-                errormsg(SH_DICT, 2, "%s", opt_info.arg);
-                break;
-            }
+        switch (n) {  //!OCLINT(MissingDefaultStatement)
             case 'n': {
                 sig = (int)opt_info.num;
                 goto endopts;
@@ -251,12 +243,20 @@ int b_kill(int argc, char *argv[], Shbltin_t *context) {
                 }
                 break;
             }
+            case ':': {
+                if ((signame = argv[opt_info.index++]) &&
+                    (sig = sig_number(shp, signame + 1)) >= 0) {
+                    goto endopts;
+                }
+                opt_info.index--;
+                errormsg(SH_DICT, 2, "%s", opt_info.arg);
+                break;
+            }
             case '?': {
                 shp->sigval = 0;
                 errormsg(SH_DICT, ERROR_usage(2), "%s", opt_info.arg);
                 __builtin_unreachable();
             }
-            default: { break; }
         }
     }
 endopts:

@@ -37,10 +37,10 @@
 #include <unistd.h>
 
 #include "ast.h"
-#include "ast_sys.h"
 #include "error.h"
 #include "sfio.h"
 #include "sig.h"
+#include "spawnvex.h"
 
 #ifndef ENOSYS
 #define ENOSYS EINVAL
@@ -300,8 +300,8 @@ int spawnvex_apply(Spawnvex_t *vex, int cur, int flags) {
                                 if (err) break;
                             }
 #if 0
-						if (close(op))
-							err = errno;
+                                                if (close(op))
+                                                        err = errno;
 #else
                             close(op);
 #endif

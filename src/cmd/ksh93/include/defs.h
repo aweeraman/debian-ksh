@@ -89,13 +89,9 @@ struct sh_scoped {
 };
 
 struct limits {
-    long arg_max;                    // max arg+env exec() size
-    int open_max;                    // maximum number of file descriptors
-    int clk_tck;                     // number of ticks per second
-    int child_max;                   // maxumum number of children
-    int ngroups_max;                 // maximum number of process groups
-    unsigned char posix_version;     // posix version number
-    unsigned char posix_jobcontrol;  // non-zero for job control systems
+    long arg_max;   // max arg+env exec() size
+    int open_max;   // maximum number of file descriptors
+    int child_max;  // maxumum number of children
 };
 
 struct shared {
@@ -256,19 +252,18 @@ extern int sh_mathstd(const char *);
 extern void sh_printopts(Shell_t *, Shopt_t, int, Shopt_t *);
 extern int sh_readline(Shell_t *, char **, void *, volatile int, int, ssize_t, long);
 extern Sfio_t *sh_sfeval(const char **);
-extern char *sh_fmtj(const char *);
 extern char *sh_fmtstr(const char *, int);
 extern void sh_setmatch(Shell_t *, const char *, int, int, int[], int);
 extern Dt_t *sh_subaliastree(Shell_t *, int);
 extern void sh_scope(Shell_t *, struct argnod *, int);
 extern Namval_t *sh_scoped(Shell_t *, Namval_t *);
-extern Namval_t **sh_setlist(Shell_t *, struct argnod *, int, Namval_t *);
+extern Namval_t **sh_setlist(Shell_t *, struct argnod *, nvflag_t, Namval_t *);
 extern void sh_sigclear(Shell_t *, int);
 extern void sh_sigdone(Shell_t *);
 extern void sh_sigreset(Shell_t *, int);
 extern void sh_sigtrap(Shell_t *, int);
 extern void sh_siglist(Shell_t *, Sfio_t *, int);
-extern Dt_t *sh_subfuntree(Shell_t *, int);
+extern Dt_t *sh_subfuntree(Shell_t *, bool);
 extern void sh_subjobcheck(pid_t);
 extern int sh_subsavefd(int);
 extern void sh_subtmpfile(Shell_t *);
@@ -278,12 +273,7 @@ extern bool sh_trace(Shell_t *, char *[], int);
 extern void sh_trim(char *);
 extern int sh_type(const char *);
 extern void sh_unscope(Shell_t *);
-#if SHOPT_COSHELL
-extern bool sh_coaddfile(Shell_t *, char *);
-extern int sh_copipe(Shell_t *, int[], int);
-extern int sh_coaccept(Shell_t *, int[], int);
-#endif /* SHOPT_COSHELL */
-extern Namval_t *sh_fsearch(Shell_t *, const char *, int);
+extern Namval_t *sh_fsearch(Shell_t *, const char *, nvflag_t);
 extern int sh_diropenat(Shell_t *, int, const char *);
 extern int sh_strchr(const char *, const char *, size_t);
 
@@ -314,13 +304,6 @@ extern void *const builtin_disable;
 #define sh_offstate(shp, x) ((shp)->st.states &= ~sh_state(x))
 #define sh_getstate(shp) ((shp)->st.states)
 #define sh_setstate(shp, x) ((shp)->st.states = (x))
-
-#if 0
-#define sh_sigcheck(shp)                                           \
-    do {                                                           \
-        if (shp->trapnote & SH_SIGSET) sh_exit((shp), SH_EXITSIG); \
-    } while (0)
-#endif
 
 extern int32_t sh_mailchk;
 extern const char e_dict[];
@@ -356,7 +339,11 @@ extern const Shtable_t shtab_siginfo[];
 // sigqueue() may not be available on some platforms (e.g., macOS) or doesn't work on others
 // (e.g., WSL). So provide a fallback that mostly does what we need.
 #if !_lib_sigqueue || _WSL_
-#define sigqueue(sig, action, val) kill(sig, action)
+static inline int sigqueue_fallback(pid_t pid, int sig, const union sigval sig_val) {
+    UNUSED(sig_val);
+    return kill(pid, sig);
+}
+#define sigqueue sigqueue_fallback
 #endif
 
 #define sh_sigaction(s, action)         \

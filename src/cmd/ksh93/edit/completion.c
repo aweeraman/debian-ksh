@@ -24,7 +24,9 @@
 
 #include <ctype.h>
 #include <limits.h>
+#include <stdbool.h>
 #include <string.h>
+#include <wchar.h>
 
 #include "argnod.h"
 #include "ast.h"
@@ -247,29 +249,22 @@ int ed_expand(Edit_t *ep, char outbuff[], int *cur, int *eol, int mode, int coun
             ep->e_nlist = 0;
         }
     }
-    comptr = (struct comnod *)stkalloc(shp->stk, sizeof(struct comnod));
-    ap = (struct argnod *)stkseek(shp->stk, ARGVAL);
+    comptr = stkalloc(shp->stk, sizeof(struct comnod));
+    ap = stkseek(shp->stk, ARGVAL);
 
     {
         // Adjust cur.
         int c;
-        genchar *cp;
-        cp = (genchar *)outbuff + *cur;
+        wchar_t *cp;
+        cp = (wchar_t *)outbuff + *cur;
         c = *cp;
         *cp = 0;
-        *cur = ed_external((genchar *)outbuff, (char *)stkptr(shp->stk, 0));
+        *cur = ed_external((wchar_t *)outbuff, (char *)stkptr(shp->stk, 0));
         *cp = c;
-        *eol = ed_external((genchar *)outbuff, outbuff);
+        *eol = ed_external((wchar_t *)outbuff, outbuff);
     }
 
     out = outbuff + *cur + (sh_isoption(shp, SH_VI) != 0);
-#if 0
-	if(out[-1]=='"' || out[-1]=='\'')
-	{
-		rval = -(sh_isoption(shp,SH_VI)!=0);
-		goto done;
-	}
-#endif
     comptr->comtyp = COMSCAN;
     comptr->comarg = ap;
     ap->argflag = (ARG_MAC | ARG_EXP);
@@ -322,8 +317,8 @@ int ed_expand(Edit_t *ep, char outbuff[], int *cur, int *eol, int mode, int coun
     if (mode != '*') sh_onoption(shp, SH_MARKDIRS);
 
     {
-        char *cp = begin, *left = 0, *saveout = ".";
-        int nocase = 0, cmd_completion = 0;
+        char *cp = begin, *left = NULL;
+        int cmd_completion = 0;
         int size = 'x';
         while (cp > outbuff && ((size = cp[-1]) == ' ' || size == '\t')) cp--;
         if (!var && !strchr(ap->argval, '/') &&
@@ -376,10 +371,7 @@ int ed_expand(Edit_t *ep, char outbuff[], int *cur, int *eol, int mode, int coun
             if (dir) {
                 c = *dir;
                 *dir = 0;
-                saveout = begin;
             }
-            saveout = astconf("PATH_ATTRIBUTES", saveout, NULL);
-            if (saveout) nocase = (strchr(saveout, 'c') != 0);
             if (dir) *dir = c;
             // Just expand until name is unique.
             size += strlen(*com);
@@ -418,12 +410,12 @@ int ed_expand(Edit_t *ep, char outbuff[], int *cur, int *eol, int mode, int coun
             out = stpcpy(begin, *com++);
         }
         if (mode == '\\') {
-            saveout = ++out;
+            char *saveout = ++out;
             while (*com && *begin) {
                 if (cmd_completion) {
-                    out = overlaid(begin, path_basename(*com++), nocase);
+                    out = overlaid(begin, path_basename(*com++), false);
                 } else {
-                    out = overlaid(begin, *com++, nocase);
+                    out = overlaid(begin, *com++, false);
                 }
             }
             mode = (out == saveout);
@@ -492,7 +484,7 @@ done:
         outbuff[*cur] = c;
         *cur = n;
         outbuff[*eol + 1] = 0;
-        *eol = ed_internal(outbuff, (genchar *)outbuff);
+        *eol = ed_internal(outbuff, (wchar_t *)outbuff);
     }
 
     return rval;
@@ -505,7 +497,7 @@ done:
 int ed_macro(Edit_t *ep, int i) {
     char *out;
     Namval_t *np;
-    genchar buff[LOOKAHEAD + 1];
+    wchar_t buff[LOOKAHEAD + 1];
 
     if (i != '@') ep->e_macro[1] = i;
     // Undocumented feature, macros of the form <ESC>[c evoke alias __c.
@@ -547,7 +539,7 @@ int ed_fulledit(Edit_t *ep) {
         hist_flush(shgd->hist_ptr);
     }
     cp = stpcpy((char *)ep->e_inbuf, e_runvi);
-    cp = stpcpy(cp, fmtbase((long)ep->e_hline, 10, 0));
+    cp = stpcpy(cp, fmtbase(ep->e_hline, 10, 0));
     ep->e_eol =
         ((unsigned char *)cp - (unsigned char *)ep->e_inbuf) - (sh_isoption(ep->sh, SH_VI) != 0);
     return 0;

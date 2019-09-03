@@ -48,9 +48,8 @@ static char *lib = "lib";
 
 //
 // We need a sibling dir in PATH to search for dlls.
-// The confstr LIBPATH provides the local info.
 //
-//	<sibling-dir>[:<env-var>[:<host-pattern>]][,...]
+//      <sibling-dir>[:<env-var>[:<host-pattern>]][,...]
 //
 // If <host-pattern> is present then it must match confstr HOSTTYPE.
 //
@@ -70,7 +69,7 @@ Dllinfo_t *dllinfo(void) {
     char pat[256];
 
     info.sibling = info.sib;
-    s = astconf("LIBPATH", NULL, NULL);
+    s = CONF_LIBPATH;
     if (*s) {
         while (*s == ':' || *s == ',') s++;
         if (*s) {
@@ -96,7 +95,9 @@ Dllinfo_t *dllinfo(void) {
                     p = 0;
                 }
                 while (*s && *s != ',') s++;
-                if (!*s || !p || (!h && !*(h = astconf("HOSTTYPE", NULL, NULL)))) break;
+                // Note that HOSTTYPE is supposed to be defined in config_ast.h via a build time
+                // feature test.
+                if (!*s || !p || (!h && !*(h = HOSTTYPE))) break;
                 if (pn >= sizeof(pat)) pn = sizeof(pat) - 1;
                 memcpy(pat, p, pn);
                 pat[pn] = 0;
@@ -115,8 +116,8 @@ Dllinfo_t *dllinfo(void) {
     if (!info.sibling[0] || !strcmp(info.sibling[0], bin)) info.sibling[0] = bin;
     if (strcmp(info.sibling[0], lib) != 0) info.sibling[1] = lib;
     if (!info.env) info.env = "LD_LIBRARY_PATH";
-    info.prefix = astconf("LIBPREFIX", NULL, NULL);
-    info.suffix = astconf("LIBSUFFIX", NULL, NULL);
+    info.prefix = CONF_LIBPREFIX;
+    info.suffix = CONF_LIBSUFFIX;
     if (!strcmp(info.suffix, ".dll")) {
         info.flags |= DLL_INFO_PREVER;
     } else {

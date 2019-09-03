@@ -27,24 +27,25 @@
 #include <stdlib.h>
 
 #include "ast.h"
+#include "ast_regex.h"
 #include "reglib.h"
 
 /*
  * state shared by all threads
  */
 
-State_t state = {
+State_t regstate = {
     {-1, -1},
 
     /*
      * escape code table
      * the "funny" things get special treatment at ends of BRE
      *
-     *	BRE  0:normal  1:escaped  2:escaped-char-class
-     *	ERE  3:normal  4:escaped  5:escaped-char-class
-     *	ARE  6:normal  7:escaped  8:escaped-char-class
-     *	SRE  9:normal 10:escaped 11:escaped-char-class
-     *	KRE 12:normal 13:escaped 14:escaped-char-class
+     *  BRE  0:normal  1:escaped  2:escaped-char-class
+     *  ERE  3:normal  4:escaped  5:escaped-char-class
+     *  ARE  6:normal  7:escaped  8:escaped-char-class
+     *  SRE  9:normal 10:escaped 11:escaped-char-class
+     *  KRE 12:normal 13:escaped 14:escaped-char-class
      */
 
     {
@@ -219,9 +220,9 @@ State_t state = {
  * all allocation/free done here
  * interface compatible with vmresize()
  *
- *	malloc(n)	alloc(0,n)
- *	realloc(p,n)	alloc(p,n)
- *	free(p)		alloc(p,0)
+ *      malloc(n)       alloc(0,n)
+ *      realloc(p,n)    alloc(p,n)
+ *      free(p)         alloc(p,0)
  */
 
 void *regalloc(regdisc_t *disc, void *p, size_t n) {

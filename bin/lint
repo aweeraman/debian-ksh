@@ -143,6 +143,7 @@ then
             mapping_file="../etc/iwyu.linux.map"
             ;;
     esac
+set +x
     for c_file in "${c_files[@]}"
     do
         if [[ "${mapping_file}" != "" ]]
@@ -165,6 +166,7 @@ then
                     -e '/^(.* has correct #includes/d'
         fi
     done
+set +x
 fi
 
 if command -v cppcheck > /dev/null
@@ -191,7 +193,7 @@ then
         flags=( $(../scripts/extract_flags ${project_file} "${c_file}") )
         cppcheck "${lint_args[@]}" \
                  "${flags[@]}" -D_CPPCHECK \
-                 -q --verbose --std=c99 --std=posix --language=c \
+                 -q --verbose --std=c99 --language=c \
                  --suppress=missingIncludeSystem --inline-suppr \
                  --enable="${cppchecks}" --rule-file=../.cppcheck.rules \
                  --template="${template}" \

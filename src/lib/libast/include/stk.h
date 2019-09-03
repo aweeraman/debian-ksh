@@ -37,12 +37,15 @@
 
 #define Stk_t Sfio_t
 
-#define STK_SMALL 1 /* small stkopen stack		*/
-#define STK_NULL 2  /* return NULL on overflow	*/
+#define STK_SMALL 1 /* small stkopen stack              */
+#define STK_NULL 2  /* return NULL on overflow  */
 
 #define stkptr(sp, n) ((char *)((sp)->data) + (n))
 #define stktop(sp) ((char *)(sp)->next)
-#define stktell(sp) ((sp)->next - (sp)->data)
+// This is documented to return an int but on systems with 64 bit pointers it returns a long long.
+// This causes lint warnings about narrowing implicit converions. Since the value will never exceed
+// 2GB just do an explicit cast to eliminate the lint.
+#define stktell(sp) (int)((sp)->next - (sp)->data)
 
 extern Sfio_t _Stk_data;
 
@@ -53,7 +56,7 @@ extern int stklink(Stk_t *);
 extern void *stkalloc(Stk_t *, size_t);
 extern char *stkcopy(Stk_t *, const char *);
 extern char *stkset(Stk_t *, char *, size_t);
-extern char *stkseek(Stk_t *, ssize_t);
+extern void *stkseek(Stk_t *, ssize_t);
 extern char *stkfreeze(Stk_t *, size_t);
 extern int stkon(Stk_t *, char *);
 

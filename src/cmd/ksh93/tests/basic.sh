@@ -28,6 +28,28 @@ actual=$($SHELL --version 2>&1)
 expect='version'
 [[ "$actual" == *${expect}* ]] || log_error "failed to get version string" "*${expect}*" "$actual"
 
+# ==========
+# Is an invalid flag handled correctly?
+# Regression: https://github.com/att/ast/issues/1284
+actual=$($SHELL --verson 2>&1)
+actual_status=$?
+expect='ksh: verson: bad option(s)'
+expect_status=2
+[[ "$actual" == ${expect}* ]] || log_error "failed to get version string" "${expect}*" "$actual"
+[[ $actual_status == $expect_status ]] ||
+    log_error "wrong exit status" "$expect_status" "$actual_status"
+
+# ==========
+# If the shell is invoked with stdin and stdout closed it should ensure they are open on /dev/null.
+# ksh93u+ and older versions did not do so. Which would cause this test to fail because the shell
+# exit status would not be zero. We can't use ksh to perform the close because it now ensures all
+# child processes have stdin, stdout, and stderr open on something, possibly /dev/null. We want to
+# ensure that ksh behaves sensibly if that isn't true.
+actual=$(bash -c "0<&- 1<&- $SHELL -c 'print yes'")
+status=$?
+[[ $actual == "" ]] || log_error "stdout had unexpected text" "" "$actual"
+[[ $status -eq 0 ]] || log_error "exit status wrong" "0" "$actual"
+
 # test basic file operations like redirection, pipes, file expansion
 
 umask u=rwx,go=rx || log_error "umask u=rws,go=rx failed"
@@ -73,8 +95,7 @@ expect=dir
     log_error 'file expansion leading . not working' "$expect" "$actual"
 cd ..
 
-date > dat1 || log_error "date > dat1 failed"
-test -r dat1 || log_error "dat1 is not readable"
+echo maybe > dat1 || log_error "echo yes > dat1 failed"
 x=dat1
 cat <$x > dat2 || log_error "cat < $x > dat2 failed"
 cat dat1 dat2 | cat  | cat | cat > dat3 || log_error "cat pipe failed"
@@ -141,7 +162,7 @@ then
     log_error 'cd ../../tmp is not /tmp'
 fi
 
-( sleep 2; cat <<!
+( sleep 0.2; cat <<!
 foobar
 !
 ) | cat > $TEST_DIR/foobar &
@@ -371,11 +392,11 @@ foo()
 foo
 kill $pids
 
-actual=$( (trap 'print alarm' ALRM; sleep 4) & sleep 2; kill -ALRM $!; sleep 2; wait)
+actual=$( (trap 'print alarm' ALRM; sleep 1.0) & sleep 0.5; kill -ALRM $!; sleep 0.5; wait)
 expect=alarm
 [[ $actual == $expect ]] || log_error 'ALRM signal not working' "$expect" "$actual"
 
-actual=$($SHELL -c 'trap "" HUP; $SHELL -c "(sleep 2; kill -HUP $$) & sleep 4; print done"')
+actual=$($SHELL -c 'trap "" HUP; $SHELL -c "(sleep 0.5; kill -HUP $$) & sleep 1; print done"')
 expect=done
 [[ $actual == $expect ]] || log_error 'ignored traps not being ignored' "$expect" "$actual"
 
@@ -421,21 +442,21 @@ expect=$'x\ny\nz'
 for tee in "$(whence tee)" $bin_tee
 do
     print xxx > $TEST_DIR/file
-    $tee  >(sleep 1; cat > $TEST_DIR/file) <<< "hello" > /dev/null
+    $tee  >(sleep 0.1; cat > $TEST_DIR/file) <<< "hello" > /dev/null
     actual=$(< $TEST_DIR/file)
     expect=hello
     [[ $actual == $expect ]] ||
         log_error "process substitution does not wait for >() to complete with $tee" "$expect" "$actual"
 
     print yyy > $TEST_DIR/file2
-    $tee >(cat > $TEST_DIR/file) >(sleep 1; cat > $TEST_DIR/file2) <<< "hello" > /dev/null
+    $tee >(cat > $TEST_DIR/file) >(sleep 0.1; cat > $TEST_DIR/file2) <<< "hello" > /dev/null
     actual=$(< $TEST_DIR/file2)
     expect=hello
     [[ $actual == $expect ]] ||
         log_error "process substitution does not wait for second of two >() to complete with $tee" "$expect" "$actual"
 
     print xxx > $TEST_DIR/file
-    $tee  >(sleep 1; cat > $TEST_DIR/file) >(cat > $TEST_DIR/file2) <<< "hello" > /dev/null
+    $tee  >(sleep 0.1; cat > $TEST_DIR/file) >(cat > $TEST_DIR/file2) <<< "hello" > /dev/null
     actual=$(< $TEST_DIR/file)
     expect=hello
     [[ $actual == $expect ]] ||
@@ -452,29 +473,38 @@ fi
 
 # ========
 # Producer/consumer test involving process substitution.
-{
-    producer() {
-        for ((i = 0; i < 20000; i++ ))
-        do
-            print xxxxx${i}xxxxx
-        done
-    }
-    consumer() {
-        while read var
-        do
-            print ${var}
-        done < ${1}
-    }
-    consumer <(producer) > /dev/null
-} &
-pid=$!
+# On Cygwin we can't use socketpair() for pipes. The ksh support for regular pipes is broken which
+# break these tests. So skip this test on Cygwin.
+#
+# TODO: Remove this restriction when support for reading from regular pipes is fixed.
+if [[ $OS_NAME == cygwin* ]]
+then
+    log_warning "skipping 'read' tests on Cygwin"
+else
+    # On most systems a five second timeout is adequate. On my WSL (Windows Subsystem for Linux) VM
+    # This test takes six seconds. Hence the ten second read timeout.
+    {
+        producer() {
+            for ((i = 0; i < 20000; i++ ))
+            do
+                print xxxxx${i}xxxxx
+            done
+        }
+        consumer() {
+            while read var
+            do
+                print ${var}
+            done < ${1}
+        }
+        consumer <(producer) > /dev/null
+    } &
+    pid=$!
+    (read -t 10 -u 9 x && exit 0; kill -HUP $pid) 2> /dev/null &
+    wait $pid || log_error "process substitution hangs"
+    print -u 9 exit
+    wait
+fi  # if [[ $OS_NAME == cygwin* ]]
 
-# On most systems a five second timeout is adequate. On my WSL (Windows Subsystem for Linux) VM
-# This test takes six seconds. Hence the ten second read timeout.
-(read -t 10 -u 9 x && exit 0; kill -HUP $pid) 2> /dev/null &
-wait $pid || log_error "process substitution hangs"
-print -u 9 exit
-wait
 # TODO: Figure out why `empty_fifos` breaks the "set -o pipefail" test below.
 # Specifically, why does doing a `read -u8` or `read -u9` cause a problem.
 # For the moment we'll just assume the fifos are empty since anything else represents a bug.
@@ -501,9 +531,9 @@ chmod +x $TEST_DIR/scriptx
 cat > $TEST_DIR/scriptx <<- \EOF
     myfilter() { x=$(print ok | cat); print  -r -- $SECONDS;}
     set -o pipefail
-    sleep 3 | myfilter
+    sleep 0.6 | myfilter
 EOF
-(( $($SHELL $TEST_DIR/scriptx) > 2.0 )) && log_error 'command substitution causes pipefail option to hang'
+(( $($SHELL $TEST_DIR/scriptx) > 0.5 )) && log_error 'command substitution causes pipefail option to hang'
 exec 3<&-
 ( typeset -r foo=bar) 2> /dev/null || log_error 'readonly variables set in a subshell cannot unset'
 
@@ -553,16 +583,16 @@ unset foo
 unset foo
 foo=$(false) > /dev/null && log_error 'failed command substitution with redirection not returning false'
 expect=foreback
-actual=`print -n fore; (sleep 2;print back)&`
+actual=`print -n fore; (sleep 0.1; print back)&`
 [[ $actual == $expect ]] ||
     log_error "\`\`command substitution background process output error" "$expect" "$actual"
-actual=$(print -n fore; (sleep 2;print back)&)
+actual=$(print -n fore; (sleep 0.1; print back)&)
 [[ $actual == $expect ]] ||
     log_error "\$() command substitution background process output error" "$expect" "$actual"
 actual=${ print -n fore; (sleep 2;print back)& }
 [[ $actual == $expect ]] ||
     log_error "\${} command substitution background process output error" "$expect" "$actual"
-function abc { sleep 2; print back; }
+function abc { sleep 0.1; print back; }
 function abcd { abc & }
 actual=$(print -n fore;abcd)
 [[ $actual == $expect ]] ||
@@ -584,15 +614,15 @@ float s=SECONDS
 for i in 1 2
 do
       print $i
-done | while read sec; do ( $bin_sleep $sec; $bin_sleep $sec) done
-(( (SECONDS-s)  < 4)) && log_error '"command | while read...done" finishing too fast'
+done | while read sec; do ( sleep 0.1; $bin_sleep $sec) done
+(( (SECONDS - s) > 3 )) || log_error '"command | while read...done" finishing too fast'
 
 s=SECONDS
 set -o pipefail
 for ((i=0; i < 30; i++))
 do
     print hello
-    sleep .1
+    sleep 0.1
 done | $bin_sleep 1
 (( (SECONDS-s) < 2 )) || log_error 'early termination not causing broken pipe'
 
@@ -679,3 +709,57 @@ $SHELL 2> /dev/null -c $'for i;\ndo :;done' || log_error 'for i ; <newline> not 
 set +o pipefail
 foo=`false | true`
 [[ $? -eq 0 ]] || log_error "Incorrect exit status from command substitution"
+
+# ==========
+# Ensure "typeset" for "declare and assign" and "assign after declare" behaves the same.
+# Regression: https://github.com/att/ast/issues/1312
+typeset KEY='k1'
+
+unset A_ASSO
+typeset -A A_ASSO
+actual=$(typeset -p A_ASSO)
+expect='typeset -A A_ASSO=()'
+[[ "$actual" == "$expect" ]] ||
+    log_error 'typeset -p output incorrect' "$expect" "$actual"
+
+typeset -A A_ASSO[${KEY}].COMPOUND_SUBNAME="declare_and_assign_noindex_fail"
+actual=$(typeset -p A_ASSO)
+expect='typeset -A A_ASSO=([k1]=(typeset -A COMPOUND_SUBNAME=([0]=declare_and_assign_noindex_fail);))'
+[[ "$actual" == "$expect" ]] ||
+    log_error 'typeset -p output incorrect' "$expect" "$actual"
+
+unset B_ASSO
+typeset -A B_ASSO
+typeset -A B_ASSO[${KEY}].COMPOUND_SUBNAME[0]="declare_and_assign_index_succ"
+actual=$(typeset -p B_ASSO)
+expect='typeset -A B_ASSO=([k1]=(typeset -a COMPOUND_SUBNAME=(declare_and_assign_index_succ);))'
+[[ "$actual" == "$expect" ]] ||
+    log_error 'typeset -p output incorrect' "$expect" "$actual"
+
+unset C_ASSO
+typeset -A C_ASSO
+typeset -A C_ASSO[${KEY}].COMPOUND_SUBNAME
+C_ASSO[${KEY}].COMPOUND_SUBNAME="assign_after_declare_noindex_succ"
+actual=$(typeset -p C_ASSO)
+expect='typeset -A C_ASSO=([k1]=(typeset -A COMPOUND_SUBNAME=([0]=assign_after_declare_noindex_succ);))'
+[[ "$actual" == "$expect" ]] ||
+    log_error 'typeset -p output incorrect' "$expect" "$actual"
+
+unset D_ASSO
+typeset -A D_ASSO
+typeset -A D_ASSO[${KEY}].COMPOUND_SUBNAME
+D_ASSO[${KEY}].COMPOUND_SUBNAME[0]="assign_after_declare_index_succ"
+actual=$(typeset -p D_ASSO)
+expect='typeset -A D_ASSO=([k1]=(typeset -A COMPOUND_SUBNAME=([0]=assign_after_declare_index_succ);))'
+[[ "$actual" == "$expect" ]] ||
+    log_error 'typeset -p output incorrect' "$expect" "$actual"
+
+# When `for` loop is used without `in`, it should loop over `$@`
+set -- foo bar baz
+actual=$(for name
+do
+    echo "$name"
+done)
+
+expect=$'foo\nbar\nbaz'
+[[ "$actual" = "$expect" ]] || log_error "for loop without 'in' should loop over '\$@'" "$expect" "$actual" "$actual" "$actual" 

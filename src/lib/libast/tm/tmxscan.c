@@ -33,7 +33,6 @@
 #include "config_ast.h"  // IWYU pragma: keep
 
 #include <ctype.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
@@ -155,7 +154,6 @@ static_fn Time_t tmx_scan(const char *s, char **e, const char *format, char **f,
     char *p;
     Tm_t *tm;
     const char *b;
-    char *u;
     char *stack[4];
     int m;
     int hi;
@@ -165,7 +163,7 @@ static_fn Time_t tmx_scan(const char *s, char **e, const char *format, char **f,
     Set_t set;
     Tm_zone_t *zp;
     Tm_t ts;
-
+    char *u = NULL;
     char **sp = &stack[0];
 
     while (isspace(*s)) s++;
@@ -223,7 +221,7 @@ again:
                     continue;
                 case 'd':
                     if (pedantic && !isdigit(*s)) goto next;
-                    /*FALLTHROUGH*/
+                    // FALLTHRU
                 case 'e':
                     NUMBER(2, 1, 31);
                     set.mday = n;
@@ -268,7 +266,7 @@ again:
                         while (*s == '\n') s++;
                         continue;
                     }
-                    /*FALLTHROUGH*/
+                    // FALLTHRU
                 case 't':
                     while (isspace(*s)) s++;
                     continue;
@@ -346,7 +344,7 @@ again:
                         s = u;
                         u = zp->type;
                     } else {
-                        u = 0;
+                        u = NULL;
                     }
                     if (d == 'q') continue;
                 // FALLTHRU
@@ -362,7 +360,7 @@ again:
                     s = b;
                     goto again;
                 case '&':
-                    x = tmx_gen(tm, &set);
+                    (void)tmx_gen(tm, &set);
                     x = tmxdate(s, e, t);
                     if (s == (const char *)*e) goto next;
                     t = x;
@@ -413,9 +411,9 @@ done:
 }
 
 /*
- *  format==0	DATEMSK
- * *format==0	DATEMSK and tmxdate()
- * *format!=0	format
+ *  format==0   DATEMSK
+ * *format==0   DATEMSK and tmxdate()
+ * *format!=0   format
  */
 
 Time_t tmxscan(const char *s, char **e, const char *format, char **f, Time_t t, long flags) {
@@ -425,57 +423,58 @@ Time_t tmxscan(const char *s, char **e, const char *format, char **f, Time_t t, 
     char *r;
     Time_t x;
 
-    static int initialized;
-    static char **datemask;
+    static int initialized = 0;
+    static char **datemask = NULL;
 
     tmlocale();
-    if (!format || !*format) {
-        if (!initialized) {
-            Sfio_t *sp;
-            int n;
-            off_t m;
 
-            initialized = 1;
-            if ((v = getenv("DATEMSK")) && *v && (sp = sfopen(NULL, v, "r"))) {
-                for (n = 1; sfgetr(sp, '\n', 0); n++) {
-                    ;
-                }
-                m = sfseek(sp, 0L, SEEK_CUR);
-                p = calloc(1, n * sizeof(char *) + m);
-                if (p) {
-                    sfseek(sp, 0L, SEEK_SET);
-                    v = (char *)(p + n);
-                    if (sfread(sp, v, m) != m) {
-                        free(p);
-                        p = 0;
-                    } else {
-                        datemask = p;
-                        v[m] = 0;
-                        while (*v) {
-                            *p++ = v;
-                            if (!(v = strchr(v, '\n'))) break;
-                            *v++ = 0;
-                        }
-                        *p = 0;
+    if (format && *format) return tmx_scan(s, e, format, f, t, flags);
+
+    if (!initialized) {
+        Sfio_t *sp;
+        int n;
+        off_t m;
+
+        initialized = 1;
+        if ((v = getenv("DATEMSK")) && *v && (sp = sfopen(NULL, v, "r"))) {
+            for (n = 1; sfgetr(sp, '\n', 0); n++) {
+                ;
+            }
+            m = sfseek(sp, 0L, SEEK_CUR);
+            p = calloc(1, n * sizeof(char *) + m);
+            if (p) {
+                sfseek(sp, 0L, SEEK_SET);
+                v = (char *)(p + n);
+                if (sfread(sp, v, m) != m) {
+                    free(p);
+                    p = 0;
+                } else {
+                    datemask = p;
+                    v[m] = 0;
+                    while (*v) {
+                        *p++ = v;
+                        if (!(v = strchr(v, '\n'))) break;
+                        *v++ = 0;
                     }
+                    *p = 0;
                 }
             }
         }
-        p = datemask;
-        if (p) {
-            while ((v = *p++)) {
-                x = tmx_scan(s, &q, v, &r, t, flags);
-                if (!*q && !*r) {
-                    if (e) *e = q;
-                    if (f) *f = r;
-                    return x;
-                }
-            }
-        }
-        if (f) *f = (char *)format;
-        if (format) return tmxdate(s, e, t);
-        if (e) *e = (char *)s;
-        return 0;
     }
-    return tmx_scan(s, e, format, f, t, flags);
+
+    p = datemask;
+    if (p) {
+        while ((v = *p++)) {
+            x = tmx_scan(s, &q, v, &r, t, flags);
+            if (!*q && !*r) {
+                if (e) *e = q;
+                if (f) *f = r;
+                return x;
+            }
+        }
+    }
+    if (f) *f = (char *)format;
+    if (format) return tmxdate(s, e, t);
+    if (e) *e = (char *)s;
+    return 0;
 }

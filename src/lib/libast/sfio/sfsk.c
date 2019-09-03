@@ -21,15 +21,14 @@
  ***********************************************************************/
 #include "config_ast.h"  // IWYU pragma: keep
 
-#include <sys/types.h>
 #include <unistd.h>
 
 #include "sfhdr.h"
 #include "sfio.h"
 
-/*	Seek function that knows discipline
+/*      Seek function that knows discipline
 **
-**	Written by Kiem-Phong Vo.
+**      Written by Kiem-Phong Vo.
 */
 Sfoff_t sfsk(Sfio_t *f, Sfoff_t addr, int type, Sfdisc_t *disc) {
     Sfoff_t p;

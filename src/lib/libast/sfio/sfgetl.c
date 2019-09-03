@@ -21,14 +21,12 @@
  ***********************************************************************/
 #include "config_ast.h"  // IWYU pragma: keep
 
-#include <sys/types.h>
-
 #include "sfhdr.h"  // IWYU pragma: keep
 #include "sfio.h"
 
-/*	Read a long value coded in a portable format.
+/*      Read a long value coded in a portable format.
 **
-**	Written by Kiem-Phong Vo
+**      Written by Kiem-Phong Vo
 */
 
 Sflong_t sfgetl(Sfio_t *f) {

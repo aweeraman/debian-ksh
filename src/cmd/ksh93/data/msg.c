@@ -56,7 +56,7 @@ const char e_create[] = "%s: cannot create";
 const char e_tmpcreate[] = "cannot create temporary file";
 const char e_restricted[] = "%s: restricted";
 const char e_pfsh[] = "%s: disabled in profile shell";
-const char e_pexists[] = "process already exists";
+const char e_copexists[] = "coprocess is running; cannot create a new coprocess";
 const char e_exists[] = "%s: file already exists";
 const char e_pipe[] = "cannot create pipe";
 const char e_alarm[] = "cannot set alarm";
@@ -76,6 +76,7 @@ const char e_access[] = "permission denied";
 const char e_direct[] = "bad directory";
 const char e_file[] = "%s: bad file unit number";
 const char e_redirect[] = "redirection failed";
+const char e_io[] = "I/O error";
 const char e_trap[] = "%s: bad trap";
 const char e_readonly[] = "%s: is read only";
 const char e_badfield[] = "%d: negative field size";
@@ -146,11 +147,7 @@ const char e_jobsrunning[] = "You have running jobs";
 const char e_no_job[] = "no such job";
 const char e_no_proc[] = "no such process";
 const char e_badpid[] = "%s: invalid process id";
-#if SHOPT_COSHELL
-const char e_jobusage[] = "%s: Arguments must be %%job, process ids, or job pool names";
-#else   // SHOPT_COSHELL
 const char e_jobusage[] = "%s: Arguments must be %%job or process ids";
-#endif  // SHOPT_COSHELL
 #endif  // JOBS
 const char e_coredump[] = "(coredump)";
 const char e_alphanum[] = "[_[:alpha:]]*([_[:alnum:]])";
@@ -187,6 +184,6 @@ const char e_prohibited[] = "login setuid/setgid shells prohibited";
 const char hist_fname[] = "/.sh_history";
 const char e_dot[] = ".";
 const char e_envmarker[] = "A__z";
-const char e_timeformat[] = "\nreal\t%2lR\nuser\t%2lU\nsys\t%2lS";
+const char e_timeformat[] = "\nreal\t%3lR\nuser\t%3lU\nsys\t%3lS";
 const char e_dict[] = "libshell";
 const char e_funload[] = "function, built-in or type definition for %s not found in %s";

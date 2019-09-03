@@ -34,8 +34,8 @@
 #include <wctype.h>
 
 #include "ast.h"
+#include "ast_regex.h"
 #include "reglib.h"
-#include "sfio.h"
 #include "stk.h"
 
 #if _AST_REGEX_DEBUG
@@ -122,21 +122,21 @@ static_fn const char *rexname(Rex_t *rex) {
 
 #endif
 
-#define BEG_ALT 1 /* beginning of an alt			*/
-#define BEG_ONE 2 /* beginning of one iteration of a rep	*/
-#define BEG_REP 3 /* beginning of a repetition		*/
-#define BEG_SUB 4 /* beginning of a subexpression		*/
-#define END_ANY 5 /* end of any of above			*/
+#define BEG_ALT 1 /* beginning of an alt                        */
+#define BEG_ONE 2 /* beginning of one iteration of a rep        */
+#define BEG_REP 3 /* beginning of a repetition          */
+#define BEG_SUB 4 /* beginning of a subexpression               */
+#define END_ANY 5 /* end of any of above                        */
 
 /*
  * returns from regnexec_parse()
  */
 
-#define NONE 0 /* no parse found			*/
-#define GOOD 1 /* some parse was found			*/
-#define CUT 2  /* no match and no backtrack		*/
-#define BEST 3 /* an unbeatable parse was found	*/
-#define BAD 4  /* error ocurred			*/
+#define NONE 0 /* no parse found                        */
+#define GOOD 1 /* some parse was found                  */
+#define CUT 2  /* no match and no backtrack             */
+#define BEST 3 /* an unbeatable parse was found */
+#define BAD 4  /* error ocurred                 */
 
 /*
  * REG_SHELL_DOT test
@@ -151,10 +151,10 @@ static_fn const char *rexname(Rex_t *rex) {
  */
 
 typedef struct {
-    unsigned char *p; /* where in string		*/
-    size_t length;    /* length in string		*/
-    short serial;     /* preorder subpattern number	*/
-    short be;         /* which end of pair		*/
+    unsigned char *p; /* where in string                */
+    size_t length;    /* length in string               */
+    short serial;     /* preorder subpattern number     */
+    short be;         /* which end of pair              */
 } Pos_t;
 
 /* ===== begin library support ===== */
@@ -167,10 +167,11 @@ static_fn Vector_t *vecopen(int inc, int siz) {
     Stk_t *sp;
 
     if (inc <= 0) inc = 16;
-    if (!(sp = stkopen(STK_SMALL | STK_NULL))) return 0;
-    if (!(v = (Vector_t *)stkseek(sp, sizeof(Vector_t) + inc * siz))) {
+    if (!(sp = stkopen(STK_SMALL | STK_NULL))) return NULL;
+    v = stkseek(sp, sizeof(Vector_t) + inc * siz);
+    if (!v) {
         stkclose(sp);
-        return 0;
+        return NULL;
     }
     v->stk = sp;
     v->vec = (char *)v + sizeof(Vector_t);
@@ -187,7 +188,8 @@ static_fn void *vecseek(Vector_t **p, int index) {
         while ((v->max += v->inc) <= index) {
             ;
         }
-        if (!(v = (Vector_t *)stkseek(v->stk, sizeof(Vector_t) + v->max * v->siz))) return 0;
+        v = stkseek(v->stk, sizeof(Vector_t) + v->max * v->siz);
+        if (!v) return NULL;
         *p = v;
         v->vec = (char *)v + sizeof(Vector_t);
     }
@@ -215,10 +217,8 @@ static_fn void *stkpush(Stk_t *sp, size_t size) {
 
     stknew(sp, &p);
     size = sizeof(Stk_frame_t) + sizeof(size_t) + size - 1;
-    if (!(f = (Stk_frame_t *)stkalloc(sp,
-                                      sizeof(Stk_frame_t) + sizeof(Stk_frame_t *) + size - 1))) {
-        return 0;
-    }
+    f = stkalloc(sp, sizeof(Stk_frame_t) + sizeof(Stk_frame_t *) + size - 1);
+    if (!f) return NULL;
     f->pos = p;
     stkframe(sp) = f;
     return f->data;
@@ -285,7 +285,7 @@ static_fn int _matchpush(Env_t *env, Rex_t *rex) {
     s = f->save;
     while (m < e) {
         *s++ = *m;
-        *m++ = state.nomatch;
+        *m++ = regstate.nomatch;
     }
     return 0;
 }
@@ -1723,8 +1723,8 @@ int regnexec(const regex_t *p, const char *s, size_t len, size_t nmatch, regmatc
     DEBUG_INIT();
     DEBUG_CODE(0x0001, sfprintf(sfstdout, "AHA#%04d 0x%04x regnexec %d 0x%08x `%-.*s'\n", __LINE__,
                                 debug_flag, nmatch, flags, len, s));
-    if (!p || !(env = p->env)) return REG_BADPAT;
-    if (!s) return fatal(env->disc, REG_BADPAT, NULL);
+    if (!p || !(env = p->re_info)) return REG_BADPAT;
+    if (!s) return regfatal(env->disc, REG_BADPAT, NULL);
     if (len < env->min) {
         DEBUG_CODE(0x0080,
                    sfprintf(sfstdout, "AHA#%04d REG_NOMATCH %d %d\n", __LINE__, len, env->min));
@@ -1749,7 +1749,7 @@ int regnexec(const regex_t *p, const char *s, size_t len, size_t nmatch, regmatc
         env->best = &env->match[n + 1];
         env->best[0].rm_so = 0;
         env->best[0].rm_eo = -1;
-        for (i = 0; i <= n; i++) env->match[i] = state.nomatch;
+        for (i = 0; i <= n; i++) env->match[i] = regstate.nomatch;
         if (flags & REG_ADVANCE) advance = true;
     }
     DEBUG_CODE(0x1000, regnexec_list(env, env->rex));
@@ -1844,7 +1844,7 @@ hit:
         for (i = j = m = 0; j < nmatch; i++) {
             if (!i || !k || (i & 1)) {
                 if (i > n) {
-                    match[j] = state.nomatch;
+                    match[j] = regstate.nomatch;
                 } else {
                     match[m = j] = env->best[i];
                 }
@@ -1860,22 +1860,17 @@ hit:
 done:
     stkold(env->mst, &env->stk);
     env->stk.base = 0;
-    if (k > REG_NOMATCH) fatal(p->env->disc, k, NULL);
+    if (k > REG_NOMATCH) regfatal(p->re_info->disc, k, NULL);
     return k;
 }
 
 void regfree(regex_t *p) {
     Env_t *env;
 
-    if (p && (env = p->env)) {
-        if (env->sub) {
-            regsubfree(p);
-            p->re_sub = 0;
-        }
-
-        p->env = 0;
-        if (--env->refs <= 0 && !(env->disc->re_flags & REG_NOFREE)) {
-            drop(env->disc, env->rex);
+    if (p && (env = p->re_info)) {
+        p->re_info = NULL;
+        if (!(env->disc->re_flags & REG_NOFREE)) {
+            regdrop(env->disc, env->rex);
             if (env->pos) vecclose(env->pos);
             if (env->bestpos) vecclose(env->bestpos);
             if (env->mst) stkclose(env->mst);

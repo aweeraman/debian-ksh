@@ -25,17 +25,16 @@
  *
  * error and message formatter
  *
- *	level is the error level
- *	level >= error_info.core!=0 dumps core
- *	level >= ERROR_FATAL calls error_info.exit
- *	level < 0 is for debug tracing
+ *      level is the error level
+ *      level >= error_info.core!=0 dumps core
+ *      level >= ERROR_FATAL calls error_info.exit
+ *      level < 0 is for debug tracing
  *
  * NOTE: id && ERROR_NOID && !ERROR_USAGE implies format=id for errmsg()
  */
 #include "config_ast.h"  // IWYU pragma: keep
 
 #include <errno.h>
-#include <signal.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
@@ -43,7 +42,6 @@
 #include <unistd.h>
 
 #include "ast.h"
-#include "ast_regex.h"
 #include "error.h"
 #include "option.h"
 #include "sfio.h"
@@ -51,7 +49,7 @@
 
 /*
  * 2007-03-19 move error_info from _error_info_ to (*_error_infop_)
- *	      to allow future Error_info_t growth
+ *            to allow future Error_info_t growth
  *            by 2009 _error_info_ can be static
  */
 Error_info_t _error_info_ = {
@@ -82,18 +80,6 @@ Error_info_t _error_info_ = {
 };
 
 Error_info_t *_error_infop_ = &_error_info_;
-
-/*
- * these should probably be in error_info
- */
-
-static struct State_s {
-    char *prefix;
-    Sfio_t *tty;
-    unsigned long count;
-    int breakpoint;
-    regex_t *match;
-} error_state;
 
 #define ERROR_CATALOG (ERROR_LIBRARY << 1)
 
@@ -146,21 +132,6 @@ static_fn void error_context(Sfio_t *sp, Error_context_t *cp) {
     }
 }
 
-/*
- * debugging breakpoint
- */
-void error_break(void) {
-    char *s;
-
-    if (error_state.tty || (error_state.tty = sfopen(NULL, "/dev/tty", "r+"))) {
-        sfprintf(error_state.tty, "error breakpoint: ");
-        s = sfgetr(error_state.tty, '\n', 1);
-        if (s) {
-            if (!strcmp(s, "q") || !strcmp(s, "quit")) exit(0);
-        }
-    }
-}
-
 void error(int level, ...) {
     va_list ap;
 
@@ -195,19 +166,19 @@ void errorv(const char *id, int level, va_list ap) {
         format = (char *)id;
         id = 0;
     } else {
-        format = 0;
+        format = NULL;
     }
     if (id) {
         catalog = (char *)id;
         if (!*catalog || *catalog == ':') {
-            catalog = 0;
-            library = 0;
+            catalog = NULL;
+            library = NULL;
         } else if ((library = strchr(catalog, ':')) && !*++library) {
-            library = 0;
+            library = NULL;
         }
     } else {
-        catalog = 0;
-        library = 0;
+        catalog = NULL;
+        library = NULL;
     }
     if (catalog) {
         id = 0;
@@ -235,7 +206,6 @@ void errorv(const char *id, int level, va_list ap) {
         off = stktell(stkstd);
         if (off) stkfreeze(stkstd, 0);
         file = error_info.id;
-        if (error_state.prefix) sfprintf(stkstd, "%s: ", error_state.prefix);
         if (flags & ERROR_USAGE) {
             if (flags & ERROR_NOID) {
                 sfprintf(stkstd, "       ");
@@ -353,9 +323,6 @@ void errorv(const char *id, int level, va_list ap) {
                 n -= ++t - s;
                 s = t;
             }
-#if HUH_19980401 /* nasty problems if sfgetr() is in effect! */
-            sfsync(sfstdin);
-#endif
             sfsync(sfstdout);
             sfsync(sfstderr);
             if (fd == sffileno(sfstderr) && error_info.write == write) {
@@ -365,73 +332,12 @@ void errorv(const char *id, int level, va_list ap) {
                 (*error_info.write)(fd, s, n);
             }
         } else {
-            s = 0;
+            s = NULL;
             level &= ERROR_LEVEL;
         }
         stkset(stkstd, bas, off);
     } else {
-        s = 0;
-    }
-    if (level >= error_state.breakpoint && error_state.breakpoint &&
-        (!error_state.match || !regexec(error_state.match, s ? s : format, 0, NULL, 0)) &&
-        (!error_state.count || !--error_state.count)) {
-        if (error_info.core) {
-#ifndef SIGABRT
-#ifdef SIGQUIT
-#define SIGABRT SIGQUIT
-#else
-#ifdef SIGIOT
-#define SIGABRT SIGIOT
-#endif
-#endif
-#endif
-#ifdef SIGABRT
-            signal(SIGABRT, SIG_DFL);
-            kill(getpid(), SIGABRT);
-            pause();
-#else
-            abort();
-#endif
-        } else {
-            error_break();
-        }
+        s = NULL;
     }
     if (level >= ERROR_FATAL) (*error_info.exit)(level - ERROR_FATAL + 1);
-}
-
-/*
- * error_info context control
- */
-
-static Error_info_t *freecontext;
-
-Error_info_t *errorctx(Error_info_t *p, int op, int flags) {
-    if (op & ERROR_POP) {
-        if (!(_error_infop_ = p->context)) _error_infop_ = &_error_info_;
-        if (op & ERROR_FREE) {
-            p->context = freecontext;
-            freecontext = p;
-        }
-        p = _error_infop_;
-    } else {
-        if (!p) {
-            p = freecontext;
-            if (p) {
-                freecontext = freecontext->context;
-            } else {
-                p = calloc(1, sizeof(Error_info_t));
-                if (!p) return NULL;
-            }
-            *p = *_error_infop_;
-            p->errors = p->flags = p->line = p->warnings = 0;
-            p->catalog = p->file = 0;
-        }
-        if (op & ERROR_PUSH) {
-            p->flags = flags;
-            p->context = _error_infop_;
-            _error_infop_ = p;
-        }
-        p->flags |= ERROR_PUSH;
-    }
-    return p;
 }

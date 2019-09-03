@@ -45,34 +45,24 @@ regex \- regular expression interface
 
 int        regcomp(regex_t* \fIre\fP, const char* \fIregex\fP, int \fIcflags\fP);
 int        regexec(const regex_t* \fIre\fP, const char* \fIstring\fP, size_t \fInmatch\fP, regmatch_t \fIpmatch\fP[], int \fIeflags\fP);
-size_t     regerror(int \fIcode\fP, const regex_t* \fIre\fP, char* \fIerrbuf\fP, size_t \fIerrbuf_size\fP);
 void       regfree(regex_t* \fIre\fP);
 
 regclass_t regclass(const char* \fIstr\fP, char** \fIend\fP);
-int        regaddclass(const char* \fIname\fP, regclass_t \fIclassf\fP);
 int        regcollate(const char* \fIstr\fP, char** \fIend\fP, char* \fIbuf\fP, int \fIsize\fP);
 
-int        regcomb(regex_t* \fIre_1\fP, regex_t* \fIre_2\fP);
-int        regdup(regex_t* \fIre_old\fP, regex_t* \fIre_new\fP);
 regstat_t* regstat(const regex_t* \fIre\fP);
 
 regex_t*   regcache(const char* \fIpattern\fP, regflags_t \fIflags\fP, int* \fIpcode\fP);
 
-int        regncomp(regex_t* \fIre\fP, const char* \fIpattern\fP, size_t \fIsize\fP, regflags_t \fIflags\fP);
 int        regnexec(const regex_t* \fIre\fP, const char* \fIsubject\fP, size_t \fIsize\fP, size_t \fInmatch\fP, regmatch_t* \fImatch\fP, regflags_t \fIflags\fP);
 int        regrecord(const regex_t* \fIre\fP);
 int        regrexec(const regex_t* \fIre\fP, const char* \fIbuf\fP, size_t \fIsize\fP, size_t \fInmatch\fP, regmatch_t* \fImatch\fP, regflags_t \fIflags\fP, int \fIsep\fP, void* \fIhandle\fP, regrecord_t \fIrecordf\fP);
-void       regfatal(regex_t* \fIre\fP, int \fIlevel\fP, int \fIcode\fP);
-void       regfatalpat(regex_t* \fIre\fP, int \fIlevel\fP, int \fIcode\fP, const char* \fIpattern\fP);
 
-int        regsubflags(regex_t* \fIre\fP, const char* \fIstr\fP, char** \fIend\fP, int \fIdelim\fP, const regflags_t* \fImap\fP, int* \fIpm\fP, regflags_t* \fIpf\fP);
-void       regsubfree(regex_t* \fIre\fP);
 .EE
 
 .SH DESCRIPTION
 .LR regcomp() ,
 .LR regexec() ,
-.LR regerror() ,
 and
 .L regfree()
 are the POSIX regular expression functions.
@@ -84,12 +74,9 @@ also provides
 .I flags
 extensions to the
 .LR regcomp() ,
+and
 .LR regexec()
-functions and
-.I code
-extensions to the
-.L regerror()
-function.
+functions.
 
 .PP
 .L regcache()

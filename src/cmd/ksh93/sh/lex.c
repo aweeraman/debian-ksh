@@ -138,7 +138,7 @@ static_fn void lex_advance(Sfio_t *iop, const char *buff, int size, void *contex
         sfwrite(shp->strbuf, lp->lexd.docend, n);
         lp->lexd.docextra += n;
         if (sffileno(iop) >= 0) {
-            lp->lexd.docend = sfsetbuf(iop, iop, 0);
+            lp->lexd.docend = sfgetbuf(iop);
         } else {
             lp->lexd.docend = fcfirst();
         }
@@ -146,7 +146,7 @@ static_fn void lex_advance(Sfio_t *iop, const char *buff, int size, void *contex
     if (lp->lexd.first) {
         size -= (lp->lexd.first - (char *)buff);
         buff = lp->lexd.first;
-        if (!lp->lexd.noarg) lp->arg = (struct argnod *)stkseek(stkp, ARGVAL);
+        if (!lp->lexd.noarg) lp->arg = stkseek(stkp, ARGVAL);
         lp->lexd.kiaoff += ARGVAL;
     }
     if (size > 0 && (lp->arg || lp->lexd.noarg)) {
@@ -1181,7 +1181,7 @@ breakloop:
     }
     if (!(state = lp->lexd.first)) state = fcfirst();
     n = fcseek(0) - (char *)state;
-    if (!lp->arg) lp->arg = (struct argnod *)stkseek(stkp, ARGVAL);
+    if (!lp->arg) lp->arg = stkseek(stkp, ARGVAL);
     if (n > 0) sfwrite(stkp, state, n);
     // Add balancing character if necessary.
     if (lp->lexd.balance) {
@@ -2130,13 +2130,6 @@ struct alias {
     char buf[2];
     Lex_t *lp;
 };
-
-//
-// This code gets called whenever an end of string is found with alias.
-//
-#ifndef SF_ATEXIT
-#define SF_ATEXIT 0
-#endif
 
 //
 // This code gets called whenever an end of string is found with alias.

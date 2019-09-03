@@ -1,11 +1,11 @@
-# ksh x.y.z (version TBD, this is a work in progress)
+# ksh 2020.0.0-alpha1 (version TBD, this is a work in progress)
 
-This is meant to document changes since the AST code (including the `ksh`
-program) was open-sourced that will be in the next stable release based
-on the original AST code. The next stable version will be treated as a
-major release for several reasons. Not least of which is changing the
-build tool chain from the legacy Nmake system to Meson. Legacy changes
-can be found in the various `RELEASE` files.
+This documents changes since the AST code, which includes the `ksh` program,
+was moved to Github. That is, the ksh93u+ source. The next stable version will
+be treated as a major release for several reasons. Not least of which is
+changing the build tool chain from the legacy Nmake system to Meson and
+replacing the AST Vmalloc subsystem with the platform Malloc subsystem. Legacy
+changes can be found in the various `RELEASE` files.
 
 Starting in June 2017 maintenance of the Korn shell (`ksh`) resumed with
 the merging of some fixes from Red Hat by Siteshwar Vashisht after he was
@@ -15,14 +15,20 @@ was subsequently created to document the work being done.
 
 ## Deprecations
 
-None at this time.
+- Some libc/libm math functions not suitable for use by a ksh script (e.g.,
+  `j0()`) will likely be removed in the near future (issue #1346 and #88).
 
 ## Notable non-backward compatible changes
 
+- The nonportable, unusable, `fpclassify` math function has been removed
+  (issue #1346).
+- The broken math functions `nextforward` and `nexttoward` have been removed
+  (issue #1346).
 - Support for binary plugins written for ksh93u+ or earlier releases has been
   dropped (issue #983).
 - Support for coshell has been removed (issue #619).
-- Support for the `universe` command has been removed (issue #793).
+- The `universe` command has been removed (issue #793).
+- The `getconf` command has been removed (issue #1118).
 - Support for building on systems using EBCDIC has been removed (issue #742).
 - Support for the `LC_OPTIONS` env var has been removed (issue #579).
 - `case "[0-9]" in [0-9]) echo match;; esac` has stopped matching. When a case
@@ -43,6 +49,9 @@ None at this time.
 
 ## Notable fixes and improvements
 
+- `declare` has been added as an alias for `typeset` (issue #220).
+- `local` has been added as a constrained alias for `typeset` when used inside
+  a function (issue #220).
 - Mention of the `getconf` builtin has been removed from the main ksh man
   page. That command has never been enabled by default and is now deprecated
   in favor of the platform command of the same name (issue #1118).
@@ -51,13 +60,17 @@ None at this time.
 - Doing `[ -t1 ]` inside a command substitution behaves correctly
   (issue #1079).
 - The project now passes its unit tests when built with malloc debugging
-  enabled (i.e., `meson test --setup=malloc`).
+  enabled (i.e., `meson test --setup=malloc`) or with ASAN enabled.
 - Changes to the project are now validated by running unit tests on the Travis
   continuous integration system.
 - The ksh source now builds on BSD based systems such as macOS and FreeBSD.
 - The ksh source now builds on Cygwin; albeit with many unit test failures.
 - The legacy Nmake build system has been replaced by Meson. This improves the
   build time by roughly an order of magnitude (issue #42).
+- The `times` command is now a builtin that conforms to POSIX rather than an
+  alias for the `time` command (issue #16).
+- The `time` command now has millisecond resolution if the platform provides
+  `getrusage()` and its time values have millisecond or better resolution.
 
 ## Other significant changes
 
@@ -90,7 +103,7 @@ None at this time.
   `SHOPT_COMPLETE`, `SHOPT_BRACEPAT`, `SHOPT_RAWONLY`, `SHOPT_STATS,
   `SHOPT_OPTIMIZE`, `SHOPT_SUID_EXEC`, `SHOPT_FILESCAN`, `SHOPT_POLL,
   `SHOPT_AUDIT`, and `SHOPT_SYSRC`).
-- Unit tests can now be run under `valgrind` to help detect more bugs.
+- Unit tests can now be run under Valgrind and ASAN to help detect more bugs.
 - Any code not needed to build and run `ksh` has been removed from the master
   branch.
 - Fixes backported from OpenSuse (issue #377).

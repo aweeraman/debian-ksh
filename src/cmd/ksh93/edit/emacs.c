@@ -34,22 +34,22 @@
 // These are now on by default
 //
 //  ESH_NFIRST
-//	-  A ^N as first history related command after the prompt will move to the next command
-//	relative to the last known history position. It will not start at the position where the
-//	last command was entered as is done by the ^P command.  Every history related command will
-//	set both the current and last position.  Executing a command will only set the current
-//	position.
+//      -  A ^N as first history related command after the prompt will move to the next command
+//      relative to the last known history position. It will not start at the position where the
+//      last command was entered as is done by the ^P command.  Every history related command will
+//      set both the current and last position.  Executing a command will only set the current
+//      position.
 //
 //  ESH_KAPPEND
-//	-  Successive kill and delete commands will accumulate their data in the kill buffer, by
-//	appending or prepending as appropriate. This mode will be reset by any command not adding
-//	something to the kill buffer.
+//      -  Successive kill and delete commands will accumulate their data in the kill buffer, by
+//      appending or prepending as appropriate. This mode will be reset by any command not adding
+//      something to the kill buffer.
 //
 //  ESH_BETTER
-//	-  Some enhancements:
-//		- argument for a macro is passed to its replacement
-//		- ^X^H command to find out about history position (debugging)
-//		- ^X^D command to show any debugging info
+//      -  Some enhancements:
+//              - argument for a macro is passed to its replacement
+//              - ^X^H command to find out about history position (debugging)
+//              - ^X^D command to show any debugging info
 //
 // I do not pretend these for changes are completely independent, but you can use them to seperate
 // features.
@@ -58,10 +58,11 @@
 
 #include <ctype.h>
 #include <setjmp.h>
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
 #include <unistd.h>
+#include <wchar.h>
 
 #include "ast.h"
 #include "defs.h"
@@ -83,8 +84,8 @@ static int _isword(int);
 #define digit(c) ((c & ~STRIP) == 0 && isdigit(c))
 
 typedef struct _emacs_ {
-    genchar *screen;  // pointer to window buffer
-    genchar *cursor;  // Cursor in real screen
+    wchar_t *screen;  // pointer to window buffer
+    wchar_t *cursor;  // Cursor in real screen
     int mark;
     int in_mult;
     char cr_ok;
@@ -145,9 +146,9 @@ typedef enum {
 } Draw_t;
 
 static void draw(Emacs_t *, Draw_t);
-static int escape(Emacs_t *, genchar *, int);
+static int escape(Emacs_t *, wchar_t *, int);
 static void putstring(Emacs_t *, char *);
-static void search(Emacs_t *, genchar *, int);
+static void search(Emacs_t *, wchar_t *, int);
 static void setcursor(Emacs_t *, int, int);
 static void show_info(Emacs_t *, const char *);
 static void xcommands(Emacs_t *, int);
@@ -156,14 +157,14 @@ int ed_emacsread(void *context, int fd, char *buff, int scend, int reedit) {
     Edit_t *ed = context;
     int c;
     int i;
-    genchar *out;
+    wchar_t *out;
     int count;
     Emacs_t *ep = ed->e_emacs;
     int adjust, oadjust;
     char backslash;
-    genchar *kptr;
+    wchar_t *kptr;
     char prompt[PRSIZE];
-    genchar Screen[MAXLINE];
+    wchar_t Screen[MAXLINE];
 
     memset(Screen, 0, sizeof(Screen));
     if (!ep) {
@@ -182,7 +183,7 @@ int ed_emacsread(void *context, int fd, char *buff, int scend, int reedit) {
 
     // This mess in case the read system call fails.
     ed_setup(ep->ed, fd, reedit);
-    out = (genchar *)roundof((ptrdiff_t)buff, sizeof(genchar));
+    out = (wchar_t *)roundof((ptrdiff_t)buff, sizeof(wchar_t));
     if (reedit) ed_internal(buff, out);
     if (!kstack) {
         kstack = malloc(CHARSIZE * MAXLINE);
@@ -616,9 +617,9 @@ process:
 }
 
 static void show_info(Emacs_t *ep, const char *str) {
-    genchar *out = drawbuff;
+    wchar_t *out = drawbuff;
     int c;
-    genchar string[LBUF];
+    wchar_t string[LBUF];
     int sav_cur = cur;
 
     // Save current line.
@@ -641,7 +642,7 @@ static void putstring(Emacs_t *ep, char *sp) {
     while ((c = *sp++)) putchar(ep->ed, c);
 }
 
-static int escape(Emacs_t *ep, genchar *out, int count) {
+static int escape(Emacs_t *ep, wchar_t *out, int count) {
     int i, value;
     int digit, ch;
 
@@ -761,7 +762,7 @@ static int escape(Emacs_t *ep, genchar *out, int count) {
         }
         case '_':
         case '.': {
-            genchar name[MAXLINE];
+            wchar_t name[MAXLINE];
             char buf[MAXLINE];
             char *ptr;
             ptr = hist_word(buf, MAXLINE, (count ? count : -1));
@@ -878,8 +879,8 @@ static int escape(Emacs_t *ep, genchar *out, int count) {
                         (cur < (SEARCHSIZE - 2) || ep->prevdirection == -2)) {
                         if (ep->lastdraw == APPEND && ep->prevdirection != -2) {
                             out[cur] = 0;
-                            gencpy((genchar *)lstring + 1, out);
-                            ed_external((genchar *)lstring + 1, lstring + 1);
+                            gencpy((wchar_t *)lstring + 1, out);
+                            ed_external((wchar_t *)lstring + 1, lstring + 1);
                             *lstring = '^';
                             ep->prevdirection = -2;
                         }
@@ -952,23 +953,22 @@ static void xcommands(Emacs_t *ep, int count) {
             }
             return;
         }
-#define itos(i) fmtbase((long)(i), 0, 0)  // want signed conversion
-        case cntl('H'): {                 // ^X^H show history info
+        case cntl('H'): {  // ^X^H show history info
             char hbuf[MAXLINE];
 
             strlcpy(hbuf, "Current command ", sizeof(hbuf));
-            strlcat(hbuf, itos(hline), sizeof(hbuf));
+            strlcat(hbuf, fmtbase(hline, 0, 0), sizeof(hbuf));
             if (hloff) {
                 strlcat(hbuf, " (line ", sizeof(hbuf));
-                strlcat(hbuf, itos(hloff + 1), sizeof(hbuf));
+                strlcat(hbuf, fmtbase(hloff + 1, 0, 0), sizeof(hbuf));
                 strlcat(hbuf, ")", sizeof(hbuf));
             }
             if ((hline != location.hist_command) || (hloff != location.hist_line)) {
                 strlcat(hbuf, "; Previous command ", sizeof(hbuf));
-                strlcat(hbuf, itos(location.hist_command), sizeof(hbuf));
+                strlcat(hbuf, fmtbase(location.hist_command, 0, 0), sizeof(hbuf));
                 if (location.hist_line) {
                     strlcat(hbuf, " (line ", sizeof(hbuf));
-                    strlcat(hbuf, itos(location.hist_line + 1), sizeof(hbuf));
+                    strlcat(hbuf, fmtbase(location.hist_line + 1, 0, 0), sizeof(hbuf));
                     strlcat(hbuf, ")", sizeof(hbuf));
                 }
             }
@@ -976,21 +976,21 @@ static void xcommands(Emacs_t *ep, int count) {
             return;
         }
 #if 0   /* debugging, modify as required */
-        case cntl('D'):	 { // ^X^D show debugging info
+        case cntl('D'):  { // ^X^D show debugging info
                 char debugbuf[MAXLINE];
 
                 strcpy(debugbuf, "count=");
-                strcat(debugbuf, itos(count));
+                strcat(debugbuf, fmtbase(count, 0, 0));
                 strcat(debugbuf, " eol=");
-                strcat(debugbuf, itos(eol));
+                strcat(debugbuf, fmtbase(eol, 0, 0));
                 strcat(debugbuf, " cur=");
-                strcat(debugbuf, itos(cur));
+                strcat(debugbuf, fmtbase(cur, 0, 0));
                 strcat(debugbuf, " crallowed=");
-                strcat(debugbuf, itos(crallowed));
+                strcat(debugbuf, fmtbase(crallowed, 0, 0));
                 strcat(debugbuf, " plen=");
-                strcat(debugbuf, itos(plen));
+                strcat(debugbuf, fmtbase(plen, 0, 0));
                 strcat(debugbuf, " w_size=");
-                strcat(debugbuf, itos(w_size));
+                strcat(debugbuf, fmtbase(w_size, 0, 0));
 
                 show_info(ep,debugbuf);
                 return;
@@ -1003,10 +1003,10 @@ static void xcommands(Emacs_t *ep, int count) {
     }
 }
 
-static void search(Emacs_t *ep, genchar *out, int direction) {
+static void search(Emacs_t *ep, wchar_t *out, int direction) {
     int i, sl;
-    genchar str_buff[LBUF];
-    genchar *string = drawbuff;
+    wchar_t str_buff[LBUF];
+    wchar_t *string = drawbuff;
     int sav_cur = cur;  // save current line
 
     genncpy(str_buff, string, sizeof(str_buff) / sizeof(*str_buff));
@@ -1092,13 +1092,13 @@ static void draw(Emacs_t *ep, Draw_t option) {
 #define BOTH '*'
 #define UPPER '>'
 
-    genchar *sptr;                 // pointer within screen
-    genchar nscreen[2 * MAXLINE];  // new entire screen
-    genchar *ncursor;              // new cursor
-    genchar *nptr;                 // pointer to New screen
+    wchar_t *sptr;                 // pointer within screen
+    wchar_t nscreen[2 * MAXLINE];  // new entire screen
+    wchar_t *ncursor;              // new cursor
+    wchar_t *nptr;                 // pointer to New screen
     char longline;                 // line overflow
-    genchar *logcursor;
-    genchar *nscend;  // end of logical screen
+    wchar_t *logcursor;
+    wchar_t *nscend;  // end of logical screen
     int i;
 
     nptr = nscreen;

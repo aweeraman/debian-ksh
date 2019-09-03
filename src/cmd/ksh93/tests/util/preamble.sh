@@ -22,7 +22,12 @@ bin_rm=$(whence -p rm)
 bin_sleep=$(whence -p sleep)
 bin_tee=$(whence -p tee)
 bin_true=$(whence -p true)
-# There is one test at the present time that is broken if all builtins are enabled by munging PATH.
+bin_uname=$(whence -p uname)
+
+# We have tests that should only run if the `nc` (netcat) command is available.
+whence -q nc && readonly nc_available=yes || readonly nc_available=no
+
+# There are at least two tests that are broken if all builtins are enabled by munging PATH.
 # So make it easy for a unit test to not enable all builtins by default. See issue #960.
 NO_BUILTINS_PATH=$PATH
 PATH=/opt/ast/bin:$PATH
@@ -33,10 +38,11 @@ FULL_PATH=$PATH
 #
 readonly NO_BUILTINS_PATH
 readonly FULL_PATH
-readonly ORIG_PATH
+readonly OLD_PATH
 readonly SAFE_PATH
+readonly SRC_ROOT
 readonly TEST_DIR
-readonly TEST_SRC_DIR
+readonly TEST_ROOT
 readonly BUILD_DIR
 readonly OS_NAME
 
@@ -78,13 +84,30 @@ alias log_error='log_error $LINENO'
 exec 9<>fifo9
 exec 8<>fifo8
 function empty_fifos {
+    # We used to do something like this:
+    #
+    #     read -u8 -t0.01 _x && { log_warning ...
+    #
+    # The problem is that tiny timeouts aren't reliable and cause flakey test behavior. Usually in
+    # the form of the read hanging thus causing a test timeout. That is obviously a bug in its own
+    # right but we don't want that bug to cause flakey failures of tests that aren't explicitly
+    # testing `read -t` behavior.
+    typeset _line_num=$1
     typeset _x
-    read -u9 -t0.01 _x && {
-        'log_warning' $1 "fifo9 unexpectedly had data: '$_x'"
-    }
-    read -u8 -t0.01 _x && {
-        'log_warning' $1 "fifo9 unexpectedly had data: '$_x'"
-    }
+
+    print -u8 fifo8
+    while read -u8 _x  # try to empty the fifo
+    do
+        [[ $_x == fifo8 ]] && break
+        'log_error' $_line_num "fifo8 unexpectedly had data" "" "$_x"
+    done
+
+    print -u9 fifo9
+    while read -u9 _x  # try to empty the fifo
+    do
+        [[ $_x == fifo9 ]] && break
+        'log_error' $_line_num "fifo9 unexpectedly had data" "" "$_x"
+    done
 }
 alias empty_fifos='empty_fifos $LINENO'
 

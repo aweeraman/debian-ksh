@@ -60,11 +60,11 @@ fi
 #
 # A test may need to alter its behavior based on the OS we're running on.
 #
-export OS_NAME=$(uname -s)
+export OS_NAME=$(uname -s | tr '[A-Z]' '[a-z]')
 
 # TODO: Enable the `io` test on Travis macOS once we understand why it dies from an abort().
 # I'm not seeing that failure happen on either of my macOS 10.12 or 10.13 systems.
-if [[ $test_name == io && $OS_NAME == Darwin && $CI == true ]]
+if [[ $test_name == io && $OS_NAME == darwin && $CI == true ]]
 then
     log_info 'Skipping io test on macOS on Travis'
     exit 0
@@ -74,21 +74,19 @@ fi
 #
 # Setup the environment for the unit test.
 #
-export TEST_SRC_DIR=${0%/*/*}  # capture the parent directory containing this script
-
 readonly test_name=$1
 if [[ $test_name == *.exp ]]
 then
-    readonly test_path=$TEST_SRC_DIR/$test_name
+    readonly test_path=$TEST_ROOT/$test_name
 elif [[ $api_test == true ]]
 then
     readonly test_path=$api_binary
     # Ugh! This is somewhat ugly. There should be a better way to figure out the directory that
     # contains auxiliary files. One option is to put everything, not just API tests, one level below
     # the parent dir of this script.
-    TEST_SRC_DIR=$TEST_SRC_DIR/api
+    TEST_ROOT=$TEST_ROOT/api
 else
-    readonly test_path=$TEST_SRC_DIR/$test_name.sh
+    readonly test_path=$TEST_ROOT/$test_name.sh
 fi
 
 if [[ ! -f $test_path ]]
@@ -121,9 +119,15 @@ log_info "TEST_DIR=$TEST_DIR"
 # external command of the same name in PATH that we use the command created by the unit test.
 # See issue #429.
 #
-export ORIG_PATH=$PATH
-export SAFE_PATH="$TEST_DIR:$TEST_DIR/space dir:$TEST_SRC_DIR:$BUILD_DIR/src/cmd/builtin"
-export FULL_PATH=$SAFE_PATH:$ORIG_PATH
+# Note that a few additions to the path are to support specific platforms. For example, we want the
+# GNU version of utilities like `diff` that are in the /usr/gnu/bin directory on Solaris. The
+# /usr/xpg4/bin is to get POSIX versions of various commands but that also causes ksh to default to
+# the "att" universe. The /xxx/bsd is to ensure ksh defaults to the "ucb" universe as almost all
+# unit tests expect GNU or BSD behavior.
+#
+export OLD_PATH=$PATH
+export SAFE_PATH="$TEST_DIR:$TEST_DIR/space dir:$TEST_ROOT:$BUILD_DIR/src/cmd/builtin"
+export FULL_PATH=$SAFE_PATH:/xxx/bsd:/usr/gnu/bin:/usr/xpg4/bin:$OLD_PATH
 export PATH=$FULL_PATH
 
 #
@@ -151,12 +155,12 @@ function run_api {
     $test_path >$test_name.out 2>$test_name.err
     exit_status=$?
 
-    if [[ -e $TEST_SRC_DIR/$test_name.out ]]
+    if [[ -e $TEST_ROOT/$test_name.out ]]
     then
-        if ! diff -q $TEST_SRC_DIR/$test_name.out $test_name.out >/dev/null
+        if ! diff -q $TEST_ROOT/$test_name.out $test_name.out >/dev/null
         then
             log_error "Stdout for $test_name had unexpected differences:"
-            diff -U3 $TEST_SRC_DIR/$test_name.out $test_name.out >&2
+            diff -U3 $TEST_ROOT/$test_name.out $test_name.out >&2
             exit_status=1
         fi
     elif [[ -s $test_name.out ]]
@@ -166,12 +170,12 @@ function run_api {
             exit_status=1
     fi
 
-    if [[ -e $TEST_SRC_DIR/$test_name.err ]]
+    if [[ -e $TEST_ROOT/$test_name.err ]]
     then
-        if ! diff -q $TEST_SRC_DIR/$test_name.err $test_name.err >/dev/null
+        if ! diff -q $TEST_ROOT/$test_name.err $test_name.err >/dev/null
         then
             log_error "Stderr for $test_name had unexpected differences:"
-            diff -U3 $TEST_SRC_DIR/$test_name.err $test_name.err >&2
+            diff -U3 $TEST_ROOT/$test_name.err $test_name.err >&2
             exit_status=1
         fi
     elif [[ -s $test_name.err ]]
@@ -202,24 +206,27 @@ function run_interactive {
         mkdir $HOME
     fi
 
-    cp $TEST_SRC_DIR/util/interactive.kshrc $HOME/.kshrc
+    cp $TEST_ROOT/util/interactive.kshrc $HOME/.kshrc
 
-    # Use pre-populated history file for history related tests
-    if [[ $test_name == "hist.exp" ]]; then
-        cp $TEST_SRC_DIR/util/sh_history $HISTFILE
+    # Use pre-populated history file for `hist` command unit test.
+    if [[ $test_name == "b_hist.exp" ]]; then
+        cp $TEST_ROOT/data/sh_history $HISTFILE
     fi
 
+    # The use of the "dumb" terminal type is to minimize, and hopefully eliminate completely,
+    # terminal control/escape sequences that affect the terminal's behavior. This makes writing
+    # robust Expect scripts easier.
     export TERM=dumb
-    expect -n -c "source $TEST_SRC_DIR/util/interactive.expect.rc" -f $test_path \
+    expect -n -c "source $TEST_ROOT/util/interactive.expect.rc" -f $test_path \
         >$test_name.out 2>$test_name.err
     exit_status=$?
 
-    if [[ -e $TEST_SRC_DIR/$test_name.out ]]
+    if [[ -e $TEST_ROOT/$test_name.out ]]
     then
-        if ! diff -q $TEST_SRC_DIR/$test_name.out $test_name.out >/dev/null
+        if ! diff -q $TEST_ROOT/$test_name.out $test_name.out >/dev/null
         then
             log_error "Stdout for $test_name had unexpected differences:"
-            diff -U3 $TEST_SRC_DIR/$test_name.out $test_name.out >&2
+            diff -U3 $TEST_ROOT/$test_name.out $test_name.out >&2
             exit_status=1
         fi
     elif [[ -s $test_name.out ]]
@@ -229,12 +236,12 @@ function run_interactive {
             exit_status=1
     fi
 
-    if [[ -e $TEST_SRC_DIR/$test_name.err ]]
+    if [[ -e $TEST_ROOT/$test_name.err ]]
     then
-        if ! diff -q $TEST_SRC_DIR/$test_name.err $test_name.err >/dev/null
+        if ! diff -q $TEST_ROOT/$test_name.err $test_name.err >/dev/null
         then
             log_error "Stderr for $test_name had unexpected differences:"
-            diff -U3 $TEST_SRC_DIR/$test_name.err $test_name.err >&2
+            diff -U3 $TEST_ROOT/$test_name.err $test_name.err >&2
             exit_status=1
         fi
     elif [[ -s $test_name.err ]]
@@ -319,7 +326,7 @@ then
         exit 1
     fi
 
-    if [[ $OS_NAME == FreeBSD ]]
+    if [[ $OS_NAME == freebsd ]]
     then
         # TODO: Explore why this was blacklisted or if it can now be enabled on that platform.
         # These tests always fail on the first `expect_prompt` use. Which suggests a bug in how
@@ -329,7 +336,7 @@ then
     fi
 
     # Interactive tests are flakey on CI test environments like Travis. So make several attempts
-    # before reporting giving up and reporting failure.
+    # before giving up and reporting failure.
     status=0
     for i in 1 2 3
     do
@@ -363,17 +370,28 @@ else
     # Create the actual unit test script by concatenating the stock preamble and postscript to the
     # unit test. Then run the composed script.
     readonly test_script=$test_name.sh
-    echo "#!$SHELL"                       > $test_script
-    cat $TEST_SRC_DIR/util/preamble.sh   >> $test_script
-    cat $test_path                       >> $test_script
-    cat $TEST_SRC_DIR/util/postscript.sh >> $test_script
+    echo "#!$SHELL"                    > $test_script
+    cat $TEST_ROOT/util/preamble.sh   >> $test_script
+    cat $test_path                    >> $test_script
+    cat $TEST_ROOT/util/postscript.sh >> $test_script
     chmod 755 $test_script
     if [[ $shcomp == false ]]
     then
         $TEST_DIR/$test_script $test_name < /dev/null
+        exit_status=$?
     elif [[ $shcomp != skip ]]
     then
         $SHCOMP $test_script > $test_script.comp || exit
         $SHELL $TEST_DIR/$test_script.comp $test_name < /dev/null
+        exit_status=$?
+    else
+        exit_status=0
     fi
+
+    if (( $exit_status == 0 ))
+    then
+        cd /tmp
+        rm -rf $TEST_DIR
+    fi
+    exit $exit_status
 fi

@@ -51,21 +51,19 @@
 #include "variables.h"
 
 #if USE_SPAWN
-#include "ast_sys.h"
+#include "spawnvex.h"
 #endif
 
 #ifndef PIPE_BUF
 #define PIPE_BUF 512
 #endif
 
-//
-// Note that the following structure must be the same size as the Dtlink_t structure.
-//
 struct Link {
     struct Link *next;
     Namval_t *child;
     Dt_t *dict;
     Namval_t *node;
+    Namval_t *np_node;
 };
 
 //
@@ -104,12 +102,9 @@ static struct subshell {
     bool nofork;
     char subshare;
     char comsub;
-#if SHOPT_COSHELL
-    void *coshell;
-#endif  // SHOPT_COSHELL
-} * subshell_data;
+} *active_subshell_data = NULL;
 
-static long subenv;
+static long subenv_level = 0;
 
 //
 // This routine will turn the sftmp() file into a real /tmp file or pipe if the /tmp file create
@@ -118,8 +113,8 @@ static long subenv;
 void sh_subtmpfile(Shell_t *shp) {
     if (sfset(sfstdout, 0, 0) & SF_STRING) {
         int fd;
-        struct checkpt *pp = (struct checkpt *)shp->jmplist;
-        struct subshell *sp = subshell_data->pipe;
+        checkpt_t *pp = shp->jmplist;
+        struct subshell *sp = active_subshell_data->pipe;
         // Save file descriptor 1 if open.
         if ((sp->tmpfd = fd = sh_fcntl(1, F_DUPFD_CLOEXEC, 10)) >= 0) {
             shp->fdstatus[fd] = shp->fdstatus[1] | IOCLEX;
@@ -140,7 +135,7 @@ void sh_subtmpfile(Shell_t *shp) {
             (void)sh_fcntl(sp->pipefd, F_SETFD, FD_CLOEXEC);
             // Write the data to the pipe.
             off = sftell(sfstdout);
-            if (off >= 0) write(fds[1], sfsetbuf(sfstdout, sfstdout, 0), (size_t)off);
+            if (off >= 0) write(fds[1], sfgetbuf(sfstdout), off);
             sfclose(sfstdout);
             if ((sh_fcntl(fds[1], F_DUPFD, 1)) != 1) {
                 errormsg(SH_DICT, ERROR_system(1), e_file + 4);
@@ -172,7 +167,7 @@ void sh_subtmpfile(Shell_t *shp) {
 // file.
 //
 void sh_subfork(void) {
-    struct subshell *sp = subshell_data;
+    struct subshell *sp = active_subshell_data;
     Shell_t *shp = sp->shp;
     long curenv = shp->curenv;
     int comsub = shp->comsub;
@@ -186,15 +181,15 @@ void sh_subfork(void) {
     shp->savesig = -1;
     pid = sh_fork(shp, FSHOWME, NULL);
     if (pid) {
-        shp->curenv = curenv;
         // This is the parent part of the fork.
+        shp->curenv = curenv;
         if (sp->subpid == 0) sp->subpid = pid;
         if (trap) free(trap);
         if (comsub == 1) {
             sh_close(sp->tmpfd);
             sp->tmpfd = -1;
         }
-        siglongjmp(*shp->jmplist, SH_JMPSUB);
+        siglongjmp(shp->jmplist->buff, SH_JMPSUB);
     } else {
         // This is the child part of the fork. Setting subpid to 1 causes subshell to exit when
         // reached.
@@ -203,7 +198,7 @@ void sh_subfork(void) {
         sh_onstate(shp, SH_NOLOG);
         sh_offoption(shp, SH_MONITOR);
         sh_offstate(shp, SH_MONITOR);
-        subshell_data = 0;
+        active_subshell_data = NULL;
         shp->subshell = 0;
         shp->savesig = 0;
         if (comsub == 1) {
@@ -218,14 +213,14 @@ void sh_subfork(void) {
     }
 }
 
-bool nv_subsaved(Namval_t *np, int table) {
+bool nv_subsaved(Namval_t *np, bool table) {
     struct subshell *sp;
     struct Link *lp, *lpprev;
-    for (sp = (struct subshell *)subshell_data; sp; sp = sp->prev) {
+    for (sp = active_subshell_data; sp; sp = sp->prev) {
         lpprev = 0;
         for (lp = sp->svar; lp; lpprev = lp, lp = lp->next) {
             if (lp->node == np) {
-                if (table & NV_TABLE) {
+                if (table) {
                     if (lpprev) {
                         lpprev->next = lp->next;
                     } else {
@@ -248,7 +243,7 @@ bool nv_subsaved(Namval_t *np, int table) {
 Namval_t *sh_assignok(Namval_t *np, int add) {
     Namval_t *mp;
     struct Link *lp;
-    struct subshell *sp = (struct subshell *)subshell_data;
+    struct subshell *sp = active_subshell_data;
     Shell_t *shp;
     Dt_t *dp;
     Namval_t *mpnext;
@@ -268,12 +263,12 @@ Namval_t *sh_assignok(Namval_t *np, int add) {
         sh_assignok(mp, add);
         if (!add || is_associative(ap)) return np;
     }
+
     for (lp = sp->svar; lp; lp = lp->next) {
         if (lp->node == np) return np;
     }
-    // First two pointers use linkage from np.
-    lp = malloc(sizeof(*np) + 2 * sizeof(void *));
-    memset(lp, 0, sizeof(*mp) + 2 * sizeof(void *));
+
+    lp = calloc(1, sizeof(*lp));
     lp->node = np;
     if (!add && nv_isvtree(np)) {
         Namval_t fake;
@@ -294,13 +289,15 @@ Namval_t *sh_assignok(Namval_t *np, int add) {
             lp->child = mp;
         }
     }
+
+    mp = calloc(1, sizeof(*mp));
+    mp->nvname = np->nvname;
+    lp->np_node = mp;
     lp->dict = dp;
-    mp = (Namval_t *)&lp->dict;
-    lp->next = subshell_data->svar;
-    subshell_data->svar = lp;
+    lp->next = active_subshell_data->svar;
+    active_subshell_data->svar = lp;
     save = shp->subshell;
     shp->subshell = 0;
-    mp->nvname = np->nvname;
     if (nv_isattr(np, NV_NOFREE)) nv_onattr(mp, NV_CLONED);
     nv_clone(np, mp, (add ? (nv_isnull(np) ? 0 : NV_NOFREE) | NV_ARRAY : NV_MOVE));
     shp->subshell = save;
@@ -318,7 +315,7 @@ static_fn void nv_restore(struct subshell *sp) {
     int flags, nofree;
     sp->shpwd = NULL;  // make sure sh_assignok doesn't save with nv_unset()
     for (lp = sp->svar; lp; lp = lq) {
-        np = (Namval_t *)&lp->dict;
+        np = lp->np_node;
         lq = lp->next;
         mp = lp->node;
         if (!mp->nvname) continue;
@@ -347,9 +344,7 @@ static_fn void nv_restore(struct subshell *sp) {
         if (nofree && np->nvfun && !np->nvfun->nofree) free(np->nvfun);
         np->nvfun = NULL;
         if (nv_isattr(mp, NV_EXPORT)) {
-            char *name = nv_name(mp);
             sh_envput(sp->shp, mp);
-            if (*name == '_' && strcmp(name, "_AST_FEATURES") == 0) astconf(NULL, NULL, NULL);
         } else if (nv_isattr(np, NV_EXPORT)) {
             env_delete(sp->shp->env, nv_name(mp));
         }
@@ -360,6 +355,7 @@ static_fn void nv_restore(struct subshell *sp) {
             dtinsert(lp->dict, mp);
         }
         free(lp);
+        free(np);
         sp->svar = lq;
     }
     sp->shpwd = save;
@@ -370,7 +366,7 @@ static_fn void nv_restore(struct subshell *sp) {
 // non-zero.
 //
 Dt_t *sh_subaliastree(Shell_t *shp, int create) {
-    struct subshell *sp = subshell_data;
+    struct subshell *sp = active_subshell_data;
     if (!sp || shp->curenv == 0) return shp->alias_tree;
     if (!sp->salias && create) {
         sp->salias = dtopen(&_Nvdisc, Dtoset);
@@ -385,8 +381,8 @@ Dt_t *sh_subaliastree(Shell_t *shp, int create) {
 // Return pointer to function tree. Create new one if in a subshell and one doesn't exist and create
 // is non-zero.
 //
-Dt_t *sh_subfuntree(Shell_t *shp, int create) {
-    struct subshell *sp = subshell_data;
+Dt_t *sh_subfuntree(Shell_t *shp, bool create) {
+    struct subshell *sp = active_subshell_data;
     if (!sp || shp->curenv == 0) return shp->fun_tree;
     if (!sp->sfun && create) {
         sp->sfun = dtopen(&_Nvdisc, Dtoset);
@@ -399,11 +395,10 @@ Dt_t *sh_subfuntree(Shell_t *shp, int create) {
 
 static_fn void subshell_table_unset(Dt_t *root, int fun) {
     Namval_t *np, *nq;
-    int flag;
 
     for (np = (Namval_t *)dtfirst(root); np; np = nq) {
         nq = (Namval_t *)dtnext(root, np);
-        flag = 0;
+        nvflag_t flag = 0;
 
         // This code block was restored from last stable release to fix a use after free issue.
         // https://github.com/att/ast/issues/803
@@ -419,7 +414,7 @@ static_fn void subshell_table_unset(Dt_t *root, int fun) {
 }
 
 int sh_subsavefd(int fd) {
-    struct subshell *sp = subshell_data;
+    struct subshell *sp = active_subshell_data;
     int old = 0;
     if (sp) {
         old = !(sp->fdsaved & (1 << fd));
@@ -429,7 +424,7 @@ int sh_subsavefd(int fd) {
 }
 
 void sh_subjobcheck(pid_t pid) {
-    struct subshell *sp = subshell_data;
+    struct subshell *sp = active_subshell_data;
     while (sp) {
         if (sp->cpid == pid) {
             sh_close(sp->coutpipe);
@@ -447,15 +442,15 @@ void sh_subjobcheck(pid_t pid) {
 // output of command <t>.  Otherwise, NULL will be returned.
 //
 Sfio_t *sh_subshell(Shell_t *shp, Shnode_t *t, volatile int flags, int comsub) {
-    struct subshell sub_data;
-    struct subshell *sp = &sub_data;
+    struct subshell subshell_data;
+    struct subshell *sp = &subshell_data;
     int jmpval, isig, nsig = 0, duped = 0;
     long savecurenv = shp->curenv;
     int savejobpgid = job.curpgid;
     int *saveexitval = job.exitval;
     char **savsig;
     Sfio_t *iop = NULL;
-    struct checkpt buff;
+    checkpt_t buff;
     struct sh_scoped savst;
     struct dolnod *argsav = NULL;
     int argcnt;
@@ -470,29 +465,25 @@ Sfio_t *sh_subshell(Shell_t *shp, Shnode_t *t, volatile int flags, int comsub) {
     argsav = sh_arguse(shp);
     if (argsav) argcnt = argsav->dolrefcnt;
     if (shp->curenv == 0) {
-        subshell_data = 0;
-        subenv = 0;
+        active_subshell_data = NULL;
+        subenv_level = 0;
     }
-    shp->curenv = ++subenv;
-    if (shp->curenv <= 0) shp->curenv = subenv = 1;
+    shp->curenv = ++subenv_level;
+    if (shp->curenv <= 0) shp->curenv = subenv_level = 1;
     savst = shp->st;
     sh_pushcontext(shp, &buff, SH_JMPSUB);
     shp->subshell++;
     STORE_VT(SH_SUBSHELLNOD->nvalue, i16, shp->subshell);
-    sp->prev = subshell_data;
+    sp->prev = active_subshell_data;
     sp->shp = shp;
     sp->sig = 0;
-    subshell_data = sp;
+    active_subshell_data = sp;
     sp->errcontext = &buff.err;
     sp->var = shp->var_tree;
     sp->options = shp->options;
     sp->jobs = job_subsave();
     sp->subdup = shp->subdup;
     shp->subdup = 0;
-#if SHOPT_COSHELL
-    sp->coshell = shp->coshell;
-    shp->coshell = NULL;
-#endif  // SHOPT_COSHELL
     // Make sure initialization has occurred.
     if (!shp->pathlist) {
         shp->pathinit = 1;
@@ -517,13 +508,13 @@ Sfio_t *sh_subshell(Shell_t *shp, Shnode_t *t, volatile int flags, int comsub) {
     if (!comsub || !shp->subshare) {
         sp->shpwd = shp->pwd;
         sp->shpwdfd = ((shp->pwdfd >= 0)) ? sh_fcntl(shp->pwdfd, F_DUPFD_CLOEXEC, 10) : -1;
-#ifdef O_SEARCH
+#if O_SEARCH
         // If shell starts in a directory that it does not have access to, this will cause error.
         // if (sp->shpwdfd < 0) {
         //     errormsg(SH_DICT, ERROR_system(1), "Can't obtain directory fd.");
         //     __builtin_unreachable();
         // }
-#endif
+#endif  // O_SEARCH
         sp->pwd = (shp->pwd ? strdup(shp->pwd) : 0);
         sp->mask = shp->mask;
         sh_stats(STAT_SUBSHELL);
@@ -602,8 +593,8 @@ Sfio_t *sh_subshell(Shell_t *shp, Shnode_t *t, volatile int flags, int comsub) {
     sh_popcontext(shp, &buff);
     if (shp->subshell == 0) {  // must be child process
         shp->st.trapcom[0] = 0;
-        subshell_data = sp->prev;
-        if (jmpval == SH_JMPSCRIPT) siglongjmp(*shp->jmplist, jmpval);
+        active_subshell_data = sp->prev;
+        if (jmpval == SH_JMPSCRIPT) siglongjmp(shp->jmplist->buff, jmpval);
         shp->exitval &= SH_EXITMASK;
         sh_done(shp, 0);
     }
@@ -638,7 +629,7 @@ Sfio_t *sh_subshell(Shell_t *shp, Shnode_t *t, volatile int flags, int comsub) {
                 int fd = sfsetfd(iop, sh_get_unused_fd(shp, 3));
                 if (fd < 0) {
                     shp->toomany = 1;
-                    ((struct checkpt *)shp->jmplist)->mode = SH_JMPERREXIT;
+                    shp->jmplist->mode = SH_JMPERREXIT;
                     errormsg(SH_DICT, ERROR_system(1), e_toomany);
                     __builtin_unreachable();
                 }
@@ -707,9 +698,9 @@ Sfio_t *sh_subshell(Shell_t *shp, Shnode_t *t, volatile int flags, int comsub) {
             Namval_t *pwdnod = sh_scoped(shp, PWDNOD);
             if (shp->pwd) {
                 shp->pwd = sp->pwd;
-#ifndef O_SEARCH
+#if !O_SEARCH
                 if (sp->shpwdfd < 0) chdir(shp->pwd);
-#endif
+#endif  // O_SEARCH
                 path_newdir(shp, shp->pathlist);
             }
             if (nv_isattr(pwdnod, NV_NOFREE)) STORE_VT(pwdnod->nvalue, const_cp, sp->pwd);
@@ -741,11 +732,8 @@ Sfio_t *sh_subshell(Shell_t *shp, Shnode_t *t, volatile int flags, int comsub) {
     }
     shp->subshare = sp->subshare;
     shp->subdup = sp->subdup;
-#if SHOPT_COSHELL
-    shp->coshell = sp->coshell;
-#endif  // SHOPT_COSHELL
     if (shp->subshell) STORE_VT(SH_SUBSHELLNOD->nvalue, i16, --shp->subshell);
-    subshell_data = sp->prev;
+    active_subshell_data = sp->prev;
     if (!argsav || argsav->dolrefcnt == argcnt) sh_argfree(shp, argsav);
     if (shp->topfd != buff.topfd) sh_iorestore(shp, buff.topfd | IOSUBSHELL, jmpval);
 #if USE_SPAWN
@@ -778,13 +766,13 @@ Sfio_t *sh_subshell(Shell_t *shp, Shnode_t *t, volatile int flags, int comsub) {
         if (sig == SIGINT || sig == SIGQUIT) kill(getpid(), sig);
     }
     if (duped) {
-        ((struct checkpt *)shp->jmplist)->mode = SH_JMPERREXIT;
+        shp->jmplist->mode = SH_JMPERREXIT;
         shp->toomany = 1;
         errormsg(SH_DICT, ERROR_system(1), e_redirect);
         __builtin_unreachable();
     }
     if (shp->ignsig) kill(getpid(), shp->ignsig);
     if (jmpval == SH_JMPSUB && shp->lastsig) kill(getpid(), shp->lastsig);
-    if (jmpval && shp->toomany) siglongjmp(*shp->jmplist, jmpval);
+    if (jmpval && shp->toomany) siglongjmp(shp->jmplist->buff, jmpval);
     return iop;
 }

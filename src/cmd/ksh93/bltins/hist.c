@@ -21,6 +21,7 @@
 
 #include <ctype.h>
 #include <fcntl.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -64,14 +65,15 @@ int b_hist(int argc, char *argv[], Shbltin_t *context) {
     int rflag = 0;
     int pflag = 0;
     Histloc_t location;
+    int n;
 
     if (!sh_histinit(shp)) {
         errormsg(SH_DICT, ERROR_system(1), e_histopen);
         __builtin_unreachable();
     }
     hp = shp->gd->hist_ptr;
-    while ((flag = optget(argv, sh_opthist))) {
-        switch (flag) {
+    while ((n = optget(argv, sh_opthist))) {
+        switch (n) {  //!OCLINT(MissingDefaultStatement)
             case 'e': {
                 edit = opt_info.arg;
                 break;
@@ -112,7 +114,6 @@ int b_hist(int argc, char *argv[], Shbltin_t *context) {
                 errormsg(SH_DICT, ERROR_usage(2), "%s", opt_info.arg);
                 __builtin_unreachable();
             }
-            default: { break; }
         }
     }
 
@@ -215,12 +216,8 @@ int b_hist(int argc, char *argv[], Shbltin_t *context) {
         arg = "\n";
         nflag++;
     }
-    while (1) {
-        if (nflag == 0) {
-            sfprintf(outfile, "%d\t", range[flag]);
-        } else if (lflag) {
-            sfputc(outfile, '\t');
-        }
+    while (true) {
+        if (nflag == 0) sfprintf(outfile, "%-7d ", range[flag]);
         hist_list(shp->gd->hist_ptr, outfile, hist_tell(shp->gd->hist_ptr, range[flag]), 0, arg);
         if (lflag) sh_sigcheck(shp);
         if (range[flag] == range[1 - flag]) break;

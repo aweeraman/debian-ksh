@@ -1,6 +1,8 @@
 project('ksh93', 'c', default_options: ['b_lundef=false', 'default_library=static'])
 
+source_dir = meson.current_source_dir()
 cc = meson.get_compiler('c')
+cpu = host_machine.cpu()
 system = host_machine.system()
 # So the `config_ast.h` and other dynamically generated headers can be found (see below).
 configuration_incdir = include_directories(['.'])
@@ -12,6 +14,7 @@ endif
 # Global compiler flags aren't used by the feature tests. So instead put them
 # in an array that will be used by the feature tests.
 feature_test_args = ['-std=gnu99', '-D_GNU_SOURCE']
+
 if system == 'openbsd'
     # This is needed because OpenBSD installs a lot of stuff in
     # /usr/local/{include,lib} that would normally be in /usr/{include,lib}.
@@ -35,6 +38,25 @@ add_global_arguments('-std=gnu99', language: 'c')
 # GNU distros.
 add_global_arguments('-D_GNU_SOURCE', language: 'c')
 
+# Solaris/SunOS and its derivatives, such as IllumOS and OpenIndiana, need
+# special handling.
+#
+# TODO: Figure out the correct way to enable the POSIX extensions we require
+# on Solaris. Defining __EXTENSIONS__ is almost certainly the wrong way to do
+# this. But note it is also what the legacy ksh code did before we switched to
+# Meson+Ninja. So perhaps this is correct and there is no better solution.
+if system == 'sunos' or system == 'solaris'
+    feature_test_args += ['-D__EXTENSIONS__', '-DAST_SUNOS']
+    add_global_arguments('-D__EXTENSIONS__', language: 'c')
+    add_global_arguments('-D_LARGEFILE_SOURCE', language: 'c')
+    add_global_arguments('-D_LARGEFILE64_SOURCE', language: 'c')
+    add_global_arguments('-D_FILE_OFFSET_BITS=64', language: 'c')
+    add_global_arguments('-DAST_SUNOS', language: 'c')
+    add_global_arguments('-m64', language: 'c')
+    add_global_link_arguments('-m64', language: 'c')
+endif
+
+
 # The AST/ksh code is littered with aliasing that violates the assumptions the
 # compiler makes when `-fstrict-aliasing` is in effect so make sure those
 # optimizations are disabled.
@@ -45,15 +67,26 @@ add_global_arguments('-fno-strict-aliasing', language: 'c')
 # -Wall.
 add_global_arguments('-Wextra', language: 'c')
 
+# Uncomment this to enable warnings about implicit type coercions.
+# This is gcc only; clang doesn't recognize it.
+# add_global_arguments('-Wcoercion', language: 'c')
+
+# Uncomment this to enable warnings about implicit 64 to 32 bit narrowing casts.
+# This is clang only; gcc doesn't recognize it.
+# add_global_arguments('-Wshorten-64-to-32', language: 'c')
+
 # GCC 8 enables -Wcast-function-type when -Wextra is used. Sadly it causes far
 # too many false positives in the ksh code. Such as in the
 # src/cmd/ksh93/bltins/math.c module. So disable it.
 #
 # TODO: Refactor the code so that the incompatible explicit function casts are
 # not needed.
-if cc.get_id() == 'gcc'
+if cc.get_id() == 'gcc' and cc.has_argument('-Wno-cast-function-type')
     add_global_arguments('-Wno-cast-function-type', language: 'c')
 endif
+
+# We don't want `__attribute__((annotate("oclint:suppress")))` to produce warnings.
+add_global_arguments('-Wno-attributes', language: 'c')
 
 # There are quite a few places in the code which use a char to index into an
 # array. All of them appear to be "safe" in as much as they only do so when
@@ -165,13 +198,23 @@ if get_option('ASAN') == true
     endif
 endif
 
+# If we're doing a unit test or code coverage build we may need to set certain
+# symbols to non-default values to ensure some code is covered. For example,
+# reducing limits to trigger some behavior. We don't base this on whether the
+# build type is "debug" because we want to be able to create a debuggable ksh
+# binary without incurring the cost of setting limits needed for unit testing.
+if get_option('b_coverage') == true or get_option('unittest') == true
+    add_global_arguments('-DHIST_RECENT=5', language: 'c')
+    add_global_arguments('-DHIST_MAX=512', language: 'c')
+    add_global_arguments('-DHIST_DFLT=25', language: 'c')
+endif
+
 # Error on implicit declarations.
 if cc.has_argument('-Werror=implicit')
     add_global_arguments('-Werror=implicit', language: 'c')
 endif
 
 shared_c_args = [
-    '-DUSAGE_LICENSE=""',
     '-DUSE_SPAWN=' + '@0@'.format(get_option('use-spawn').to_int()),
 ]
 
@@ -188,6 +231,8 @@ feature_data.set('MESON_BUILD', 1)
 if system == 'darwin'
     feature_data.set('_DARWIN_C_SOURCE', 1)
 endif
+bash_machtype = cpu + '-unknown-'+ system
+feature_data.set_quoted('BASH_MACHTYPE', bash_machtype)
 
 # We need symbols in the program to be visible to `dladdr()` and related
 # functions. This is necessary to be able to resolve addresses in the program
@@ -232,7 +277,6 @@ feature_data.set10('const_const_fts_open', osname == 'freebsd' or osname == 'cyg
 # On Cygwin we can't use socketpair() for pipes.
 feature_data.set10('_pipe_socketpair', osname != 'cygwin')
 
-
 feature_data.set('_ast_sizeof_int', int_size)
 feature_data.set('_ast_sizeof_int32_t', int32_t_size)
 feature_data.set('_ast_sizeof_long', long_size)
@@ -240,7 +284,6 @@ feature_data.set('_ast_sizeof_size_t', size_t_size)
 feature_data.set('_ast_sizeof_off_t', off_t_size)
 feature_data.set('_ast_sizeof_pointer', ptr_size)
 feature_data.set('_ast_sizeof_wchar_t', wchar_t_size)
-feature_data.set('_ptr_bits', ptr_size * 8)
 
 subdir('features')
 
@@ -251,7 +294,6 @@ configure_file(input : 'config_ast.h.in',
 run_command('scripts/libast_prereq.sh')
 
 subdir('src/lib/libast')
-subdir('src/lib/libcmd')
 subdir('src/lib/libdll')
 
 # Check if api tests should be built

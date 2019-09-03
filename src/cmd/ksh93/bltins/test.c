@@ -29,6 +29,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <setjmp.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -44,7 +45,6 @@
 #include "fault.h"
 #include "io.h"
 #include "name.h"
-#include "option.h"
 #include "sfio.h"
 #include "shcmd.h"
 #include "shtable.h"
@@ -111,7 +111,7 @@ static_fn int test_strmatch(Shell_t *shp, const char *str, const char *pat) {
     if (m > elementsof(match) / 2) m = elementsof(match) / 2;
     n = strgrpmatch(str, pat, (ssize_t *)match, m,
                     STR_GROUP | STR_MAXIMAL | STR_LEFT | STR_RIGHT | STR_INT);
-    if (m == 0 && n == 1) match[1] = strlen(str);
+    if (m == 0 && n == 1) match[1] = (int)strlen(str);
     if (n) sh_setmatch(shp, str, -1, n, match, 0);
     return n;
 }
@@ -119,10 +119,10 @@ static_fn int test_strmatch(Shell_t *shp, const char *str, const char *pat) {
 int b_test(int argc, char *argv[], Shbltin_t *context) {
     struct test tdata;
     char *cp = argv[0];
-    int not;
+    bool negate;
     Shell_t *shp = context->shp;
     int jmpval = 0, result = 0;
-    struct checkpt buff;
+    checkpt_t buff;
 
     memset(&buff, 0, sizeof(buff));
     tdata.sh = context->shp;
@@ -155,13 +155,13 @@ int b_test(int argc, char *argv[], Shbltin_t *context) {
     cp = argv[1];
     if (c_eq(cp, '(') && argc <= 6 && c_eq(argv[argc - 1], ')')) {
         // Special case  ( binop ) to conform with standard.
-        if (!(argc == 4 && (not = sh_lookup(cp = argv[2], shtab_testops)))) {
+        if (!(argc == 4 && sh_lookup(cp = argv[2], shtab_testops))) {
             cp = (++argv)[1];
             argc -= 2;
         }
     }
-    not = c_eq(cp, '!');
-    if (not&&c_eq(argv[2], '(') && argc <= 7 && c_eq(argv[argc - 1], ')')) {
+    negate = c_eq(cp, '!');
+    if (negate && c_eq(argv[2], '(') && argc <= 7 && c_eq(argv[argc - 1], ')')) {
         int i;
         for (i = 2; i < argc; i++) tdata.av[i] = tdata.av[i + 1];
         tdata.av[i] = 0;
@@ -170,7 +170,7 @@ int b_test(int argc, char *argv[], Shbltin_t *context) {
     // Posix portion for test.
     switch (argc) {
         case 5: {
-            if (!not) break;
+            if (!negate) break;
             argv++;
         }
         // FALLTHRU
@@ -179,42 +179,32 @@ int b_test(int argc, char *argv[], Shbltin_t *context) {
             if (op & TEST_BINOP) break;
             if (!op) {
                 if (argc == 5) break;
-                if (not&&cp[0] == '-' && cp[2] == 0) {
+                if (negate && cp[0] == '-' && cp[2] == 0) {
                     result = (test_unop(tdata.sh, cp[1], argv[3]) != 0);
                     goto done;
                 } else if (argv[1][0] == '-' && argv[1][2] == 0) {
                     result = !test_unop(tdata.sh, argv[1][1], cp);
                     goto done;
-                } else if (not&&c_eq(argv[2], '!')) {
+                } else if (negate && c_eq(argv[2], '!')) {
                     result = (*argv[3] == 0);
                     goto done;
                 }
                 errormsg(SH_DICT, ERROR_exit(2), e_badop, cp);
                 __builtin_unreachable();
             }
-            result = (test_binop(tdata.sh, op, argv[1], argv[3]) ^ (argc != 5));
+            result = test_binop(tdata.sh, op, argv[1], argv[3]) ^ (argc != 5);
             goto done;
         }
         case 3: {
-            if (not) {
+            if (negate) {
                 result = (*argv[2] != 0);
                 goto done;
             }
-
-            if (cp[0] != '-' || cp[2] || cp[1] == '?') {
-                if (cp[0] == '-' && (cp[1] == '-' || cp[1] == '?') && strcmp(argv[2], "--") == 0) {
-                    char *av[3];
-                    av[0] = argv[0];
-                    av[1] = argv[1];
-                    av[2] = 0;
-                    (void)optget(av, sh_opttest);
-                    errormsg(SH_DICT, ERROR_usage(2), "%s", opt_info.arg);
-                    __builtin_unreachable();
-                }
-                break;
+            if (cp[0] == '-' && strlen(cp) == 2) {
+                result = !test_unop(tdata.sh, cp[1], argv[2]);
+                goto done;
             }
-            result = !test_unop(tdata.sh, cp[1], argv[2]);
-            goto done;
+            break;
         }
         case 2: {
             result = (*cp == 0);
@@ -300,8 +290,10 @@ static_fn int eval_e3(Shell_t *shp, struct test *tp) {
     if (cp != 0 && (c_eq(cp, '=') || c2_eq(cp, '!', '='))) goto skip;
     if (c2_eq(arg, '-', 't')) {
         if (cp) {
-            op = strtol(cp, &binop, 10);
+            long l = strtol(cp, &binop, 10);
             if (*binop) return 0;
+            if (l > INT_MAX || l < INT_MIN) return 0;
+            op = l;
             if (shp->subshell && op == STDOUT_FILENO) return 0;
             return tty_check(op);
         }
@@ -380,26 +372,6 @@ int test_unop(Shell_t *shp, int op, const char *arg) {
             if (*arg == 0 || arg[strlen(arg) - 1] == '/' || lstat(arg, &statb) < 0) return 0;
             return S_ISLNK(statb.st_mode);
         }
-        case 'C': {
-#ifdef S_ISCTG
-            return test_stat(arg, &statb) >= 0 && S_ISCTG(statb.st_mode);
-#else   // S_ISCTG
-            return 0;
-#endif  // S_ISCTG
-        }
-        case 'H': {
-#ifdef S_ISCDF
-            int offset = stktell(shp->stk);
-            if (test_stat(arg, &statb) >= 0 && S_ISCDF(statb.st_mode)) return 1;
-            sfputr(shp->stk, arg, '+');
-            sfputc(shp->stk, 0);
-            arg = (const char *)stkptr(shp->stk, offset);
-            stkseek(shp->stk, offset);
-            return test_stat(arg, &statb) >= 0 && S_ISCDF(statb.st_mode);
-#else
-            return 0;
-#endif  // S_ISCDF
-        }
         case 'S': {
             return isasock(arg, &statb);
         }
@@ -443,8 +415,10 @@ int test_unop(Shell_t *shp, int op, const char *arg) {
         }
         case 't': {
             char *last;
-            op = strtol(arg, &last, 10);
+            long l = strtol(arg, &last, 10);
             if (*last) return 0;
+            if (l > INT_MAX || l < INT_MIN) return 0;
+            op = (int)l;
             if (shp->subshell && op == STDOUT_FILENO) return 0;
             return tty_check(op);
         }
@@ -656,17 +630,15 @@ skip:
             mode <<= 3;
         } else {
             // On some systems you can be in several groups.
-            static int maxgroups;
+            static int maxgroups = 0;
             gid_t *groups;
             int n;
-            if (maxgroups == 0) {
-                // First time.
-                if ((maxgroups = getgroups(0, NULL)) <= 0) {
-                    // Pre-POSIX system.
-                    maxgroups = shgd->lim.ngroups_max;
-                }
+            if (maxgroups == 0) {  // first time
+                maxgroups = getgroups(0, NULL);
+                // Pre-POSIX system.  This should be a can't happen situation.
+                if (maxgroups == -1) maxgroups = sysconf(_SC_NGROUPS_MAX);
             }
-            groups = (gid_t *)stkalloc(shp->stk, (maxgroups + 1) * sizeof(gid_t));
+            groups = stkalloc(shp->stk, (maxgroups + 1) * sizeof(gid_t));
             n = getgroups(maxgroups, groups);
             while (--n >= 0) {
                 if (groups[n] == statb.st_gid) {

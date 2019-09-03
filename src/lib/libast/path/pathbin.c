@@ -25,28 +25,38 @@
 //
 #include "config_ast.h"  // IWYU pragma: keep
 
+#include <stdbool.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "ast.h"
 
+#define CS_PATH_LEN 1024
+
+static const char *def_cs_path = "/bin:/usr/bin:/usr/local/bin";
+
+//
+//  Return default PATH to find all system utilities.
+//
+char *cs_path() {
+    static bool path_ok = false;
+    static char saved_cs_path[CS_PATH_LEN] = {0};
+
+    if (path_ok) return saved_cs_path;
+    path_ok = true;
+
+    size_t rv = confstr(_CS_PATH, saved_cs_path, CS_PATH_LEN);
+    if (rv == 0) strlcpy(saved_cs_path, def_cs_path, CS_PATH_LEN);
+    // Make sure the string is null terminated in case the buf was too small for confstr().
+    saved_cs_path[CS_PATH_LEN - 1] = '\0';
+    return saved_cs_path;
+}
+
+//
 //  Return current PATH
 //
 char *pathbin(void) {
-    char *path;
-    // Used to restore value of saved astconf path from earlier function call
-    static char *astconf_path = NULL;
-
-    path = getenv("PATH");
-    if (!path || !*path) path = astconf_path;
-
-    if (!path) {
-        path = astconf("PATH", NULL, NULL);
-        if (path && *path) path = strdup(path);
-        if (!path) {
-            path = "/bin:/usr/bin:/usr/local/bin";
-        }
-        astconf_path = path;
-    }
-
+    char *path = getenv("PATH");
+    if (!path || !*path) path = cs_path();
     return path;
 }

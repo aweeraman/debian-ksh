@@ -33,6 +33,10 @@
 #include <string.h>
 #include <sys/types.h>
 
+#ifdef _PROC_PROG
+#include <unistd.h>
+#endif
+
 #if __CYGWIN__
 #include <ctype.h>
 #endif

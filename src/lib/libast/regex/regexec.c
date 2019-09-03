@@ -25,11 +25,10 @@
  */
 #include "config_ast.h"  // IWYU pragma: keep
 
-#include <stdlib.h>
 #include <string.h>
 
 #include "ast.h"  // IWYU pragma: keep
-#include "reglib.h"
+#include "ast_regex.h"
 
 //
 // Standard wrapper for the sized-record interface.
