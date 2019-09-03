@@ -12,7 +12,7 @@ Build-Depends:
  netcat-openbsd,
  ninja-build,
  procps,
-Standards-Version: 4.3.0
+Standards-Version: 4.4.0
 Vcs-Git: https://salsa.debian.org/debian/ksh.git
 Vcs-Browser: https://salsa.debian.org/debian/ksh
 
