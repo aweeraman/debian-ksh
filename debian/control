@@ -6,10 +6,10 @@ Homepage: http://www.kornshell.com/
 Build-Depends:
  debhelper-compat (= 12),
  dh-exec,
- expect,
+ expect <!nocheck>,
  locales-all,
  meson,
- netcat-openbsd,
+ netcat-openbsd <!nocheck>,
  ninja-build,
  procps,
 Standards-Version: 4.4.0
