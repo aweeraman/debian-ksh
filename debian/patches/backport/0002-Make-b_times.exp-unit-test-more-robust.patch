@@ -1,0 +1,109 @@
+From: Kurtis Rader <krader@skepticism.us>
+Date: Fri, 6 Sep 2019 14:24:39 -0700
+Subject: Make b_times.exp unit test more robust
+
+Fixes #1398
+
+(cherry picked from commit 44463c0255b7e80d3ace9a0a27e543f2232ca409)
+---
+ src/cmd/ksh93/tests/b_time.exp       |  6 ++++--
+ src/cmd/ksh93/tests/b_times.exp      |  4 ++--
+ src/cmd/ksh93/tests/util/run_test.sh | 14 ++++++++++++++
+ src/cmd/ksh93/tests/variables.sh     | 12 ++++++------
+ 4 files changed, 26 insertions(+), 10 deletions(-)
+
+diff --git a/src/cmd/ksh93/tests/b_time.exp b/src/cmd/ksh93/tests/b_time.exp
+index 69c622b..97ff791 100644
+--- a/src/cmd/ksh93/tests/b_time.exp
++++ b/src/cmd/ksh93/tests/b_time.exp
+@@ -46,7 +46,7 @@ expect_prompt
+ # ==========
+ # Timing a CPU bound statement produces non-zero times.
+ log_test_entry
+-send "time { SECONDS=0; while (( SECONDS < 1.5 )); do true; done; }\r"
++send "time { SECONDS=0; for ((i=0; ; i++)); do (( i % ITERS_PER_10MS == 0 && SECONDS >= 1.2 )) && break; done; }\r"
+ expect -re "\r\nreal\[\t \]*$one_sec_re\r\ncpu$one_sec_re\r\n" {
+     puts "time CPU bound pipeline produces expected output"
+ }
+@@ -60,7 +60,9 @@ expect_prompt
+ # machine that may not be true. But even there we would normally expect at least 90%.
+ log_test_entry
+ send "$ksh -c 'TIMEFORMAT=\"pct %3P%\"; "
+-send "SECONDS=0; time while (( SECONDS < 0.5 )); do true; done;'\r"
++send "time { "
++send "for ((i=0; ; i++)); do (( i % ITERS_PER_10MS == 0 && SECONDS >= 0.5 )) && break; done; "
++send "}'\r"
+ expect -re "pct (100|9\[0-9\]).\[0-9\]\[0-9\]\[0-9\]%\r\n" {
+     puts "time %3P produces correct output"
+ }
+diff --git a/src/cmd/ksh93/tests/b_times.exp b/src/cmd/ksh93/tests/b_times.exp
+index 40c0ec6..d6f30cc 100644
+--- a/src/cmd/ksh93/tests/b_times.exp
++++ b/src/cmd/ksh93/tests/b_times.exp
+@@ -31,7 +31,7 @@ expect_prompt
+ # ==========
+ # A CPU bound statement produces non-zero times.
+ log_test_entry
+-send "{ SECONDS=0; while (( SECONDS < 1.5 )); do true; done; }\r"
++send "for ((i=0; ; i++)); do (( i % ITERS_PER_10MS == 0 && SECONDS >= 1.2 )) && break; done\r"
+ expect_prompt
+ 
+ send "times\r"
+@@ -47,7 +47,7 @@ expect_prompt
+ # expect system mode times to be less than one but user mode time for the shell and child processes
+ # should be between one and two.
+ log_test_entry
+-send "$ksh -c 'SECONDS=0; while (( SECONDS < 1.5 )); do true; done'\r"
++send "$ksh -c 'for ((i=0; ; i++)); do (( i % ITERS_PER_10MS == 0 && SECONDS >= 1.2 )) && break; done'\r"
+ expect_prompt
+ 
+ send "times\r"
+diff --git a/src/cmd/ksh93/tests/util/run_test.sh b/src/cmd/ksh93/tests/util/run_test.sh
+index 20d24ed..2722d3d 100644
+--- a/src/cmd/ksh93/tests/util/run_test.sh
++++ b/src/cmd/ksh93/tests/util/run_test.sh
+@@ -138,6 +138,20 @@ export PATH=$FULL_PATH
+ mkfifo fifo9
+ mkfifo fifo8
+ 
++#
++# Figure out how many times to execute an empty loop to consume 100ms. This is used in a few places
++# to create a CPU bound loop that can be executed for a specific duration with a minimum number of
++# gettimeofday() syscalls (due to sampling $SECONDS).
++#
++integer iters_per_100ms
++SECONDS=0
++for ((iters_per_100ms = 0; ; iters_per_100ms++))
++do
++    (( iters_per_100ms % 20000 == 0 && SECONDS >= 0.1 )) && break
++done
++export ITERS_PER_10MS=$((iters_per_100ms / 10))
++log_info ITERS_PER_10MS=$ITERS_PER_10MS
++
+ #
+ # We don't want the tests to modify the command history and the like of the user running the tests.
+ #
+diff --git a/src/cmd/ksh93/tests/variables.sh b/src/cmd/ksh93/tests/variables.sh
+index adb5fd6..2cb74d1 100644
+--- a/src/cmd/ksh93/tests/variables.sh
++++ b/src/cmd/ksh93/tests/variables.sh
+@@ -29,13 +29,13 @@ then
+     log_error RANDOM variable not working
+ fi
+ 
+-# SECONDS
+-sleep 3
+-if (( SECONDS < 2 ))
+-then
+-    log_error SECONDS variable not working
+-fi
++# ==========
++# SECONDS tracks time correctly.
++SECONDS=0
++sleep 0.1
++(( SECONDS > 0.05 && SECONDS < 0.2 )) || log_error "SECONDS variable not working" "0.100" "$SECONDS"
+ 
++# ==========
+ # _
+ set abc def
+ if [[ $_ != def ]]

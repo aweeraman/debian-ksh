@@ -17,7 +17,7 @@ Last-Updated: 2019-09-03
  1 file changed, 1 insertion(+), 38 deletions(-)
 
 diff --git a/src/cmd/ksh93/docs/ksh.1 b/src/cmd/ksh93/docs/ksh.1
-index e98603a..f52254b 100644
+index 98b83ce..33e69ff 100644
 --- a/src/cmd/ksh93/docs/ksh.1
 +++ b/src/cmd/ksh93/docs/ksh.1
 @@ -19,12 +19,7 @@
@@ -70,7 +70,7 @@ index e98603a..f52254b 100644
  See
  .I Invocation\^
  below
-@@ -2243,12 +2221,6 @@ At invocation, if the basename of this variable is
+@@ -2241,12 +2219,6 @@ At invocation, if the basename of this variable is
  or
  .BR krsh ,
  then the shell becomes restricted.
@@ -83,7 +83,7 @@ index e98603a..f52254b 100644
  .TP
  .SM
  .B TIMEFORMAT
-@@ -8215,14 +8187,6 @@ If the
+@@ -8219,14 +8191,6 @@ If the
  .B \-r
  option is present, the shell is a restricted shell.
  .TP
@@ -98,7 +98,7 @@ index e98603a..f52254b 100644
  .BI \-R " filename\^"
  The
  .B \-R
-@@ -8393,7 +8357,6 @@ fgrep(1),
+@@ -8397,7 +8361,6 @@ fgrep(1),
  gmacs(1),
  grep(1),
  newgrp(1),
