@@ -4,3 +4,4 @@ backport/0003-Make-b_times.exp-unit-test-more-robust.patch
 backport/0004-Fix-expansion-of-bare-tildes-when-HOME-is-unset.patch
 backport/0005-Document-fix-for-issue-1391.patch
 backport/0006-Initialize-the-jobs-table-earlier.patch
+backport/0007-Fix-regression-involving-invalid-char-class-name.patch

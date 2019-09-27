@@ -1,0 +1,44 @@
+From: Kurtis Rader <krader@skepticism.us>
+Date: Thu, 26 Sep 2019 20:21:47 -0700
+Subject: Fix regression involving invalid char class name
+
+Fixes #1409
+
+(cherry picked from commit 1b349151d64f8345c154c7fc72ce2227b689689b)
+---
+ src/cmd/ksh93/tests/sh_match.sh | 8 ++++++++
+ src/lib/libast/regex/regclass.c | 2 +-
+ 2 files changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/src/cmd/ksh93/tests/sh_match.sh b/src/cmd/ksh93/tests/sh_match.sh
+index f0d606e..db254f5 100644
+--- a/src/cmd/ksh93/tests/sh_match.sh
++++ b/src/cmd/ksh93/tests/sh_match.sh
+@@ -109,6 +109,14 @@ fi
+ [[ G =~ [[:xdigit:]] ]] && log_error 'pattern [[:xdigit:]] broken'
+ [[ g =~ [[:xdigit:]] ]] && log_error 'pattern [[:xdigit:]] broken'
+ 
++# ========
++# Verify an invalid char class name is handled without a SIGSEGV or similar failure.
++# Regression for https://github.com/att/ast/issues/1409.
++actual=$(case x in [x[:bogus:]]) echo x ;; esac)
++expect=''
++[[ $actual == $expect ]] || log_error 'invalid char class name' "$expect" "$actual"
++
++# ========
+ [[ 3 =~ \w ]] || log_error 'pattern \w broken'
+ [[ y =~ \w ]] || log_error 'pattern \w broken'
+ [[ / =~ \w ]] && log_error 'pattern \w broken'
+diff --git a/src/lib/libast/regex/regclass.c b/src/lib/libast/regex/regclass.c
+index 773abea..a121c37 100644
+--- a/src/lib/libast/regex/regclass.c
++++ b/src/lib/libast/regex/regclass.c
+@@ -99,7 +99,7 @@ regclass_t regclass(const char *s, char **e) {
+     for (cp = ctype; cp < &ctype[elementsof(ctype)]; cp++) {
+         if (n == cp->size && !strncmp(s, cp->name, n) && (!cp->next || cp->next == lc)) break;
+     }
+-
++    if (cp == &ctype[elementsof(ctype)]) return NULL;  // didn't find the char class
+     if (e) *e = (char *)t + 2;
+     return cp->ctype;
+ }

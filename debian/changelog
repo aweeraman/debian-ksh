@@ -4,9 +4,9 @@ ksh (2020.0.0~beta1-2) unstable; urgency=medium
   * debian/watch: Minor fixes to the uscan script.
   * debian/source.lintian-overrides: Move to d/s/lintian-overrides.
   * debian/patches: Backport upstream 2020.0.0 branch commits
-    till 2019-09-17.
+    till 2019-09-26.
 
- -- Boyuan Yang <byang@debian.org>  Wed, 25 Sep 2019 11:49:05 -0400
+ -- Boyuan Yang <byang@debian.org>  Fri, 27 Sep 2019 11:29:58 -0400
 
 ksh (2020.0.0~beta1-1) unstable; urgency=medium
 
