@@ -1,12 +1,22 @@
+ksh (2020.0.0~beta1-3) unstable; urgency=medium
+
+  * QA upload.
+  * debian/patches:
+    + Backport upstream 2020.0.0 branch commits till 2019-09-27.
+    + Recover patch to use "ex" instead of "ed" by default for fs
+      and hist commands.
+
+ -- Boyuan Yang <byang@debian.org>  Fri, 27 Sep 2019 14:12:18 -0400
+
 ksh (2020.0.0~beta1-2) unstable; urgency=medium
 
   * QA upload.
   * debian/watch: Minor fixes to the uscan script.
   * debian/source.lintian-overrides: Move to d/s/lintian-overrides.
   * debian/patches: Backport upstream 2020.0.0 branch commits
-    till 2019-09-26.
+    till 2019-09-17.
 
- -- Boyuan Yang <byang@debian.org>  Fri, 27 Sep 2019 11:29:58 -0400
+ -- Boyuan Yang <byang@debian.org>  Wed, 25 Sep 2019 11:49:05 -0400
 
 ksh (2020.0.0~beta1-1) unstable; urgency=medium
 
