@@ -1075,7 +1075,7 @@ int sh_type(const char *path) {
 
 // The need for the function below is unfortunate. It is due to the API split on 2012-07-20 that
 // required many functions to be passed a pointer to the shell interpreter context. And some
-// putative functions outside the ksh code cannnot do so. For example, the libast `errorv()`
+// putative functions outside the ksh code cannot do so. For example, the libast `errorv()`
 // function has no way to pass a shell interpreter pointer to the function assigned to
 // `error_info.exit`.
 //
@@ -1145,6 +1145,11 @@ Shell_t *sh_init(int argc, char *argv[], Shinit_f userinit) {
     // Initialize signal handling.
     sh_siginit(shp);
     stkinstall(NULL, nospace);
+    // Initialize the jobs table. This needs to be done very early because, at least at this time,
+    // importing vars from the environment can result in performing command substitution.  Which
+    // means external commands (jobs) might be run. Even if that dubious, undocumented, behavior is
+    // ever changed we should still init the jobs table as early as possible.
+    job_clear(shp);
     // Set up memory for name-value pairs.
     shp->init_context = nv_init(shp);
     // Read the environment.
@@ -1188,8 +1193,6 @@ Shell_t *sh_init(int argc, char *argv[], Shinit_f userinit) {
 #endif
     nv_putval(IFSNOD, (char *)e_sptbnl, NV_RDONLY);
     shp->st.tmout = READ_TIMEOUT;
-    // Initialize jobs table.
-    job_clear(shp);
     sh_onoption(shp, SH_MULTILINE);
     if (argc > 0) {
         int dolv_index = -1;
@@ -1758,7 +1761,7 @@ static_fn Dt_t *inittree(Shell_t *shp, const struct shtable2 *name_vals) {
             dtinsert(treep, np);
         }
     }
-    // The loop above has to run at least one interation otherwise this leaks memory pointed to by
+    // The loop above has to run at least one iteration otherwise this leaks memory pointed to by
     // `np`. Hopefully this assert silences Coverity Scan CID#253829.
     assert(tp != name_vals);
     return treep;

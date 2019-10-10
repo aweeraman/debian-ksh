@@ -1,4 +1,4 @@
-# ksh 2020.0.0-alpha1 (version TBD, this is a work in progress)
+# ksh 2020.0.0
 
 This documents changes since the AST code, which includes the `ksh` program,
 was moved to Github. That is, the ksh93u+ source. The next stable version will
@@ -74,6 +74,8 @@ was subsequently created to document the work being done.
 
 ## Other significant changes
 
+- Using a bare tilde (e.g., `cd ~`) now works correctly if `$HOME` is not set
+  (issue #1391).
 - You can no longer run an external command with stdin, stdout, or stderr
   closed. If you attempt to do so (e.g., `a_cmd <&-`) it will be opened on
   /dev/null in the child process (issue #1117).
