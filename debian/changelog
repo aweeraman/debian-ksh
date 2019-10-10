@@ -1,3 +1,14 @@
+ksh (2020.0.0-1) unstable; urgency=medium
+
+  * QA upload.
+  * New upstream stable release (2020.0.0).
+  * debian/patches: Drop all backported patches, merged upstream.
+  * debian/control:
+    + Bump Standards-Version to 4.4.1.
+    + Use "Rules-Requires-Root: no".
+
+ -- Boyuan Yang <byang@debian.org>  Thu, 10 Oct 2019 10:15:52 -0400
+
 ksh (2020.0.0~beta1-3) unstable; urgency=medium
 
   * QA upload.
