@@ -1,2 +1,5 @@
 # ksh command handled by update-alternatives
 ksh: desktop-command-not-in-package usr/share/applications/ksh.desktop ksh
+
+# /usr/share/ksh/functions is configured as a default search path for autoloadable functions
+ksh: package-contains-empty-directory usr/share/ksh/functions/
