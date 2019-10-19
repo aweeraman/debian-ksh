@@ -1,3 +1,18 @@
+ksh (2020.0.0-2) unstable; urgency=medium
+
+  [ Boyuan Yang ]
+  * debian/control: Add vim and ed as <!nocheck> build-dependencies (though known to be failing).
+
+  [ Anuradha Weeraman ]
+  * Fixed typo in man page, and other documentation/lintian fixes
+  * Removed source/lintian-overrides as it is redundant
+  * CI configuration for Debian Salsa
+  * Lintian override for package-contains-empty-directory
+  * Updated the .desktop file, lintian fix
+  * New maintainer (Closes #924979)
+
+ -- Anuradha Weeraman <aweeraman@gmail.com>  Sat, 19 Oct 2019 19:16:04 -0400
+
 ksh (2020.0.0-1) unstable; urgency=medium
 
   * QA upload.
