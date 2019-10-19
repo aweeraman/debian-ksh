@@ -1,0 +1,39 @@
+Subject: Lintian fix for typo in documentation
+Author: Anuradha Weeraman <aweeraman@gmail.com>
+Date: Sat, 19 Oct 2019 14:48:14 -0400
+Forwarded: https://github.com/att/ast/pull/1418/files
+
+--- a/src/cmd/ksh93/docs/ksh.1
++++ b/src/cmd/ksh93/docs/ksh.1
+@@ -3125,7 +3125,7 @@ all integer and floating point variables can be following by
+ .BR .MAX ,
+ or
+ .BR .DIG 
+-to give the maximum value, mininum value, or number of significant
++to give the maximum value, minimum value, or number of significant
+ digits for variables of that type.
+ .PP
+ Floating point variables can be also followed by
+
+--- a/src/cmd/ksh93/docs/set.1
++++ b/src/cmd/ksh93/docs/set.1
+@@ -9,7 +9,7 @@
+ [s?Sort the positional parameters.]
+ [A]:[name?Assign the arguments sequentially to the array named by \aname\a starting at subscript 0 rather than to the positional parameters.]
+ \fabc\f
+-[K:keys]:[keylist?When used with \b-s\b and \b-A\b and without \aarg\a, it specifes the sorting paramaters.  For compound arrays and for arrays of types it consists of a comma separated list of keys. Each key can be followed by \b:n\b for numerical sort and/or \b:r\b for reverse order.  The \b:n\b and/or \b:r\b can be used for arrays of elements.]
++[K:keys]:[keylist?When used with \b-s\b and \b-A\b and without \aarg\a, it specifes the sorting parameters.  For compound arrays and for arrays of types it consists of a comma separated list of keys. Each key can be followed by \b:n\b for numerical sort and/or \b:r\b for reverse order.  The \b:n\b and/or \b:r\b can be used for arrays of elements.]
+ [06:default?Restore all non-command line options to the default settings.]
+ [07:state?List the current option state in the form of a \bset\b command that can be executed to restore the state.]
+ 
+--- a/src/cmd/ksh93/docs/uname.1
++++ b/src/cmd/ksh93/docs/uname.1
+@@ -6,7 +6,7 @@
+    standard output. When options are specified, one or more
+    system characteristics are written to standard output, space
+    separated, on a single line. When more than one option is specified
+-   the output is in the order specfied by the \b-A\b option below.
++   the output is in the order specified by the \b-A\b option below.
+    Unsupported option values are listed as \a[option]]\a. If any unknown
+    options are specified then the local \b/usr/bin/uname\b is called.]
+ [+?If any \aname\a operands are specified then the \bsysinfo\b(2) values
