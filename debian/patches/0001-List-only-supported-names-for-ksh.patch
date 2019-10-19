@@ -11,7 +11,8 @@ Reviewed-by: Nicholas Bamber <nicholas@periapt.co.uk>
 Signed-off-by: Boyuan Yang <byang@debian.org>
 Bug-Debian: https://bugs.debian.org/463022
 Forwarded: no
-Last-Updated: 2019-09-03
+Modified-by: Anuradha Weeraman <aweeraman@gmail.com>
+Last-Updated: 2019-10-18
 ---
  src/cmd/ksh93/docs/ksh.1 | 39 +--------------------------------------
  1 file changed, 1 insertion(+), 38 deletions(-)
@@ -30,7 +31,7 @@ index 98b83ce..33e69ff 100644
 -.if \nZ=1 \{\
 -ksh, rksh, pfksh \- KornShell, a standard/restricted command and programming language
 -.\}
-+ksh, rksh, ksh93, rksh93 \- KoreShell, a standard/restricted command and programming language
++ksh, rksh, ksh93, rksh93 \- KornShell, a standard/restricted command and programming language
  .SH NOTE
  Currently,
  .I rksh
