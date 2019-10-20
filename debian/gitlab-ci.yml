@@ -1,10 +1,4 @@
-image: registry.salsa.debian.org/salsa-ci-team/ci-image-git-buildpackage:latest
-
-build:
-  artifacts:
-    paths:
-    - "*.deb"
-    expire_in: 1 day
-  script:
-    - gitlab-ci-git-buildpackage-all
-
+---
+include:
+  - https://salsa.debian.org/salsa-ci-team/pipeline/raw/master/salsa-ci.yml
+  - https://salsa.debian.org/salsa-ci-team/pipeline/raw/master/pipeline-jobs.yml
