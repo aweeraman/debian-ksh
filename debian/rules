@@ -16,9 +16,11 @@ export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
 LC_ALL=C
 LANG=C
 TZ=/usr/share/zoneinfo/Etc/GMT
+EDITOR=vi
 export LC_ALL
 export LANG
 export TZ
+export EDITOR
 
 # provide a fake HOME directory to solve test fails
 HOME=$(CURDIR)/debian/fakehome
