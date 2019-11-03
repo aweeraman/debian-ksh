@@ -1,3 +1,7 @@
+From: Anuradha Weeraman <aweeraman@gmail.com>
+Date: Sat, 2 Nov 2019 21:04:20 -0400
+Subject: Stop failures when home directory doesn't exist
+
 diff --git a/src/cmd/ksh93/tests/builtins.sh b/src/cmd/ksh93/tests/builtins.sh
 index 3ecb4349..76bb50be 100644
 --- a/src/cmd/ksh93/tests/builtins.sh

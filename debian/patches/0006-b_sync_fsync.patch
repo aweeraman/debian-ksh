@@ -2,18 +2,16 @@ From b058d8c015b01e585b3b9cbee6d07f9bbd49ce64 Mon Sep 17 00:00:00 2001
 From: Kurtis Rader <krader@skepticism.us>
 Date: Fri, 1 Nov 2019 20:13:20 -0700
 Subject: [PATCH] Fix b_sync.sh test failures on some macOS systems
+Modified-By: Anuradha Weeraman <aweeraman@gmail.com>
 
 When run with malloc debugging enabled fd 3 might be open. Switch to a
 fd that should never be valid; i.e., open.
----
- src/cmd/ksh93/tests/b_sync.sh | 12 ++++++++----
- 1 file changed, 8 insertions(+), 4 deletions(-)
 
 diff --git a/src/cmd/ksh93/tests/b_sync.sh b/src/cmd/ksh93/tests/b_sync.sh
-index 43e2291b478f..823b237ad303 100644
+index 43e2291b..87818dc9 100644
 --- a/src/cmd/ksh93/tests/b_sync.sh
 +++ b/src/cmd/ksh93/tests/b_sync.sh
-@@ -16,11 +16,15 @@ expect=""
+@@ -16,12 +16,16 @@ expect=""
  [[ "$actual" == "$expect" ]] || log_error "sync -s1" "$expect" "$actual"
  
  # ==========
@@ -23,13 +21,15 @@ index 43e2291b478f..823b237ad303 100644
 -# it can vary across systems.
 -actual=$(sync -s3 2>&1)
 -expect="sync: fsync(3) failed"
+-[[ "$actual" =~ "$expect".* ]] || log_error "sync -s3" "$expect" "$actual"
 +# it can vary across systems -- even though it should be EBADF which should be the same numeric
 +# value on every system that cares at all about being UNIX compatible.
 +#
 +# We don't use fd 3 because it might be opened by a debug malloc subsystem. We expect fd 999 to be
 +# unused if not invalid.
-+actual=$(sync -s 999 2>&1)
++actual=$(sync -s999 2>&1)
 +expect="sync: fsync(999) failed"
- [[ "$actual" =~ "$expect".* ]] || log_error "sync -s3" "$expect" "$actual"
++[[ "$actual" =~ "$expect".* ]] || log_error "sync -s999" "$expect" "$actual"
  
  # ==========
+ # sync -f
