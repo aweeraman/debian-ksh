@@ -8,10 +8,10 @@ When run with malloc debugging enabled fd 3 might be open. Switch to a
 fd that should never be valid; i.e., open.
 
 diff --git a/src/cmd/ksh93/tests/b_sync.sh b/src/cmd/ksh93/tests/b_sync.sh
-index 43e2291b..87818dc9 100644
+index 43e2291b..6124a47d 100644
 --- a/src/cmd/ksh93/tests/b_sync.sh
 +++ b/src/cmd/ksh93/tests/b_sync.sh
-@@ -16,12 +16,16 @@ expect=""
+@@ -16,12 +16,17 @@ expect=""
  [[ "$actual" == "$expect" ]] || log_error "sync -s1" "$expect" "$actual"
  
  # ==========
@@ -27,7 +27,8 @@ index 43e2291b..87818dc9 100644
 +#
 +# We don't use fd 3 because it might be opened by a debug malloc subsystem. We expect fd 999 to be
 +# unused if not invalid.
-+actual=$(sync -s999 2>&1)
++log_info "HOME=|$HOME| USER=|$USER|"
++actual=$(sync -s 999 2>&1)
 +expect="sync: fsync(999) failed"
 +[[ "$actual" =~ "$expect".* ]] || log_error "sync -s999" "$expect" "$actual"
  
