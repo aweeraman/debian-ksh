@@ -48,4 +48,3 @@ ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
 	# Multiple tests fail, skipping for now
 	-dh_auto_test
 endif
-
