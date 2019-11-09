@@ -10,6 +10,7 @@ ksh (2020.0.0-2) unstable; urgency=medium
   * CI configuration for Debian Salsa
   * Lintian override for package-contains-empty-directory
   * Updated the .desktop file, lintian fix
+  * Patches for build-time test failures
   * New maintainer (Closes: #924979)
 
  -- Anuradha Weeraman <aweeraman@gmail.com>  Sat, 19 Oct 2019 19:16:04 -0400

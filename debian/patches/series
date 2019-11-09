@@ -1,7 +1,7 @@
 0001-List-only-supported-names-for-ksh.patch
 0002-Change-ultimate-fallback-editor-for-fc.patch
 0003-Spelling-fix-in-doc.patch
-0004-1391.patch
-0005-1390.patch
-0006-b_sync_fsync.patch
-0007-missing_homedir.patch
+0004-Set-USER-when-running-tests.patch
+0005-Skip-API-test-if-build-type-not-debug.patch
+0006-Use-unused-fd-for-fsync-test.patch
+0007-Skip-test-if-homedir-not-found.patch
