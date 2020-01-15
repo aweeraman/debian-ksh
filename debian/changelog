@@ -1,3 +1,11 @@
+ksh (2020.0.0-2.1) unstable; urgency=medium
+
+  * Non-maintainer upload.
+  * debian/patches/0008: Cherry-pick upstream security fix.
+    (CVE-2019-14868, Closes: #948989)
+
+ -- Boyuan Yang <byang@debian.org>  Wed, 15 Jan 2020 12:17:25 -0500
+
 ksh (2020.0.0-2) unstable; urgency=medium
 
   [ Boyuan Yang ]
