@@ -29,12 +29,15 @@ export HOME
 
 override_dh_auto_install:
 	dh_auto_install
-	# Rename /usr/bin/ksh to /usr/bin/ksh93 to keep compatibility
-	# with old behaviour as well as alternative system
+	# Rename /usr/bin/ksh93 to /usr/bin/ksh2020 to co-exist with ksh93
+	# as well as make use of the alternative system
 	mv $(CURDIR)/debian/ksh/usr/bin/ksh $(CURDIR)/debian/ksh/usr/bin/ksh2020
+	mv $(CURDIR)/debian/ksh/usr/bin/shcomp $(CURDIR)/debian/ksh/usr/bin/shcomp2020
 	# Also rename the man pages
 	mv $(CURDIR)/debian/ksh/usr/share/man/man1/ksh.1 \
 	        $(CURDIR)/debian/ksh/usr/share/man/man1/ksh2020.1
+	mv $(CURDIR)/debian/ksh/usr/share/man/man1/shcomp.1 \
+	        $(CURDIR)/debian/ksh/usr/share/man/man1/shcomp2020.1
 
 override_dh_installchangelogs:
 	# ChangeLog till 93v is provided in src/cmd/ksh93/RELEASE
