@@ -8,8 +8,9 @@ Standards-Version: 3.9.6
 Vcs-Git: https://salsa.debian.org/debian/ksh.git
 Vcs-Browser: https://salsa.debian.org/debian/ksh
 
-Package: ksh
+Package: ksh93
 Architecture: any
+Replaces: ksh
 Depends: ${shlibs:Depends}, ${misc:Depends}, binfmt-support
 Description: Real, AT&T version of the Korn shell
  Ksh is a UNIX command interpreter (shell) that is intended for both
