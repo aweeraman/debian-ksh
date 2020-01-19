@@ -1,4 +1,4 @@
-ksh93 (93u+20120801-3.5) unstable; urgency=medium
+ksh93 (93u+20120801-4) unstable; urgency=medium
 
   * Re-introduce ksh93
   * Bumped up standards-version
