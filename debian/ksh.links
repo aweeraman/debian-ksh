@@ -1,4 +1,2 @@
-usr/bin/ksh93 bin/rksh
-usr/bin/ksh93 bin/rksh93
-usr/share/man/man1/ksh93.1.gz usr/share/man/man1/rksh.1.gz
-usr/share/man/man1/ksh93.1.gz usr/share/man/man1/rksh93.1.gz
+usr/bin/ksh2020 usr/bin/rksh2020
+usr/share/man/man1/ksh2020.1.gz usr/share/man/man1/rksh2020.1.gz

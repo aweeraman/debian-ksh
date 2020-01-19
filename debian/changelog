@@ -1,3 +1,9 @@
+ksh (2020.0.0-3) unstable; urgency=medium
+
+  * Rename binary to ksh2020 to support co-existence with ksh93
+
+ -- Anuradha Weeraman <aweeraman@gmail.com>  Sun, 19 Jan 2020 01:43:52 -0500
+
 ksh (2020.0.0-2.1) unstable; urgency=medium
 
   * Non-maintainer upload.

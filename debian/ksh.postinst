@@ -19,24 +19,21 @@ esac
 
 #DEBHELPER#
 
-# First, remove all old shell information from old ksh.
-update-alternatives --remove ksh /bin/ksh93
-remove-shell /bin/ksh93
-remove-shell /bin/rksh93
-
 # The alternative is the mksh package.
 # For a discussion on interactions between ksh and mksh, see #764401.
-update-alternatives --install /bin/ksh ksh /usr/bin/ksh93 20 \
+update-alternatives --install /bin/ksh ksh /usr/bin/ksh2020 18 \
                     --slave /usr/share/man/man1/ksh.1.gz ksh.1.gz \
-                            /usr/share/man/man1/ksh93.1.gz
+                            /usr/share/man/man1/ksh2020.1.gz
 
-# create compatibility symlink if necessary
-test -e /usr/bin/ksh || test -h /usr/bin/ksh || \
-    ln -s /bin/ksh /usr/bin/ksh
+update-alternatives --install /bin/rksh rksh /usr/bin/rksh2020 18 \
+                    --slave /usr/share/man/man1/rksh.1.gz rksh.1.gz \
+                            /usr/share/man/man1/rksh2020.1.gz
 
 # For a discussion of what we put in /etc/shells see #790118.
-add-shell /usr/bin/ksh93
-add-shell /usr/bin/rksh93
+add-shell /bin/ksh
+add-shell /bin/rksh
+add-shell /usr/bin/ksh2020
+add-shell /usr/bin/rksh2020
 
 # This was put in to resolve bug #687343.
 update-binfmts --import ksh
