@@ -1,4 +1,4 @@
-Source: ksh
+Source: ksh93
 Section: shells
 Priority: optional
 Maintainer: Nicholas Bamber <nicholas@periapt.co.uk>
