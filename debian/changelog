@@ -1,3 +1,9 @@
+ksh93 (93u+20120801-3.5) UNRELEASED; urgency=medium
+
+  * Re-introduce ksh93
+
+ -- Anuradha Weeraman <aweeraman@gmail.com>  Sat, 18 Jan 2020 21:34:10 -0500
+
 ksh (93u+20120801-3.4) unstable; urgency=medium
 
   [ Boyuan Yang ]
