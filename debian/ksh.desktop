@@ -2,11 +2,11 @@
 Version=1.0
 Name=Korn Shell
 Type=Application
-Comment=Real, AT&T version of the Korn shell
+Comment=Korn Shell
 Terminal=true
 Exec=ksh
 Icon=terminal
 Categories=ConsoleOnly;System;Shell;
-GenericName=Shell
+GenericName=Korn Shell
 Keywords=system;shell;ksh;scripts
 OnlyShowIn=GNOME;KDE;LXDE;MATE;XFCE;Cinnamon;Unity
