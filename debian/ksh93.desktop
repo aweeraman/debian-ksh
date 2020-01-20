@@ -1,6 +1,6 @@
 [Desktop Entry]
 Version=1.0
-Name=Ksh93
+Name=Korn Shell (93)
 Type=Application
 Comment=Korn shell
 Terminal=true
@@ -9,4 +9,4 @@ Icon=terminal
 Categories=ConsoleOnly;System;Shell;
 GenericName=Korn shell
 Keywords=system;shell;
-OnlyShowIn=Old;
+OnlyShowIn=GNOME;KDE;LXDE;MATE;XFCE;Cinnamon;Unity
