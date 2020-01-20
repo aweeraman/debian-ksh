@@ -21,6 +21,7 @@ Vcs-Browser: https://salsa.debian.org/debian/ksh
 
 Package: ksh
 Architecture: any
+Replaces: ksh93
 Depends:
  binfmt-support,
  ${misc:Depends},
