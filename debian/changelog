@@ -3,6 +3,7 @@ ksh93 (93u+20120801-4) unstable; urgency=medium
   * Re-introduce ksh93
   * Bumped up standards-version
   * Set the hardened build flags
+  * Use alternatives system for binaries
 
  -- Anuradha Weeraman <aweeraman@gmail.com>  Sat, 18 Jan 2020 21:34:10 -0500
 
