@@ -36,8 +36,6 @@ override_dh_auto_install:
 	# Also rename the man pages
 	mv $(CURDIR)/debian/ksh/usr/share/man/man1/ksh.1 \
 	        $(CURDIR)/debian/ksh/usr/share/man/man1/ksh2020.1
-	mv $(CURDIR)/debian/ksh/usr/share/man/man1/shcomp.1 \
-	        $(CURDIR)/debian/ksh/usr/share/man/man1/shcomp2020.1
 
 override_dh_installchangelogs:
 	# ChangeLog till 93v is provided in src/cmd/ksh93/RELEASE
