@@ -1,7 +1,8 @@
-ksh (2020.0.0-3) unstable; urgency=medium
+ksh (2020.0.0-3) unstable; urgency=high
 
   * Rename binary to ksh2020 to support co-existence with ksh93
   * Use alternative system for ksh, shcomp and rksh
+  * Fix for broken restricted shell, issue 1459
 
  -- Anuradha Weeraman <aweeraman@gmail.com>  Sun, 19 Jan 2020 01:43:52 -0500
 
