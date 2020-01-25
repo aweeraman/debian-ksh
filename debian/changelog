@@ -1,6 +1,8 @@
 ksh (2020.0.0-4) unstable; urgency=high
 
   * Piuparts issue (Closes: #949764)
+  * Separated shcomp to its own alternative
+  * Updated man page to reflect new binary name
 
  -- Anuradha Weeraman <aweeraman@gmail.com>  Fri, 24 Jan 2020 20:05:27 -0500
 
