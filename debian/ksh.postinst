@@ -28,7 +28,7 @@ update-alternatives --install /bin/ksh ksh /usr/bin/ksh2020 18 \
                     --slave /usr/share/man/man1/rksh.1.gz rksh.1.gz \
                             /usr/share/man/man1/rksh2020.1.gz
 
-update-alternatives --install /usr/bin/shcomp shcomp /usr/bin/shcomp2020 \
+update-alternatives --install /usr/bin/shcomp shcomp /usr/bin/shcomp2020 18 \
                     --slave /usr/share/man/man1/shcomp.1.gz shcomp.1.gz \
                             /usr/share/man/man1/shcomp2020.1.gz
 
