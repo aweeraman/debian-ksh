@@ -32,8 +32,6 @@ update-alternatives --install /bin/ksh ksh /usr/bin/ksh2020 18 \
                             /usr/share/man/man1/shcomp2020.1.gz
 
 # For a discussion of what we put in /etc/shells see #790118.
-add-shell /bin/ksh
-add-shell /bin/rksh
 add-shell /usr/bin/ksh2020
 add-shell /usr/bin/rksh2020
 

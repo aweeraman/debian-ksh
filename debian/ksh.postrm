@@ -15,8 +15,6 @@ esac
 
 #DEBHELPER#
 
-remove-shell /bin/ksh
-remove-shell /bin/rksh
 remove-shell /usr/bin/ksh2020
 remove-shell /usr/bin/rksh2020
 

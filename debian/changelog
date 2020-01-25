@@ -1,3 +1,9 @@
+ksh (2020.0.0-4) unstable; urgency=high
+
+  * Piuparts issue (Closes: #949764)
+
+ -- Anuradha Weeraman <aweeraman@gmail.com>  Fri, 24 Jan 2020 20:05:27 -0500
+
 ksh (2020.0.0-3) unstable; urgency=high
 
   * Rename binary to ksh2020 to support co-existence with ksh93
