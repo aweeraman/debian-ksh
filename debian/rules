@@ -1,6 +1,6 @@
 #!/usr/bin/make -f
 
-PACKAGE = ksh
+PACKAGE = ksh93
 
 # Variables just for get-orig-source
 SRC_VERSION := 93u+20120628
@@ -50,8 +50,8 @@ override_dh_auto_install:
 	$(INSTALL_FILE) debian/fr-shcomp.1 debian/ksh93/usr/share/man/fr/man1/shcomp93.1
 	$(INSTALL_FILE) -D debian/binfmt_spec debian/ksh93/usr/share/binfmts/ksh
 	$(INSTALL_FILE) -D debian/example.kshrc debian/ksh93/etc/skel/.kshrc
-	$(INSTALL_FILE) -D src/cmd/ksh93/PROMO.mm debian/ksh93/usr/share/doc/ksh/PROMO
-	$(INSTALL_FILE) -D src/cmd/ksh93/builtins.mm debian/ksh93/usr/share/doc/ksh/builtins
+	$(INSTALL_FILE) -D src/cmd/ksh93/PROMO.mm debian/ksh93/usr/share/doc/ksh93/PROMO
+	$(INSTALL_FILE) -D src/cmd/ksh93/builtins.mm debian/ksh93/usr/share/doc/ksh93/builtins
 
 override_dh_installchangelogs:
 	dh_installchangelogs src/cmd/ksh93/RELEASE
