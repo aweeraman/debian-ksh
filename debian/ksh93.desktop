@@ -9,4 +9,4 @@ Icon=terminal
 Categories=ConsoleOnly;System;Shell;
 GenericName=Korn shell
 Keywords=system;shell;
-OnlyShowIn=GNOME;KDE;LXDE;MATE;XFCE;Cinnamon;Unity
+OnlyShowIn=GNOME;KDE;LXDE;MATE;XFCE;Cinnamon;Unity;
