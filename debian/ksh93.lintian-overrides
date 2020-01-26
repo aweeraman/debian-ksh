@@ -4,4 +4,4 @@
 # Also development upstream seems to have stopped.
 # The get-orig-source target in the debian/rules file
 # seeks to fulfil the role of uscan here.
-ksh93 source: debian-watch-file-is-missing
+ksh93: debian-watch-file-is-missing
