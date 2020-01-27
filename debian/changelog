@@ -12,8 +12,9 @@ ksh93 (93u+20120801-5) unstable; urgency=high
   * R³: actually, yes (upstream portion of installation)
   * Update lintian overrides
   * Add debian/NEWS, documenting why this package was split
+  * Ensure coïnstallability: versioned Breaks: ksh
 
- -- Thorsten Glaser <tg@mirbsd.de>  Mon, 27 Jan 2020 16:42:06 +0100
+ -- Thorsten Glaser <tg@mirbsd.de>  Mon, 27 Jan 2020 16:49:22 +0100
 
 ksh93 (93u+20120801-4) unstable; urgency=medium
 
