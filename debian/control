@@ -5,7 +5,7 @@ Maintainer: Anuradha Weeraman <aweeraman@gmail.com>
 Homepage: http://www.kornshell.com/
 Build-Depends: debhelper-compat (= 12)
 Standards-Version: 4.5.0
-Rules-Requires-Root: no
+Rules-Requires-Root: binary-targets
 Vcs-Git: https://salsa.debian.org/debian/ksh.git -b ksh93
 Vcs-Browser: https://salsa.debian.org/debian/ksh/tree/ksh93
 
