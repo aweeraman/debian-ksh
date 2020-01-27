@@ -2,7 +2,7 @@ Source: ksh
 Section: shells
 Priority: optional
 Maintainer: Anuradha Weeraman <aweeraman@gmail.com>
-Homepage: http://www.kornshell.com/
+Homepage: https://github.com/att/ast
 Build-Depends:
  debhelper-compat (= 12),
  dh-exec,
@@ -26,7 +26,7 @@ Depends:
  binfmt-support,
  ${misc:Depends},
  ${shlibs:Depends},
-Description: Real, AT&T version of the Korn shell
+Description: 2020 version of the AT&T Korn Shell
  Ksh is a UNIX command interpreter (shell) that is intended for both
  interactive and shell script use. Its command language is a superset of
  the sh(1) shell language.
