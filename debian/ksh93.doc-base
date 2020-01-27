@@ -3,7 +3,7 @@ Title: ksh93
 Author: Nicholas Bamber
 Abstract: ksh93 is the original AT&T Korn shell
  For example ksh93 -c 'echo hello world'
-Section: Programming/ksh
+Section: Shells
 
 Format: Text
 Files: /usr/share/doc/ksh93/*.gz /usr/share/doc/ksh93/OBSOLETE
