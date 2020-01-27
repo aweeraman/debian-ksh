@@ -4,8 +4,9 @@ ksh (2020.0.0-5) UNRELEASED; urgency=medium
   * Remove unused french shcomp manpage (outdated, not in UTF-8)
   * Bump Policy (no change)
   * Update several more places with ksh2020 name and references
+  * Fix doc-base section
 
- -- Thorsten Glaser <tg@mirbsd.de>  Mon, 27 Jan 2020 14:30:27 +0100
+ -- Thorsten Glaser <tg@mirbsd.de>  Mon, 27 Jan 2020 14:31:34 +0100
 
 ksh (2020.0.0-4) unstable; urgency=high
 

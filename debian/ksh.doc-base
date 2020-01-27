@@ -3,7 +3,7 @@ Title: ksh
 Author: Nicholas Bamber
 Abstract: ksh2020 is the successor of the original AT&T Korn shell
  For example ksh2020 -c 'echo hello world'
-Section: Programming/ksh
+Section: Shells
 
 Format: Text
 Files: /usr/share/doc/ksh/*.gz /usr/share/doc/ksh/OBSOLETE
