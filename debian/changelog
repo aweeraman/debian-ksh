@@ -9,8 +9,9 @@ ksh93 (93u+20120801-5) UNRELEASED; urgency=medium
   * Add UMEGAYA file
   * Switch to update-alternatives for binfmt-misc registration
   * Refresh patches, add missing comments
+  * R³:no
 
- -- Thorsten Glaser <tg@mirbsd.de>  Mon, 27 Jan 2020 16:00:14 +0100
+ -- Thorsten Glaser <tg@mirbsd.de>  Mon, 27 Jan 2020 16:01:40 +0100
 
 ksh93 (93u+20120801-4) unstable; urgency=medium
 
