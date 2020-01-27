@@ -1,15 +1,8 @@
-From cb9f6d3498622b46de021a7f4798512d203747e9 Mon Sep 17 00:00:00 2001
 From: Kurtis Rader <krader@skepticism.us>
 Date: Sun, 1 Sep 2019 15:44:40 -0700
 Subject: [PATCH] Ensure USER is set when unit tests run
+ Related #1391
 
-Related #1391
----
- src/cmd/ksh93/tests/util/run_test.sh | 9 +++++++++
- 1 file changed, 9 insertions(+)
-
-diff --git a/src/cmd/ksh93/tests/util/run_test.sh b/src/cmd/ksh93/tests/util/run_test.sh
-index 20d24ed1fda..ebc74770cae 100644
 --- a/src/cmd/ksh93/tests/util/run_test.sh
 +++ b/src/cmd/ksh93/tests/util/run_test.sh
 @@ -62,6 +62,15 @@ fi

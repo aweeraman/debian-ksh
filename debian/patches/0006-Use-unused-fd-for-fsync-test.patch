@@ -1,14 +1,10 @@
-From b058d8c015b01e585b3b9cbee6d07f9bbd49ce64 Mon Sep 17 00:00:00 2001
 From: Kurtis Rader <krader@skepticism.us>
 Date: Fri, 1 Nov 2019 20:13:20 -0700
 Subject: [PATCH] Fix b_sync.sh test failures on some macOS systems
+ When run with malloc debugging enabled fd 3 might be open. Switch to a
+ fd that should never be valid; i.e., open.
 Modified-By: Anuradha Weeraman <aweeraman@gmail.com>
 
-When run with malloc debugging enabled fd 3 might be open. Switch to a
-fd that should never be valid; i.e., open.
-
-diff --git a/src/cmd/ksh93/tests/b_sync.sh b/src/cmd/ksh93/tests/b_sync.sh
-index 43e2291b..6124a47d 100644
 --- a/src/cmd/ksh93/tests/b_sync.sh
 +++ b/src/cmd/ksh93/tests/b_sync.sh
 @@ -16,12 +16,17 @@ expect=""

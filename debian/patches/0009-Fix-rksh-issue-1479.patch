@@ -1,27 +1,10 @@
-From c8a66c70b51f11bfcaeef22dd17b9b86ea1c3dfe Mon Sep 17 00:00:00 2001
 From: Kurtis Rader <krader@skepticism.us>
 Date: Tue, 21 Jan 2020 18:21:08 -0800
 Subject: [PATCH] Fix interactive restricted shell behavior
+ Fixes #1459
+ .
+ (cherry picked from commit 1fd82bddfd36c8d381d4eb75bc1e6b2d4ccb6750)
 
-Fixes #1459
-
-(cherry picked from commit 1fd82bddfd36c8d381d4eb75bc1e6b2d4ccb6750)
----
- scripts/create_rksh_symlink                   |  8 +++++
- src/cmd/ksh93/edit/edit.c                     |  2 ++
- src/cmd/ksh93/meson.build                     |  6 ++++
- src/cmd/ksh93/tests/meson.build               |  6 ++--
- src/cmd/ksh93/tests/restricted.exp            | 29 +++++++++++++++++++
- src/cmd/ksh93/tests/restricted.exp.out        |  1 +
- .../ksh93/tests/util/interactive.expect.rc    |  1 +
- 7 files changed, 51 insertions(+), 2 deletions(-)
- create mode 100755 scripts/create_rksh_symlink
- create mode 100644 src/cmd/ksh93/tests/restricted.exp
- create mode 100644 src/cmd/ksh93/tests/restricted.exp.out
-
-diff --git a/scripts/create_rksh_symlink b/scripts/create_rksh_symlink
-new file mode 100755
-index 000000000000..03c013c42447
 --- /dev/null
 +++ b/scripts/create_rksh_symlink
 @@ -0,0 +1,8 @@
@@ -33,11 +16,9 @@ index 000000000000..03c013c42447
 +cd "$(dirname "$1")" || exit 1
 +rm -f "r$cmd"
 +ln -s "$cmd" "r$cmd"
-diff --git a/src/cmd/ksh93/edit/edit.c b/src/cmd/ksh93/edit/edit.c
-index 666719a99bb1..9c62b1a75336 100644
 --- a/src/cmd/ksh93/edit/edit.c
 +++ b/src/cmd/ksh93/edit/edit.c
-@@ -451,9 +451,11 @@ void ed_setup(Edit_t *ep, int fd, int reedit) {
+@@ -451,9 +451,11 @@ void ed_setup(Edit_t *ep, int fd, int re
          if (!ep->e_term) ep->e_term = nv_search("TERM", shp->var_tree, 0);
          if (ep->e_term && (term = nv_getval(ep->e_term)) && strlen(term) < sizeof(ep->e_termname) &&
              strcmp(term, ep->e_termname)) {
@@ -49,11 +30,9 @@ index 666719a99bb1..9c62b1a75336 100644
              pp = nv_getval(SH_SUBSCRNOD);
              if (pp) {
                  // It should be impossible for the cursor up string to be truncated.
-diff --git a/src/cmd/ksh93/meson.build b/src/cmd/ksh93/meson.build
-index 491fb9b5995d..74ace1c7f07b 100644
 --- a/src/cmd/ksh93/meson.build
 +++ b/src/cmd/ksh93/meson.build
-@@ -32,6 +32,11 @@ ksh93_exe = executable('ksh', ['sh/pmain.c'], c_args: shared_c_args,
+@@ -32,6 +32,11 @@ ksh93_exe = executable('ksh', ['sh/pmain
      dependencies: [libm_dep, libexecinfo_dep, libdl_dep],
      install: true)
  
@@ -65,7 +44,7 @@ index 491fb9b5995d..74ace1c7f07b 100644
  shcomp_exe = executable('shcomp', ['sh/shcomp.c'], c_args: shared_c_args,
      include_directories: [configuration_incdir, ksh93_incdir],
      link_with: [libksh, libast, libcmd, libdll],
-@@ -47,6 +52,7 @@ test_driver = join_paths(test_dir, 'util', 'run_test.sh')
+@@ -47,6 +52,7 @@ test_driver = join_paths(test_dir, 'util
  src_root = 'SRC_ROOT=' + source_dir
  test_root = 'TEST_ROOT=' + test_dir
  shell_var = 'SHELL=' + ksh93_exe.full_path()
@@ -73,11 +52,9 @@ index 491fb9b5995d..74ace1c7f07b 100644
  shcomp_var = 'SHCOMP=' + shcomp_exe.full_path()
  
  libast_build_dir = join_paths(build_dir, 'src', 'lib', 'libast')
-diff --git a/src/cmd/ksh93/tests/meson.build b/src/cmd/ksh93/tests/meson.build
-index 26f2d43c0126..4f81ef3c76b5 100644
 --- a/src/cmd/ksh93/tests/meson.build
 +++ b/src/cmd/ksh93/tests/meson.build
-@@ -81,6 +81,7 @@ all_tests = [
+@@ -80,6 +80,7 @@ all_tests = [
      ['readcsv'],
      ['recttype'],
      ['restricted'],
@@ -85,7 +62,7 @@ index 26f2d43c0126..4f81ef3c76b5 100644
      ['rksh'],
      ['select'],
      ['sh_match', 120],
-@@ -163,7 +164,8 @@ foreach testspec : all_tests
+@@ -162,7 +163,8 @@ foreach testspec : all_tests
          lang_var = 'LANG=en_US.UTF-8'
          test(test_name, ksh93_exe, timeout: timeout, is_parallel: parallel,
              args: [test_driver, test_name],
@@ -95,7 +72,7 @@ index 26f2d43c0126..4f81ef3c76b5 100644
  
          # The shcomp variants are only applicable to the non-interactive tests.
          if not test_name.endswith('.exp')
-@@ -180,7 +182,7 @@ foreach testspec : all_tests
+@@ -179,7 +181,7 @@ foreach testspec : all_tests
                  test(test_name + '/shcomp', ksh93_exe, timeout: timeout, is_parallel: parallel,
                      args: [ test_driver, 'shcomp', test_name],
                      env: [shell_var, lang_var, src_root, test_root, shcomp_var, ld_library_path,
@@ -104,9 +81,6 @@ index 26f2d43c0126..4f81ef3c76b5 100644
              endif
          endif
      endif
-diff --git a/src/cmd/ksh93/tests/restricted.exp b/src/cmd/ksh93/tests/restricted.exp
-new file mode 100644
-index 000000000000..4192675bcce6
 --- /dev/null
 +++ b/src/cmd/ksh93/tests/restricted.exp
 @@ -0,0 +1,29 @@
@@ -139,15 +113,10 @@ index 000000000000..4192675bcce6
 +catch {expect default exp_continue} output
 +log_debug "EOF output: $output"
 +wait
-diff --git a/src/cmd/ksh93/tests/restricted.exp.out b/src/cmd/ksh93/tests/restricted.exp.out
-new file mode 100644
-index 000000000000..d04d39217461
 --- /dev/null
 +++ b/src/cmd/ksh93/tests/restricted.exp.out
 @@ -0,0 +1 @@
 +modifying PATH is restricted
-diff --git a/src/cmd/ksh93/tests/util/interactive.expect.rc b/src/cmd/ksh93/tests/util/interactive.expect.rc
-index dd039a21b9a4..f30e5e194281 100644
 --- a/src/cmd/ksh93/tests/util/interactive.expect.rc
 +++ b/src/cmd/ksh93/tests/util/interactive.expect.rc
 @@ -6,6 +6,7 @@ log_user 0

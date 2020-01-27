@@ -1,18 +1,11 @@
-From 8e4c8f09c48d45ca233b3e25597ded0272fd9678 Mon Sep 17 00:00:00 2001
 From: Anuradha Weeraman <aweeraman@gmail.com>
 Date: Sat, 2 Nov 2019 20:33:30 -0400
 Subject: [PATCH] Fix for test failures when home directory is not available
 Applied-Upstream: https://github.com/att/ast/commit/8e4c8f09c48d45ca233b3e25597ded0272fd9678.patch
 
----
- src/cmd/ksh93/tests/builtins.sh | 18 ++++++++++++++++--
- 1 file changed, 16 insertions(+), 2 deletions(-)
-
-diff --git a/src/cmd/ksh93/tests/builtins.sh b/src/cmd/ksh93/tests/builtins.sh
-index 3ecb43494a62..4255cd4d7026 100644
 --- a/src/cmd/ksh93/tests/builtins.sh
 +++ b/src/cmd/ksh93/tests/builtins.sh
-@@ -476,7 +476,15 @@ $SHELL <<- \EOF
+@@ -491,7 +491,15 @@ $SHELL <<- \EOF
      cd
      [[ $(pwd) == "$home" ]]
  EOF
@@ -29,7 +22,7 @@ index 3ecb43494a62..4255cd4d7026 100644
  
  cd "$TEST_DIR"
  if mkdir -p f1
-@@ -496,7 +504,13 @@ fi
+@@ -511,7 +519,13 @@ fi
  # Regression test for https://github.com/att/ast/issues/1391
  expect="$(print ~$(id -un))"
  actual=$(unset HOME; $SHELL -c 'cd /; cd ~; pwd')

@@ -1,24 +1,17 @@
 From: Oliver Kiddle <okiddle@yahoo.co.uk>
 Date: Fri, 17 May 2019 12:52:14 -0400
 Subject: List only supported names for ksh
-
-The Korn Shell will never be the default shell
-on Debian, so we strip out references to that.
-The pfksh variant is solaris specific so we strip
-out references to that.
-
+ The Korn Shell will never be the default shell
+ on Debian, so we strip out references to that.
+ The pfksh variant is solaris specific so we strip
+ out references to that.
 Reviewed-by: Nicholas Bamber <nicholas@periapt.co.uk>
 Signed-off-by: Boyuan Yang <byang@debian.org>
 Bug-Debian: https://bugs.debian.org/463022
 Forwarded: no
 Modified-by: Anuradha Weeraman <aweeraman@gmail.com>
 Last-Updated: 2020-01-24
----
- src/cmd/ksh93/docs/ksh.1 | 39 +--------------------------------------
- 1 file changed, 1 insertion(+), 38 deletions(-)
 
-diff --git a/src/cmd/ksh93/docs/ksh.1 b/src/cmd/ksh93/docs/ksh.1
-index 98b83ce..33e69ff 100644
 --- a/src/cmd/ksh93/docs/ksh.1
 +++ b/src/cmd/ksh93/docs/ksh.1
 @@ -19,12 +19,7 @@
@@ -71,7 +64,7 @@ index 98b83ce..33e69ff 100644
  See
  .I Invocation\^
  below
-@@ -2241,12 +2219,6 @@ At invocation, if the basename of this variable is
+@@ -2241,12 +2219,6 @@ At invocation, if the basename of this v
  or
  .BR krsh ,
  then the shell becomes restricted.

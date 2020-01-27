@@ -5,7 +5,7 @@ Forwarded: https://github.com/att/ast/pull/1418/files
 
 --- a/src/cmd/ksh93/docs/ksh.1
 +++ b/src/cmd/ksh93/docs/ksh.1
-@@ -3125,7 +3125,7 @@ all integer and floating point variables can be following by
+@@ -3097,7 +3097,7 @@ all integer and floating point variables
  .BR .MAX ,
  or
  .BR .DIG 
@@ -14,7 +14,6 @@ Forwarded: https://github.com/att/ast/pull/1418/files
  digits for variables of that type.
  .PP
  Floating point variables can be also followed by
-
 --- a/src/cmd/ksh93/docs/set.1
 +++ b/src/cmd/ksh93/docs/set.1
 @@ -9,7 +9,7 @@
