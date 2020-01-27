@@ -23,6 +23,8 @@ esac
 update-alternatives --install /bin/ksh ksh /usr/bin/ksh2020 18 \
                     --slave /usr/share/man/man1/ksh.1.gz ksh.1.gz \
                             /usr/share/man/man1/ksh2020.1.gz \
+		    --slave /usr/share/binfmts/ksh ksh-binfmt \
+			    /usr/share/ksh/ksh2020.binfmt \
                     --slave /bin/rksh rksh /usr/bin/rksh2020 \
                     --slave /usr/share/man/man1/rksh.1.gz rksh.1.gz \
                             /usr/share/man/man1/rksh2020.1.gz
@@ -31,11 +33,7 @@ update-alternatives --install /usr/bin/shcomp shcomp /usr/bin/shcomp2020 18 \
                     --slave /usr/share/man/man1/shcomp.1.gz shcomp.1.gz \
                             /usr/share/man/man1/shcomp2020.1.gz
 
-update-alternatives --install /usr/share/binfmts/ksh ksh-binfmt \
-			      /usr/share/ksh/ksh2020.binfmt 18
 if command -v update-binfmts >/dev/null && test -r /usr/share/binfmts/ksh; then
-	# undo damage by intermediate uploads
-	update-binfmts --package ksh --remove ksh /bin/ksh || true
 	# ignore error, as it may have been registered from ksh93
 	update-binfmts --package ksh --import ksh || true
 fi
