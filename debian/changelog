@@ -2,8 +2,9 @@ ksh (2020.0.0-5) UNRELEASED; urgency=medium
 
   * Team upload.
   * Remove unused french shcomp manpage (outdated, not in UTF-8)
+  * Bump Policy (no change)
 
- -- Thorsten Glaser <tg@mirbsd.de>  Mon, 27 Jan 2020 14:23:37 +0100
+ -- Thorsten Glaser <tg@mirbsd.de>  Mon, 27 Jan 2020 14:29:59 +0100
 
 ksh (2020.0.0-4) unstable; urgency=high
 
