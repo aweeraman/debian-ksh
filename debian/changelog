@@ -1,7 +1,7 @@
-ksh (2020.0.0-5) UNRELEASED; urgency=medium
+ksh (2020.0.0-5) unstable; urgency=high
 
   * Team upload.
-  * Remove unused french shcomp manpage (outdated, not in UTF-8)
+  * Remove unused french shcomp manpage: outdated and not in UTF-8
   * Bump Policy (no change)
   * Update several more places with ksh2020 name and references
   * Fix doc-base section
@@ -9,8 +9,9 @@ ksh (2020.0.0-5) UNRELEASED; urgency=medium
   * Switch to update-alternatives for binfmt-misc registration
   * Bring back /{,usr/}bin/ksh symlink fix
   * Refresh all patches
+  * Add debian/NEWS, documenting why this package was split
 
- -- Thorsten Glaser <tg@mirbsd.de>  Mon, 27 Jan 2020 16:06:38 +0100
+ -- Thorsten Glaser <tg@mirbsd.de>  Mon, 27 Jan 2020 16:45:42 +0100
 
 ksh (2020.0.0-4) unstable; urgency=high
 
