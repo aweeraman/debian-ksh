@@ -4,8 +4,9 @@ ksh93 (93u+20120801-5) UNRELEASED; urgency=medium
   * Fix ksh93 name in more places and improve ksh2020 coïnstallability
   * Bump Policy (no change)
   * Fix doc-base section
+  * Drop unused french manpage
 
- -- Thorsten Glaser <tg@mirbsd.de>  Mon, 27 Jan 2020 14:31:34 +0100
+ -- Thorsten Glaser <tg@mirbsd.de>  Mon, 27 Jan 2020 14:44:57 +0100
 
 ksh93 (93u+20120801-4) unstable; urgency=medium
 
