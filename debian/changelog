@@ -6,6 +6,7 @@ ksh93 (93u+20120801-5) UNRELEASED; urgency=medium
   * Fix doc-base section
   * Drop unused french manpage
   * Update packaging (debhelper, etc.)
+  * Add UMEGAYA file
 
  -- Thorsten Glaser <tg@mirbsd.de>  Mon, 27 Jan 2020 14:54:30 +0100
 
