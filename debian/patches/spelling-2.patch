@@ -2,8 +2,7 @@ Description: Fix typos and lintian warnings
 Author: Anuradha Weeraman <aweeraman@gmail.com>
 Forwarded: no
 Last-Update: 2020-01-18
-diff --git a/src/cmd/ksh93/RELEASE93 b/src/cmd/ksh93/RELEASE93
-index e99c8781..04ae78a9 100644
+
 --- a/src/cmd/ksh93/RELEASE93
 +++ b/src/cmd/ksh93/RELEASE93
 @@ -313,7 +313,7 @@ of ksh.
@@ -15,8 +14,6 @@ index e99c8781..04ae78a9 100644
  	    constants.
  	p.  A bug in which integer variables could be expanded
  	    with a leading 10# when declared with typeset -i
-diff --git a/src/cmd/ksh93/data/builtins.c b/src/cmd/ksh93/data/builtins.c
-index 31dbf39e..98c3b100 100644
 --- a/src/cmd/ksh93/data/builtins.c
 +++ b/src/cmd/ksh93/data/builtins.c
 @@ -968,12 +968,12 @@ USAGE_LICENSE
@@ -55,8 +52,6 @@ index 31dbf39e..98c3b100 100644
  	"used with any other options.]"
  "[n?Name reference.  The value is the name of a variable that \aname\a "
  	"references.  \aname\a cannot contain a \b.\b.  Cannot be use with "
-diff --git a/src/lib/libcmd/chmod.c b/src/lib/libcmd/chmod.c
-index beaab672..5aad3096 100644
 --- a/src/lib/libcmd/chmod.c
 +++ b/src/lib/libcmd/chmod.c
 @@ -36,7 +36,7 @@ USAGE_LICENSE
@@ -68,8 +63,6 @@ index beaab672..5aad3096 100644
  	"the form \auser\a \aop\a \aperm\a where \auser\a is zero or more of "
  	"the following letters:]{"
  	"[+u?User permission bits.]"
-diff --git a/src/lib/libcmd/uname.c b/src/lib/libcmd/uname.c
-index cece94ac..a295a757 100644
 --- a/src/lib/libcmd/uname.c
 +++ b/src/lib/libcmd/uname.c
 @@ -35,7 +35,7 @@ USAGE_LICENSE

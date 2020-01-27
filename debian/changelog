@@ -8,8 +8,9 @@ ksh93 (93u+20120801-5) UNRELEASED; urgency=medium
   * Update packaging (debhelper, etc.)
   * Add UMEGAYA file
   * Switch to update-alternatives for binfmt-misc registration
+  * Refresh patches, add missing comments
 
- -- Thorsten Glaser <tg@mirbsd.de>  Mon, 27 Jan 2020 15:24:32 +0100
+ -- Thorsten Glaser <tg@mirbsd.de>  Mon, 27 Jan 2020 16:00:14 +0100
 
 ksh93 (93u+20120801-4) unstable; urgency=medium
 

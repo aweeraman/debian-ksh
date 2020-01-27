@@ -6,17 +6,10 @@ Author: Nicholas Bamber <nicholas@periapt.co.uk>
 Bug-Debian: https://bugs.debian.org/633524
 Forwarded: not-needed
 Last-Update: 2015-11-02
---- a/src/cmd/ksh93/features/cmds
-+++ b/src/cmd/ksh93/features/cmds
-@@ -1,4 +1,4 @@
- cmd	newgrp,test,id,wc,cut,logname,universe,pfexec,tput
- pth	ed fail{
--	echo '#define _pth_ed	"ed" /* ed not found on standard PATH */'
-+	echo '#define _pth_ed	"/usr/bin/ex" /* ed not found on standard PATH */'
- }end
+
 --- a/src/cmd/ksh93/bltins/hist.c
 +++ b/src/cmd/ksh93/bltins/hist.c
-@@ -218,7 +218,7 @@
+@@ -218,7 +218,7 @@ int	b_hist(int argc,char *argv[], Shblti
  	{
  		arg = (char*)e_defedit;
  		if(*arg!='/')
@@ -25,9 +18,17 @@ Last-Update: 2015-11-02
  	}
  #ifdef apollo
  	/*
+--- a/src/cmd/ksh93/features/cmds
++++ b/src/cmd/ksh93/features/cmds
+@@ -1,4 +1,4 @@
+ cmd	newgrp,test,id,wc,cut,logname,universe,pfexec,tput
+ pth	ed fail{
+-	echo '#define _pth_ed	"ed" /* ed not found on standard PATH */'
++	echo '#define _pth_ed	"/usr/bin/ex" /* ed not found on standard PATH */'
+ }end
 --- a/src/cmd/ksh93/sh.1
 +++ b/src/cmd/ksh93/sh.1
-@@ -4355,7 +4355,7 @@
+@@ -4355,7 +4355,7 @@ If
  .SM
  .B FCEDIT
  is not defined, then
@@ -36,7 +37,7 @@ Last-Update: 2015-11-02
  is used.
  The edited command(s) is printed and re-executed upon
  leaving the editor unless you quit without writing.
-@@ -6141,7 +6141,7 @@
+@@ -6141,7 +6141,7 @@ is not set, then
  .SM
  .B FCEDIT
  (default

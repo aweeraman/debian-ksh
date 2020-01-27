@@ -1,6 +1,8 @@
+# DP: disable suid, enable system-wide ksh
+
 --- a/src/cmd/ksh93/Makefile
 +++ b/src/cmd/ksh93/Makefile
-@@ -48,8 +48,8 @@
+@@ -48,8 +48,8 @@ SHOPT_REMOTE ==			/* enable --rc if runn
  SHOPT_SEVENBIT ==		/* strip the eigth bit from characters */
  SHOPT_SPAWN ==			/* use spawnveg for fork/exec */
  SHOPT_STATS ==	1		/* add .sh.stats variable */

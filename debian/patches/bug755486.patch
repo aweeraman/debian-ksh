@@ -3,9 +3,10 @@ Bug-Debian: https://bugs.debian.org/755486
 Forwarded: no
 Author: Nicholas Bamber <nicholas@peiapt.co.uk>
 Last-Update: 2015-11-01
+
 --- a/src/cmd/ksh93/sh.1
 +++ b/src/cmd/ksh93/sh.1
-@@ -8060,7 +8060,7 @@
+@@ -8060,7 +8060,7 @@ The system wide startup file, executed f
  .B \s-1$HOME\s+1/\f3.\fPprofile
  The personal initialization file, executed for login shells after /etc/profile.
  .TP

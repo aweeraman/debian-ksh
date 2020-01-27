@@ -1,6 +1,8 @@
+# DP: drop rpath from installed binaries
+
 --- a/src/cmd/INIT/make.probe
 +++ b/src/cmd/INIT/make.probe
-@@ -2068,7 +2068,7 @@
+@@ -2068,7 +2068,7 @@ CC_LD=$ld
  CC_LD_DYNAMIC=$lddynamic
  CC_LD_LAZY=$ldlazy
  CC_LD_NOLAZY=$ldnolazy

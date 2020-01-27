@@ -8,8 +8,8 @@ Forwarded: no
 Reviewed-By: Nicholas Bamber <nicholas@periapt.co.uk>
 Last-Update: 2015-10-15
 
---- ksh-93u+20120801.orig/src/lib/libast/comp/tmpnam.c
-+++ ksh-93u+20120801/src/lib/libast/comp/tmpnam.c
+--- a/src/lib/libast/comp/tmpnam.c
++++ b/src/lib/libast/comp/tmpnam.c
 @@ -38,14 +38,14 @@
  #define extern	__EXPORT__
  #endif

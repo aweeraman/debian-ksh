@@ -1,7 +1,7 @@
-Index: ksh/src/lib/libast/string/fmtdev.c
-===================================================================
---- ksh.orig/src/lib/libast/string/fmtdev.c
-+++ ksh/src/lib/libast/string/fmtdev.c
+# DP: fix FTBFS with newer glibc
+
+--- a/src/lib/libast/string/fmtdev.c
++++ b/src/lib/libast/string/fmtdev.c
 @@ -30,6 +30,7 @@
  #include <ast.h>
  #include <ctype.h>
