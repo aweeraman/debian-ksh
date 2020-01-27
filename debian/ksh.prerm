@@ -10,7 +10,11 @@ case "$1" in
 	# remove compatibility symlink if broken
 	test '!' -h /usr/bin/ksh || test -e /usr/bin/ksh || rm -f /usr/bin/ksh
 
-	update-binfmts --package ksh --remove ksh /bin/ksh
+	if command -v update-binfmts >/dev/null; then
+		test -e /var/lib/binfmts/ksh && \
+		    update-binfmts --package ksh --remove ksh \
+		    /usr/bin/ksh2020 || true
+	fi
     ;;
 
     upgrade|failed-upgrade)
