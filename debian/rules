@@ -26,7 +26,7 @@ export LDFLAGS
 # reproducibility
 LC_ALL=C
 LANG=C
-TZ=/usr/share/zoneinfo/Etc/GMT
+TZ=UTC
 export LC_ALL
 export LANG
 export TZ
@@ -38,7 +38,7 @@ override_dh_auto_configure:
 	@echo "CCFLAGS=$(CCFLAGS)"
 	@echo "LDFLAGS=$(LDFLAGS)"
 
-override_dh_auto_build:	
+override_dh_auto_build:
 	bin/package make strip=0
 
 override_dh_auto_install:
@@ -62,20 +62,3 @@ clean:
 		sed -i -e '/^#.\{70\}#/ d'  bin/$$i ; \
 	done
 	rm -rf arch bin/*.old
-
-get-orig-source:
-	@echo 'Old get-orig-source target is no longer usable.'
-	@echo 'Please find latest ksh source code at:'
-	@echo 'https://github.com/att/ast'
-	@exit 1
-	rm -rf $(SRC_DIR) $(TARBALL)
-	mkdir $(SRC_DIR)
-	wget --http-user 'I accept www.opensource.org/licenses/cpl' \
-	  --http-password . -O - \
-	  http://www.research.att.com/~gsf/download/tgz/INIT.$(DL_VERSION).tgz | \
-	  tar xzf - -C $(SRC_DIR)
-	wget --http-user 'I accept www.opensource.org/licenses/cpl' \
-	  --http-password . -O - \
-	  http://www.research.att.com/~gsf/download/tgz/ast-ksh.$(DL_VERSION).tgz | \
-	  tar xzf - -C $(SRC_DIR)
-	tar cf - $(SRC_DIR) | tardy -group 0 -user 0 - - | gzip -c9 > $(TARBALL)
