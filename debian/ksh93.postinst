@@ -19,8 +19,7 @@ esac
 
 #DEBHELPER#
 
-# The alternative is the mksh package.
-# For a discussion on interactions between ksh and mksh, see #764401.
+# Alternatives packaged as ksh and mksh
 update-alternatives --install /bin/ksh ksh /bin/ksh93 20 \
                     --slave /usr/share/man/man1/ksh.1.gz ksh.1.gz \
                             /usr/share/man/man1/ksh93.1.gz \
@@ -32,14 +31,20 @@ update-alternatives --install /usr/bin/shcomp shcomp /usr/bin/shcomp93 20 \
                     --slave /usr/share/man/man1/shcomp.1.gz shcomp.1.gz \
                             /usr/share/man/man1/shcomp93.1.gz
 
+update-alternatives --install /usr/share/binfmts/ksh ksh-binfmt \
+			      /usr/share/ksh/ksh93.binfmt 20
+if command -v update-binfmts >/dev/null && test -r /usr/share/binfmts/ksh; then
+	# undo damage by intermediate uploads
+	update-binfmts --package ksh --remove ksh /bin/ksh || true
+	# ignore error, it probably was registered by ksh
+	update-binfmts --package ksh93 --import ksh || true
+fi
+
 # create compatibility symlink if necessary
 test -e /usr/bin/ksh || test -h /usr/bin/ksh || \
     ln -s /bin/ksh /usr/bin/ksh
 
 add-shell /bin/ksh93
 add-shell /bin/rksh93
-
-# This was put in to resolve bug #687343.
-update-binfmts --import ksh
 
 exit 0
