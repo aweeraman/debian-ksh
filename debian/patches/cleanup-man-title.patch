@@ -7,7 +7,7 @@ Author: Oliver Kiddle <okiddle@yahoo.co.uk>
 Reviewed-by: Nicholas Bamber <nicholas@periapt.co.uk>
 Bug-Debian: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=463022
 Forwarded: no
-Last-Update: 2015-11-01
+Last-Update: 2020-01-24
 --- a/src/cmd/ksh93/sh.1
 +++ b/src/cmd/ksh93/sh.1
 @@ -19,15 +19,7 @@
@@ -23,7 +23,7 @@ Last-Update: 2015-11-01
 -.if \nZ=2 \{\
 -ksh93, rksh93, pfksh93 \- KornShell, a standard/restricted command and programming language
 -.\}
-+ksh, rksh, ksh93, rksh93 \- KornShell, a standard/restricted command and programming language
++ksh93, rksh93 \- KornShell, a standard/restricted command and programming language
  .SH SYNOPSIS
  .if \nZ=0 \{\
  .B sh

@@ -1,3 +1,22 @@
+ksh93 (93u+20120801-5) UNRELEASED; urgency=medium
+
+  * Team upload.
+  * Fix ksh93 name in more places and improve ksh2020 coïnstallability
+
+ -- Thorsten Glaser <tg@mirbsd.de>  Mon, 27 Jan 2020 14:36:25 +0100
+
+ksh93 (93u+20120801-4) unstable; urgency=medium
+
+  * Re-introduce ksh93 into the archive as a separate package (Closes: #948745)
+  * Bumped up standards-version
+  * Set the hardened build flags
+  * Use alternatives system for binaries
+
+  [ Boyuan Yang ]
+  * debian/control: Explicitly specify Vcs-Git branch.
+
+ -- Anuradha Weeraman <aweeraman@gmail.com>  Sat, 18 Jan 2020 21:34:10 -0500
+
 ksh (93u+20120801-3.4) unstable; urgency=medium
 
   [ Boyuan Yang ]
