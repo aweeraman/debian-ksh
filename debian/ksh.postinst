@@ -19,8 +19,7 @@ esac
 
 #DEBHELPER#
 
-# The alternative is the mksh package.
-# For a discussion on interactions between ksh and mksh, see #764401.
+# Alternatives packaged as ksh93 and mksh
 update-alternatives --install /bin/ksh ksh /usr/bin/ksh2020 18 \
                     --slave /usr/share/man/man1/ksh.1.gz ksh.1.gz \
                             /usr/share/man/man1/ksh2020.1.gz \
@@ -40,6 +39,10 @@ if command -v update-binfmts >/dev/null && test -r /usr/share/binfmts/ksh; then
 	# ignore error, as it may have been registered from ksh93
 	update-binfmts --package ksh --import ksh || true
 fi
+
+# create compatibility symlink if necessary
+test -e /usr/bin/ksh || test -h /usr/bin/ksh || \
+    ln -s /bin/ksh /usr/bin/ksh
 
 add-shell /usr/bin/ksh2020
 add-shell /usr/bin/rksh2020

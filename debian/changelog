@@ -7,8 +7,9 @@ ksh (2020.0.0-5) UNRELEASED; urgency=medium
   * Fix doc-base section
   * Add UMEGAYA file
   * Switch to update-alternatives for binfmt-misc registration
+  * Bring back /{,usr/}bin/ksh symlink fix
 
- -- Thorsten Glaser <tg@mirbsd.de>  Mon, 27 Jan 2020 15:10:19 +0100
+ -- Thorsten Glaser <tg@mirbsd.de>  Mon, 27 Jan 2020 15:14:03 +0100
 
 ksh (2020.0.0-4) unstable; urgency=high
 
