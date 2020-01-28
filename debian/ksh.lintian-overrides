@@ -1,5 +1,2 @@
-# /usr/share/ksh/functions is configured as a default search path for autoloadable functions
-ksh: package-contains-empty-directory usr/share/ksh/functions/
-
 # needed for update-alternatives
 ksh: package-contains-empty-directory usr/share/binfmts/

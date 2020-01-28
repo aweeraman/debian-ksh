@@ -1,3 +1,9 @@
+ksh (2020.0.0-6) UNRELEASED; urgency=medium
+
+  * Copy missing shared functions to /usr/share/ksh/functions
+
+ -- Anuradha Weeraman <aweeraman@gmail.com>  Mon, 27 Jan 2020 20:47:40 -0500
+
 ksh (2020.0.0-5) unstable; urgency=high
 
   * Team upload.
