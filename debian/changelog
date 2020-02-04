@@ -1,3 +1,10 @@
+ksh93 (93u+20120801-6) unstable; urgency=high
+
+  * Team upload.
+  * Fix a few missing CFLAGS, CPPFLAGS, LDFLAGS
+
+ -- Thorsten Glaser <tg@mirbsd.de>  Tue, 04 Feb 2020 21:36:56 +0100
+
 ksh93 (93u+20120801-5) unstable; urgency=high
 
   * Team upload.
