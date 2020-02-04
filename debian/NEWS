@@ -17,7 +17,7 @@ ksh93 (93u+20120801-5) unstable; urgency=high
 
   Since ksh2020 is under active development, a ksh93 package with the
   “stable” release, which however will not profit from latest improve‐
-  ments, is also offered — they are coïnstallable, using the alterna‐
+  ments, is also offered — they are coinstallable, using the alterna‐
   tives system to share /bin/{,r}ksh among all Korn Shell variants, as
   well as shcomp and their binfmt-misc registration; /etc/skel/.kshrc
   is shipped, with identical content, in both packages as well. (Note
