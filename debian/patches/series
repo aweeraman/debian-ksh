@@ -1,11 +1,12 @@
 shell-options.patch
 cleanup-man-title.patch
 no-rpath.patch
+locking.patch
 ftbs.patch
 spelling.patch
 bug755486.patch
 ed.patch
-0008-Bug-887743-Fix-build-failures-caused-by-update-in-gl.patch
+bug887743.patch
 bug915326.patch
 spelling-2.patch
 blhc.diff

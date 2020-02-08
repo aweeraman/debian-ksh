@@ -1,0 +1,37 @@
+Description: ksh segfaults in job_chksave after receiving SIGCHLD
+ Prior to this update, the compiler optimization dropped parts from the ksh job
+ locking mechanism from the binary code. As a consequence, ksh could terminate
+ unexpectedly with a segmentation fault after it received the SIGCHLD signal.
+ This update implements a fix to ensure the compiler does not drop parts of the
+ ksh mechanism and the crash no longer occurs.
+Author: Michal Hlavinka <mhlavink@redhat.com>
+Origin: Red Hat fix, ksh-20120801-locking.patch
+Bug: https://bugzilla.redhat.com/show_bug.cgi?id=1123467
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1697501
+Bug-Debian: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=867181
+
+--- a/src/cmd/ksh93/include/jobs.h
++++ b/src/cmd/ksh93/include/jobs.h
+@@ -149,15 +149,18 @@
+ #define vmbusy()	0
+ #endif
+ 
+-#define job_lock()	(job.in_critical++)
++#define asoincint(p)  __sync_fetch_and_add(p,1)
++#define asodecint(p)  __sync_fetch_and_sub(p,1)
++
++#define job_lock()	asoincint(&job.in_critical)
+ #define job_unlock()	\
+ 	do { \
+ 		int	sig; \
+-		if (!--job.in_critical && (sig = job.savesig)) \
++		if (asodecint(&job.in_critical)==1 && (sig = job.savesig)) \
+ 		{ \
+-			if (!job.in_critical++ && !vmbusy()) \
++			if (!asoincint(&job.in_critical) && !vmbusy()) \
+ 				job_reap(sig); \
+-			job.in_critical--; \
++			asodecint(&job.in_critical); \
+ 		} \
+ 	} while(0)
+ 

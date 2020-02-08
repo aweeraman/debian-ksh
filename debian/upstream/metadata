@@ -1,4 +1,9 @@
 {
+  "Name": "Korn Shell",
   "Documentation": "http://www.kornshell.com/doc/",
-  "Name": "Korn Shell"
+  "Archive": "GitHub",
+  "Bug-Database": "https://github.com/att/ast/issues",
+  "Bug-Submit": "https://github.com/att/ast/issues/new",
+  "Repository": "https://github.com/att/ast.git",
+  "Repository-Browse": "https://github.com/att/ast"
 }
