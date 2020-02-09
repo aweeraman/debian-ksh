@@ -1,5 +1,8 @@
 ksh (2020.0.0-6) UNRELEASED; urgency=medium
 
+  * Updated upstream metadata due to changes in upstream
+  * Removed watch file until upstream repo for v2020 is known + lintian
+    override
   * Copy missing shared functions to /usr/share/ksh/functions
 
  -- Anuradha Weeraman <aweeraman@gmail.com>  Mon, 27 Jan 2020 20:47:40 -0500

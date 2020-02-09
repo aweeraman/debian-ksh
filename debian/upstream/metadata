@@ -1,8 +1,6 @@
 {
   "Archive": "GitHub",
-  "Bug-Database": "https://github.com/att/ast/issues",
-  "Bug-Submit": "https://github.com/att/ast/issues/new/choose",
   "Name": "Korn Shell",
   "Repository": "https://github.com/att/ast.git",
-  "Repository-Browse": "https://github.com/att/ast"
+  "Repository-Browse": "https://github.com/att/ast/tree/2020.0.0"
 }
