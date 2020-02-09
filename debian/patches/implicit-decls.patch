@@ -1,0 +1,25 @@
+Description: Fixes for -Wimplicit-function-declaration warnings
+Forwarded: no
+Author: Anuradha Weeraman <aweeraman@gmail.com>
+Last-Update: 2020-02-09
+
+--- a/src/cmd/ksh93/include/terminal.h
++++ b/src/cmd/ksh93/include/terminal.h
+@@ -191,6 +191,7 @@ extern int	tty_get(int,struct termios*);
+ extern int	tty_raw(int,int);
+ extern int	tty_check(int);
+ extern int	tty_set(int, int, struct termios*);
++extern int	ioctl(int,int,void*);
+ extern int	sh_ioctl(int,int,void*,int);
+ #define ioctl(a,b,c)	sh_ioctl(a,b,c,sizeof(c))
+ #ifdef _lib_tcgetattr
+--- a/src/lib/libast/port/astwinsize.c
++++ b/src/lib/libast/port/astwinsize.c
+@@ -67,6 +67,7 @@ __STDPP__directive pragma pp:nohide ioctl sleep
+ #endif
+ 
+ static int		ttctl(int, int, void*);
++extern int		ioctl(int, int, void*);
+ 
+ void
+ astwinsize(int fd, register int* rows, register int* cols)

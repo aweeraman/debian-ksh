@@ -10,3 +10,4 @@ bug887743.patch
 bug915326.patch
 spelling-2.patch
 blhc.diff
+implicit-decls.patch
