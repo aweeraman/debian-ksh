@@ -1,0 +1,6 @@
+# Files in /etc/skel and autoloaded functions are not expected to be
+# executable or start with a shebang, so overriding this warning
+ksh-common: executable-not-elf-or-script etc/skel/.kshrc
+ksh-common: executable-not-elf-or-script usr/share/ksh-common/functions/dirs
+ksh-common: executable-not-elf-or-script usr/share/ksh-common/functions/popd
+ksh-common: executable-not-elf-or-script usr/share/ksh-common/functions/pushd

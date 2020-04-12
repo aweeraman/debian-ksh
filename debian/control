@@ -21,8 +21,8 @@ Vcs-Browser: https://salsa.debian.org/debian/ksh
 
 Package: ksh
 Architecture: any
-Section: shells
 Depends:
+ ksh-common,
  binfmt-support,
  ${misc:Depends},
  ${shlibs:Depends},
@@ -41,7 +41,6 @@ Description: 2020 version of the AT&T Korn Shell
 
 Package: ksh-common
 Architecture: all
-Section: shells
 Depends: ${misc:Depends}
 Description: Common files used by ksh implementations
  Ksh is a UNIX command interpreter (shell) that is intended for both
