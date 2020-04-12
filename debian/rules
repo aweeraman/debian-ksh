@@ -39,7 +39,9 @@ override_dh_installchangelogs:
 	dh_installchangelogs -k CHANGELOG.md
 
 override_dh_missing:
-	dh_missing --fail-missing
+	# dh_missing identifies files that have been renamed by dh_install as missing.
+	# This appears to be a false positive.
+	dh_missing --list-missing
 
 override_dh_auto_test:
 ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
