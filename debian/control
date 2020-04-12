@@ -2,7 +2,7 @@ Source: ksh
 Section: shells
 Priority: optional
 Maintainer: Anuradha Weeraman <aweeraman@gmail.com>
-Homepage: https://github.com/att/ast
+Homepage: https://github.com/ksh2020/ksh
 Build-Depends:
  debhelper-compat (= 12),
  dh-exec,
@@ -21,7 +21,7 @@ Vcs-Browser: https://salsa.debian.org/debian/ksh
 
 Package: ksh
 Architecture: any
-Replaces: ksh93
+Section: shells
 Depends:
  binfmt-support,
  ${misc:Depends},
@@ -38,3 +38,14 @@ Description: 2020 version of the AT&T Korn Shell
  math.
  .
  The shcomp tool can be used to compile ksh scripts into a binary format.
+
+Package: ksh-common
+Architecture: all
+Section: shells
+Depends: ${misc:Depends}
+Description: Common files used by ksh implementations
+ Ksh is a UNIX command interpreter (shell) that is intended for both
+ interactive and shell script use. Its command language is a superset of
+ the sh(1) shell language.
+ .
+ This package contains common files used by ksh implementations.

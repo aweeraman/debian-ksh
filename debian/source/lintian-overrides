@@ -1,7 +1,0 @@
-# Upstream has discontinued maintenance of v2020 on
-# github.com/att/ast repo: https://github.com/att/ast/issues/1466
-# No new updates to v2020 will take place from this repo until
-# maintenance is resumed in a fork, at which point this will be
-# revisited.
-ksh source: debian-watch-file-is-missing
-

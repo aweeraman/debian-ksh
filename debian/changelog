@@ -1,11 +1,11 @@
-ksh (2020.0.0-6) UNRELEASED; urgency=medium
+ksh (2020.0.0-6) unstable; urgency=medium
 
-  * Updated upstream metadata due to changes in upstream
-  * Removed watch file until upstream repo for v2020 is known + lintian
-    override
-  * Copy missing shared functions to /usr/share/ksh/functions
+  * Moved shared files with ksh93 to a common package to address RC
+    bug 950762. Issue will be closed when the other package is also
+    fixed to use the common package.
+  * Changed upstream URL for ksh2020 and updated watch file
 
- -- Anuradha Weeraman <aweeraman@gmail.com>  Mon, 27 Jan 2020 20:47:40 -0500
+ -- Anuradha Weeraman <aweeraman@gmail.com>  Sun, 12 Apr 2020 15:17:40 -0500
 
 ksh (2020.0.0-5) unstable; urgency=high
 
