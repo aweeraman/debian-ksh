@@ -41,7 +41,7 @@ Description: 2020 version of the AT&T Korn Shell
 
 Package: ksh-common
 Architecture: all
-Replaces: ksh (<< 2020.0.0-5), ksh93 (<< 93u+20120801-7)
+Replaces: ksh (<< 2020.0.0-6), ksh93 (<< 93u+20120801-8)
 Depends: ${misc:Depends}
 Description: Common files used by ksh implementations
  Ksh is a UNIX command interpreter (shell) that is intended for both
