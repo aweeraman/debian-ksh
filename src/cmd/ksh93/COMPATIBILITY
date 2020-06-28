@@ -9,10 +9,8 @@ omitted features that are completely upward compatible.
 1.	Functions, defined with name() with ksh-93 are compatible with
 	the POSIX standard, not with ksh-88.  No local variables are
 	permitted, and there is no separate scope.  Functions defined
-	with the function name syntax, have local variables as in ksh-88
-	but are statically scoped as in C so that a function does not
-	automatically have access to local variables of the caller.
-	This change also affects function traces.
+	with the function name syntax, maintain compatibility.
+	This also affects function traces.
 
 2.	! is now a reserved word.  As a result, any command by that
 	name will no longer work with ksh-93.
@@ -36,7 +34,7 @@ omitted features that are completely upward compatible.
 	interpreted literally.  Now it is an ANSI-C string.  You
 	must quote the dollar sign to get the previous behavior.
 	Also, a $ in front of a " indicates that the string needs
-	to be translated for locales other than C or POSIX.  The $
+	to be translated for locales other than C or POSIX.  The $ 
 	is ignored in the C and POSIX locale.
 
 7.	With ksh-88, tilde expansion did not take place inside ${...}.
@@ -57,7 +55,7 @@ omitted features that are completely upward compatible.
 	in your PATH, and you have a program named test in your
 	directory, it will be executed when you type test; the
 	built-in version will be run at the point /bin is found
-	in your PATH.
+	in your PATH. 
 
 11.	Some undocumented combinations of argument passing to ksh
 	builtins no longer works since ksh-93 is getopts conforming
@@ -74,7 +72,7 @@ omitted features that are completely upward compatible.
 14.	If the file name following a redirection symbol contain pattern
 	characters they will only be expanded for interactive shells.
 
-15.	The arguments to a dot script will be restored when it completes.
+15.	The arguments to a dot script will be restored when it completes. 
 
 16.	The list of tracked aliases is not displayed with alias unless
 	the -t option is specified.
@@ -87,11 +85,11 @@ omitted features that are completely upward compatible.
 18.	The ^T directive of emacs mode has been changed to work the
 	way it does in gnu-emacs.
 
-19.	ksh-88 allowed unbalanced parentheses within ${name op val} whereas
+19.	ksh-88 allowed unbalanced parenthes within ${name op val} whereas
 	ksh-93 does not.  Thus, ${foo-(} needs to be written as ${foo-\(}
 	which works with both versions.
 
-20. kill -l in ksh-93 lists only the signal names, not their numerical
+20.     kill -l in ksh-93 lists only the signal names, not their numerical
 	values.
 
 21.	Local variables defined by typeset are statically scoped in
@@ -102,7 +100,7 @@ omitted features that are completely upward compatible.
 	the end-of-options is reached to conform to the POSIX standard.
 
 23.	Since the POSIX standard requires that octal constants be
-	recognized, doing arithmetic on typeset -Z variables can
+	recongnized, doing arithmetic on typeset -Z variables can
 	yield different results that with ksh-88.  Most of these
 	differences were eliminated in ksh-93o.  Starting in ksh-93u+, the
 	let command no longer recognizes octal constants starting with 0
@@ -111,7 +109,7 @@ omitted features that are completely upward compatible.
 24.	Starting after ksh-93l, If you run ksh name, where name does
 	not contain a /, the current directory will be searched
 	before doing a path search on name as required by the POSIX
-	shell standard.
+	shell standard.  
 
 25.	In ksh-93, cd - will output the directory that it changes
 	to on standard output as required by X/Open.  With ksh-88,
@@ -130,7 +128,7 @@ omitted features that are completely upward compatible.
 	The sequence escape control-v will display the shell version.
 
 29.	In ksh-88, DEBUG traps were executed. after each command.  In ksh-93
-	DEBUG traps are executed before each command.
+	DEBUG traps are exeucted before each command.
 
 30.	In ksh-88, a redirection to a file name given by an empty string was
 	ignored.  In ksh-93, this is an error.

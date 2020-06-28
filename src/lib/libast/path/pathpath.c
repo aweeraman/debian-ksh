@@ -1,131 +1,127 @@
 /***********************************************************************
- *                                                                      *
- *               This software is part of the ast package               *
- *          Copyright (c) 1985-2013 AT&T Intellectual Property          *
- *                      and is licensed under the                       *
- *                 Eclipse Public License, Version 1.0                  *
- *                    by AT&T Intellectual Property                     *
- *                                                                      *
- *                A copy of the License is available at                 *
- *          http://www.eclipse.org/org/documents/epl-v10.html           *
- *         (with md5 checksum b35adb5213ca9657e911e9befb180842)         *
- *                                                                      *
- *              Information and Software Systems Research               *
- *                            AT&T Research                             *
- *                           Florham Park NJ                            *
- *                                                                      *
- *               Glenn Fowler <glenn.s.fowler@gmail.com>                *
- *                    David Korn <dgkorn@gmail.com>                     *
- *                     Phong Vo <phongvo@gmail.com>                     *
- *                                                                      *
- ***********************************************************************/
-//
-// Glenn Fowler
-// AT&T Research
-//
-// Full path to `path_to_search` is searched in `$PATH` and `$FPATH` with `mode` access
-// path_to_search2!=0 enables related root search - ????
-// path_to_search2!=0 && path_to_search2!="" searches a dir first - ????
-// the related root must have a bin subdir - ????
-// path_to_search==0 sets the cached relative dir to a
-// full path returned in path buffer - ????
-//
+*                                                                      *
+*               This software is part of the ast package               *
+*          Copyright (c) 1985-2012 AT&T Intellectual Property          *
+*                      and is licensed under the                       *
+*                 Eclipse Public License, Version 1.0                  *
+*                    by AT&T Intellectual Property                     *
+*                                                                      *
+*                A copy of the License is available at                 *
+*          http://www.eclipse.org/org/documents/epl-v10.html           *
+*         (with md5 checksum b35adb5213ca9657e911e9befb180842)         *
+*                                                                      *
+*              Information and Software Systems Research               *
+*                            AT&T Research                             *
+*                           Florham Park NJ                            *
+*                                                                      *
+*                 Glenn Fowler <gsf@research.att.com>                  *
+*                  David Korn <dgk@research.att.com>                   *
+*                   Phong Vo <kpv@research.att.com>                    *
+*                                                                      *
+***********************************************************************/
+#pragma prototyped
+/*
+ * Glenn Fowler
+ * AT&T Research
+ *
+ * return full path to p with mode access using $PATH
+ * a!=0 enables related root search
+ * a!=0 && a!="" searches a dir first
+ * the related root must have a bin subdir
+ * p==0 sets the cached relative dir to a
+ * full path returned in path buffer
+ * if path==0 then the space is malloc'd
+ */
 
-#include "config_ast.h"  // IWYU pragma: keep
+#define _AST_API_H	1
 
-#include <limits.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
+#include <ast.h>
 
-#include "ast.h"
-#include "ast_assert.h"
-#include "sfio.h"
+char*
+pathpath(char* path, const char* p, const char* a, int mode)
+{
+	return pathpath_20100601(p, a, mode, path, PATH_MAX);
+}
 
-char *pathpath(const char *path_to_search, const char *path_to_search2, int mode, char *path,
-               size_t size) {
-    char *result_path;
+#undef	_AST_API_H
 
-    // Colon separated list of paths to search
-    char *search_path;
+#include <ast_api.h>
 
-    // Saved command from previous invocation
-    static char *cached_path;
+char*
+pathpath_20100601(const char* p, const char* a, int mode, register char* path, size_t size)
+{
+	register char*	s;
+	char*		x;
+	char		buf[PATH_MAX];
 
-    assert(path && size);
+	static char*	cmd;
 
-    // If path to search is empty, save path from `path_to_search2` into `cached_path`.
-    // I am not sure what this cached path is supposed to do.
-    if (!path_to_search) {
-        if (cached_path) free(cached_path);
-        cached_path = path_to_search2 ? strdup(path_to_search2) : NULL;
-        return NULL;
-    }
-
-    if (strlen(path_to_search) < size) {
-        strcpy(path, path_to_search);
-        if (pathexists(path, mode)) {
-            // If mode is `PATH_ABSOLUTE` expand path without beginning `/` to current directory
-            if (*path_to_search != '/' && (mode & PATH_ABSOLUTE)) {
-                char buf[PATH_MAX];
-
-                getcwd(buf, sizeof(buf));
-                result_path = buf + strlen(buf);
-                sfsprintf(result_path, sizeof(buf) - (result_path - buf), "/%s", path_to_search);
-                strcpy(path, buf);
-            }
-            return path;
-        }
-    }
-
-    if (*path_to_search == '/') {
-        path_to_search2 = 0;
-    } else {
-        // This code block seems a bit out of this world
-        result_path = (char *)path_to_search2;
-        if (result_path) {
-            if (strchr(path_to_search, '/')) {
-                path_to_search2 = path_to_search;
-                path_to_search = "..";
-            } else {
-                path_to_search2 = 0;
-            }
-            if ((!cached_path || *cached_path) &&
-                (strchr(result_path, '/') || (result_path = cached_path))) {
-                if (!cached_path && *result_path == '/') cached_path = strdup(result_path);
-                size_t slen = strlen(result_path);
-                if (slen < size - 6) {
-                    (void)strlcpy(path, result_path, slen + 1);
-                    result_path += slen;
-                    for (;;) {
-                        do {
-                            // TODO: In what situation this condition will be false ?
-                            if (result_path <= path) goto normal;
-                        } while (*--result_path == '/');
-                        do {
-                            if (result_path <= path) goto normal;
-                        } while (*--result_path != '/');
-                        strcpy(result_path + 1, "bin");
-                        if (pathexists(path, PATH_EXECUTE)) {
-                            result_path =
-                                pathaccess(path, path_to_search, path_to_search2, mode, path, size);
-                            if (result_path) return result_path;
-                            goto normal;
-                        }
-                    }
-                normal:;
-                }
-            }
-        }
-    }
-
-    search_path = !path_to_search2 && strchr(path_to_search, '/') ? "" : pathbin();
-    result_path = pathaccess(search_path, path_to_search, path_to_search2, mode, path, size);
-
-    // If search path was empty, search for it in `$FPATH`
-    if (!result_path && !*search_path && (search_path = getenv("FPATH"))) {
-        result_path = pathaccess(search_path, path_to_search, path_to_search2, mode, path, size);
-    }
-
-    return result_path;
+	if (!path)
+	{
+		path = buf;
+		if (!size || size > sizeof(buf))
+			size = sizeof(buf);
+	}
+	if (!p)
+	{
+		if (cmd)
+			free(cmd);
+		cmd = a ? strdup(a) : (char*)0;
+		return 0;
+	}
+	if (strlen(p) < size)
+	{
+		strcpy(path, p);
+		if (pathexists(path, mode))
+		{
+			if (*p != '/' && (mode & PATH_ABSOLUTE))
+			{
+				getcwd(buf, sizeof(buf));
+				s = buf + strlen(buf);
+				sfsprintf(s, sizeof(buf) - (s - buf), "/%s", p);
+				if (path != buf)
+					strcpy(path, buf);
+			}
+			return (path == buf) ? strdup(path) : path;
+		}
+	}
+	if (*p == '/')
+		a = 0;
+	else if (s = (char*)a)
+	{
+		x = s;
+		if (strchr(p, '/'))
+		{
+			a = p;
+			p = "..";
+		}
+		else
+			a = 0;
+		if ((!cmd || *cmd) && (strchr(s, '/') || (s = cmd)))
+		{
+			if (!cmd && *s == '/')
+				cmd = strdup(s);
+			if (strlen(s) < (sizeof(buf) - 6))
+			{
+				s = strcopy(path, s);
+				for (;;)
+				{
+					do if (s <= path) goto normal; while (*--s == '/');
+					do if (s <= path) goto normal; while (*--s != '/');
+					strcpy(s + 1, "bin");
+					if (pathexists(path, PATH_EXECUTE))
+					{
+						if (s = pathaccess(path, p, a, mode, path, size))
+							return path == buf ? strdup(s) : s;
+						goto normal;
+					}
+				}
+			normal: ;
+			}
+		}
+	}
+	x = !a && strchr(p, '/') ? "" : pathbin();
+	if (!(s = pathaccess(x, p, a, mode, path, size)) && !*x && (x = getenv("FPATH")))
+		s = pathaccess(x, p, a, mode, path, size);
+	return (s && path == buf) ? strdup(s) : s;
 }

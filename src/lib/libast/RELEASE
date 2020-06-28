@@ -1,137 +1,7 @@
-16-01-08 features/lib: fixed syntax error in tst for memccpy that caused the system memccpy to never be used
-14-05-12 features/lib: mmap() error return may be ((caaddr_t)0) or ((caaddr_t)-1)
-14-05-09 misc/optget.c: save opt_info state in case infof callout munges it
-14-04-15 misc/spawnvex.c: fix nil pointer deref
-14-04-15 sfio/sfcvt.c: fix flot bug that printed |x|<1 as 0
-14-01-14 tm/strptime.c: add %t
-13-12-06 vmalloc: default to VMALLOC_OPTIONS=check=nosegment; turn on to enable overbooking checks
-13-12-01 port/astconf.c: add pathdev() intercept to pathconf() for fpathconf()
-13-12-01 comp/conf.tab: add PC { ACL SATTR XATTR } ops
-13-12-01 port/intercept.c: fix remove() intercept to handle directories
-13-11-20 sfio/sfcvt.c: drop [L]DBL_DIG limit checks -- what good are they?
-13-11-20 features/libpath.sh: widen net for ubuntu /lib64
-13-11-17 setlocale.c,utf32toutf8.c,utf8toutf32.c: handle nul byte/wchar_t and nil pointer cases (fixes the tr mem bug)
-13-11-14 features/*: fix tests that reference private argv[1] to handle iffe(1) argv[1]==tmp-file-name
-13-11-11 path/pathcanon.c,path/pathopen.c: fix O_XATTR errno logic, handle "/" path O_XATTR
-13-11-01 features/map.c: map-libc: add ast <error.h> symbols
-13-09-27 path/pathcanon.c: fix buffer clobber bug between pathdev() and fgetcwd()
-13-09-27 path/pathopen.c: handle easy O_XATTR case for /dev/fd open() semantics
-13-09-25 include/ast_std.h,comp/setlocale.c: AST_LC_unicode => AST_LC_unicodeliterals, LC_OPTIONS=...unicodeliterals...
-13-09-25 include/ast_std.h,comp/setlocale.c: AST_LC_native LC_OPTIONS=...native... to bypass ast unicode iswalpha/wcwidth tables
-13-09-25 comp/eaccess.c: resolve <ast_map.h> vs <ast_intercept.h> conflict -- _ast_eaccess wins
-13-09-18 include/ast_std.h,ast.h: api>=20130913 add Mbstate_t and { mb*() wc*() } macros with Mbstate_t* last arg
-13-09-18 path/pathcanon.c: handle more flags for /dev/file/flags@...@path and do flag name lookup from table
-13-09-16 include/ast.h: add PATH_EXCEPT_LAST for readlink(1) --canonicalize
-13-09-16 path/pathcanon.c: handle PATH_EXCEPT_LAST
-13-09-12 misc/fgetcwd.c: fix stat corruption bug on systems without fdopendir()
-13-09-12 path/pathcanon.c: fix bug that added extra / when fgetcwd() returned /
-13-09-09 comp/setlocale.c,port/codeset.c: consistent handling of US-ASCII + conformance(0,0) across all os's
-13-09-09 string/utf8towc.c,string/wctoutf8.c: add { utf8toutf32() utf8towc() wctoutf8() }
-13-09-07 include/ast_std.c,comp/setlocale.c,string/stresc.c: add ast.byte_max for single byte locales
-13-09-06 comp/iconv.c: add sfclrerr() to iconv_move() if all input chars not consumed
-13-09-06 port/codeset.h,port/codeset.c: internal api for retrieving locale codeset names
-13-09-04 string/chresc.c,stresc.c: add \w[hex] support -- thanks Roland
-13-09-04 string/utf32stowcs.c,string/wcstoutf32s.c: add -- thanks Roland
-13-09-04 sfio/sfsetbuf.c: fix bug where SF_GETR mode was not cleared causing subsequent memory corruption
-13-09-04 vmalloc/vmopen.c,vmdcsystem.c,vmstat.c: temporarily set vm->meth.meth=0 to disable vmstat() during init
-13-09-04 port/intercept.c: include <ast_standards.h> to ensure fdopendir() prototype if _lib_fdopendir
-13-09-04 include/ast_std.h,comp/setlocale.c: add LC_OPTIONS=unicode and AST_LC_unicode
-13-09-01 path/pathcanon.c: O_* flags dev path: /dev/file/flags@flag[,flag...]@[/]path
-13-09-01 path/pathcanon.c: limit NAMED_XATTR paths to /dev/file/xattr@canonical-path//@//[remainder]
-13-08-29 cdt/dtstrhash.c: change sign-bit hitting fnv constants to hex to silence unsigned warnings
-13-08-26 features/float: fix (FLT|DBL|LDBL)_*_(MIN|MAX) algorithm to not use exact powers of 2!!
-13-08-24 include/fts.h,misc/fts.c: make preparations for FTS.fts_dirfd, fdopendir(), fgetcwd(), openat(), fstatat()
-13-08-23 path/pathcanon.c: add PATH_DROP_LEAD_SLASH2 and PATH_DROP_TAIL_SLASH to unify ast c14n
-13-08-23 features/float: add (FLT|DBL|LDBL)_EPSILON logic
-13-08-22 features/lib,include/ast_std.h,comp/qsort.c,comp/qsort_r.c: add { qsort qsort_r } from Bentley/McIlroy code
-13-08-22 misc/getcwd.c: now a wrapper call to fgetcwd(AT_FDCWD)
-13-08-21 regex/regdecomp.c: fix REG_SHELL decompilation bug
-13-08-21 regex/regcomp.c: fix REG_SHELL ~(A)(...) parse bug that didn't treat second ')' as closing paren
-13-08-20 misc/fgetcwd.c: add, inspired by olga
-13-08-17 path/pathcanon.c: /dev/file/flag[,flag...]:[/]path for relative and absolute paths
-13-08-17 port/intercept.c: move pathdev() intercepts to ast_*at() and make ast_*[!at]() call ast_*at() counterpart
-13-08-15 features/lib,features/dirent,port/intercept.c: add ast_opendir() and fdopendir() tests
-13-08-14 features/atdev: additional support for comp/at.c emulation on frankenstein systems
-13-08-11 features/lib: add `lib fdatasync,fssync,sync' tests
-13-08-11 features/fcntl.c: another round for { O_DIRECTORY O_SEARCH }, stabilize ast extension values
-13-08-11 port/intercept.c: add RATIFY() to check for paths with embeded directory fd refs
-13-08-11 convert strcopy() usage to stpcpy(); strncopy() will not change
-13-08-08 path/pathcanon.c: add PATH_ABSOLUTE to canonicalize relative path to absolute (rooted) path
-13-08-08 comp/resolvepath.c: now a veneer to pathdev+PATH_ABSOLUTE...
-13-08-08 string/stpcpy.c,string/stpncpy.c: add { stpcpy() stpncpy() } emulations
-13-08-08 include/ast.h,path/pathcanon.c: add { /dev/file@flag1,.../path /dev/file@flag1,..././path } to pathdev
-13-08-08 port/intercept.c: handle O_ASYNC anomalies in ast_openat()
-13-08-07 sfio.h,sftmp.c: add SF_TMPFILE notification for sftmp() switch from buf to file
-13-08-07 include/ast.h: add getconf("string") macro using astconf()
-13-08-07 features/fcntl.c: add more macro guards to cover diffs between iffe time and compile time
-13-08-07 features/limits.c: { _POSIX_NAME_MAX _POSIX_PATH_MAX } failsafes for systems (like darwin) that omit them
-13-08-06 tm/tvsleep.c: fix interrupted select() remaining time logic
-13-08-06 path/pathopen.c,pathdev.c: handle /dev/fd/ dir pseudo stat
-13-08-05 vmalloc/malloc.c: add VMALLOC_OPTIONS=usage => VM_usage
-13-08-01 path/pathopen.c: fix /dev/fd/<fd>/trailing-path bug that missed trailing-path
-13-07-31 features/lib: add setregid
-13-07-29 vmalloc/vmdcsystem.c: add EINTR restart checks for system getmemory
-13-07-25 add ast/sys/socket.h => ast_socket.h => ../include/sys/socket.h for intercepts
-13-07-22 pathopen.c: fix PATH_DEV logic to preserve ksh sh_open() semantics
-13-07-19 fix features/fcntl.c to keep track of highest bit in o_local
-13-07-18 incorporate roland mainz' solaris compatibility and hugepage patches
-13-07-18 include/vmalloc.h: restore Vmethod_t callout function order for backwards binary compatibility
-13-07-17 port/intercept.c: ast_openat(fd,0,...) => openat(fd,".",...)
-13-07-16 string/chresc.c: limit \xH \xHH to 2 hex digits (\u and \U handle wide chars now)
-13-06-28 intercept.c: add AST_SERIAL_always, in particular for AST_SERIAL_RESTART
-13-06-25 intercept.c: add syscall intercepts to unify { *at() restart pathopen() }
-13-06-25 pathopen.c: low level physical/logical/special path open using pathdev()
-13-06-24 pathcanon.c: add pathdev() for  { /dev/... /proc/... } parse
-13-06-19 vmbest.c: fix strict-aliasing warnings
-13-06-19 debug.h,debug.c: add debug_printf(fd,fmt,...), debug_vprintf(fd,fmt,ap), debug_snprintf(buf,siz,fmt,ap)
-13-06-18 features/lib: fix lib *64 tests to reference related headers
-13-06-18 malloc.c: add VMALLOC_OPTIONS=debug for debug trace vs verbose trace
-13-06-18 reg[nr]exec.c: fix file size < min boyer-moore match uninitialized data ref
-13-06-17 vmalloc: harden code to handle signal storm -- almost working save one workaround
-13-06-10 sfsetbuf.c: update SFIO_OPTIONS parse to model VMALLOC_OPTIONS
-13-06-10 SFIO_OPTIONS: add _Sfmaxm maxm=size 0:legacy-min-req -1:unlimited otherwise: page rounded limit
-13-06-10 sfrd.c: change map minimal requirement logic to use _Sfmaxm
-13-06-10 sfrd.c: add SFTEST_map_minimal, disabled by default for _ast_sizeof_pointer>=8
-13-06-07 vmalloc: split global initialization into lazy components
-13-06-01 vmalloc: getenv("VMALLOC_OPTIONS") is the only env control
-13-05-31 regex/regnexec.c: fix stkstd iterference by using private env->mst
-13-05-30 vmalloc/vmmaddress.c: fix leaky shmid in _vmpagesize()
-13-05-28 vmalloc/vmdebug.c: add free() delay list to avoid deadlock
-13-05-28 include/ast_errorf.h: split out for low level disc/meth libs
-13-05-24 string/strsort.c: add strsort_r() for Strcmp_context_f
-13-05-22 string/fmtbuf.c: add thread-safe logic
-13-05-21 misc/optget.c: add the D "DATA" section
-13-05-09 { aso cdt vmalloc } kpv sync
-13-05-05 include/ast.h: _AST_PROFILE_NEWOF for debugging newof() vs oldof()
-13-05-01 misc/spawnvex.c: some cc's don't like switch(intmax_t)
-13-04-18 comp/iconv.c: fix some truly rotten code in iconv_move() -- how did it work at all?
-13-04-01 misc/spawnvex.c: fix omitted SPAWN_frame case that caused EINVAL
-13-03-11 sfio/sfflsbuf.c: memcpy() => memmove() ouch
-13-03-11 path/pathfind.c: type=="" => type=0
-13-03-07 features/(dirent|lib|sys): handle opendir64 => DIR64
-13-03-07 vmalloc/vmmopen.c: disable some #include that _PACKAGE_ast already does
-13-02-14 misc/optget.c: -Wall cleanup -- thanks werner
-13-01-03 string/stropt.c: fix off-by-one comparison bug - happy new year
-12-11-15 misc/spawnvex.c: add SPAWN_frame and SPAWN_FRAME
-12-11-10 tm/tmxdate.c: handle yyyymmddThhmmss.nnnnnnnnn[-+]hhmm
-12-10-17 comp/conf.tab: add PC MIN_HOLE_SIZE
-12-10-16 spawnvex.c: spawnvex_open(SPAWN_EXEC) => posix_spawn() exit ENOENT=126 ENOEXEC=127 ok
-12-10-15 hash/hashlib.h,hash/hashscan.c: fix *ancient* hashscan() bug that didn't handle hashsize() during scan
-12-10-12 misc/spawnvex.c,features/sys: spawnvex() finally working for spawn variants
-12-09-27 regex/reglib.h: fix superfluous mask in bit test macros that limited values to 256 bits (now unlimited)
-12-09-26 comp/iconv.c: fix UTF-16 <=> UCS-2 mixup
-12-09-26 string/qp.c: add { qpdecode() qpencode() }
-12-09-24 sfio: use #if _mmap_worthy instead of obsolete #ifdef MAP_TYPE
-12-09-14 tminit.c: for UTC zone with no native name use getenv("TZ")
-12-09-13 tmzone.c,tmxdate.c: handle [ZY][EW]n[ABC]? tz notation
-12-09-11 spawnvex: add generalized spawnveg() replacement
-12-07-31 cdt: sync with kpv
-12-07-31 error.h: add { Error_write_f, void* handle } for sh_exit()
-12-07-30 astsa: update to handle installation that already have { aso cdt sfio vmalloc }
 12-07-25 pathprobe.c: fix read() loop to handle EINTR
 12-06-28 vmalloc/malloc.c: use sbrk() unless VMALLOC_OPTIONS=mmap or asoinit(0,0,0)!=0 (workaround until next malloc update)
 12-06-28 aso/aso.c: asoinit(0,0,0): 0: no specific init, 1: app initialized
-12-06-27 sfio/sfvprintf.c: allow { L* z* } aliases for I* -- POSIX will probably pick one
+12-06-27 sfio/sfvprintf.c: allow { L* z* } aliases for I* -- posix will probably pick one
 12-06-26 regex/regnexec.c: fix uninitialized variable reference
 12-06-26 comp/setlocale.c: utf8_wctomb() now calls (the corrrect) wc2utf8()
 12-06-25 string/chresc.c: accept \u[U+<hex>] and \u{U+<hex>}
@@ -140,7 +10,7 @@
 12-06-18 sfio/_sfopen.c: add 'e' => O_CLOEXEC
 12-06-18 features/fcntl.c: add #define O_CLOEXEC 0 if not defined
 12-06-13 features/float: handle __mips c99 peculiarities
-12-06-13 features/standards: handle __MACH__ POSIX peculiarities
+12-06-13 features/standards: handle __MACH__ posix peculiarities
 12-06-08 sfio/sfclose.c,sfmode.c: sfclose() for sfopopen() stream returns sh-compatible $?
 12-06-08 comp/strtold.c: fix header botch that missed ldexpl() prototype -- ouch
 12-06-06 misc/proclib.h: partially undo <ast_standards.h> for leaked ancient bsd-isms
@@ -273,7 +143,7 @@
 10-08-11 misc/conformance.c: check ast_env_serial for dynamic astconf() changes
 10-08-11 port/lcgen.c: remember to fudge Table_t.count for synthesized entries
 10-08-04 include/ast.h,comp/setlocale.c: add { debug C.UTF-8 } mbalpha() mbwidth()
-10-08-02 misc/translate.c: add NLSPATH message cache check
+10-08-02 misc/translate.c: add NLSPATH message cache check 
 10-07-29 string/fmtint.c: fix nasty bug that rendered "1000" as "1"
 10-07-27 setlocale,lsgen,localeconv: handle C vs C_EU decimal thousands sep
 10-07-26 misc/optget.c: fix interaction with nested plugin/builtin calls
@@ -343,7 +213,7 @@
 10-01-01 ast_std.h: add { AST_LC_internal AST_LC_setenv }
 09-12-24 comp/setlocale.c: fix setlocale(LC_ALL,"") when already initialized
 09-12-17 misc/optget.c: handle mixed solaris usage="x:f:(in)yo:(out)"
-09-12-11 regex/regcomp.c: POSIX semantics for [z-a]
+09-12-11 regex/regcomp.c: posix semantics for [z-a]
 09-12-11 regex/regcomp.c: fix BRE/ERE ^^ logic
 09-12-11 regex/regcomp.c: fix regcomb() for REG_LEFT|REG_RIGHT
 09-12-11 regex/regcomp.c: bm complete=0 if REX_END
@@ -434,7 +304,7 @@
 08-07-21 include/glob.h,misc/glob.c: GLOB_STARSTAR only forces lstat on chdir
 08-07-17 sfio: sync with kpv
 08-07-17 misc/optget.c: call astwinsize() each time terminal width required
-08-07-16 sfio/sfvscanf.c: fix %% to skip leading space per POSIX
+08-07-16 sfio/sfvscanf.c: fix %% to skip leading space per posix
 08-07-16 vmalloc/vmbest.c: add VMCHECK=m, VM_mmap to favor mmap() alloc
 08-07-16 features/stdio,stdio/f(read|write).c: size_t return value!! ouch
 08-06-24 tm/tmxfmt.c: fix %z to handle tm_isdst -- doh
@@ -460,7 +330,7 @@
 08-03-06 misc/optget.c: ---* and +++* are now operands
 08-03-06 misc/errorx.c: fix old error_info.translate workaround
 08-02-05 regex/regcomp.c: allow REG_SHELL {,n}... => {0,n}...
-08-02-27 misc/stk.c: top element during allocation relocated to top
+08-02-27 misc/stk.c: top element during allocation relocated to top 
 08-02-18 include/ip6.h,string/strtoip6.c,fmtip6.c: add ipv6 addr support
 08-02-14 regex/regsubexec.c: fix null match (tricky)
 08-02-14 regex/regsubcomp.c: fix SRE to match ksh
@@ -533,12 +403,12 @@
 07-02-14 include/int.h: drop
 07-02-14 include/sfio.h: add SF_WCWIDTH
 07-02-12 comp/conf.sh: fix CONF_LIMIT bug that missed ULONG_MAX etc.
-07-02-12 comp/conf.tab: *LONGLONG* => *LLONG* to match POSIX
-07-02-12 features/float: *LONGLONG* => *LLONG* to match POSIX
+07-02-12 comp/conf.tab: *LONGLONG* => *LLONG* to match posix
+07-02-12 features/float: *LONGLONG* => *LLONG* to match posix
 07-02-12 port/astconf.c: handle CONF_LIMITS_DEF with no deferral
 07-02-12 stdio/vasprintf.c: add trailing '\0' -- doh
 07-02-04 string/fmtelapsed.c: fix naive multi month/year logic
-07-02-02 misc/optget.c: add --??POSIX for getopts(1)/getopt(3)
+07-02-02 misc/optget.c: add --??posix for getopts(1)/getopt(3)
 07-01-26 string/chresc.c: use mbchar()
 07-01-26 misc/optget.c: handle "o:-:" usage for old-style long options
 07-01-22 sfio/sfdisc.c,sfpool.c: handle push on streams with pending peek
@@ -632,7 +502,7 @@
 06-06-27 features/float,sfio/sfcvt.c: fix Nan logic
 06-06-27 port/astmath.c: fix long double isnan() test
 06-06-27 features/map.c: _map_libc for std => _ast_std
-06-06-25 string/strperm.c: handle POSIX = w.r.t. umask
+06-06-25 string/strperm.c: handle posix = w.r.t. umask
 06-06-19 port/mnt.c,features/fs: handle netbsd getmntent api change
 06-06-18 regex/regstat.c: add REG_LITERAL check
 06-06-11 cdt/dtview.c: update from kpv
@@ -880,9 +750,9 @@
 	 vmalloc/malloc.c: _AST_mem_method==_mem_* to force mem get method
 	 sfio/sfputr.c: __ia64 memccpy is bogus -- how many tries do they get?
 	 path/pathshell.c: verify abs path and access(path,X_OK) -- duh
-	 vmalloc/vmhdr.h: add private _Vmessage() for non-sfio ASSERT()
+	 vmalloc/vmhdr.h: add private _Vmessage() for non-sfio ASSERT() 
 	 port/astconf.c: fix bug that always returned the minmax value
-03-06-11 comp/*.c: reorder macro hding for mvs.390 and <ast_map.h>
+03-06-11 comp/*.c: reorder macro hding for mvs.390 and <ast_map.h> 
 	 features/vmalloc: add _lib_brk and _lib_sbrk verification
 	 include/ast_std.h,etc.: add _map_malloc for malloc => _ast_malloc
 	 comp/conf.sh: fix SI_* and *_SI_* macro redefs
@@ -904,7 +774,7 @@
 03-05-24 misc/optget.c: fix (ancient) argv null dereference
 03-05-23 comp/getcwd.c: don't intercept on _WINIX -- unreliable st_ino
 03-05-22 sfio/sfsprintf.c: n<0 => don't append '\0'
-03-05-18 misc/fts.c: re-stat FTS_DP to update nlink/times
+03-05-18 misc/fts.c: re-stat FTS_DP to update nlink/times 
 	 misc/fts.c: add FTSENT.stack to eliminate getlist() recursion
 	 regex/ucs_names.h: use "..." catenation to placate some cc's
 03-05-11 string/strtoi.h: handle "-" "+" "0x" "11#"
@@ -1559,7 +1429,7 @@
 98-06-19 tokscan: add %f %g
 98-06-01 disc/sf*.c: memset(0) after disc malloc()
 98-05-11 strelapsed: y==Y
-	 fts: pathcanon() top list
+	 fts: pathcanon() top list 
 98-04-01 error: error_info.time for all msgs, just after cmd id
 	 error: no sfsync(sfstdin)
 	 sfio: sfpool, Sffmt_t update
@@ -1669,7 +1539,7 @@
 	 sfio.h,stdio.h,ast_common.h: pollution cleanup
 	 magic.c: add | op for switch
 	 Makefile: stdio.h was on both HEADERSRC and HEADERGEN -- don't do that
-	 drop pp:notice to get <sfio.h> ... <ast.h> to work
+	 drop pp:notice to get <sfio.h> ... <ast.h> to work 
 	 regex: add [[:<:]]==\< and [[:>:]]==\> for bsd compat
 	 mime.c: ignore X-* headers while scanning for Content-*
 	 magic.c: check for negative indirect offsets
@@ -1679,7 +1549,7 @@
 	 magic.c: MAGIFILE is now a : file list
 	 mnt.c: another 4.4 bsd fix -- users must include <sys/crap.h>
 	 common: fix _WIN32 chicken&egg with va_copy
-	 sfio: forgot to set f->val along with _Sfi in sfexcept()
+	 sfio: forgot to set f->val along with _Sfi in sfexcept() 
 	 Makefile: add mini target for uwin libmini.a
 	 sfcvt.c: workaround for flaky long double optimizers
 	 features/common: fix to work with va_list==void*
@@ -1692,7 +1562,7 @@
 	 regerror: fix for xopen
 	 getopt: fix for xopen
 	 magic: add ciao virtual database
-	 astconf: POSIX/strict/xopen implies "standard" conformance
+	 astconf: posix/strict/xopen implies "standard" conformance
 	 fs3d.h: hide mount prototype
 	 ast_std.h,mnt.c,features/fs: ncr port tweaks
 96-10-31 version 5.0
@@ -1824,7 +1694,7 @@
 	 oops object / shared library compat with _sfgetl2 _sfgetu2
 95-09-11 add getopt() compatibility
 	 add fstat,lstat,mknod,stat fixes for _x versions in sys/stat.h
-	 add getconf CONFORMANCE - POSIX for things that aren't ast default
+	 add getconf CONFORMANCE - posix for things that aren't ast default
 	 sfio_t.h: #ifndef _SFIO_H #include "sfio.h" #endif
 	 snarf vmalloc from kpv
 95-08-11 fix malloc bug in magic
@@ -1910,7 +1780,7 @@
 	 , treated like :space: between stropt() options
 	 fix procopen() fd dup to ignore self-dups
 	 add library id[] to misc/state.c
-	 add ftwalk(FTW_METAPHYSICAL) for POSIX -H
+	 add ftwalk(FTW_METAPHYSICAL) for posix -H
 	 sfvprintf() now handles balanced () in %()
 	 add tmfmt() with buffer size check to replace tmform()
 	 add fmttime() calling tmfmt() to fit fmt*() mold
@@ -1919,9 +1789,9 @@
 	 add EXTTYPE extended header to tar.h
 95-02-14 sfmove() buffer size overflow fix
 	 add _SFSTDIO_H to sfio.h
-	 rename setenv() to setenviron() -- POSIX finally decided
+	 rename setenv() to setenviron() -- posix finally decided
 	 rename <option.h> opt_* to opt_info.*
-	 update features/unistd.c for _SC_* and _PC_* POSIX additions
+	 update features/unistd.c for _SC_* and _PC_* posix additions
 95-01-19 (char*)uchar cast in fmtesc()
 	 fix hash bucket memory leak in hashlook() [via John Mocenigo]
 	 update strings/strtape()

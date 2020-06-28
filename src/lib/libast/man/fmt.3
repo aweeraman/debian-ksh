@@ -45,15 +45,17 @@ fmt \- string formatting routines
 #include <ls.h>
 
 char*      fmtbase(long \fInumber\fP, int \fIbase\fP, int \fIprefix\fP);
+char*      fmtdev(struct stat* \fIst\fP);
 char*      fmtelapsed(unsigned long \fIcount\fP, int \fIpersec\fP)
 char*      fmterror(int \fIerrno\fP);
 char*      fmtesc(const char* \fIstring\fP);
 char*      fmtfs(struct stat* \fIst\fP);
 char*      fmtgid(int \fIgid\fP);
 char*      fmtmatch(const char* \fIre\fP);
-char*      fmtmode(int \fImode\fP);
+char*      fmtmode(int \fImode\fP, int \fIexternal\fP);
 char*      fmtperm(int \fIperm\fP);
 char*      fmtre(const char* \fIpattern\fP);
+char*      fmtsignal(int \fIsig\fP);
 char*      fmttime(const char* \fIformat\fP, time_t \fItm\fP);
 char*      fmtuid(int \fIuid\fP);
 .EE
@@ -84,6 +86,14 @@ If
 or
 .I "base == 0"
 then the output is signed base 10.
+.PP
+.L fmtdev
+returns the device handle name specified by the
+.L stat
+structure
+.IR st .
+This is the device information displayed by
+.IR "ls \-l" .
 .PP
 .L fmtelapsed
 formats the elapsed time for
@@ -128,7 +138,9 @@ into C-style
 .B \e
 sequences.
 These sequences are understood by
-.L chresc .
+.L chresc
+and
+.LR chrtoi .
 .PP
 .L fmtfs
 returns the file system type name corresponding to the
@@ -153,6 +165,13 @@ returns the
 .I "ls \-l"
 mode string for the file mode bits in
 .IR mode .
+If
+.I "external != 0"
+then 
+.I mode
+is
+.IR modecanon (3)
+canonical.
 .PP
 .L fmtperm
 returns the
@@ -168,6 +187,17 @@ pattern
 .IR pattern .
 0 is returned for invalid
 .IR pattern .
+.PP
+.L fmtsignal
+returns the signal name, sans
+.LR SIG ,
+for the signal number 
+.IR sig .
+If
+.I "sig < 0"
+then the description text for
+.I \-sig
+is returned.
 .PP
 .L fmttime
 returns the results of

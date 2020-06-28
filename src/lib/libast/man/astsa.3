@@ -106,6 +106,10 @@ otherwise.
 Evaluates to \fIx\fP rounded up to the next power of 2 boundary \fIy\fP.
 .Ss "int ssizeof(\fIx\fP)"
 Equivalent to (int)sizeof(\fIx\fP).
+.Ss "int streq(\fIa\fP,\fIb\fP)"
+Equivalent to (*(\fIa\fP)==*(\fIb\fP)&&strcmp(\fIa\fP,\fIb\fP)==0).
+.Ss "int strneq(\fIa\fP,\fIb\fP,\fIn\fP)"
+Equivalent to (*(\fIa\fP)==*(\fIb\fP)&&strncmp(\fIa\fP,\fIb\fP,\fIn\fP)==0).
 .SH FUNCTIONS
 .Ss "void astwinsize(int \fIfd\fP, int* \fIplines\fP, int* \fIpcolumns\fP)"
 If \fIplines\fP!=0 then *\fIplines\fP is set to the number of lines on the
@@ -125,7 +129,7 @@ Matches the null terminated \fIstring\fP against the null terminated
 .BR ksh (1)
 augmented \fIpattern\fP.
 If \fIsub\fP!=0 then \fIsub\fP[2*\fIi\fP] is set to the start offset and \fIsub\fP[2*\fIi\fP+1] is set
-to the end offset of the \fIi\fP-th parenthesized sub-expression.
+to the end offset of the \fIi\fP-th parenthesized subexpression.
 \fInsub\fP is 1/2 the number of elements in \fIsub\fP.
 \fIflags\fP controls the matching:
 .Tp

@@ -64,10 +64,13 @@ long	pathconf(const char*, int);
 int	perror(const char*);
 FILE*	popen(const char*, const char*);
 int	readlink(const char*, char*, int);
+int	remove(const char*);
+int	rename(const char*, const char*);
 int	rmdir(const char*);
 int	setpgid(pid_t, pid_t);
 int	sigmask(int);
 int	sigsetmask(long);
+int	sigunblock(int);
 char*	strchr(const char*, int);
 char*	strrchr(const char*, int);
 double	strtod(const char*, char**);
@@ -77,6 +80,7 @@ long	sysconf(int);
 int	system(const char*);
 char*	tmpnam(char*);
 int	unlink(const char*);
+int	vfork(void);
 int	waitpid(pid_t, int*, int);
 .EE
 .SH DESCRIPTION

@@ -1,3 +1,0 @@
-This directory is for scripts (more generally, programs) used indirectly when
-building/testing the code (e.g., `meson test`) or by the commands in the `bin`
-directory.

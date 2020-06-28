@@ -1,7 +1,7 @@
 ########################################################################
 #                                                                      #
 #               This software is part of the ast package               #
-#          Copyright (c) 1982-2014 AT&T Intellectual Property          #
+#          Copyright (c) 1982-2012 AT&T Intellectual Property          #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -14,143 +14,138 @@
 #                            AT&T Research                             #
 #                           Florham Park NJ                            #
 #                                                                      #
-#                    David Korn <dgkorn@gmail.com>                     #
+#                  David Korn <dgk@research.att.com>                   #
 #                                                                      #
 ########################################################################
+function err_exit
+{
+	print -u2 -n "\t"
+	print -u2 -r ${Command}[$1]: "${@:2}"
+	let Errors+=1
+}
+alias err_exit='err_exit $LINENO'
 
-f=$TEST_DIR/here1
-g=$TEST_DIR/here2
+Command=${0##*/}
+integer Errors=0
+
+tmp=$(mktemp -dt) || { err_exit mktemp -dt failed; exit 1; }
+trap "cd /; rm -rf $tmp" EXIT
+
+f=$tmp/here1
+g=$tmp/here2
 cat > $f <<!
 hello world
 !
-if [[ $(<$f) != 'hello world' ]]
-then
-    log_error "'hello world' here doc not working"
+if	[[ $(<$f) != 'hello world' ]]
+then	err_exit "'hello world' here doc not working"
 fi
-
 cat > $g <<\!
 hello world
 !
-cmp $f $g 2> /dev/null || log_error "'hello world' quoted here doc not working"
+cmp $f $g 2> /dev/null || err_exit "'hello world' quoted here doc not working"
 cat > $g <<- !
 	hello world
 !
-cmp $f $g 2> /dev/null || log_error "'hello world' tabbed here doc not working"
+cmp $f $g 2> /dev/null || err_exit "'hello world' tabbed here doc not working"
 cat > $g <<- \!
 	hello world
 !
-cmp $f $g 2> /dev/null || log_error "'hello world' quoted tabbed here doc not working"
+cmp $f $g 2> /dev/null || err_exit "'hello world' quoted tabbed here doc not working"
 x=hello
 cat > $g <<!
 $x world
 !
-cmp $f $g 2> /dev/null || log_error "'$x world' here doc not working"
+cmp $f $g 2> /dev/null || err_exit "'$x world' here doc not working"
 cat > $g <<!
 $(print hello) world
 !
-cmp $f $g 2> /dev/null || log_error "'$(print hello) world' here doc not working"
+cmp $f $g 2> /dev/null || err_exit "'$(print hello) world' here doc not working"
 cat > $f <<\!!
 !@#$%%^^&*()_+~"::~;'`<>?/.,{}[]
 !!
-if [[ $(<$f) != '!@#$%%^^&*()_+~"::~;'\''`<>?/.,{}[]' ]]
-then
-    log_error "'hello world' here doc not working"
+if	[[ $(<$f) != '!@#$%%^^&*()_+~"::~;'\''`<>?/.,{}[]' ]]
+then	err_exit "'hello world' here doc not working"
 fi
-
 cat > $g <<!!
 !@#\$%%^^&*()_+~"::~;'\`<>?/.,{}[]
 !!
-cmp $f $g 2> /dev/null || log_error "unquoted here doc not working"
+cmp $f $g 2> /dev/null || err_exit "unquoted here doc not working"
 exec 3<<!
-    foo
+	foo
 !
-if [[ $(<&3) != '    foo' ]]
-then
-    log_error "leading tabs stripped with <<!"
+if	[[ $(<&3) != '	foo' ]]
+then	err_exit "leading tabs stripped with <<!"
 fi
-
 $SHELL -c "
-eval `echo 'cat <<x'` "|| log_error "eval `echo 'cat <<x'` core dumps"
+eval `echo 'cat <<x'` "|| err_exit "eval `echo 'cat <<x'` core dumps"
 cat > /dev/null <<EOF # comments should not cause core dumps
 abc
 EOF
 cat >$g << :
 :
 :
-cmp /dev/null $g 2> /dev/null || log_error "empty here doc not working"
+cmp /dev/null $g 2> /dev/null || err_exit "empty here doc not working"
 x=$(print $( cat <<HUP
 hello
 HUP
 )
 )
-if [[ $x != hello ]]
-then
-    log_error "here doc inside command sub not working"
+if	[[ $x != hello ]]
+then	err_exit "here doc inside command sub not working"
 fi
-
 y=$(cat <<!
 ${x:+${x}}
 !
 )
-if [[ $y != "${x:+${x}}" ]]
-then
-    log_error '${x:+${x}} not working in here document'
+if	[[ $y != "${x:+${x}}" ]]
+then	err_exit '${x:+${x}} not working in here document'
 fi
-
 $SHELL -c '
 x=0
 while (( x < 100 ))
-do
-    ((x = x+1))
-    cat << EOF
+do	((x = x+1))
+	cat << EOF
 EOF
 done
-' 2> /dev/null  || log_error '100 empty here docs fails'
+' 2> /dev/null  || err_exit '100 empty here docs fails'
 {
-    print 'builtin -d cat
-    cat <<- EOF'
+	print 'builtin -d cat
+	cat <<- EOF'
 	for ((i=0; i < 100; i++))
-	do
-		print XXXXXXXXXXXXXXXXXXXX
+	do print XXXXXXXXXXXXXXXXXXXX
 	done
 	print ' XXX$(date)XXXX
 	EOF'
 } > $f
 chmod +x "$f"
-$SHELL "$f" > /dev/null  || log_error "large here-doc with command substitution fails"
+$SHELL "$f" > /dev/null  || err_exit "large here-doc with command substitution fails"
 x=$(/bin/cat <<!
 $0
 !
 )
-[[ "$x" == "$0" ]] || log_error '$0 not correct inside here documents'
+[[ "$x" == "$0" ]] || err_exit '$0 not correct inside here documents'
 $SHELL -c 'x=$(
 cat << EOF
-EOF)' 2> /dev/null || log_error 'here-doc cannot be terminated by )'
-if [[ $( IFS=:;cat <<-!
-		$IFS$(print hi)$IFS
-	!) != :hi: ]]
-then
-    log_error '$IFS unset by command substitution in here docs'
+EOF)' 2> /dev/null || err_exit 'here-doc cannot be terminated by )'
+if	[[ $( IFS=:;cat <<-!
+			$IFS$(print hi)$IFS
+		!) != :hi: ]]
+then	err_exit '$IFS unset by command substitution in here docs'
 fi
-
-if x=$($SHELL -c 'cat <<< "hello world"' 2> /dev/null)
-then
-    [[ $x == 'hello world' ]] || log_error '<<< documents not working'
-    x=$($SHELL -c 'v="hello  world";cat <<< $v' 2> /dev/null)
-    [[ $x == 'hello  world' ]] || log_error '<<< documents with $x not working'
-    x=$($SHELL -c 'v="hello  world";cat <<< "$v"' 2> /dev/null)
-    [[ $x == 'hello  world' ]] || log_error '<<< documents with $x not working'
-else    log_error '<<< syntax not supported'
+if	x=$($SHELL -c 'cat <<< "hello world"' 2> /dev/null)
+then	[[ $x == 'hello world' ]] || err_exit '<<< documents not working'
+	x=$($SHELL -c 'v="hello  world";cat <<< $v' 2> /dev/null)
+	[[ $x == 'hello  world' ]] || err_exit '<<< documents with $x not working'
+	x=$($SHELL -c 'v="hello  world";cat <<< "$v"' 2> /dev/null)
+	[[ $x == 'hello  world' ]] || err_exit '<<< documents with $x not working'
+else	err_exit '<<< syntax not supported'
 fi
-
-if [[ $(cat << EOF #testing
+if	[[ $(cat << EOF #testing
 #abc
 abc
 EOF) != $'#abc\nabc' ]]
-then
-    log_error 'comments not preserved in here-documents'
+then	err_exit 'comments not preserved in here-documents'
 fi
-
 cat  > "$f" <<- '!!!!'
 	builtin cat
 	: << EOF
@@ -178,11 +173,9 @@ cat  > "$f" <<- '!!!!'
 	EOF
 !!!!
 chmod 755 "$f"
-if [[ $($SHELL  "$f") != abc ]]
-then
-    log_error    'here document descritor was closed'
+if	[[ $($SHELL  "$f") != abc ]]
+then	err_exit	'here document descritor was closed'
 fi
-
 cat  > "$f" <<- '!!!!'
 	exec 0<&-
 	foobar()
@@ -213,15 +206,13 @@ cat  > "$f" <<- '!!!!'
 	EOF
 	print -r -- "$(foobar)"
 !!!!
-if [[ $($SHELL  "$f") != foobar ]]
-then
-    log_error    'here document with stdin closed failed'
+if	[[ $($SHELL  "$f") != foobar ]]
+then	err_exit	'here document with stdin closed failed'
 fi
-
 printf $'cat   <<# \\!!!\n\thello\n\t\tworld\n!!!' > $f
-[[ $($SHELL "$f") == $'hello\n\tworld' ]] || log_error "<<# not working for quoted here documents"
+[[ $($SHELL "$f") == $'hello\n\tworld' ]] || err_exit "<<# not working for quoted here documents"
 printf $'w=world;cat   <<# !!!\n\thello\n\t\t$w\n!!!' > $f
-[[ $($SHELL "$f") == $'hello\n\tworld' ]] || log_error "<<# not working for non-quoted here documents"
+[[ $($SHELL "$f") == $'hello\n\tworld' ]] || err_exit "<<# not working for non-quoted here documents"
 [[ $( $SHELL  <<- \++++
 	S=( typeset a )
 	function S.a.get
@@ -230,19 +221,18 @@ printf $'w=world;cat   <<# !!!\n\thello\n\t\t$w\n!!!' > $f
 	}
 	__a=1234
 	cat <<-EOF
-		${S.a}
+	${S.a}
 	EOF
 ++++
-) == 1234 ]]  2> /dev/null || log_error 'here document with get discipline failed'
+) == 1234 ]]  2> /dev/null || err_exit 'here document with get discipline failed'
 [[ $($SHELL -c 'g(){ print ok;}; cat <<- EOF
 	${ g;}
 	EOF
-    ' 2> /dev/null) == ok ]] || log_error '${ command;} not working in heredoc'
+	' 2> /dev/null) == ok ]] || err_exit '${ command;} not working in heredoc'
 script=$f
 {
 for ((i=0; i < 406; i++))
-do
-    print ': 23456789012345678'
+do	print ': 23456789012345678'
 done
 print : 123456789123
 cat <<- \EOF
@@ -254,30 +244,29 @@ eval "$(
 EOF
 } > $script
 chmod +x $script
-[[ $($SHELL $script) == hello ]] 2> /dev/null || log_error 'heredoc embeded in command substitution fails at buffer boundary'
+[[ $($SHELL $script) == hello ]] 2> /dev/null || err_exit 'heredoc embeded in command substitution fails at buffer boundary'
 
 got=$( cat << EOF
 \
 abc
 EOF)
-[[ $got == abc ]] || log_error 'line continuation at start of buffer not working'
+[[ $got == abc ]] || err_exit 'line continuation at start of buffer not working'
 
-tmpfile1=$TEST_DIR/file1
-tmpfile2=$TEST_DIR/file2
+tmpfile1=$tmp/file1
+tmpfile2=$tmp/file2
 function gendata
 {
-    typeset -RZ3 i
-    for ((i=0; i < 500; i++))
-    do
-        print -r -- "=====================This is line $i============="
-    done
+	typeset -RZ3 i
+	for ((i=0; i < 500; i++))
+	do	print -r -- "=====================This is line $i============="
+	done
 }
 
 cat > $tmpfile1 <<- +++
 	function foobar
 	{
 		cat << XXX
-	    	$(gendata)
+		$(gendata)
 		XXX
 	}
 	cat > $tmpfile2 <<- EOF
@@ -288,24 +277,24 @@ EOF
 chmod +x $tmpfile1
 $SHELL $tmpfile1
 set -- $(wc < $tmpfile2)
-(( $1 == 1000 )) || log_error "heredoc $1 lines, should be 1000 lines"
-(( $2 == 4000 )) || log_error "heredoc $2 words, should be 4000 words"
+(( $1 == 1000 )) || err_exit "heredoc $1 lines, should be 1000 lines"
+(( $2 == 4000 )) || err_exit "heredoc $2 words, should be 4000 words"
 
 # comment with here document looses line number count
 integer line=$((LINENO+5))
 function tst
 {
-    [[ $1 == $2 ]] || echo expected $1, got $2
+	[[ $1 == $2 ]] || echo expected $1, got $2
 }
 tst $line $LINENO <<"!" # this comment affects LINENO #
 1
 !
-(( (line+=3) == LINENO )) ||  log_error "line number=$LINENO should be $line"
+(( (line+=3) == LINENO )) ||  err_exit "line number=$LINENO should be $line"
 
-[[ $($SHELL -c 'wc -c <<< ""' 2> /dev/null) == *1 ]] || log_error '<<< with empty string not working'
+[[ $($SHELL -c 'wc -c <<< ""' 2> /dev/null) == *1 ]] || err_exit '<<< with empty string not working'
 
-mkdir $TEST_DIR/functions
-cat > $TEST_DIR/functions/t2 <<\!!!
+mkdir $tmp/functions
+cat > $tmp/functions/t2 <<\!!!
 function t2
 {
 cat <<EOF | sed 's/1234567890/qwertyuiopasdfghj/'
@@ -314,7 +303,7 @@ EOF
 }
 !!!
 
-FPATH=$TEST_DIR/functions
+FPATH=$tmp/functions
 foo=${
 cat <<EOF
 1 34567890 $(t2 1234567890 ) 0123456789012345678901234567890123
@@ -489,7 +478,7 @@ cat <<EOF
 
 EOF
 }
-[[ ${#foo} == 10238 ]] || log_error 'large here docs containing command subs of dynamically loaded functions fails'
+[[ ${#foo} == 10238 ]] || err_exit 'large here docs containing command subs of dynamically loaded functions fails'
 
 {
      print $'FOO=1\nBAR=foobarbaz'
@@ -502,36 +491,10 @@ EOF
      print EOF
 } > $f
 $SHELL $f > $g
-[[ $(grep meep $g | grep -v foobar) != '' ]] && log_error 'here-doc loosing $var expansions on boundaries in rare cases'
+[[ $(grep meep $g | grep -v foobar) != '' ]] && err_exit 'here-doc loosing $var expansions on boundaries in rare cases'
 
-expect=here-foo
-print $expect > here-foo.dat
-actual=$( $SHELL 'read <<< $(<here-foo.dat) 2> /dev/null; print -r "$REPLY"' )
-[[ $actual == $expect ]] || log_error '<<< $(<file) not working' "$expect" "$actual"
+print foo > $tmp/foofile
+x=$( $SHELL 2> /dev/null 'read <<< $(<'"$tmp"'/foofile) 2> /dev/null;print -r "$REPLY"')
+[[ $x == foo ]] || err_exit '<<< $(<file) not working'
 
-$SHELL 2> /dev/null -c 'true <<- ++EOF++ || true "$(true)"
-++EOF++' || log_error 'command substitution on heredoc line causes syntax error'
-
-(
-    function foobar
-    {
-        $bin_cat <<- XXX
-		hello
-	XXX
-    }
-    $bin_cat > $f <<- EOF
-		$(foobar)
-		world
-	EOF
-) > $f > /dev/null
-[[ $(<$f) == $'hello\nworld' ]] || log_error 'nested here-document fails'
-
-exp='foo bar baz bork blah blarg'
-got=$(cat <<<"foo bar baz" 3<&0 <<<"$(</dev/fd/3) bork blah blarg")
-[[ $got == "$exp" ]] || '3<%0 not working when 0 is <<< here-doc'
-
-x=$($SHELL -c 'test=`$SHELL  2>&1 << EOF
-print $?
-EOF`
-print $test')
-[[ $x == 0 ]] || log_error  '`` command substitution containing here-doc not working'
+exit $((Errors<125?Errors:125))

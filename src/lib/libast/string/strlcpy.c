@@ -1,57 +1,71 @@
 /***********************************************************************
- *                                                                      *
- *               This software is part of the ast package               *
- *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
- *                      and is licensed under the                       *
- *                 Eclipse Public License, Version 1.0                  *
- *                    by AT&T Intellectual Property                     *
- *                                                                      *
- *                A copy of the License is available at                 *
- *          http://www.eclipse.org/org/documents/epl-v10.html           *
- *         (with md5 checksum b35adb5213ca9657e911e9befb180842)         *
- *                                                                      *
- *              Information and Software Systems Research               *
- *                            AT&T Research                             *
- *                           Florham Park NJ                            *
- *                                                                      *
- *               Glenn Fowler <glenn.s.fowler@gmail.com>                *
- *                    David Korn <dgkorn@gmail.com>                     *
- *                     Phong Vo <phongvo@gmail.com>                     *
- *                                                                      *
- ***********************************************************************/
-//
-// strlcpy() fallback implementation
-//
-#include "config_ast.h"  // IWYU pragma: keep
+*                                                                      *
+*               This software is part of the ast package               *
+*          Copyright (c) 1985-2011 AT&T Intellectual Property          *
+*                      and is licensed under the                       *
+*                 Eclipse Public License, Version 1.0                  *
+*                    by AT&T Intellectual Property                     *
+*                                                                      *
+*                A copy of the License is available at                 *
+*          http://www.eclipse.org/org/documents/epl-v10.html           *
+*         (with md5 checksum b35adb5213ca9657e911e9befb180842)         *
+*                                                                      *
+*              Information and Software Systems Research               *
+*                            AT&T Research                             *
+*                           Florham Park NJ                            *
+*                                                                      *
+*                 Glenn Fowler <gsf@research.att.com>                  *
+*                  David Korn <dgk@research.att.com>                   *
+*                   Phong Vo <kpv@research.att.com>                    *
+*                                                                      *
+***********************************************************************/
+#pragma prototyped
+/*
+ * strlcpy implementation
+ */
 
-#if _lib_strlcat
+#define strlcpy		______strlcpy
 
-// This is to silence the linker about modules that have no content.
-int AST_strlcpy = 0;
+#include <ast.h>
 
-#else  // _lib_strlcat
+#undef	strlcpy
 
-#include <sys/types.h>
+#undef	_def_map_ast
+#include <ast_map.h>
 
-size_t strlcpy(char *s, const char *t, size_t n) {
-    const char *o = t;
+#if _lib_strlcpy
 
-    if (n) {
-        do {
-            if (!--n) {
-                *s = 0;
-                break;
-            }
-        } while ((*s++ = *t++));
-    }
+NoN(strlcpy)
 
-    if (!n) {
-        while (*t++) {
-            ;  // empty loop
-        }
-    }
+#else
 
-    return t - o - 1;
+/*
+ * copy at most n chars from t into s
+ * result 0 terminated if n>0
+ * strlen(t) returned
+ */
+
+#if defined(__EXPORT__)
+#define extern	__EXPORT__
+#endif
+
+extern size_t
+strlcpy(register char* s, register const char* t, register size_t n)
+{
+	const char*	o = t;
+
+	if (n)
+		do
+		{
+			if (!--n)
+			{
+				*s = 0;
+				break;
+			}
+		} while (*s++ = *t++);
+	if (!n)
+		while (*t++);
+	return t - o - 1;
 }
 
-#endif  // _lib_strlcat
+#endif

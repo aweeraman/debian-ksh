@@ -42,7 +42,9 @@ swap \- integral representation conversion routines
 .SH SYNOPSIS
 .L "#include <swap.h>"
 .sp
+.L "int swapop(const void* internal, const void* external, int width);
 .L "int_max swapget(int op, const void* from, int width);"
+.L "void* swapput(int op, void* to, int width, int_max value);"
 .L "void* swapmem(int op, const void* from, void* to, size_t n);"
 .SH DESCRIPTION
 These routines convert integral constants between internal and
@@ -55,6 +57,17 @@ routines
 .L sfputu
 and
 .LR sgetu .
+.PP
+.L swapop
+returns the swap operation required to convert the
+.L width 
+byte integer
+.L external
+to the
+.L width
+byte integer
+.LR internal .
+The swap operation is a bit mask:
 .TP
 .L 0
 No swapping necessary.
@@ -87,5 +100,39 @@ in the header
 .L <int.h>
 described in
 .IR int (3).
+.PP
+.L swapget 
+returns the
+.L width
+byte integer in the buffer
+.LR from ,
+swapped according to
+.LR op .
+.PP
+.L swapput 
+copies the
+.L width
+byte integer
+.L value
+into the buffer
+.LR to ,
+swapped according to
+.LR op .
+.L to
+is returned.
+.PP
+.L swapmem
+swaps 
+.L n
+bytes from the buffer
+.L from
+to the buffer
+.L to
+according to 
+.LR op .
+.L to
+and 
+.L from
+may be the same.
 .SH "SEE ALSO"
 int(3)

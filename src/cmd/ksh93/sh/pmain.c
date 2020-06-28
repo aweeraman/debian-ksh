@@ -1,40 +1,46 @@
 /***********************************************************************
- *                                                                      *
- *               This software is part of the ast package               *
- *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
- *                      and is licensed under the                       *
- *                 Eclipse Public License, Version 1.0                  *
- *                    by AT&T Intellectual Property                     *
- *                                                                      *
- *                A copy of the License is available at                 *
- *          http://www.eclipse.org/org/documents/epl-v10.html           *
- *         (with md5 checksum b35adb5213ca9657e911e9befb180842)         *
- *                                                                      *
- *              Information and Software Systems Research               *
- *                            AT&T Research                             *
- *                           Florham Park NJ                            *
- *                                                                      *
- *                    David Korn <dgkorn@gmail.com>                     *
- *                                                                      *
- ***********************************************************************/
-#include "config_ast.h"  // IWYU pragma: keep
+*                                                                      *
+*               This software is part of the ast package               *
+*          Copyright (c) 1982-2011 AT&T Intellectual Property          *
+*                      and is licensed under the                       *
+*                 Eclipse Public License, Version 1.0                  *
+*                    by AT&T Intellectual Property                     *
+*                                                                      *
+*                A copy of the License is available at                 *
+*          http://www.eclipse.org/org/documents/epl-v10.html           *
+*         (with md5 checksum b35adb5213ca9657e911e9befb180842)         *
+*                                                                      *
+*              Information and Software Systems Research               *
+*                            AT&T Research                             *
+*                           Florham Park NJ                            *
+*                                                                      *
+*                  David Korn <dgk@research.att.com>                   *
+*                                                                      *
+***********************************************************************/
+#pragma prototyped
 
-#include <errno.h>
-#include <fcntl.h>
-#include <stddef.h>
+#include	<shell.h>
 
-extern int sh_main(int, char **, void *);
+#include	"FEATURE/externs"
 
-int main(int argc, char *argv[]) {
-    // Ensure stdin, stdout, stderr are open. See https://github.com/att/ast/issues/1117.
-    for (int fd = 0; fd < 3; ++fd) {
-        errno = 0;
-        if (fcntl(fd, F_GETFD, NULL) == -1 || errno == EBADF) {
-            // We don't bother to check the fd returned because there isn't anything we can do if
-            // it unexpectedly fails. And that should be a "can't happen" situation.
-            (void)open("/dev/null", O_RDWR);
-        }
-    }
+#if defined(__sun) && _sys_mman && _lib_memcntl && defined(MHA_MAPSIZE_STACK) && defined(MC_HAT_ADVISE)
+#   undef	VM_FLAGS	/* solaris vs vmalloc.h symbol clash */
+#   include	<sys/mman.h>
+#else
+#   undef	_lib_memcntl
+#endif
 
-    return sh_main(argc, argv, NULL);
+typedef int (*Shnote_f)(int, long, int);
+
+int main(int argc, char *argv[])
+{
+#if _lib_memcntl
+	/* advise larger stack size */
+	struct memcntl_mha mha;
+	mha.mha_cmd = MHA_MAPSIZE_STACK;
+	mha.mha_flags = 0;
+	mha.mha_pagesize = 64 * 1024;
+	(void)memcntl(NULL, 0, MC_HAT_ADVISE, (caddr_t)&mha, 0, 0);
+#endif
+	return(sh_main(argc, argv, (Shinit_f)0));
 }
