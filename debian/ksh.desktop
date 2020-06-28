@@ -8,4 +8,3 @@ Exec=ksh93
 Categories=ConsoleOnly;System;
 GenericName=Korn Shell (ksh93)
 Keywords=system;shell;ksh;scripts
-OnlyShowIn=GNOME;KDE;LXDE;MATE;XFCE;Cinnamon;Unity

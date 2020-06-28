@@ -1,3 +1,18 @@
+ksh (2020.0.0+really93u+20120801-6) unstable; urgency=high
+
+  Since the last update, the maintenance of ksh2020 has halted upstream
+  with the AT&T upstream repo rolled back to the previous stable
+  version of ksh93. At this point, due to the fact that there is no
+  ongoing updates to ksh2020, the "ksh" package will be reverted to the
+  pre-ksh2020 state with this update to ensure a stable version of ksh
+  will be available in time for bullseye.
+
+  With this update, the ksh93 package will be made redundant, and will
+  be removed in due course to allow this package to be used for any
+  further updates and fixes to the ksh93 lineage.
+
+ -- Anuradha Weeraman <anuradha@debian.org>  Sat, 27 Jun 2020 21:17:32 -0400
+
 ksh93 (93u+20120801-5) unstable; urgency=high
 
   Korn Shell: an overview over how it is packaged

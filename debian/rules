@@ -1,6 +1,6 @@
 #!/usr/bin/make -f
 
-PACKAGE = ksh93
+PACKAGE = ksh
 
 # Variables just for get-orig-source
 SRC_VERSION := 93u+20120628
@@ -42,13 +42,15 @@ override_dh_auto_build:
 	bin/package make strip=0
 
 override_dh_auto_install:
-	$(INSTALL_PROGRAM) arch/$(ARCH)/bin/ksh debian/ksh93/bin/ksh93
-	$(INSTALL_PROGRAM) arch/$(ARCH)/bin/shcomp debian/ksh93/usr/bin/shcomp93
-	$(INSTALL_FILE) arch/$(ARCH)/man/man1/sh.1 debian/ksh93/usr/share/man/man1/ksh93.1
-	$(INSTALL_FILE) debian/shcomp.1 debian/ksh93/usr/share/man/man1/shcomp93.1
-	$(INSTALL_FILE) -D debian/binfmt_spec debian/ksh93/usr/share/ksh/ksh93.binfmt
-	$(INSTALL_FILE) -D src/cmd/ksh93/PROMO.mm debian/ksh93/usr/share/doc/ksh93/PROMO
-	$(INSTALL_FILE) -D src/cmd/ksh93/builtins.mm debian/ksh93/usr/share/doc/ksh93/builtins
+	$(INSTALL_PROGRAM) arch/$(ARCH)/bin/ksh debian/ksh/bin/ksh93
+	$(INSTALL_PROGRAM) arch/$(ARCH)/bin/shcomp debian/ksh/usr/bin/shcomp93
+	$(INSTALL_FILE) arch/$(ARCH)/man/man1/sh.1 debian/ksh/usr/share/man/man1/ksh93.1
+	$(INSTALL_FILE) arch/$(ARCH)/fun/* debian/ksh/usr/share/ksh/functions
+	$(INSTALL_FILE) debian/shcomp.1 debian/ksh/usr/share/man/man1/shcomp93.1
+	$(INSTALL_FILE) -D debian/binfmt_spec debian/ksh/usr/share/ksh/ksh93.binfmt
+	$(INSTALL_FILE) -D debian/example.kshrc debian/ksh/etc/skel/.kshrc
+	$(INSTALL_FILE) -D src/cmd/ksh93/PROMO.mm debian/ksh/usr/share/doc/ksh/PROMO
+	$(INSTALL_FILE) -D src/cmd/ksh93/builtins.mm debian/ksh/usr/share/doc/ksh/builtins
 
 override_dh_installchangelogs:
 	dh_installchangelogs src/cmd/ksh93/RELEASE

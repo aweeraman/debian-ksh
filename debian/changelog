@@ -1,9 +1,13 @@
-ksh93 (93u+20120801-8) unstable; urgency=medium
+ksh (2020.0.0+really93u+20120801-6) unstable; urgency=high
 
-  * Dependency on ksh-common for shared files with src:ksh (Closes: #950762)
-  * Fixed issues in .desktop file
+  * v2020 of ksh is no longer being maintained and upstream repository has
+    been reverted back to the last stable version of 93u+. This update
+    reverts back the ksh2020 changes back to the original ksh93 from AT&T.
+  * Patch for CVE-2019-14868 - certain environment variables were
+    interpreted as arithmetic expressions on startup, leading to code
+    injection
 
- -- Anuradha Weeraman <aweeraman@gmail.com>  Sun, 16 Feb 2020 23:56:49 -0500
+ -- Anuradha Weeraman <anuradha@debian.org>  Sat, 27 Jun 2020 21:17:32 -0400
 
 ksh93 (93u+20120801-7) unstable; urgency=medium
 

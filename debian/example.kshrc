@@ -1,7 +1,3 @@
-# This file contains examples of some of the things you may want to
-# include in a user startup file. Note: it is shared between ksh93
-# and ksh2020 (in the ksh Debian package) so keep them in sync!
-
 # skip this setup for non-interactive shells
 [[ -o interactive && -t 0 ]] || return
 

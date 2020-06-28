@@ -11,3 +11,4 @@ bug915326.patch
 spelling-2.patch
 blhc.diff
 implicit-decls.patch
+cve-2019-14868.patch

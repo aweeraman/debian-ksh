@@ -1,0 +1,2 @@
+# needed for update-alternatives
+ksh: package-contains-empty-directory usr/share/binfmts/
