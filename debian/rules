@@ -29,19 +29,20 @@ export HOME
 
 override_dh_auto_install:
 	dh_auto_install
-
-	install -D debian/example.kshrc $(CURDIR)/debian/tmp/etc/skel/.kshrc
-	install -d $(CURDIR)/debian/tmp/usr/share/ksh-common/functions
-	install -D src/cmd/ksh93/fun/* $(CURDIR)/debian/tmp/usr/share/ksh-common/functions/
+	# Rename /usr/bin/ksh93 to /usr/bin/ksh2020 to co-exist with ksh93
+	# as well as make use of the alternative system
+	mv $(CURDIR)/debian/ksh/usr/bin/ksh $(CURDIR)/debian/ksh/usr/bin/ksh2020
+	mv $(CURDIR)/debian/ksh/usr/bin/shcomp $(CURDIR)/debian/ksh/usr/bin/shcomp2020
+	# Also rename the man pages
+	mv $(CURDIR)/debian/ksh/usr/share/man/man1/ksh.1 \
+	        $(CURDIR)/debian/ksh/usr/share/man/man1/ksh2020.1
 
 override_dh_installchangelogs:
 	# ChangeLog till 93v is provided in src/cmd/ksh93/RELEASE
 	dh_installchangelogs -k CHANGELOG.md
 
 override_dh_missing:
-	# dh_missing identifies files that have been renamed by dh_install as missing.
-	# This appears to be a false positive.
-	dh_missing --list-missing
+	dh_missing --fail-missing
 
 override_dh_auto_test:
 ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))

@@ -1,3 +1,0 @@
-#! /usr/bin/dh-exec
-etc/skel/.kshrc
-usr/share/ksh-common/functions

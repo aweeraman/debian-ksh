@@ -18,7 +18,7 @@ export GZIP=-9
 set -o emacs -o trackall -o globstar
 
 # specify search path for autoloadable functions
-FPATH=/usr/share/ksh-common/functions:~/.func
+FPATH=/usr/share/ksh/functions:~/.func
 
 # avoid certain file types in completion
 FIGNORE='@(*.o|~*)'
