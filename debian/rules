@@ -45,8 +45,10 @@ override_dh_auto_install:
 	$(INSTALL_PROGRAM) arch/$(ARCH)/bin/ksh debian/ksh93/bin/ksh93
 	$(INSTALL_PROGRAM) arch/$(ARCH)/bin/shcomp debian/ksh93/usr/bin/shcomp93
 	$(INSTALL_FILE) arch/$(ARCH)/man/man1/sh.1 debian/ksh93/usr/share/man/man1/ksh93.1
+	$(INSTALL_FILE) arch/$(ARCH)/fun/* debian/ksh93/usr/share/ksh/functions
 	$(INSTALL_FILE) debian/shcomp.1 debian/ksh93/usr/share/man/man1/shcomp93.1
 	$(INSTALL_FILE) -D debian/binfmt_spec debian/ksh93/usr/share/ksh/ksh93.binfmt
+	$(INSTALL_FILE) -D debian/example.kshrc debian/ksh93/etc/skel/.kshrc
 	$(INSTALL_FILE) -D src/cmd/ksh93/PROMO.mm debian/ksh93/usr/share/doc/ksh93/PROMO
 	$(INSTALL_FILE) -D src/cmd/ksh93/builtins.mm debian/ksh93/usr/share/doc/ksh93/builtins
 

@@ -12,7 +12,8 @@ Vcs-Browser: https://salsa.debian.org/debian/ksh/tree/ksh93
 Package: ksh93
 Architecture: any
 Breaks: ksh (<< 2020.0.0-5~)
-Depends: ${shlibs:Depends}, ${misc:Depends}, binfmt-support, ksh-common
+Replaces: ksh
+Depends: ${shlibs:Depends}, ${misc:Depends}, binfmt-support
 Description: Real, AT&T version of the Korn shell
  Ksh is a UNIX command interpreter (shell) that is intended for both
  interactive and shell script use. Its command language is a superset of
