@@ -1,3 +1,9 @@
+ksh (2020.0.0+really93u+20120801-7) UNRELEASED; urgency=medium
+
+  * Updated Vcs-* fields in debian/control
+
+ -- Anuradha Weeraman <anuradha@debian.org>  Mon, 29 Jun 2020 19:47:14 -0400
+
 ksh (2020.0.0+really93u+20120801-6) unstable; urgency=high
 
   * v2020 of ksh is no longer being maintained and upstream repository has
