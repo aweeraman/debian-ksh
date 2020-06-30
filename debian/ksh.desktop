@@ -3,6 +3,7 @@ Version=1.0
 Name=AT&T Korn Shell (ksh93)
 Type=Application
 Comment=Korn Shell
+Icon=utilities-terminal
 Terminal=true
 Exec=ksh93
 Categories=ConsoleOnly;System;
