@@ -1,13 +1,5 @@
 #!/usr/bin/make -f
 
-PACKAGE = ksh
-
-# Variables just for get-orig-source
-SRC_VERSION := 93u+20120628
-DL_VERSION = 2012-06-28
-SRC_DIR = $(PACKAGE)-$(SRC_VERSION)
-TARBALL = $(SRC_DIR).tar.gz
-
 ARCH = $(shell bin/package)
 INSTALL = install
 INSTALL_FILE    = $(INSTALL) -p    -o root -g root  -m  644
