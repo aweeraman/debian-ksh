@@ -7,3 +7,4 @@ bug755486.patch
 ed.patch
 0008-Bug-887743-Fix-build-failures-caused-by-update-in-gl.patch
 bug915326.patch
+cve-2019-14868.patch

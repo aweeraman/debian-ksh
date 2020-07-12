@@ -1,3 +1,15 @@
+ksh (93u+20120801-3.4+deb10u1) buster; urgency=high
+
+  * Fix for CVE-2019-14868: in ksh version 20120801, a flaw was found
+    in the way it evaluates certain environment variables. An attacker
+    could use this flaw to override or bypass environment restrictions
+    to execute shell commands. Services and applications that allow
+    remote unauthenticated attackers to provide one of those
+    environment variables could allow them to exploit this issue
+    remotely. (Closes: #948989)
+
+ -- Anuradha Weeraman <anuradha@debian.org>  Sun, 12 Jul 2020 11:26:07 -0400
+
 ksh (93u+20120801-3.4) unstable; urgency=medium
 
   [ Boyuan Yang ]
