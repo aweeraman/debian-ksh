@@ -1,11 +1,12 @@
 [Desktop Entry]
 Version=1.0
-Name=AT&T Korn Shell (ksh93)
+Name=AT&T Korn Shell
 Type=Application
 Comment=Korn Shell
 Icon=utilities-terminal
 Terminal=true
 Exec=ksh93
 Categories=ConsoleOnly;System;
-GenericName=Korn Shell (ksh93)
+GenericName=Korn Shell
 Keywords=system;shell;ksh;scripts
+X-AppStream-Ignore=true

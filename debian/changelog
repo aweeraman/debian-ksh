@@ -1,6 +1,8 @@
-ksh (2020.0.0+really93u+20120801-8) UNRELEASED; urgency=medium
+ksh (2020.0.0+really93u+20120801-8) unstable; urgency=medium
 
   * Fix for segfault when a .paths directory exists in the PATH
+  * Bug-fix on input buffer boundary of multibyte characters (Closes: #767935)
+  * Added X-AppStream-Ignore=true to ksh.desktop
 
  -- Anuradha Weeraman <anuradha@debian.org>  Sun, 12 Jul 2020 10:09:44 -0400
 

@@ -9,6 +9,7 @@ Files: debian/*
 Copyright:
  2005-2013, Oliver Kiddle, <okiddle@yahoo.co.uk>
  2015, Nicholas Bamber <nicholas@periapt.co.uk>
+ 2020, Anuradha Weeraman <anuradha@debian.org>
 License: BSD-3-clause
 
 Files: src/lib/libsum/sum-sha2.c
