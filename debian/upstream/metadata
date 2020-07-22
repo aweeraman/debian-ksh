@@ -2,8 +2,8 @@
   "Name": "Korn Shell",
   "Documentation": "http://www.kornshell.com/doc/",
   "Archive": "GitHub",
-  "Bug-Database": "https://github.com/att/ast/issues",
-  "Bug-Submit": "https://github.com/att/ast/issues/new",
-  "Repository": "https://github.com/att/ast.git",
-  "Repository-Browse": "https://github.com/att/ast"
+  "Bug-Database": "https://github.com/ksh93/ksh/issues",
+  "Bug-Submit": "https://github.com/ksh93/ksh/issues/new",
+  "Repository": "https://github.com/ksh93/ksh",
+  "Repository-Browse": "https://github.com/ksh93/ksh"
 }
