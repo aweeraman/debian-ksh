@@ -1,5 +1,5 @@
 Description: Fixes for -Wimplicit-function-declaration warnings
-Forwarded: no
+Forwarded: yes
 Author: Anuradha Weeraman <aweeraman@gmail.com>
 Reviewed-By: Thorsten Glaser <t.glaser@tarent.de>
 Last-Update: 2020-02-09

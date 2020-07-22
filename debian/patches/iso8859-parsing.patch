@@ -3,6 +3,7 @@ Author: Paulo Andrade <pandrade@redhat.com>
 Date: Sat, 20 May 2017 19:52:52 +0200
 Bug-Redhat: https://bugzilla.redhat.com/show_bug.cgi?id=1417886
 Origin: https://github.com/att/ast/commit/4fa2020b
+Forwarded: not-needed
 
 --- a/src/cmd/ksh93/sh/fcin.c
 +++ b/src/cmd/ksh93/sh/fcin.c
