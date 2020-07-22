@@ -1,6 +1,5 @@
 debian/ksh.desktop usr/share/applications/
 debian/binfmt_spec usr/share/ksh/ksh93.binfmt
 debian/example.kshrc etc/skel/.kshrc
-debian/shcomp.1 usr/share/man/man1/shcomp93.1
 src/cmd/ksh93/PROMO.mm usr/share/doc/ksh/PROMO
 src/cmd/ksh93/builtins.mm usr/share/doc/ksh/builtins
