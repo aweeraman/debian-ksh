@@ -4,7 +4,7 @@ Description: Enable compiling with gcc5
  a preprocessor constant to get around a name collision. 
 Author: Antti Järvinen <antti.jarvinen@katiska.org>
 Bug-Debian: https://bugs.debian.org/777930
-Forwarded: no
+Forwarded: not-needed
 Reviewed-By: Nicholas Bamber <nicholas@periapt.co.uk>
 Last-Update: 2015-10-15
 

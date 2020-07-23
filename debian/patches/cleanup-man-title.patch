@@ -6,7 +6,7 @@ Description: List only supported names for ksh
 Author: Oliver Kiddle <okiddle@yahoo.co.uk>
 Reviewed-by: Nicholas Bamber <nicholas@periapt.co.uk>
 Bug-Debian: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=463022
-Forwarded: no
+Forwarded: not-needed
 Last-Update: 2020-01-24
 
 --- a/src/cmd/ksh93/sh.1

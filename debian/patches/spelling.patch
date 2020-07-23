@@ -1,7 +1,7 @@
 Description: Spelling mistake correction
  To keep lintian -I happy
 Author: Nicholas Bamber <nicholas@periapt.co.uk>
-Forwarded: no
+Forwarded: not-needed
 Last-Update: 2015-10-29
 
 --- a/src/cmd/ksh93/data/builtins.c

@@ -1,6 +1,6 @@
 Description: Fix typos and lintian warnings
 Author: Anuradha Weeraman <aweeraman@gmail.com>
-Forwarded: no
+Forwarded: not-needed
 Last-Update: 2020-01-18
 
 --- a/src/cmd/ksh93/RELEASE93
