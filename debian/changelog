@@ -1,9 +1,10 @@
-ksh (2020.0.0+really93u+20120801-9) UNRELEASED; urgency=medium
+ksh (2020.0.0+really93u+20120801-9) unstable; urgency=medium
 
   * Fix race conditions running external commands with job control on
     (Closes: #965072)
   * Updated UMEGAYA
-  * Set Rules-Requires-Root to no
+  * Support for rootless building
+  * Cleanups for debian/rules to make more use of debhelper
 
  -- Anuradha Weeraman <anuradha@debian.org>  Wed, 22 Jul 2020 15:16:41 -0400
 
