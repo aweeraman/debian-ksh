@@ -6,3 +6,4 @@ src/cmd/ksh93/RELEASE93
 src/cmd/ksh93/TYPES
 src/cmd/ksh93/PROMO.mm
 src/cmd/ksh93/builtins.mm
+src/cmd/ksh93/sh.memo
