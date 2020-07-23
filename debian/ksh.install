@@ -1,5 +1,4 @@
+#!/usr/bin/dh-exec
 debian/ksh.desktop usr/share/applications/
-debian/binfmt_spec usr/share/ksh/ksh93.binfmt
-debian/example.kshrc etc/skel/.kshrc
-src/cmd/ksh93/PROMO.mm usr/share/doc/ksh/PROMO
-src/cmd/ksh93/builtins.mm usr/share/doc/ksh/builtins
+debian/binfmt_spec => usr/share/ksh/ksh93.binfmt
+debian/example.kshrc => etc/skel/.kshrc
