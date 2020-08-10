@@ -6,6 +6,7 @@ ksh (2020.0.0+really93u+20120801-9) unstable; urgency=medium
   * Support for rootless building
   * Cleanups for debian/rules to make more use of debhelper
   * Included additional documentation file
+  * Fix to skip '.' and '..' when globbing patterns like .*
 
  -- Anuradha Weeraman <anuradha@debian.org>  Wed, 22 Jul 2020 15:16:41 -0400
 
