@@ -14,5 +14,4 @@ implicit-decls.patch
 cve-2019-14868.patch
 paths-dir-segfault.patch
 iso8859-parsing.patch
-exec-format-error.patch
 glob-fignore-fix.patch

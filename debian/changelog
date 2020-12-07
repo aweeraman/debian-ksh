@@ -1,7 +1,5 @@
 ksh (2020.0.0+really93u+20120801-9) unstable; urgency=medium
 
-  * Fix race conditions running external commands with job control on
-    (Closes: #965072)
   * Updated UMEGAYA
   * Support for rootless building
   * Cleanups for debian/rules to make more use of debhelper
