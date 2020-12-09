@@ -5,8 +5,9 @@ ksh (2020.0.0+really93u+20120801-9) unstable; urgency=medium
   * Cleanups for debian/rules to make more use of debhelper
   * Included additional documentation file
   * Fix to skip '.' and '..' when globbing patterns like .*
+  * Bumped up standards version
 
- -- Anuradha Weeraman <anuradha@debian.org>  Wed, 22 Jul 2020 15:16:41 -0400
+ -- Anuradha Weeraman <anuradha@debian.org>  Tue, 8 Dec 2020 19:27:41 -0400
 
 ksh (2020.0.0+really93u+20120801-8) unstable; urgency=medium
 
