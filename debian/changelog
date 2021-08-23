@@ -1,5 +1,6 @@
 ksh (2020.0.0+really93u+20120801-10) unstable; urgency=medium
 
+  * Bumped up Standards Version to 4.6.0
   * Use $TMPDIR in bin/package
 
  -- Anuradha Weeraman <anuradha@debian.org>  Sun, 22 Aug 2021 20:18:55 +0530
