@@ -1,0 +1,41 @@
+Description: Fix crash due to broken optimiation in job locking
+Origin: https://github.com/ksh93/ksh/commit/88e8fa67c69a67972a6c2d1a4c8c54f343f80b23.patch
+Bug-Debian: https://bugs.debian.org/972411
+Forwarded: not-needed
+Last-Update: 2021-08-29
+
+--- a/src/cmd/ksh93/sh/jobs.c
++++ b/src/cmd/ksh93/sh/jobs.c
+@@ -638,12 +638,14 @@ void job_init(Shell_t *shp, int lflag)
+ 		/* This should have already been done by rlogin */
+                 register int fd;
+                 register char *ttynam;
++		int err = errno;
+ #ifndef SIGTSTP
+                 setpgid(0,shp->gd->pid);
+ #endif /*SIGTSTP */
+                 if(job.mypgid<0 || !(ttynam=ttyname(JOBTTY)))
+                         return;
+-                close(JOBTTY);
++		while(close(JOBTTY)<0 && errno==EINTR)
++			errno = err;
+                 if((fd = open(ttynam,O_RDWR)) <0)
+                         return;
+                 if(fd!=JOBTTY)
+@@ -1111,7 +1113,7 @@ static struct process *job_bystring(register char *ajob)
+ 
+ int job_kill(register struct process *pw,register int sig)
+ {
+-	Shell_t	*shp = pw->p_shp;
++	Shell_t	*shp;
+ 	register pid_t pid;
+ 	register int r;
+ 	const char *msg;
+@@ -1124,6 +1126,7 @@ int job_kill(register struct process *pw,register int sig)
+ 	errno = ECHILD;
+ 	if(pw==0)
+ 		goto error;
++	shp = pw->p_shp;
+ 	pid = pw->p_pid;
+ #if SHOPT_COSHELL
+ 	if(pw->p_cojob)

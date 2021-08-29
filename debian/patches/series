@@ -16,3 +16,4 @@ paths-dir-segfault.patch
 iso8859-parsing.patch
 glob-fignore-fix.patch
 tmp-dir.patch
+job_locking_crash.patch
