@@ -35,8 +35,5 @@ override_dh_installchangelogs:
 
 clean:
 	dh_testdir
-	dh_clean
-	for i in ignore silent package mamprobe ; do \
-		sed -i -e '/^#.\{70\}#/ d'  bin/$$i ; \
-	done
+	dh_clean -d
 	rm -rf arch bin/*.old
