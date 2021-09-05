@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -48,11 +49,14 @@ const char e_timeout[]		= "timed out waiting for input";
 const char e_mailmsg[]		= "you have mail in $_";
 const char e_query[]		= "no query process";
 const char e_history[]		= "no history file";
-const char e_histopen[]		= "history file cannot open";
+const char e_histopen[]		= "cannot open history file";
 const char e_option[]		= "%s: bad option(s)";
+const char e_optincompat1[]	= "%s cannot be used with other options";
+const char e_optincompat2[]	= "%s cannot be used with %s";
 const char e_toomany[]		= "open file limit exceeded";
 const char e_argtype[]		= "invalid argument of type %c";
 const char e_oneoperand[]	= "one operand expected";
+const char e_toomanyops[]	= "too many operands";
 const char e_formspec[]		= "%c: unknown format specifier";
 const char e_badregexp[]	= "%s: invalid regular expression";
 const char e_number[]		= "%s: bad number";
@@ -64,7 +68,9 @@ const char e_subst[]		= "%s: bad substitution";
 const char e_create[]		= "%s: cannot create";
 const char e_tmpcreate[]	= "cannot create temporary file";
 const char e_restricted[]	= "%s: restricted";
+#if SHOPT_PFSH
 const char e_pfsh[]		= "%s: disabled in profile shell";
+#endif
 const char e_pexists[]		= "process already exists";
 const char e_exists[]		= "%s: file already exists";
 const char e_pipe[]		= "cannot create pipe";
@@ -78,6 +84,9 @@ const char e_logout[]		= "Use 'exit' to terminate this shell";
 const char e_exec[]		= "%s: cannot execute";
 const char e_pwd[]		= "cannot access parent directories";
 const char e_found[]		= "%s: not found";
+#ifdef ENAMETOOLONG
+const char e_toolong[]		= "%s: file name too long";
+#endif
 const char e_defined[]		= "%s: function not defined";
 const char e_nointerp[]		= "%s: interpreter not found";
 const char e_subscript[]	= "%s: subscript out of range";
@@ -130,17 +139,15 @@ const char e_overlimit[]	= "%s: limit exceeded";
 const char e_badsyntax[]	= "incorrect syntax";
 const char e_badwrite[]		= "write to %d failed";
 const char e_staticfun[]	= "%s: defined as a static function in type %s and cannot be redefined";
-const char e_on	[]		= "on";
-const char e_off[]		= "off";
 const char is_reserved[]	= " is a keyword";
 const char is_builtin[]		= " is a shell builtin";
 const char is_spcbuiltin[]	= " is a special shell builtin";
 const char is_builtver[]	= "is a shell builtin version of";
 const char is_alias[]		= "%s is an alias for ";
-const char is_xalias[]		= "%s is an exported alias for ";
 const char is_talias[]		= "is a tracked alias for";
 const char is_function[]	= " is a function";
 const char is_ufunction[]	= " is an undefined function";
+const char e_autoloadfrom[]	= " (autoload from %s)";
 #ifdef JOBS
 #   ifdef SIGTSTP
 	const char e_newtty[]	= "Switching to new tty driver...";
@@ -157,30 +164,19 @@ const char is_ufunction[]	= " is an undefined function";
     const char e_no_job[]	= "no such job";
     const char e_no_proc[]	= "no such process";
     const char e_badpid[]	= "%s: invalid process id";
-#   if SHOPT_COSHELL
-        const char e_jobusage[]	= "%s: Arguments must be %%job, process ids, or job pool names";
-#   else
-        const char e_jobusage[]	= "%s: Arguments must be %%job or process ids";
-#   endif /* SHOPT_COSHELL */
+    const char e_jobusage[]	= "%s: Arguments must be %%job or process ids";
 #endif /* JOBS */
 const char e_coredump[]		= "(coredump)";
 const char e_alphanum[]		= "[_[:alpha:]]*([_[:alnum:]])";
 const char e_devfdNN[]		= "/dev/fd/+([0-9])";
 const char e_devfdstd[]		= "/dev/@(fd/+([0-9])|std@(in|out|err))";
 const char e_signo[]		= "Signal %d";
-#if SHOPT_FS_3D
-    const char e_cantget[]	= "cannot get %s";
-    const char e_cantset[]	= "cannot set %s";
-    const char e_mapping[]	= "mapping";
-    const char e_versions[]	= "versions";
-#endif /* SHOPT_FS_3D */
 
 /* string constants */
 const char e_heading[]		= "Current option settings";
 const char e_sptbnl[]		= " \t\n";
 const char e_tolower[]		= "tolower";
 const char e_toupper[]		= "toupper";
-const char e_defpath[]		= "/bin:/usr/bin:";
 const char e_defedit[]		= _pth_ed;
 const char e_unknown []		= "<command unknown>";
 const char e_devnull[]		= "/dev/null";
@@ -188,25 +184,24 @@ const char e_traceprompt[]	= "+ ";
 const char e_supprompt[]	= "# ";
 const char e_stdprompt[]	= "$ ";
 const char e_profile[]		= "$HOME/.profile";
+#ifdef BUILD_DTKSH
+const char e_sysprofile[] = PROFILEPATH;
+const char e_suidprofile[] = SUIDPROFILEPATH;
+#else
 const char e_sysprofile[]	= "/etc/profile";
 const char e_suidprofile[]	= "/etc/suid_profile";
+#endif
 #if SHOPT_SYSRC
 const char e_sysrc[]		= "/etc/ksh.kshrc";
 #endif
-#if SHOPT_BASH
-#if SHOPT_SYSRC
-const char e_bash_sysrc[]	= "/etc/bash.bashrc";
-#endif
-const char e_bash_rc[]		= "$HOME/.bashrc";
-const char e_bash_login[]	= "$HOME/.bash_login";
-const char e_bash_logout[]	= "$HOME/.bash_logout";
-const char e_bash_profile[]	= "$HOME/.bash_profile";
-#endif
-const char e_crondir[]		= "/usr/spool/cron/atjobs";
 const char e_prohibited[]	= "login setuid/setgid shells prohibited";
+#ifdef BUILD_DTKSH
+   const char e_suidexec[]      = SUIDEXECPATH;
+#else
 #if SHOPT_SUID_EXEC
    const char e_suidexec[]	= "/etc/suid_exec";
 #endif /* SHOPT_SUID_EXEC */
+#endif
 const char hist_fname[]		= "/.sh_history";
 const char e_dot[]		= ".";
 const char e_envmarker[]	= "A__z";

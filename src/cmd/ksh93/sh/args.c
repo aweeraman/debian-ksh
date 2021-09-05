@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -29,28 +30,16 @@
 
 #include	"defs.h"
 #include	"path.h"
+#include	"jobs.h"
 #include	"builtins.h"
 #include	"terminal.h"
 #include	"edit.h"
 #include	"FEATURE/poll"
 #if SHOPT_KIA
 #   include	"shlex.h"
+#endif
+#if SHOPT_KIA || SHOPT_DEVFD
 #   include	"io.h"
-#endif /* SHOPT_KIA */
-#if SHOPT_PFSH
-#   define PFSHOPT	"P"
-#else
-#   define PFSHOPT
-#endif
-#if SHOPT_BASH
-#   define BASHOPT	"\374"
-#else
-#   define BASHOPT
-#endif
-#if SHOPT_HISTEXPAND
-#   define HFLAG        "H"
-#else
-#   define HFLAG        ""
 #endif
 
 #define SORT		1
@@ -59,20 +48,32 @@
 static	char		*null;
 
 /* The following order is determined by sh_optset */
-static  const char optksh[] =  PFSHOPT BASHOPT "DircabefhkmnpstuvxBCGEl" HFLAG;
+static  const char optksh[] =
+#if SHOPT_PFSH
+	"P"
+#endif
+	"Dircabefhkmnpstuvx"
+#if SHOPT_BRACEPAT
+	"B"
+#endif
+	"CGEl"
+#if SHOPT_HISTEXPAND
+	"H"
+#endif
+	;
 static const int flagval[]  =
 {
 #if SHOPT_PFSH
 	SH_PFSH,
 #endif
-#if SHOPT_BASH
-	SH_POSIX,
-#endif
 	SH_DICTIONARY, SH_INTERACTIVE, SH_RESTRICTED, SH_CFLAG,
 	SH_ALLEXPORT, SH_NOTIFY, SH_ERREXIT, SH_NOGLOB, SH_TRACKALL,
 	SH_KEYWORD, SH_MONITOR, SH_NOEXEC, SH_PRIVILEGED, SH_SFLAG, SH_TFLAG,
-	SH_NOUNSET, SH_VERBOSE,  SH_XTRACE, SH_BRACEEXPAND, SH_NOCLOBBER,
-	SH_GLOBSTARS, SH_RC, SH_LOGIN_SHELL,
+	SH_NOUNSET, SH_VERBOSE,  SH_XTRACE,
+#if SHOPT_BRACEPAT
+	SH_BRACEEXPAND,
+#endif
+	SH_NOCLOBBER, SH_GLOBSTARS, SH_RC, SH_LOGIN_SHELL,
 #if SHOPT_HISTEXPAND
         SH_HISTEXPAND,
 #endif
@@ -100,7 +101,7 @@ static void 		sh_argset(Arg_t*, char *[]);
 
 void *sh_argopen(Shell_t *shp)
 {
-	void *addr = newof(0,Arg_t,1,0);
+	void *addr = sh_newof(0,Arg_t,1,0);
 	Arg_t *ap = (Arg_t*)addr;
 	ap->sh = shp;
 	return(addr);
@@ -108,22 +109,6 @@ void *sh_argopen(Shell_t *shp)
 
 static int infof(Opt_t* op, Sfio_t* sp, const char* s, Optdisc_t* dp)
 {
-#if SHOPT_BASH
-	extern const char sh_bash1[], sh_bash2[];
-	if(strcmp(s,"bash1")==0) 
-	{
-		if(sh_isoption(SH_BASH))
-			sfputr(sp,sh_bash1,-1);
-	}
-	else if(strcmp(s,"bash2")==0)
-	{
-		if(sh_isoption(SH_BASH))
-			sfputr(sp,sh_bash2,-1);
-	}
-	else if(*s==':' && sh_isoption(SH_BASH))
-		sfputr(sp,s,-1);
-	else
-#endif
 	if(*s!=':')
 		sfputr(sp,sh_set,-1);
 	return(1);
@@ -140,9 +125,11 @@ int sh_argopts(int argc,register char *argv[], void *context)
 	Shell_t		*shp = (Shell_t*)context;
 	register int	n,o;
 	register Arg_t	*ap = (Arg_t*)(shp->arg_context);
+#if SHOPT_KIA
 	Lex_t		*lp = (Lex_t*)(shp->lex_context);
+#endif
 	Shopt_t		newflags;
-	int setflag=0, action=0, trace=(int)sh_isoption(SH_XTRACE);
+	int		defaultflag=0, setflag=0, action=0, trace=(int)sh_isoption(SH_XTRACE);
 	Namval_t *np = NIL(Namval_t*);
 	const char *cp;
 	int verbose,f;
@@ -168,75 +155,38 @@ int sh_argopts(int argc,register char *argv[], void *context)
 			if(f)
 				nv_unset(np);
 			continue;
-#if SHOPT_BASH
-		    case 'O':	/* shopt options, only in bash mode */
-			if(!sh_isoption(SH_BASH))
-				errormsg(SH_DICT,ERROR_exit(1), e_option, opt_info.name);
-#endif
 		    case 'o':	/* set options */
 		    byname:
 			if(!opt_info.arg||!*opt_info.arg||*opt_info.arg=='-')
 			{
 				action = PRINT;
-				/* print style: -O => shopt options
-				 * bash => print unset options also, no heading
-				 */
 				verbose = (f?PRINT_VERBOSE:PRINT_NO_HEADER)|
-					  (n=='O'?PRINT_SHOPT:0)|
-					  (sh_isoption(SH_BASH)?PRINT_ALL|PRINT_NO_HEADER:0)|
 					  ((opt_info.arg&&(!*opt_info.arg||*opt_info.arg=='-'))?(PRINT_TABLE|PRINT_NO_HEADER):0);
 				continue;
 			}
 			o = sh_lookopt(opt_info.arg,&f);
-			if(o<=0
-				|| (!sh_isoption(SH_BASH) && (o&SH_BASHEXTRA))
-				|| ((!sh_isoption(SH_BASH) || n=='o') && (o&SH_BASHOPT))
-
-				|| (setflag && (o&SH_COMMANDLINE)))
+			if(o<=0 || (setflag && (o&SH_COMMANDLINE)))
 			{
 				errormsg(SH_DICT,2, e_option, opt_info.arg);
 				error_info.errors++;
 			}
 			o &= 0xff;
 			if(sh_isoption(SH_RESTRICTED) && !f && o==SH_RESTRICTED)
-				errormsg(SH_DICT,ERROR_exit(1), e_restricted, opt_info.arg);
-			break;
-#if SHOPT_BASH
-		    case -1:	/* --rcfile */
-			ap->sh->gd->rcfile = opt_info.arg;
-			continue;
-		    case -2:	/* --noediting */
-			if (!f)
 			{
-				off_option(&newflags,SH_VI);
-				off_option(&newflags,SH_EMACS);
-				off_option(&newflags,SH_GMACS);
+				errormsg(SH_DICT,ERROR_exit(1), e_restricted, opt_info.arg);
+				UNREACHABLE();
 			}
-			continue;
-		    case -3:	/* --profile */
-			n = 'l';
-			goto skip;
-		    case -4:	/* --posix */
-			/* mask lower 8 bits to find char in optksh string */
-			n&=0xff;
-			goto skip;
-		    case -5:	/* --version */
-			sfputr(sfstdout, "ksh bash emulation, version ",-1);
-			np = nv_open("BASH_VERSION",ap->sh->var_tree,0);
-			sfputr(sfstdout, nv_getval(np),-1);
-			np = nv_open("MACHTYPE",ap->sh->var_tree,0);
-			sfprintf(sfstdout, " (%s)\n", nv_getval(np));
-			sh_exit(0);
-#endif
+			break;
 		    case -6:	/* --default */
 			{
 				register const Shtable_t *tp;
 				for(tp=shtab_options; o = tp->sh_number; tp++)
-					if(!(o&SH_COMMANDLINE) && is_option(&newflags,o&0xff))
-						off_option(&newflags,o&0xff);
+					if(!(o&SH_COMMANDLINE) && (o&=0xff)!=SH_RESTRICTED && is_option(&newflags,o))
+						off_option(&newflags,o);
 			}
+			defaultflag++;
 		    	continue;
-	 	    case -7:
+		    case -7:	/* --state */
 			f = 0;
 		    	goto byname;
 	 	    case 'D':
@@ -264,18 +214,19 @@ int sh_argopts(int argc,register char *argv[], void *context)
 				ap->kiafile = opt_info.arg;
 				n = 'n';
 			}
-			/*FALLTHROUGH*/
 #endif /* SHOPT_KIA */
 #if SHOPT_REGRESS
 			goto skip;
 		    case 'I':
 			continue;
 #endif /* SHOPT_REGRESS */
+			/* FALLTHROUGH */
 		    skip:
 		    default:
 			if(cp=strchr(optksh,n))
 				o = flagval[cp-optksh];
 			break;
+		    case -5:	/* --posix must be handled explicitly to stop AST optget(3) overriding it */
 		    case ':':
 			if(opt_info.name[0]=='-'&&opt_info.name[1]=='-')
 			{
@@ -291,17 +242,44 @@ int sh_argopts(int argc,register char *argv[], void *context)
 		}
 		if(f)
 		{
+#if SHOPT_ESH && SHOPT_VSH
 			if(o==SH_VI || o==SH_EMACS || o==SH_GMACS)
 			{
 				off_option(&newflags,SH_VI);
 				off_option(&newflags,SH_EMACS);
 				off_option(&newflags,SH_GMACS);
 			}
+#elif SHOPT_ESH
+			if(o==SH_EMACS || o==SH_GMACS)
+			{
+				off_option(&newflags,SH_EMACS);
+				off_option(&newflags,SH_GMACS);
+			}
+#endif /* SHOPT_ESH && SHOPT_VSH */
+			if(o==SH_POSIX && !defaultflag)
+			{
+#if SHOPT_BRACEPAT
+				off_option(&newflags,SH_BRACEEXPAND);
+#endif
+				on_option(&newflags,SH_LETOCTAL);
+			}
 			on_option(&newflags,o);
 			off_option(&ap->sh->offoptions,o);
 		}
 		else
 		{
+			if ((o == SH_RESTRICTED) && sh_isoption(SH_RESTRICTED))
+			{
+				errormsg(SH_DICT,ERROR_exit(1),e_restricted,"r"); /* set -r cannot be unset */
+				UNREACHABLE();
+			}
+			if(o==SH_POSIX && !defaultflag)
+			{
+#if SHOPT_BRACEPAT
+				on_option(&newflags,SH_BRACEEXPAND);
+#endif
+				off_option(&newflags,SH_LETOCTAL);
+			}
 			if(o==SH_XTRACE)
 				trace = 0;
 			off_option(&newflags,o);
@@ -310,7 +288,10 @@ int sh_argopts(int argc,register char *argv[], void *context)
 		}
 	}
 	if(error_info.errors)
+	{
 		errormsg(SH_DICT,ERROR_usage(2),"%s",optusage(NIL(char*)));
+		UNREACHABLE();
+	}
 	/* check for '-' or '+' argument */
 	if((cp=argv[opt_info.index]) && cp[1]==0 && (*cp=='+' || *cp=='-') &&
 		strcmp(argv[opt_info.index-1],"--"))
@@ -349,26 +330,34 @@ int sh_argopts(int argc,register char *argv[], void *context)
 		{
 			errormsg(SH_DICT,2,e_cneedsarg);
 			errormsg(SH_DICT,ERROR_usage(2),optusage(NIL(char*)));
+			UNREACHABLE();
 		}
 		argc--;
 	}
-	/* handling SH_INTERACTIVE and SH_PRIVILEGED has been moved to
-	 * sh_applyopts(), so that the code can be reused from b_shopt(), too
-	 */
+	/* SH_INTERACTIVE and SH_PRIVILEGED are handled in sh_applyopts() */
 	sh_applyopts(ap->sh,newflags);
 #if SHOPT_KIA
 	if(ap->kiafile)
 	{
 		if(!argv[0])
+		{
 			errormsg(SH_DICT,ERROR_usage(2),"-R requires scriptname");
+			UNREACHABLE();
+		}
 		if(!(lp->kiafile=sfopen(NIL(Sfio_t*),ap->kiafile,"w+")))
+		{
 			errormsg(SH_DICT,ERROR_system(3),e_create,ap->kiafile);
+			UNREACHABLE();
+		}
 		if(!(lp->kiatmp=sftmp(2*SF_BUFSIZE)))
+		{
 			errormsg(SH_DICT,ERROR_system(3),e_tmpcreate);
+			UNREACHABLE();
+		}
 		sfputr(lp->kiafile,";vdb;CIAO/ksh",'\n');
 		lp->kiabegin = sftell(lp->kiafile);
 		lp->entity_tree = dtopen(&_Nvdisc,Dtbag);
-		lp->scriptname = strdup(sh_fmtq(argv[0]));
+		lp->scriptname = sh_strdup(sh_fmtq(argv[0]));
 		lp->script=kiaentity(lp,lp->scriptname,-1,'p',-1,0,0,'s',0,"");
 		lp->fscript=kiaentity(lp,lp->scriptname,-1,'f',-1,0,0,'s',0,"");
 		lp->unknown=kiaentity(lp,"<unknown>",-1,'p',-1,0,0,'0',0,"");
@@ -406,35 +395,11 @@ void sh_applyopts(Shell_t* shp,Shopt_t newflags)
 			(shp->gd->userid==shp->gd->euserid && shp->gd->groupid==shp->gd->egroupid))
 				off_option(&newflags,SH_PRIVILEGED);
 	}
-#if SHOPT_BASH
-	on_option(&newflags,SH_CMDHIST);
-	on_option(&newflags,SH_CHECKHASH);
-	on_option(&newflags,SH_EXECFAIL);
-	on_option(&newflags,SH_EXPAND_ALIASES);
-	on_option(&newflags,SH_HISTAPPEND);
-	on_option(&newflags,SH_INTERACTIVE_COMM);
-	on_option(&newflags,SH_LITHIST);
-	on_option(&newflags,SH_NOEMPTYCMDCOMPL);
-
-	if(!is_option(&newflags,SH_XPG_ECHO) && sh_isoption(SH_XPG_ECHO))
-		astconf("UNIVERSE", 0, "ucb");
-	if(is_option(&newflags,SH_XPG_ECHO) && !sh_isoption(SH_XPG_ECHO))
-		astconf("UNIVERSE", 0, "att");
-	if(!is_option(&newflags,SH_PHYSICAL) && sh_isoption(SH_PHYSICAL))
-		astconf("PATH_RESOLVE", 0, "metaphysical");
-	if(is_option(&newflags,SH_PHYSICAL) && !sh_isoption(SH_PHYSICAL))
-		astconf("PATH_RESOLVE", 0, "physical");
-	if(is_option(&newflags,SH_HISTORY2) && !sh_isoption(SH_HISTORY2))
-	{
-		sh_onstate(SH_HISTORY);
-                sh_onoption(SH_HISTORY);
-	}
-	if(!is_option(&newflags,SH_HISTORY2) && sh_isoption(SH_HISTORY2))
-	{
-		sh_offstate(SH_HISTORY);
-		sh_offoption(SH_HISTORY);
-	}
-#endif
+	/* sync monitor (part of job control) state with -o monitor option change */
+	if(!sh_isoption(SH_MONITOR) && is_option(&newflags,SH_MONITOR))
+		sh_onstate(SH_MONITOR);
+	else if(sh_isoption(SH_MONITOR) && !is_option(&newflags,SH_MONITOR))
+		sh_offstate(SH_MONITOR);
 	shp->options = newflags;
 }
 
@@ -514,7 +479,7 @@ struct dolnod *sh_argfree(Shell_t *shp, struct dolnod *blk,int flag)
 
 /*
  * grab space for arglist and copy args
- * The strings are copied after the argment vector
+ * The strings are copied after the argument vector
  */
 struct dolnod *sh_argcreate(register char *argv[])
 {
@@ -641,26 +606,14 @@ void sh_printopts(Shopt_t oflags,register int mode, Shopt_t *mask)
 			sfputc(sfstdout,'\n');
 		return;
 	}
-#if SHOPT_RAWONLY
+#if SHOPT_VSH && SHOPT_RAWONLY
 	on_option(&oflags,SH_VIRAW);
 #endif
 	if(!(mode&(PRINT_ALL|PRINT_VERBOSE))) /* only print set options */
-	{
-		if(mode&PRINT_SHOPT)
-			sfwrite(sfstdout,"shopt -s",3);
-		else
-			sfwrite(sfstdout,"set --default",13);
-	}
+		sfwrite(sfstdout,"set --default",13);
 	for(tp=shtab_options; value=tp->sh_number; tp++)
 	{
 		if(mask && !is_option(mask,value&0xff))
-			continue;
-		if(sh_isoption(SH_BASH))
-		{
-			if (!(mode&PRINT_SHOPT) != !(value&SH_BASHOPT))
-				continue;
-		}
-		else if (value&(SH_BASHEXTRA|SH_BASHOPT))
 			continue;
 		on = !!is_option(&oflags,value);
 		name = tp->sh_name;
@@ -673,21 +626,12 @@ void sh_printopts(Shopt_t oflags,register int mode, Shopt_t *mask)
 		{
 			sfputr(sfstdout,name,' ');
 			sfnputc(sfstdout,' ',24-strlen(name));
-			sfputr(sfstdout,on ? sh_translate(e_on) : sh_translate(e_off),'\n');
+			sfputr(sfstdout,on ? "on" : "off",'\n');
 		}
 		else if(mode&PRINT_ALL) /* print unset options also */
-		{
-			if(mode&PRINT_SHOPT)
-				sfprintf(sfstdout, "shopt -%c %s\n",
-					on?'s':'u',
-					name);
-			else
-				sfprintf(sfstdout, "set %co %s\n",
-					on?'-':'+',
-					name);
-		}
+			sfprintf(sfstdout, "set %co %s\n", on?'-':'+', name);
 		else if(!(value&SH_COMMANDLINE) && is_option(&oflags,value&0xff))
-			sfprintf(sfstdout," %s%s%s",(mode&PRINT_SHOPT)?"":"--",on?"":"no",name);
+			sfprintf(sfstdout, " %s%s%s","--", on?"":"no", name);
 	}
 	if(!(mode&(PRINT_VERBOSE|PRINT_ALL)))
 		sfputc(sfstdout,'\n');
@@ -782,47 +726,63 @@ struct argnod *sh_argprocsub(Shell_t *shp,struct argnod *argp)
 {
 	/* argument of the form <(cmd) or >(cmd) */
 	register struct argnod *ap;
-	int monitor, fd, pv[3];
-	int subshell = shp->subshell;
+	int fd, pv[3];
+	int savestates = sh_getstate();
+	char savejobcontrol = job.jobcontrol;
+	unsigned int savesubshell = shp->subshell;
 	ap = (struct argnod*)stkseek(shp->stk,ARGVAL);
 	ap->argflag |= ARG_MAKE;
 	ap->argflag &= ~ARG_RAW;
 	fd = argp->argflag&ARG_RAW;
 	if(fd==0 && shp->subshell)
-		sh_subtmpfile(shp);
+		sh_subtmpfile(shp->comsub);
 #if SHOPT_DEVFD
 	sfwrite(shp->stk,e_devfdNN,8);
 	pv[2] = 0;
 	sh_pipe(pv);
 #else
 	pv[0] = -1;
-	shp->fifo = pathtemp(0,0,0,"ksh.fifo",0);
-	mkfifo(shp->fifo,S_IRUSR|S_IWUSR);
+	while(shp->fifo = pathtemp(0,0,0,"ksh.fifo",0), shp->fifo && mkfifo(shp->fifo,0)<0)
+	{
+		if(errno==EEXIST || errno==EACCES || errno==ENOENT || errno==ENOTDIR || errno==EROFS)
+			continue;		/* lost race (name conflict or tmp dir change); try again */
+		shp->fifo = 0;
+		break;
+	}
+	if(!shp->fifo)
+	{
+		errormsg(SH_DICT, ERROR_SYSTEM|ERROR_PANIC, "process substitution: FIFO creation failed");
+		UNREACHABLE();
+	}
+	chmod(shp->fifo,S_IRUSR|S_IWUSR);	/* mkfifo + chmod works regardless of umask */
 	sfputr(shp->stk,shp->fifo,0);
 #endif /* SHOPT_DEVFD */
 	sfputr(shp->stk,fmtbase((long)pv[fd],10,0),0);
 	ap = (struct argnod*)stkfreeze(shp->stk,0);
 	shp->inpipe = shp->outpipe = 0;
-	if(monitor = (sh_isstate(SH_MONITOR)!=0))
-		sh_offstate(SH_MONITOR);
+	/* turn off job control */
+	sh_offstate(SH_INTERACTIVE);
+	sh_offstate(SH_MONITOR);
+	job.jobcontrol = 0;
+	/* run the process substitution */
 	shp->subshell = 0;
 	if(fd)
-	{
 		shp->inpipe = pv;
-		sh_exec((Shnode_t*)argp->argchn.ap,(int)sh_isstate(SH_ERREXIT));
-	}
 	else
-	{
 		shp->outpipe = pv;
-		sh_exec((Shnode_t*)argp->argchn.ap,(int)sh_isstate(SH_ERREXIT));
-	}
-	shp->subshell = subshell;
-	if(monitor)
-		sh_onstate(SH_MONITOR);
+	sh_exec((Shnode_t*)argp->argchn.ap,(int)sh_isstate(SH_ERREXIT));
+	/* restore the previous state */
+	shp->subshell = savesubshell;
+	job.jobcontrol = savejobcontrol;
+	sh_setstate(savestates);
 #if SHOPT_DEVFD
-	close(pv[1-fd]);
+	sh_close(pv[1-fd]);
 	sh_iosave(shp,-pv[fd], shp->topfd, (char*)0);
 #else
+	/* remember the FIFO for cleanup in case the command never opens it (see fifo_cleanup(), xec.c) */
+	if(!shp->fifo_tree)
+		shp->fifo_tree = dtopen(&_Nvdisc,Dtoset);
+	nv_search(shp->fifo,shp->fifo_tree,NV_ADD);
 	free(shp->fifo);
 	shp->fifo = 0;
 #endif /* SHOPT_DEVFD */
@@ -872,4 +832,3 @@ static int arg_expand(Shell_t *shp,register struct argnod *argp, struct argnod *
 	}
 	return(count);
 }
-

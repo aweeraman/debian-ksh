@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -25,7 +26,7 @@
  * AT&T Research
  *
  * common process execution support with
- * proper sfio, signal and wait() syncronization
+ * proper sfio, signal and wait() synchronization
  *
  * _ contains the process path name and is
  * placed at the top of the environment
@@ -599,7 +600,7 @@ procopen(const char* cmd, char** argv, char** envv, long* modv, int flags)
 			if (!fork())
 			{
 				sfsprintf(path, sizeof(path), "%d", getppid());
-				execlp("trace", "trace", "-p", path, NiL);
+				execlp("trace", "trace", "-p", path, NULL);
 				_exit(EXIT_NOTFOUND);
 			}
 			sleep(2);
@@ -869,7 +870,7 @@ sfsync(sfstderr);
 				proc->wfd = poi[1];
 				close(poi[0]);
 #endif
-				/*FALLTHROUGH*/
+				/* FALLTHROUGH */
 			case 1:
 				proc->rfd = pio[0];
 				close(pio[1]);

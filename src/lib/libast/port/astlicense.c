@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -368,7 +369,7 @@ expand(Notice_t* notice, register Buffer_t* b, const Item_t* item)
 }
 
 /*
- * generate a copright notice
+ * generate a copyright notice
  */
 
 static void
@@ -753,7 +754,7 @@ astlicense(char* p, int size, char* file, char* options, int cc1, int cc2, int c
 							break;
 						case -1:
 							c = SPECIAL;
-							/*FALLTHROUGH*/
+							/* FALLTHROUGH */
 						default:
 							notice.type = c;
 							notice.item[CLASS].data = lic[lic[c].quote].data;
@@ -953,7 +954,7 @@ astlicense(char* p, int size, char* file, char* options, int cc1, int cc2, int c
 			comment(&notice, &buf, NiL, 0, 0);
 			COMMENT(&notice, &buf, "You should have received a copy of the", 0);
 			COMMENT(&notice, &buf, "GNU General Public License", 0);
-			COMMENT(&notice, &buf, "along with this software (see the file COPYING.)", 0);
+			COMMENT(&notice, &buf, "along with this software (see the file COPYING).", 0);
 			COMMENT(&notice, &buf, "If not, a copy is available at", 0);
 			COMMENT(&notice, &buf, "http://www.gnu.org/copyleft/gpl.html", 0);
 			comment(&notice, &buf, NiL, 0, 0);

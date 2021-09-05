@@ -11,7 +11,7 @@ ref	-D_def_map_ast=1
 lib	atexit,getpagesize,mallinfo,mallopt,memalign,mstats
 lib	onexit,pvalloc,strdup,valloc,vmalloc
 lib	_malloc,__malloc,__libc_malloc
-hdr	alloca,malloc,stat,stdlib,unistd
+hdr	alloca,malloc,stat,stdlib,unistd,sys/shm
 mem	mallinfo.arena,mstats.bytes_total malloc.h
 sys	stat
 typ	ssize_t
@@ -207,7 +207,7 @@ tst	malloc_hook note{ gnu malloc hooks work }end execute{
 
 cat{
 	#include "FEATURE/mmap"
-	#if _BLD_INSTRUMENT || cray || _UWIN && _BLD_ast
+	#if _AST_ksh_release || _BLD_INSTRUMENT || cray || _UWIN && _BLD_ast
 	#undef	_map_malloc
 	#define _std_malloc	1	/* defer to standard malloc */
 	#endif

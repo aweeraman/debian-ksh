@@ -2,6 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2011 AT&T Intellectual Property          #
+#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -17,19 +18,8 @@
 #                  David Korn <dgk@research.att.com>                   #
 #                                                                      #
 ########################################################################
-function err_exit
-{
-	print -u2 -n "\t"
-	print -u2 -r ${Command}[$1]: "${@:2}"
-	let Errors+=1
-}
-alias err_exit='err_exit $LINENO'
 
-Command=${0##*/}
-integer Errors=0
-
-tmp=$(mktemp -dt) || { err_exit mktemp -dt failed; exit 1; }
-trap "cd /; rm -rf $tmp" EXIT
+. "${SHTESTS_COMMON:-${0%/*}/_common}"
 
 alias foo='print hello'
 if	[[ $(foo) != hello ]]
@@ -85,7 +75,7 @@ then	[[ ! $(alias -t | grep rm= ) ]] && err_exit 'tracked alias not set'
 	[[ $(alias -t | grep rm= ) ]] && err_exit 'tracked alias not cleared'
 fi
 if	hash -r 2>/dev/null && [[ ! $(hash) ]]
-then	PATH=$tmp:/bin:/usr/bin
+then	PATH=$tmp:$PATH
 	for i in foo -foo --
 	do	print ':' > $tmp/$i
 		chmod +x $tmp/$i
@@ -97,6 +87,22 @@ fi
 ( alias :pr=print) 2> /dev/null || err_exit 'alias beginning with : fails'
 ( alias p:r=print) 2> /dev/null || err_exit 'alias with : in name fails'
 
-unalias no_such_alias &&  err_exit 'unalias should return non-zero for unknown alias'
+unalias no_such_alias && err_exit 'unalias should return non-zero for unknown alias'
 
+# ======
+# Adding a utility after resetting the hash table should work
+hash -r chmod
+[[ $(hash) == "chmod=$(whence -p chmod)" ]] || err_exit $'"hash -r \'utility\'" doesn\'t reset the hash table correctly'
+
+# ======
+# Attempting to unalias a previously set alias twice should be an error
+alias foo=bar
+unalias foo
+unalias foo && err_exit 'unalias should return non-zero when a previously set alias is unaliased twice'
+
+# Removing the history and r aliases should work without an error from free(3)
+err=$(set +x; { "$SHELL" -i -c 'unalias history; unalias r'; } 2>&1) && [[ -z $err ]] \
+|| err_exit "the 'history' and 'r' aliases can't be removed (got $(printf %q "$err"))"
+
+# ======
 exit $((Errors<125?Errors:125))

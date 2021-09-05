@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -30,7 +31,7 @@
 **	consideration is stacking a discipline onto a read stream. Each
 **	discipline operation implies buffer synchronization so the stream
 **	buffer should be empty. However, a read stream representing an
-**	unseekable device (eg, a pipe) may not be synchronizable. In that
+**	unseekable device (e.g., a pipe) may not be synchronizable. In that
 **	case, any buffered data must then be fed to the new discipline
 **	to preserve data processing semantics. This is done by creating
 **	a temporary discipline to cache such buffered data and feed

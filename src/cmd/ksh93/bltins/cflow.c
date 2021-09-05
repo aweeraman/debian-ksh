@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -61,16 +62,20 @@ int	b_return(register int n, register char *argv[],Shbltin_t *context)
 	}
 done:
 	if(error_info.errors)
+	{
 		errormsg(SH_DICT,ERROR_usage(2),"%s",optusage((char*)0));
+		UNREACHABLE();
+	}
 	pp->mode = (**argv=='e'?SH_JMPEXIT:SH_JMPFUN);
 	argv += opt_info.index;
-	n = (((arg= *argv)?(int)strtol(arg, (char**)0, 10):shp->oldexit));
+	n = (arg = *argv) ? (int)strtol(arg, (char**)0, 10) : shp->savexit;
 	if(n<0 || n==256 || n > SH_EXITMASK+shp->gd->sigmax+1)
 			n &= ((unsigned int)n)&SH_EXITMASK;
 	/* return outside of function, dotscript and profile is exit */
 	if(shp->fn_depth==0 && shp->dot_depth==0 && !sh_isstate(SH_PROFILE))
 		pp->mode = SH_JMPEXIT;
-	sh_exit(shp->savexit=n);
+	shp->savexit = n;
+	sh_exit((pp->mode == SH_JMPEXIT) ? (n & SH_EXITMASK) : n);
 	return(1);
 }
 
@@ -97,14 +102,20 @@ int	b_break(register int n, register char *argv[],Shbltin_t *context)
 		return(2);
 	}
 	if(error_info.errors)
+	{
 		errormsg(SH_DICT,ERROR_usage(2),"%s",optusage((char*)0));
+		UNREACHABLE();
+	}
 	argv += opt_info.index;
 	n=1;
 	if(arg= *argv)
 	{
 		n = (int)strtol(arg,&arg,10);
 		if(n<=0 || *arg)
+		{
 			errormsg(SH_DICT,ERROR_exit(1),e_nolabels,*argv);
+			UNREACHABLE();
+		}
 	}
 	if(shp->st.loopcnt)
 	{
@@ -116,4 +127,3 @@ int	b_break(register int n, register char *argv[],Shbltin_t *context)
 	}
 	return(0);
 }
-

@@ -4,6 +4,8 @@
  * coded for portability
  * _SEAR_* macros for win32 self extracting archives -- see sear(1).
  */
+#pragma clang diagnostic ignored "-Wdeprecated-register"
+#pragma clang diagnostic ignored "-Wparentheses"
 
 static char id[] = "\n@(#)$Id: ratz (Jean-loup Gailly, Mark Adler, Glenn Fowler) 1.2.3 2010-10-10 $\0\n";
 
@@ -425,8 +427,8 @@ typedef uLong FAR uLongf;
 #  define z_off_t off_t
 #endif
 #ifndef SEEK_SET
-#  define SEEK_SET        0       /* Seek from beginning of file.  */
-#  define SEEK_CUR        1       /* Seek from current position.  */
+#  define SEEK_SET        0       /* Seek from beginning of file. */
+#  define SEEK_CUR        1       /* Seek from current position. */
 #  define SEEK_END        2       /* Set file pointer to EOF plus "offset" */
 #endif
 #ifndef z_off_t
@@ -1312,7 +1314,7 @@ typedef struct internal_state {
     gz_headerp  gzhead;  /* gzip header information to write */
     uInt   gzindex;      /* where in extra, name, or comment */
     Byte  method;        /* STORED (for zip only) or DEFLATED */
-    int   last_flush;    /* value of flush param for previous deflate call */
+    int   last_flush;    /* value of flush parameter for previous deflate call */
 
                 /* used by deflate.c: */
 
@@ -1390,7 +1392,7 @@ typedef struct internal_state {
      */
 
     int level;    /* compression level (1..9) */
-    int strategy; /* favor or force Huffman coding*/
+    int strategy; /* favor or force Huffman coding */
 
     uInt good_match;
     /* Use a faster search when the previous match is longer than this */
@@ -1398,7 +1400,7 @@ typedef struct internal_state {
     int nice_match; /* Stop searching when current match exceeds this */
 
                 /* used by trees.c: */
-    /* Didn't use ct_data typedef below to supress compiler warning */
+    /* Didn't use ct_data typedef below to suppress compiler warning */
     struct ct_data_s dyn_ltree[HEAP_SIZE];   /* literal and length tree */
     struct ct_data_s dyn_dtree[2*D_CODES+1]; /* distance tree */
     struct ct_data_s bl_tree[2*BL_CODES+1];  /* Huffman tree for bit lengths */
@@ -1760,7 +1762,7 @@ unsigned short FAR *work;
 
        This routine assumes, but does not check, that all of the entries in
        lens[] are in the range 0..MAXBITS.  The caller must assure this.
-       1..MAXBITS is interpreted as that code length.  zero means that that
+       1..MAXBITS is interpreted as that code length.  zero means that
        symbol does not occur in this code.
 
        The codes are sorted by computing a count of codes for each length,
@@ -2086,7 +2088,7 @@ unsigned start;         /* inflate()'s starting value for strm->avail_out */
     unsigned dmask;             /* mask for first level of distance codes */
     code this;                  /* retrieved table entry */
     unsigned op;                /* code bits, operation, extra bits, or */
-                                /*  window position, window bytes to copy */
+                                /* window position, window bytes to copy */
     unsigned len;               /* match length, unused bytes */
     unsigned dist;              /* match distance */
     unsigned char FAR *from;    /* where to copy match from */
@@ -2982,6 +2984,7 @@ int flush;
             strm->adler = state->check = REVERSE(hold);
             INITBITS();
             state->mode = DICT;
+	    /* FALLTHROUGH */
         case DICT:
             if (state->havedict == 0) {
                 RESTORE();
@@ -2989,8 +2992,10 @@ int flush;
             }
             strm->adler = state->check = adler32(0L, Z_NULL, 0);
             state->mode = TYPE;
+	    /* FALLTHROUGH */
         case TYPE:
             if (flush == Z_BLOCK) goto inf_leave;
+	    /* FALLTHROUGH */
         case TYPEDO:
             if (state->last) {
                 BYTEBITS();
@@ -3036,6 +3041,7 @@ int flush;
                     state->length));
             INITBITS();
             state->mode = COPY;
+	    /* FALLTHROUGH */
         case COPY:
             copy = state->length;
             if (copy) {
@@ -3071,6 +3077,7 @@ int flush;
             Tracev((stderr, "inflate:       table sizes ok\n"));
             state->have = 0;
             state->mode = LENLENS;
+	    /* FALLTHROUGH */
         case LENLENS:
             while (state->have < state->ncode) {
                 NEEDBITS(3);
@@ -3092,6 +3099,7 @@ int flush;
             Tracev((stderr, "inflate:       code lengths ok\n"));
             state->have = 0;
             state->mode = CODELENS;
+	    /* FALLTHROUGH */
         case CODELENS:
             while (state->have < state->nlen + state->ndist) {
                 for (;;) {
@@ -3166,6 +3174,7 @@ int flush;
             }
             Tracev((stderr, "inflate:       codes ok\n"));
             state->mode = LEN;
+	    /* FALLTHROUGH */
         case LEN:
             if (have >= 6 && left >= 258) {
                 RESTORE();
@@ -3209,6 +3218,7 @@ int flush;
             }
             state->extra = (unsigned)(this.op) & 15;
             state->mode = LENEXT;
+	    /* FALLTHROUGH */
         case LENEXT:
             if (state->extra) {
                 NEEDBITS(state->extra);
@@ -3217,6 +3227,7 @@ int flush;
             }
             Tracevv((stderr, "inflate:         length %u\n", state->length));
             state->mode = DIST;
+	    /* FALLTHROUGH */
         case DIST:
             for (;;) {
                 this = state->distcode[BITS(state->distbits)];
@@ -3242,6 +3253,7 @@ int flush;
             state->offset = (unsigned)this.val;
             state->extra = (unsigned)(this.op) & 15;
             state->mode = DISTEXT;
+	    /* FALLTHROUGH */
         case DISTEXT:
             if (state->extra) {
                 NEEDBITS(state->extra);
@@ -3262,6 +3274,7 @@ int flush;
             }
             Tracevv((stderr, "inflate:         distance %u\n", state->offset));
             state->mode = MATCH;
+	    /* FALLTHROUGH */
         case MATCH:
             if (left == 0) goto inf_leave;
             copy = out - left;
@@ -3317,6 +3330,7 @@ int flush;
             }
 #ifdef GUNZIP
             state->mode = LENGTH;
+	    /* FALLTHROUGH */
         case LENGTH:
             if (state->wrap && state->flags) {
                 NEEDBITS(32);
@@ -3330,6 +3344,7 @@ int flush;
             }
 #endif
             state->mode = DONE;
+	    /* FALLTHROUGH */
         case DONE:
             ret = Z_STREAM_END;
             goto inf_leave;
@@ -3822,7 +3837,7 @@ gzFile ZEXPORT gzfopen (fp, mode)
 /* ===========================================================================
      Read a byte from a gz_stream; update next_in and avail_in. Return EOF
    for end of file.
-   IN assertion: the stream s has been sucessfully opened for reading.
+   IN assertion: the stream s has been successfully opened for reading.
 */
 local int get_byte(s)
     gz_stream *s;
@@ -3847,7 +3862,7 @@ local int get_byte(s)
     mode to transparent if the gzip magic header is not present; set s->err
     to Z_DATA_ERROR if the magic header is present but the rest of the header
     is incorrect.
-    IN assertion: the stream s has already been created sucessfully;
+    IN assertion: the stream s has already been created successfully;
        s->stream.avail_in is zero for the first time, but may be non-zero
        for concatenated .gz files.
 */
@@ -4736,7 +4751,7 @@ char**	argv;
 	}
 	else
 		state.id = "ratz";
-	switch ('~')
+	switch ((unsigned char)'~')
 	{
 	case 0241:
 		switch ('\n')
@@ -4799,8 +4814,8 @@ char**	argv;
 			sfprintf(sfstdout, "%s\n", id + 10);
 			return 0;
 		case '?':
-			error(ERROR_USAGE|4, "%s", opt_info.arg);
-			continue;
+			error(ERROR_usage(2), "%s", opt_info.arg);
+			UNREACHABLE();
 		case ':':
 			error(2, "%s", opt_info.arg);
 			continue;
@@ -4808,7 +4823,10 @@ char**	argv;
 		break;
 	}
 	if (error_info.errors)
-		error(ERROR_USAGE|4, "%s", optusage(NiL));
+	{
+		error(ERROR_usage(2), "%s", optusage(NiL));
+		UNREACHABLE();
+	}
 	argv += opt_info.index;
 #else
 	while ((s = *++argv) && *s == '-' && *(s + 1))
@@ -4860,7 +4878,7 @@ char**	argv;
 				return 0;
 			default:
 				fprintf(stderr, "%s: -%c: unknown option\n", state.id, c);
-				/*FALLTHROUGH*/
+				/* FALLTHROUGH */
 			case '?':
 				usage();
 				break;
@@ -4938,7 +4956,7 @@ char**	argv;
 	while (block(stdin, gz, (char*)&header))
 	{
 		/*
-		 * last 2 blocks are NUL
+		 * last 2 blocks are NULL
 		 */
 
 		if (!*header.name)
@@ -5232,7 +5250,7 @@ char**	argv;
 						break;
 					}
 					c = 1;
-					/*FALLTHROUGH*/
+					/* FALLTHROUGH */
 				case 1:
 					for (e = (s = buf) + sizeof(header); s < e; s++)
 						*s = a2x[*(unsigned char*)s];

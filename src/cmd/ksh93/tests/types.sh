@@ -2,6 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
+#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -17,19 +18,8 @@
 #                  David Korn <dgk@research.att.com>                   #
 #                                                                      #
 ########################################################################
-function err_exit
-{
-	print -u2 -n "\t"
-	print -u2 -r ${Command}[$1]: "${@:2}"
-	(( Errors+=1 ))
-}
-alias err_exit='err_exit $LINENO'
 
-Command=${0##*/}
-integer Errors=0
-
-tmp=$(mktemp -dt) || { err_exit mktemp -dt failed; exit 1; }
-trap "cd /; rm -rf $tmp" EXIT
+. "${SHTESTS_COMMON:-${0%/*}/_common}"
 
 integer n=2
 
@@ -85,7 +75,7 @@ Frame_t frame
 [[ $(typeset -p frame) == 'Frame_t frame=(typeset file;typeset lineno)' ]] || err_exit 'empty fields in type not displayed'
 x=( typeset -a arr=([2]=abc [4]=(x=1 y=def));zz=abc)
 typeset -C y=x
-[[ "$x" == "$y" ]] || print -u2 'y is not equal to x'
+[[ "$x" == "$y" ]] || err_exit "y is not equal to x (y == $(printf %q "$y"); x == $(printf %q "$x"))"
 Type_t z=(y=(xa=bb xq=cc))
 typeset -A arr=([foo]=one [bar]=2)
 typeset -A brr=([foo]=one [bar]=2)
@@ -401,7 +391,7 @@ typeset -T olist=(
 )
 olist foo
 foo.l[1]=x
-[[  ${!foo.l[*]} == *0* ]] && '0-th elment of foo.l should not be set'
+[[  ${!foo.l[*]} == *0* ]] && '0-th element of foo.l should not be set'
 
 typeset -T oset2=( typeset -A foo )
 oset2 bar
@@ -512,9 +502,9 @@ fi
 { $SHELL -c '(sleep 3;kill $$)& typeset -T x=( typeset -a s );compound c;x c.i;c.i.s[7][5][3]=hello;x c.j=c.i;[[ ${c.i} == "${c.j}" ]]';} 2> /dev/null
 exitval=$?
 if	[[ $(kill -l $exitval) == TERM ]]
-then	err_exit 'clone of multi-dimensional array timed out'
+then	err_exit 'clone of multidimensional array timed out'
 elif	((exitval))
-then	err_exit "c.i and c.j are not the same multi-dimensional array"
+then	err_exit "c.i and c.j are not the same multidimensional array"
 fi
 
 typeset -T foobar_t=(
@@ -639,4 +629,9 @@ Bar_t bar
 bar.foo+=(bam)
 [[ ${bar.foo[0]} == bam ]] || err_exit 'appending to empty array variable in type does not create element 0'
 
+# ======
+# Type names that have 'a' as the first letter should be functional
+"$SHELL" -c 'typeset -T al=(typeset bar); al foo=(bar=testset)' || err_exit "type names that start with 'a' don't work"
+
+# ======
 exit $((Errors<125?Errors:125))

@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -62,12 +63,19 @@ Sfulong_t	m;	/* the max value of the range */
 	{	switch(n)
 		{
 		case 8 : *ps++ = *s++;
+			 /* FALLTHROUGH */
 		case 7 : *ps++ = *s++;
+			 /* FALLTHROUGH */
 		case 6 : *ps++ = *s++;
+			 /* FALLTHROUGH */
 		case 5 : *ps++ = *s++;
+			 /* FALLTHROUGH */
 		case 4 : *ps++ = *s++;
+			 /* FALLTHROUGH */
 		case 3 : *ps++ = *s++;
+			 /* FALLTHROUGH */
 		case 2 : *ps++ = *s++;
+			 /* FALLTHROUGH */
 		case 1 : *ps++ = *s++;
 		}
 		f->next = ps;

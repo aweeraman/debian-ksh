@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -27,8 +28,8 @@
  */
 
 static const char usage[] =
-"[-?\n@(#)$Id: getconf (AT&T Research) 2012-06-25 $\n]"
-USAGE_LICENSE
+"[-?\n@(#)$Id: getconf (ksh 93u+m) 2021-04-20 $\n]"
+"[--catalog?" ERROR_CATALOG "]"
 "[+NAME?getconf - get configuration values]"
 "[+DESCRIPTION?\bgetconf\b displays the system configuration value for"
 "	\aname\a. If \aname\a is a filesystem specific variable then"
@@ -36,7 +37,7 @@ USAGE_LICENSE
 "	directory if \apath\a is omitted. If \avalue\a is specified then"
 "	\bgetconf\b attempts to change the process local value to \avalue\a."
 "	\b-\b may be used in place of \apath\a when it is not relevant."
-"	If \apath\a is \b=\b then the the \avalue\a is cached and used"
+"	If \apath\a is \b=\b then the \avalue\a is cached and used"
 "	for subsequent tests in the calling and all child processes."
 "	Only \bwritable\b variables may be set; \breadonly\b variables"
 "	cannot be changed.]"
@@ -52,20 +53,20 @@ USAGE_LICENSE
 "	\aname\a=\avalue\a form to the standard output, one per line."
 "	Only one of \b--call\b, \b--name\b or \b--standard\b may be specified.]"
 "[+?This implementation uses the \bastgetconf\b(3) string interface to the native"
-"	\bsysconf\b(2), \bconfstr\b(2), \bpathconf\b(2), and \bsysinfo\b(2)"
-"	system calls. If \bgetconf\b on \b$PATH\b is not the default native"
-"	\bgetconf\b, named by \b$(getconf GETCONF)\b, then \bastgetconf\b(3)"
-"	checks only \bast\b specific extensions and the native system calls;"
-"	invalid options and/or names not supported by \bastgetconf\b(3) cause"
-"	the \bgetconf\b on \b$PATH\b to be executed.]"
+"	\bsysconf\b(3), \bconfstr\b(3), \bpathconf\b(2), and \bsysinfo\b(2)"
+"	system calls."
+"	Invalid options and/or names not supported by \bastgetconf\b(3) cause"
+"	the default native \bgetconf\b, named by \b$(getconf GETCONF)\b, to"
+"	be executed (unless the shell is in restricted mode, in which case"
+"	an error will occur).]"
 
 "[a:all?Call the native \bgetconf\b(1) with option \b-a\b.]"
 "[b:base?List base variable name sans call and standard prefixes.]"
 "[c:call?Display variables with call prefix that matches \aRE\a. The call"
 "	prefixes are:]:[RE]{"
-"		[+CS?\bconfstr\b(2)]"
+"		[+CS?\bconfstr\b(3)]"
 "		[+PC?\bpathconf\b(2)]"
-"		[+SC?\bsysconf\b(2)]"
+"		[+SC?\bsysconf\b(3)]"
 "		[+SI?\bsysinfo\b(2)]"
 "		[+XX?Constant value.]"
 "}"
@@ -75,7 +76,7 @@ USAGE_LICENSE
 "[p:portable?Display the named \bwritable\b variables and values in a form that"
 "	can be directly executed by \bsh\b(1) to set the values. If \aname\a"
 "	is omitted then all \bwritable\b variables are listed.]"
-"[q:quote?\"...\" quote values.]"
+"[q:quote?\"...\" quote string values.]"
 "[r:readonly?Display the named \breadonly\b variables in \aname\a=\avalue\a form."
 "	If \aname\a is omitted then all \breadonly\b variables are listed.]"
 "[s:standard?Display variables with standard prefix that matches \aRE\a."
@@ -116,8 +117,8 @@ USAGE_LICENSE
             "is an implementation detail of process inheritance; it may "
             "change or vanish in the future; don't rely on it.]"
     "}"
-"[+SEE ALSO?\bpathchk\b(1), \bconfstr\b(2), \bpathconf\b(2),"
-"	\bsysconf\b(2), \bastgetconf\b(3)]"
+"[+SEE ALSO?\bpathchk\b(1), \bconfstr\b(3), \bpathconf\b(2),"
+"	\bsysconf\b(3), \bastgetconf\b(3)]"
 ;
 
 #include <cmd.h>
@@ -137,25 +138,12 @@ b_getconf(int argc, char** argv, Shbltin_t* context)
 	register char*		path;
 	register char*		value;
 	register const char*	s;
-	register const char*	t;
 	char*			pattern;
 	char*			native;
-	char*			cmd;
-	Path_t*			e;
-	Path_t*			p;
 	int			flags;
 	int			n;
-	int			i;
-	int			m;
-	int			q;
 	char**			oargv;
-	char			buf[PATH_MAX];
-	Path_t			std[64];
-	struct stat		st0;
-	struct stat		st1;
-
 	static const char	empty[] = "-";
-	static const Path_t	equiv[] = { { "/bin", 4 }, { "/usr/bin", 8 } };
 
 	cmdinit(argc, argv, context, ERROR_CATALOG, 0);
 	oargv = argv;
@@ -219,7 +207,7 @@ b_getconf(int argc, char** argv, Shbltin_t* context)
 			break;
 		case '?':
 			error(ERROR_usage(2), "%s", opt_info.arg);
-			break;
+			UNREACHABLE();
 		}
 		break;
 	}
@@ -237,7 +225,10 @@ b_getconf(int argc, char** argv, Shbltin_t* context)
 		}
 	}
 	if (error_info.errors || !name && *argv)
+	{
 		error(ERROR_usage(2), "%s", optusage(NiL));
+		UNREACHABLE();
+	}
 	if (!name)
 		astconflist(sfstdout, path, flags, pattern);
 	else
@@ -285,121 +276,11 @@ b_getconf(int argc, char** argv, Shbltin_t* context)
 	return error_info.errors != 0;
 
  defer:
-
 	/*
-	 * defer to argv[0] if absolute and it exists
+	 * Run the external getconf command
 	 */
-
-	if ((cmd = oargv[0]) && *cmd == '/' && !access(cmd, X_OK))
-		goto found;
-
-	/*
-	 * defer to the first getconf on $PATH that is also on the standard PATH
-	 */
-
-	e = std;
-	s = astconf("PATH", NiL, NiL); 
-	q = !stat(equiv[0].path, &st0) && !stat(equiv[1].path, &st1) && st0.st_ino == st1.st_ino && st0.st_dev == st1.st_dev;
-	m = 0;
-	do
-	{
-		for (t = s; *s && *s != ':'; s++);
-		if ((n = s - t) && *t == '/')
-		{
-			if (q)
-				for (i = 0; i < 2; i++)
-					if (n == equiv[i].len && !strncmp(t, equiv[i].path, n))
-					{
-						if (m & (i+1))
-							t = 0;
-						else
-						{
-							m |= (i+1);
-							if (!(m & (!i+1)))
-							{
-								m |= (!i+1);
-								e->path = t;
-								e->len = n;
-								e++;
-								if (e >= &std[elementsof(std)])
-									break;
-								t = equiv[!i].path;
-								n = equiv[!i].len;
-							}
-						}
-					}
-			if (t)
-			{
-				e->path = t;
-				e->len = n;
-				e++;
-			}
-		}
-		while (*s == ':')
-			s++;
-	} while (*s && e < &std[elementsof(std)]);
-	if (e < &std[elementsof(std)])
-	{
-		e->len = strlen(e->path = "/usr/sbin");
-		if (++e < &std[elementsof(std)])
-		{
-			e->len = strlen(e->path = "/sbin");
-			e++;
-		}
-	}
-	if (s = getenv("PATH"))
-		do
-		{
-			for (t = s; *s && *s != ':'; s++);
-			if ((n = s - t) && *t == '/')
-			{
-				for (p = std; p < e; p++)
-					if (p->len == n && !strncmp(t, p->path, n))
-					{
-						sfsprintf(buf, sizeof(buf), "%-*.*s/%s", n, n, t, error_info.id);
-						if (!access(buf, X_OK))
-						{
-							cmd = buf;
-							goto found;
-						}
-					}
-			}
-			while (*s == ':')
-				s++;
-		} while (*s);
-
-	/*
-	 * defer to the first getconf on the standard PATH
-	 */
-
-	for (p = std; p < e; p++)
-	{
-		sfsprintf(buf, sizeof(buf), "%-*.*s/%s", p->len, p->len, p->path, error_info.id);
-		if (!access(buf, X_OK))
-		{
-			cmd = buf;
-			goto found;
-		}
-	}
-
-	/*
-	 * out of deferrals
-	 */
-
-	if (name)
-		error(4, "%s: unknown name -- no native getconf(1) to defer to", name);
-	else
-		error(4, "no native getconf(1) to defer to");
-	return 2;
-
- found:
-
-	/*
-	 * don't blame us for crappy diagnostics
-	 */
-
-	oargv[0] = cmd;
+	oargv[0] = native;
 	if ((n = sh_run(context, argc, oargv)) >= EXIT_NOEXEC)
-		error(ERROR_SYSTEM|2, "%s: exec error [%d]", cmd, n);
+		error(ERROR_SYSTEM|2, "%s: exec error [%d]", native, n);
 	return n;
 }

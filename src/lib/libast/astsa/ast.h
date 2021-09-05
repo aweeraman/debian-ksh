@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -92,6 +93,12 @@ typedef struct
 #define oldof(p,t,n,x)	((p)?(t*)realloc((char*)(p),sizeof(t)*(n)+(x)):(t*)malloc(sizeof(t)*(n)+(x)))
 #define pointerof(x)	((void*)((char*)0+(x)))
 #define roundof(x,y)	(((x)+(y)-1)&~((y)-1))
+
+#ifdef __GNUC__
+#if (__GNUC__ >= 4) && !defined(offsetof)
+#define offsetof(type,member)	__builtin_offsetof(type,member)
+#endif
+#endif
 
 #ifndef offsetof
 #define offsetof(type,member) ((unsigned long)&(((type*)0)->member))

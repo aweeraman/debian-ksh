@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -27,7 +28,7 @@
 
 static const char usage[] =
 "[-?\n@(#)$Id: pathchk (AT&T Research) 2009-07-24 $\n]"
-USAGE_LICENSE
+"[--catalog?" ERROR_CATALOG "]"
 "[+NAME?pathchk - check pathnames for portability]"
 "[+DESCRIPTION?\bpathchk\b checks each \apathname\a to see if it is "
     "valid and/or portable. A \apathname\a is valid if it can be used to "
@@ -252,13 +253,16 @@ b_pathchk(int argc, char** argv, Shbltin_t* context)
 			break;
 		case '?':
 			error(ERROR_usage(2), "%s", opt_info.arg);
-			break;
+			UNREACHABLE();
 		}
 		break;
 	}
 	argv += opt_info.index;
 	if (!*argv || error_info.errors)
+	{
 		error(ERROR_usage(2),"%s", optusage(NiL));
+		UNREACHABLE();
+	}
 	while (s = *argv++)
 		pathchk(s, mode);
 	return error_info.errors != 0;

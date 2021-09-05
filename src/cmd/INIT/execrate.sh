@@ -2,6 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1994-2011 AT&T Intellectual Property          #
+#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -19,9 +20,17 @@
 ########################################################################
 : wrapper for .exe challenged win32 systems/commands
 
+(command set -o posix) 2>/dev/null && set -o posix
+
 command=execrate
 
-bins='/bin /usr/bin /usr/sbin'
+bins=`
+	(
+		userPATH=$PATH
+		PATH=/run/current-system/sw/bin:/usr/xpg7/bin:/usr/xpg6/bin:/usr/xpg4/bin:/bin:/usr/bin:$PATH
+		getconf PATH 2>/dev/null && echo "$userPATH" || echo /bin:/usr/bin:/sbin:/usr/sbin:"$userPATH"
+	) | sed 's/:/ /g'
+` || exit
 
 case `(getopts '[-][123:xyz]' opt --xyz; echo 0$opt) 2>/dev/null` in
 0123)	ARGV0="-a $command"
@@ -29,7 +38,9 @@ case `(getopts '[-][123:xyz]' opt --xyz; echo 0$opt) 2>/dev/null` in
 [-?
 @(#)$Id: execrate (AT&T Labs Research) 2002-02-02 $
 ]
-'$USAGE_LICENSE$'
+[-author?Glenn Fowler <gsf@research.att.com>]
+[-copyright?Copyright (c) 2002-2012 AT&T Intellectual Property]
+[-license?http://www.eclipse.org/org/documents/epl-v10.html]
 [+NAME?execrate - wrapper for .exe challenged commands]
 [+DESCRIPTION?\bexecrate\b runs \acommand\a after checking the \afile\a
 	operands for standard semantics with respect to \bwin32\b \b.exe\b

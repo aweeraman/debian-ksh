@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -55,7 +56,7 @@ char*		mode;		/* mode of the stream */
 	{	SFMTXENTER(f, NIL(Sfio_t*));
 
 		if(f->mode&SF_INIT ) /* stream uninitialized, ok to set flags */
-		{	f->flags |= (sflags & (SF_FLAGS & ~SF_RDWR));
+		{	f->flags |= (sflags & (SFIO_FLAGS & ~SF_RDWR));
 
 			if((sflags &= SF_RDWR) != 0) /* reset read/write modes */
 			{	f->flags = (f->flags & ~SF_RDWR) | sflags;

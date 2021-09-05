@@ -2,6 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
+#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -17,22 +18,39 @@
 #                  David Korn <dgk@research.att.com>                   #
 #                                                                      #
 ########################################################################
-function err_exit
-{
-	print -u2 -n "\t"
-	print -u2 -r ${Command}[$1]: "${@:2}"
-	let Errors+=1
-}
-alias err_exit='err_exit $LINENO'
 
-Command=${0##*/}
-integer Errors=0
+. "${SHTESTS_COMMON:-${0%/*}/_common}"
 
-tmp=$(mktemp -dt) || { err_exit mktemp -dt failed; exit 1; }
-trap "cd /; rm -rf $tmp" EXIT
+bincat=$(whence -p cat)
 
-# test shell builtin commands
+# ======
+# These are regression tests for the getconf builtin.
 builtin getconf
+bingetconf=$(getconf GETCONF)
+bad_result=$(getconf --version 2>&1)
+
+# The -l option should convert all variable names to lowercase.
+# https://github.com/att/ast/issues/1171
+got=$(getconf -l | awk '{ gsub(/=.*/, "") } /[[:upper:]]/ { print }')
+[[ -n $got ]] && err_exit "'getconf -l' doesn't convert all variable names to lowercase" \
+	"(got $(printf %q "$got"))"
+
+# The -q option should quote all string values.
+# https://github.com/att/ast/issues/1173
+exp="GETCONF=\"$bingetconf\""
+got=$(getconf -q | grep 'GETCONF=')
+[[ $exp == "$got" ]] || err_exit "'getconf -q' fails to quote string values" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# The -n option should only return matching names.
+# https://github.com/ksh93/ksh/issues/279
+exp="GETCONF=$bingetconf"
+got=$(getconf -n GETCONF)
+[[ $exp == "$got" ]] || err_exit "'getconf -n' doesn't match names correctly" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
+# Test shell builtin commands
 : ${foo=bar} || err_exit ": failed"
 [[ $foo == bar ]] || err_exit ": side effects failed"
 set -- - foobar
@@ -93,9 +111,9 @@ hello \
 	world \
 
 !
-[[ $REPLY == 'hello 	world' ]] || err_exit "read continuation2 failed"
+[[ $REPLY == 'hello 	world' ]] || err_exit "read continuation 2 failed"
 print "one\ntwo" | { read line
-	print $line | /bin/cat > /dev/null
+	print $line | "$bincat" > /dev/null
 	read line
 }
 read <<\!
@@ -187,7 +205,7 @@ mkdir -p $tmp/a/b/c 2>/dev/null || err_exit  "mkdir -p failed"
 $SHELL -c "cd $tmp/a/b; cd c" 2>/dev/null || err_exit "initial script relative cd fails"
 
 trap 'print TERM' TERM
-exp=$'trap -- \'print TERM\' TERM\ntrap -- \'cd /; rm -rf '$tmp$'\' EXIT'
+exp="trap -- 'print TERM' TERM"
 got=$(trap)
 [[ $got == $exp ]] || err_exit "\$(trap) failed -- expected \"$exp\", got \"$got\""
 exp='print TERM'
@@ -235,11 +253,11 @@ if	(( $(printf 'x\0y' | wc -c) != 3 ))
 then	err_exit 'printf \0 not working'
 fi
 if	[[ $(printf "%bx%s\n" 'f\to\cbar') != $'f\to' ]]
-then	err_exit 'printf %bx%s\n  not working'
+then	err_exit 'printf %bx%s\n not working'
 fi
 alpha=abcdefghijklmnop
 if	[[ $(printf "%10.*s\n" 5 $alpha) != '     abcde' ]]
-then	err_exit 'printf %10.%s\n  not working'
+then	err_exit 'printf %10.%s\n not working'
 fi
 float x2=.0000625
 if	[[ $(printf "%10.5E\n" x2) != 6.25000E-05 ]]
@@ -249,10 +267,13 @@ x2=.000000001
 if	[[ $(printf "%g\n" x2 2>/dev/null) != 1e-09 ]]
 then	err_exit 'printf "%g" not working correctly'
 fi
-#FIXME#($SHELL read -s foobar <<\!
-#FIXME#testing
-#FIXME#!
-#FIXME#) 2> /dev/null || err_exit ksh read -s var fails
+
+(read -s foobar <<<testing_read_s) 2> /dev/null || err_exit "'read -s var' fails"
+exp=$'^[[:digit:]]+\ttesting_read_s$'
+got=$(fc -l -0)
+[[ $got =~ $exp ]] || err_exit "'read -s' did not write to history file" \
+	"(expected match of regex $(printf %q "$exp"), got $(printf %q "$got"))"
+
 if	[[ $(printf +3 2>/dev/null) !=   +3 ]]
 then	err_exit 'printf is not processing formats beginning with + correctly'
 fi
@@ -263,7 +284,7 @@ if	[[ $(trap --version 2> /dev/null;print done) != done ]]
 then	err_exit 'trap builtin terminating after --version'
 fi
 if	[[ $(set --version 2> /dev/null;print done) != done ]]
-then	err_exit 'set builtin terminating after --veresion'
+then	err_exit 'set builtin terminating after --version'
 fi
 unset -f foobar
 function foobar
@@ -274,15 +295,59 @@ OPTIND=1
 if	[[ $(getopts  $'[+?X\ffoobar\fX]' v --man 2>&1) != *'Xhello world'X* ]]
 then	err_exit '\f...\f not working in getopts usage strings'
 fi
-if	[[ $(printf '%H\n' $'<>"& \'\tabc') != '&lt;&gt;&quot;&amp;&nbsp;&apos;&#9;abc' ]]
-then	err_exit 'printf %H not working'
-fi
-if	[[ $(printf '%(html)q\n' $'<>"& \'\tabc') != '&lt;&gt;&quot;&amp;&nbsp;&apos;&#9;abc' ]]
-then	err_exit 'printf %(html)q not working'
-fi
-if	[[ $( printf 'foo://ab_c%(url)q\n' $'<>"& \'\tabc') != 'foo://ab_c%3C%3E%22%26%20%27%09abc' ]]
-then	err_exit 'printf %(url)q not working'
-fi
+
+expect=$'&lt;&gt;&quot;&amp; &#39;\tabc'
+actual=$(printf '%H\n' $'<>"& \'\tabc')
+[[ $expect == "$actual" ]] || err_exit 'printf %H not working' \
+	"(expected $(printf %q "$expect"), got $(printf %q "$actual"))"
+actual=$(printf '%(html)q\n' $'<>"& \'\tabc')
+[[ $expect == "$actual" ]] || err_exit 'printf %(html)q not working' \
+	"(expected $(printf %q "$expect"), got $(printf %q "$actual"))"
+
+expect='foo://ab_c%3C%3E%22%26%20%27%09abc'
+actual=$(printf 'foo://ab_c%#H\n' $'<>"& \'\tabc')
+[[ $expect == "$actual" ]] || err_exit 'printf %#H not working' \
+	"(expected $(printf %q "$expect"), got $(printf %q "$actual"))"
+actual=$(printf 'foo://ab_c%(url)q\n' $'<>"& \'\tabc')
+[[ $expect == "$actual" ]] || err_exit 'printf %(url)q not working' \
+	"(expected $(printf %q "$expect"), got $(printf %q "$actual"))"
+
+case ${LC_ALL:-${LC_CTYPE:-${LANG:-}}} in
+( *[Uu][Tt][Ff]8* | *[Uu][Tt][Ff]-8* )
+	# HTML encoding UTF-8 characters
+	# (UTF-8 literal characters wrapped in 'eval' to avoid syntax error on ja_JP.SJIS)
+	eval 'expect='\''正常終了 正常終了'\'
+	eval 'actual=$(printf %H '\''正常終了 正常終了'\'')'
+	[[ $actual == "$expect" ]] || err_exit 'printf %H: Japanese UTF-8 characters' \
+				"(expected $expect; got $actual)"
+	expect='w?h?á?t??'
+	actual=$(printf %H $'w\x80h\x81\uE1\x82t\x83?')
+	[[ $actual == "$expect" ]] || err_exit 'printf %H: invalid UTF-8 characters' \
+				"(expected $expect; got $actual)"
+	# URL/URI encoding of UTF-8 characters
+	expect='wh.at%3F'
+	actual=$(printf %#H 'wh.at?')
+	[[ $actual == "$expect" ]] || err_exit 'printf %H: ASCII characters' \
+				"(expected $expect; got $actual)"
+	expect='%D8%B9%D9%86%D8%AF%D9%85%D8%A7%20%D9%8A%D8%B1%D9%8A%D8%AF%20%D8%A7%D9%84%D8%B9%D8%A7%D9%84%D9%85%20%D8%A3%D9%86%20%E2%80%AA%D9%8A%D8%AA%D9%83%D9%84%D9%91%D9%85%20%E2%80%AC%20%D8%8C%20%D9%81%D9%87%D9%88%20%D9%8A%D8%AA%D8%AD%D8%AF%D9%91%D8%AB%20%D8%A8%D9%84%D8%BA%D8%A9%20%D9%8A%D9%88%D9%86%D9%8A%D9%83%D9%88%D8%AF.'
+	actual=$(printf %#H 'عندما يريد العالم أن ‪يتكلّم ‬ ، فهو يتحدّث بلغة يونيكود.')
+	[[ $actual == "$expect" ]] || err_exit 'printf %H: Arabic UTF-8 characters' \
+				"(expected $expect; got $actual)"
+	expect='%E6%AD%A3%E5%B8%B8%E7%B5%82%E4%BA%86%20%E6%AD%A3%E5%B8%B8%E7%B5%82%E4%BA%86'
+	eval 'actual=$(printf %#H '\''正常終了 正常終了'\'')'
+	[[ $actual == "$expect" ]] || err_exit 'printf %H: Japanese UTF-8 characters' \
+				"(expected $expect; got $actual)"
+	expect='%C2%AB%20l%E2%80%99ab%C3%AEme%20de%20mon%C2%A0m%C3%A9tier%E2%80%A6%20%C2%BB'
+	actual=$(printf %#H '« l’abîme de mon métier… »')
+	[[ $actual == "$expect" ]] || err_exit 'printf %H: Latin UTF-8 characters' \
+				"(expected $expect; got $actual)"
+	expect='%3F%C2%86%3F%3F%3F'
+	actual=$(printf %#H $'\x86\u86\xF0\x96\x76\xA7\xB5')
+	[[ $actual == "$expect" ]] || err_exit 'printf %H: invalid UTF-8 characters' \
+				"(expected $expect; got $actual)"
+	;;
+esac
+
 if	[[ $(printf '%R %R %R %R\n' 'a.b' '*.c' '^'  '!(*.*)') != '^a\.b$ \.c$ ^\^$ ^(.*\..*)!$' ]]
 then	err_exit 'printf %T not working'
 fi
@@ -301,11 +366,13 @@ fi
 if	[[ $(printf '%..*s\n' : abc def) != abc:def ]]
 then	err_exit "printf '%..*s' not working"
 fi
-[[ $(printf '%q\n') == '' ]] || err_exit 'printf "%q" with missing arguments'
+
+# ======
 # we won't get hit by the one second boundary twice, right?
-[[ $(printf '%T\n' now) == "$(date)" ]] ||
-[[ $(printf '%T\n' now) == "$(date)" ]] ||
-err_exit 'printf "%T" now'
+expect= actual=
+{ expect=$(LC_ALL=C date) && actual=$(LC_ALL=C printf '%T\n' now) && [[ ${actual/ GMT / UTC } == "${expect/ GMT / UTC }" ]]; } ||
+{ expect=$(LC_ALL=C date) && actual=$(LC_ALL=C printf '%T\n' now) && [[ ${actual/ GMT / UTC } == "${expect/ GMT / UTC }" ]]; } ||
+err_exit 'printf "%T" now' "(expected $(printf %q "$expect"), got $(printf %q "$actual"))"
 behead()
 {
 	read line
@@ -378,7 +445,7 @@ do	arg=$1 val=$2 code=$3
 	shift 3
 	for fmt in '%d' '%g'
 	do	out=$(printf "$fmt" "$arg" 2>/dev/null)
-		err=$(printf "$fmt" "$arg" 2>&1 >/dev/null)
+		err=$(set +x; printf "$fmt" "$arg" 2>&1 >/dev/null)
 		printf "$fmt" "$arg" >/dev/null 2>&1
 		ret=$?
 		[[ $out == $val ]] || err_exit "printf $fmt $arg failed -- expected '$val', got '$out'"
@@ -468,6 +535,27 @@ function longline
 	do	print argument$i
 	done
 }
+# test that 'command' can result from expansion and can be overridden by a function
+expect=all\ ok
+c=command
+actual=$("$c" echo all ok 2>&1)
+[[ $actual == "$expect" ]] || err_exit '"command" utility from "$c" expansion not executed' \
+	"(expected $(printf %q "$expect"), got $(printf %q "$actual"))"
+set -- command echo all ok
+actual=$("$@" 2>&1)
+[[ $actual == "$expect" ]] || err_exit '"command" utility from "$@" expansion not executed' \
+	"(expected $(printf %q "$expect"), got $(printf %q "$actual"))"
+# must use 'eval' in following test as 'command' is integrated in parser and ksh likes to parse ahead
+actual=$(function command { echo all ok; }; eval 'command echo all wrong')
+[[ $actual == "$expect" ]] || err_exit '"command" failed to be overridden by function' \
+	"(expected $(printf %q "$expect"), got $(printf %q "$actual"))"
+actual=$(function command { echo all ok; }; "$c" echo all wrong)
+[[ $actual == "$expect" ]] || err_exit '"command" from "$c" expansion failed to be overridden by function' \
+	"(expected $(printf %q "$expect"), got $(printf %q "$actual"))"
+set -- command echo all wrong
+actual=$(function command { echo all ok; }; "$@")
+[[ $actual == "$expect" ]] || err_exit '"command" from "$@" expansion failed to be overridden by function' \
+	"(expected $(printf %q "$expect"), got $(printf %q "$actual"))"
 # test command -x option
 integer sum=0 n=10000
 if	! ${SHELL:-ksh} -c 'print $#' count $(longline $n) > /dev/null  2>&1
@@ -525,7 +613,7 @@ $SHELL -c "( sleep 1; kill -ALRM \$\$ ) & sleep $del" 2> /dev/null
 exitval=$?
 (( sec = SECONDS - sec ))
 exec 2>&3-
-(( exitval )) && err_exit "sleep doesn't exit 0 with ALRM interupt"
+(( exitval )) && err_exit "sleep doesn't exit 0 with ALRM interrupt"
 (( sec > (del - 1) )) || err_exit "ALRM signal causes sleep to terminate prematurely -- expected 3 sec, got $sec"
 typeset -r z=3
 y=5
@@ -548,11 +636,11 @@ t=$(ulimit -t)
 $SHELL 2> /dev/null -c 'cd ""' && err_exit 'cd "" not producing an error'
 [[ $($SHELL 2> /dev/null -c 'cd "";print hi') != hi ]] && err_exit 'cd "" should not terminate script'
 
-bincat=$(whence -p cat)
 builtin cat
 out=$tmp/seq.out
-seq 11 >$out
+for ((i=1; i<=11; i++)); do print "$i"; done >$out
 cmp -s <(print -- "$($bincat<( $bincat $out ) )") <(print -- "$(cat <( cat $out ) )") || err_exit "builtin cat differs from $bincat"
+builtin -d cat
 
 [[ $($SHELL -c '{ printf %R "["; print ok;}' 2> /dev/null) == ok ]] || err_exit $'\'printf %R "["\' causes shell to abort'
 
@@ -613,15 +701,10 @@ then	(
 			mv t1 t2
 			mkdir t1
 		)
-		[[ -f real_t1 ]] || err_exit 'real_t1 not found after parent directory renamed in subshell'
-	)
+		[[ -f real_t1 ]]
+	) || err_exit 'real_t1 not found after parent directory renamed in subshell'
 fi
 cd "$tmp"
-
-$SHELL +E -i <<- \! && err_exit 'interactive shell should not exit 0 after false'
-	false
-	exit
-!
 
 if	kill -L > /dev/null 2>&1
 then	[[ $(kill -l HUP) == "$(kill -L HUP)" ]] || err_exit 'kill -l and kill -L are not the same when given a signal name'
@@ -629,14 +712,577 @@ then	[[ $(kill -l HUP) == "$(kill -L HUP)" ]] || err_exit 'kill -l and kill -L a
 	[[ $(kill -L) == *'9) KILL'* ]] || err_exit 'kill -L output does not contain 9) KILL'
 fi
 
-unset ENV
+export ENV=/./dev/null
 v=$($SHELL 2> /dev/null +o rc -ic $'getopts a:bc: opt --man\nprint $?')
 [[ $v == 2* ]] || err_exit 'getopts --man does not exit 2 for interactive shells'
 
 read baz <<< 'foo\\\\bar'
 [[ $baz == 'foo\\bar' ]] || err_exit 'read of foo\\\\bar not getting foo\\bar'
 
-: ~root
-[[ $(builtin) == *.sh.tilde* ]] &&  err_exit 'builtin contains .sh.tilde'
+# ======
+# Check that I/O errors are detected <https://github.com/att/ast/issues/1093>
+actual=$(
+    {
+        (
+            trap "" PIPE
+            for ((i = SECONDS + 1; SECONDS < i; )); do
+                print hi || {
+                    print $? >&2
+                    exit
+                }
+            done
+        ) | true
+    } 2>&1
+)
+expect='1'
+if [[ $actual != "$expect" ]]
+then
+    err_exit "I/O error not detected: expected $(printf %q "$expect"), got $(printf %q "$actual")"
+fi
 
+# ======
+# 'times' builtin
+
+expect=$'0m00.0[0-9][0-9]s 0m00.0[0-9][0-9]s\n0m00.000s 0m00.000s'
+actual=$("$SHELL" -c times)
+[[ $actual == $expect ]] || err_exit "times output: expected $(printf %q "$expect"), got $(printf %q "$actual")"
+
+expect=$'*: times: too many operands'
+actual=$(set +x; eval 'times Extra Args' 2>&1)
+[[ $actual == $expect ]] || err_exit "times with args: expected $(printf %q "$expect"), got $(printf %q "$actual")"
+
+# ======
+# 'whence' builtin
+PATH=$tmp:$PATH $SHELL <<-\EOF || err_exit "'whence' gets wrong path on init"
+	wc=$(whence wc)
+	[[ -x $wc ]]
+EOF
+
+# ======
+# 'builtin -d' should not delete special builtins
+(builtin -d export 2> /dev/null
+PATH=/dev/null
+whence -q export) || err_exit "'builtin -d' deletes special builtins"
+
+# ======
+# 'read -r -d' should not ignore '-r'
+printf '\\\000' | read -r -d ''
+[[ $REPLY == $'\\' ]] || err_exit "read -r -d '' ignores -r"
+
+# ======
+# BUG_CMDSPASGN: Preceding a special builtin with 'command' should disable its special properties.
+# Test that assignments preceding 'command' are local.
+for arg in '' -v -V -p -x
+do
+	for cmd in '' : true ls eval 'eval :' 'eval true' 'eval ls'
+	do
+		[[ $arg == -x ]] && ! command -xv "${cmd% *}" >/dev/null && continue
+		unset foo
+		eval "foo=BUG command $arg $cmd" >/dev/null 2>&1
+		got=$?
+		case $arg,$cmd in
+		-v, | -V, )	exp=2 ;;
+		*)		exp=0 ;;
+		esac
+		[[ $got == "$exp" ]] || err_exit "exit status of 'command $arg $cmd' is $got, expected $exp"
+		[[ -v foo ]] && err_exit "preceding assignment survives 'command $arg $cmd'"
+	done
+done
+
+# Regression that occurred after fixing the bug above: the += operator didn't work correctly.
+# https://www.mail-archive.com/ast-users@lists.research.att.com/msg00369.html
+unset foo
+integer foo=1
+exp=4
+got=$(foo+=3 command eval 'echo $foo')
+[[ $exp == $got ]] || err_exit "Test 1: += assignment for environment variables doesn't work with 'command special_builtin'" \
+	"(expected $exp, got $got)"
+foo+=3 command eval 'test $foo'
+(( foo == 1 )) || err_exit "environment isn't restored after 'command special_builtin'" \
+	"(expected 1, got $foo)"
+got=$(foo+=3 eval 'echo $foo')
+[[ $exp == $got ]] || err_exit "+= assignment for environment variables doesn't work with builtins" \
+	"(expected $exp, got $got)"
+
+unset foo
+exp=barbaz
+got=$(foo=bar; foo+=baz command eval 'echo $foo')
+[[ $exp == $got ]] || err_exit "Test 2: += assignment for environment variables doesn't work with 'command special_builtin'" \
+	"(expected $exp, got $got)"
+
+# Attempting to modify a readonly variable with the += operator should fail
+exp=2
+got=$(integer -r foo=2; foo+=3 command eval 'echo $foo' 2> /dev/null)
+[[ $? == 0 ]] && err_exit "+= assignment modifies readonly variables" \
+	"(expected $exp, got $got)"
+
+# ======
+# 'whence -f' should ignore functions
+foo_bar() { true; }
+actual="$(whence -f foo_bar)"
+whence -f foo_bar >/dev/null && err_exit "'whence -f' doesn't ignore functions (got $(printf %q "$actual"))"
+
+# whence -vq/type -q must be tested as well
+actual="$(type -f foo_bar 2>&1)"
+type -f foo_bar >/dev/null 2>&1 && err_exit "'type -f' doesn't ignore functions (got $(printf %q "$actual"))"
+type -qf foo_bar && err_exit "'type -qf' doesn't ignore functions"
+
+# Test the exit status of 'whence -q'
+mkdir "$tmp/fakepath"
+ln -s "${ whence -p cat ;}" "$tmp/fakepath/"
+ln -s "${ whence -p ls ;}" "$tmp/fakepath/"
+save_PATH=$PATH
+PATH=$tmp/fakepath
+whence -q cat nonexist ls && err_exit "'whence -q' has the wrong exit status"
+whence -q cat nonexist && err_exit "'whence -q' has the wrong exit status"
+whence -q nonexist && err_exit "'whence -q' has the wrong exit status"
+PATH=$save_PATH
+
+# ======
+# 'cd ../.foo' should not exclude the '.' in '.foo'
+# https://bugzilla.redhat.com/889748
+expect=$tmp/.ssh
+actual=$( HOME=$tmp
+	mkdir ~/.ssh 2>&1 &&
+	cd ~/.ssh 2>&1 &&
+	cd ../.ssh 2>&1 &&
+	print -r -- "$PWD" )
+[[ $actual == "$expect" ]] || err_exit 'changing to a hidden directory using a path that contains the parent directory (..) fails' \
+	"(expected $(printf %q "$expect"), got $(printf %q "$actual"))"
+expect=$tmp/.java
+actual=$( mkdir "$tmp/java" "$tmp/.java" 2>&1 &&
+	cd "$tmp/.java" 2>&1 &&
+	cd ../.java 2>&1 &&
+	pwd )
+[[ $actual == "$expect" ]] || err_exit 'the dot (.) part of the directory name is being stripped' \
+	"(expected $(printf %q "$expect"), got $(printf %q "$actual"))"
+
+# check that we cannot cd into a regular file and get misbehaviour
+: > "$tmp/regular_file"
+expect=": cd: $tmp/regular_file: [Not a directory]"
+actual=$(LC_ALL=C cd "$tmp/regular_file" 2>&1)
+e=$?
+[[ e -eq 1 && $actual == *"$expect" ]] || err_exit 'can cd into a regular file' \
+	"(expected status 1 and msg ending in $(printf %q "$expect"), got status $e and msg $(printf %q "$actual"))"
+
+# https://bugzilla.redhat.com/1102627
+if	[[ $(id -u) == '0' ]]
+then	warning "running as root: skipping tests involving directory search (x) permission"
+else
+mkdir -m 600 "$tmp/no_x_dir"
+expect=": cd: $tmp/no_x_dir: [Permission denied]"
+actual=$(LC_ALL=C cd "$tmp/no_x_dir" 2>&1)
+e=$?
+[[ e -eq 1 && $actual == *"$expect" ]] || err_exit 'can cd into a directory without x permission bit (absolute path arg)' \
+	"(expected status 1 and msg ending in $(printf %q "$expect"), got status $e and msg $(printf %q "$actual"))"
+expect=": cd: no_x_dir: [Permission denied]"
+actual=$(cd "$tmp" 2>&1 && LC_ALL=C cd "no_x_dir" 2>&1)
+e=$?
+[[ e -eq 1 && $actual == *"$expect" ]] || err_exit 'can cd into a directory without x permission bit (relative path arg)' \
+	"(expected status 1 and msg ending in $(printf %q "$expect"), got status $e and msg $(printf %q "$actual"))"
+rmdir "$tmp/no_x_dir"	# on HP-UX, 'rm -rf $tmp' won't work unless we rmdir this or fix the perms
+fi
+
+# https://bugzilla.redhat.com/1133582
+expect=$HOME
+actual=$({ a=`cd; pwd`; } >&-; print -r -- "$a")
+[[ $actual == "$expect" ]] || err_exit "'cd' broke old-form command substitution with outer stdout closed" \
+	"(expected $(printf %q "$expect"), got $(printf %q "$actual"))"
+actual=$({ a=$(cd; pwd); } >&-; print -r -- "$a")
+[[ $actual == "$expect" ]] || err_exit "'cd' broke new-form command substitution with outer stdout closed" \
+	"(expected $(printf %q "$expect"), got $(printf %q "$actual"))"
+
+# CDPATH was not ignored by 'cd ./dir': https://github.com/ksh93/ksh/issues/151
+expect=': cd: ./dev: [No such file or directory]'
+actual=$( (CDPATH=/ LC_ALL=C cd -P ./dev && pwd) 2>&1 )
+let "(e=$?)==1" && [[ $actual == *"$expect" ]] || err_exit "CDPATH not ignored by cd ./dir" \
+	"(expected *$(printf %q "$expect") with status 1, got $(printf %q "$actual") with status $e)"
+
+# ======
+# 'readonly' should set the correct scope when creating variables in functions
+unset foo
+(
+	function test_func
+	{
+		readonly foo="bar"
+		[[ $foo = "bar" ]]
+	}
+	test_func
+) || err_exit "readonly variable is not assigned a value inside functions"
+
+# ======
+# Test the output of nonstandard date formats with 'printf %T'
+[[ $(printf '%(%l)T') == $(printf '%(%_I)T') ]] || err_exit 'date format %l is not the same as %_I'
+[[ $(printf '%(%k)T') == $(printf '%(%_H)T') ]] || err_exit 'date format %k is not the same as %_H'
+[[ $(printf '%(%f)T') == $(printf '%(%Y.%m.%d-%H:%M:%S)T') ]] || err_exit 'date format %f is not the same as %Y.%m.%d-%H:%M:%S'
+[[ $(printf '%(%q)T') == $(printf '%(%Qz)T') ]] && err_exit 'date format %q is the same as %Qz'
+[[ $(printf '%(%Z)T') == $(date '+%Z') ]] || err_exit "date format %Z is incorrect (expected $(date '+%Z'), got $(printf '%(%Z)T'))"
+
+# Test manually specified blank and zero padding with 'printf  %T'
+(
+	IFS=$'\n\t' # Preserve spaces in output
+	for i in d e H I j J k l m M N S U V W y; do
+		for f in ' ' 0; do
+			if [[ $f == ' ' ]]; then
+				padding='blank'
+				specify='_'
+			else
+				padding='zero'
+				specify='0'
+			fi
+			actual="$(printf "%(%${specify}${i})T" 'January 1 6AM 2001')"
+			expect="${f}${actual:1}"
+			[[ $expect != $actual ]] && err_exit "Specifying $padding padding with format '%$i' doesn't work (expected '$expect', got '$actual')"
+		done
+	done
+)
+
+# ======
+# Test various AST getopts usage/manual outputs
+
+OPTIND=1
+USAGE=$'
+[-s8?
+@(#)$Id: foo (ksh93) 2020-07-16 $
+]
+[+NAME?foo - bar]
+[+DESC?Baz.]
+[x:xylophone?Lorem.]
+[y:ypsilon?Ipsum.]
+[z:zeta?Sit.]
+
+[ name=value ... ]
+-y [ name ... ]
+
+[+SEE ALSO?\bgetopts\b(1)]
+'
+
+function testusage {
+	getopts "$USAGE" dummy 2>&1
+}
+
+actual=$(testusage -\?)
+expect='Usage: testusage [-xyz] [ name=value ... ]
+   Or: testusage -y [ name ... ]
+ Help: testusage [ --help | --man ] 2>&1'
+[[ $actual == "$expect" ]] || err_exit "getopts: '-?' output" \
+	"(expected $(printf %q "$expect"), got $(printf %q "$actual"))"
+
+actual=$(testusage --\?x)
+expect='Usage: testusage [ options ] [ name=value ... ]
+   Or: testusage -y [ name ... ]
+ Help: testusage [ --help | --man ] 2>&1
+OPTIONS
+  -x, --xylophone Lorem.'
+[[ $actual == "$expect" ]] || err_exit "getopts: '--?x' output" \
+	"(expected $(printf %q "$expect"), got $(printf %q "$actual"))"
+
+actual=$(testusage --help)
+expect='Usage: testusage [ options ] [ name=value ... ]
+   Or: testusage -y [ name ... ]
+ Help: testusage [ --help | --man ] 2>&1
+OPTIONS
+  -x, --xylophone Lorem.
+  -y, --ypsilon   Ipsum.
+  -z, --zeta      Sit.'
+[[ $actual == "$expect" ]] || err_exit "getopts: '--help' output" \
+	"(expected $(printf %q "$expect"), got $(printf %q "$actual"))"
+
+actual=$(testusage --man)
+expect='NAME
+  foo - bar
+
+SYNOPSIS
+  foo [ options ] [ name=value ... ]
+  foo -y [ name ... ]
+
+DESC
+  Baz.
+
+OPTIONS
+  -x, --xylophone Lorem.
+  -y, --ypsilon   Ipsum.
+  -z, --zeta      Sit.
+
+SEE ALSO
+  getopts(1)
+
+IMPLEMENTATION
+  version         foo (ksh93) 2020-07-16'
+[[ $actual == "$expect" ]] || err_exit "getopts: '--man' output" \
+	"(expected $(printf %q "$expect"), got $(printf %q "$actual"))"
+
+# ======
+# 'sleep -s' should work in interactive shells when seconds > 30.
+sleepsig="$tmp/sleepsig.sh"
+cat >| "$sleepsig" << 'EOF'
+sleep -s 31 &
+sleep .1
+kill -CONT $!
+sleep .1
+if kill -0 $!; then
+	kill -TERM $! # Don't leave a lingering background process
+	exit 1
+else
+	exit 0
+fi
+EOF
+"$SHELL" -i "$sleepsig" 2> /dev/null || err_exit "'sleep -s' doesn't work with intervals of more than 30 seconds"
+
+# ======
+# Builtins should handle unrecognized options correctly
+while IFS= read -r bltin <&3
+do	case $bltin in
+	echo | test | true | false | \[ | : | getconf | */getconf | uname | */uname | catclose | catgets | catopen | Dt* | _Dt* | X* | login | newgrp )
+		continue ;;
+	/*/*)	expect="Usage: ${bltin##*/} "
+		actual=$({ PATH=${bltin%/*}; "${bltin##*/}" --this-option-does-not-exist; } 2>&1) ;;
+	*/*)	err_exit "strange path name in 'builtin' output: $(printf %q "$bltin")"
+		continue ;;
+	*)	expect="Usage: $bltin "
+		actual=$({ "${bltin}" --this-option-does-not-exist; } 2>&1) ;;
+	esac
+	[[ $actual == *"$expect"* ]] || err_exit "$bltin should show usage info on unrecognized options" \
+			"(expected string containing $(printf %q "$expect"), got $(printf %q "$actual"))"
+done 3< <(builtin)
+
+# ======
+# The 'alarm' builtin could make 'read' crash due to IFS table corruption caused by unsafe asynchronous execution.
+# https://bugzilla.redhat.com/1176670
+if	(builtin alarm) 2>/dev/null
+then	got=$( { "$SHELL" -c '
+		builtin alarm
+		alarm -r alarm_handler +.005
+		i=0
+		function alarm_handler.alarm
+		{
+			let "(++i) > 20" && exit
+		}
+		while :; do
+			echo cargo,odds and ends,jetsam,junk,wreckage,castoffs,sea-drift
+		done | while IFS="," read arg1 arg2 arg3 arg4 junk; do
+			:
+		done
+	'; } 2>&1)
+	((!(e = $?))) || err_exit 'crash with alarm and IFS' \
+		"(got status $e$( ((e>128)) && print -n / && kill -l "$e"), $(printf %q "$got"))"
+fi
+
+# ==========
+# Verify that the POSIX 'test' builtin complains loudly when the '=~' operator is used rather than
+# failing silently. See https://github.com/att/ast/issues/1152.
+actual=$($SHELL -c 'test foo =~ foo' 2>&1)
+actual_status=$?
+actual=${actual#*: }
+expect='test: =~: operator not supported; use [[ ... ]]'
+expect_status=2
+[[ "$actual" = "$expect" ]] || err_exit "test =~ failed (expected $expect, got $actual)"
+[[ "$actual_status" = "$expect_status" ]] ||
+    err_exit "test =~ failed with the wrong exit status (expected $expect_status, got $actual_status)"
+
+# Invalid operators 'test' and '[[ ... ]]' both reject should also cause an error with exit status 2.
+for operator in '===' ']]'
+do
+	actual="$($SHELL -c "test foo $operator foo" 2>&1)"
+	actual_status=$?
+	actual=${actual#*: }
+	expect="test: $operator: unknown operator"
+	expect_status=2
+	[[ "$actual" = "$expect" ]] || err_exit "test $operator failed" \
+		"(expected $(printf %q "$expect"), got $(printf %q "$actual"))"
+	[[ "$actual_status" = "$expect_status" ]] ||
+		err_exit "'test foo $operator foo' failed with the wrong exit status (expected $expect_status, got $actual_status)"
+done
+
+# ======
+# Regression test for https://github.com/att/ast/issues/1402
+#
+# We throw away stderr because we only want the value of '$t', not the error text from running
+# 'command' with an invalid flag.
+exp='good'
+got=$($SHELL -c 't=good; t=bad command -@; print $t' 2>/dev/null)
+[[ $exp == $got ]] || err_exit "temp var assignment with 'command'" \
+	"(expected $(printf %q "$expect"), got $(printf %q "$actual"))"
+
+# ======
+# Regression test for https://github.com/att/ast/issues/949
+foo_script='#!/bin/sh
+exit 0'
+echo "$foo_script" > "$tmp/foo1.sh"
+echo "$foo_script" > "$tmp/foo2.sh"
+builtin chmod
+chmod +x "$tmp/foo1.sh" "$tmp/foo2.sh"
+$SHELL "$tmp/foo1.sh" || err_exit "builtin 'chmod +x' doesn't work on first script"
+$SHELL "$tmp/foo2.sh" || err_exit "builtin 'chmod +x' doesn't work on second script"
+
+# ======
+# In ksh93v- 2013-10-10 alpha cd doesn't fail on directories without execute permission.
+# Additionally, ksh93v- added a regression test for attempting to use cd on a file.
+mkdir "$tmp/noexecute"
+chmod -x "$tmp/noexecute"
+$SHELL -c "cd $tmp/noexecute" 2> /dev/null && err_exit "'cd' on directories without an execute bit doesn't fail"
+touch "$tmp/notadir"
+$SHELL -c "cd $tmp/notadir" 2> /dev/null && err_exit "'cd' on a normal file doesn't fail"
+
+# ======
+# 'kill %' should fail with exit status 1
+{ $SHELL -c 'kill %' ;} 2> /dev/null
+got=$?
+exp=1
+[[ $got == $exp ]] || err_exit "'kill %' has the wrong exit status (expected '$exp'; got '$got')"
+
+# ======
+# 'cd -' should recognize the value of an overridden $OLDPWD variable
+# https://github.com/ksh93/ksh/pull/249
+# https://github.com/att/ast/issues/8
+
+mkdir "$tmp/oldpwd" "$tmp/otherpwd"
+exp=$tmp/oldpwd
+OLDPWD=$exp
+cd - > /dev/null
+got=$PWD
+[[ $got == "$exp" ]] || err_exit "cd - doesn't recognize overridden OLDPWD variable" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+cd "$tmp"
+OLDPWD=$tmp/otherpwd
+got=$(OLDPWD=$tmp/oldpwd cd -)
+[[ $got == "$exp" ]] ||
+	err_exit "cd - doesn't recognize overridden OLDPWD variable if it is overridden in new scope" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+function fn
+{
+	typeset OLDPWD=/tmp
+	cd -
+}
+exp='/tmp'
+got=$(OLDPWD=/bin fn)
+[[ $got == "$exp" ]] ||
+	err_exit "cd - doesn't recognize overridden OLDPWD variable if it is overridden in function scope" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+function fn
+{
+	typeset PWD=bug
+	cd /tmp
+	echo "$PWD"
+}
+exp='/tmp'
+got=$(fn)
+[[ $got == "$exp" ]] ||
+	err_exit "PWD isn't set after cd if already set in function scope" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# $PWD should be set correctly after cd
+exp="$PWD
+$PWD"
+got=$(echo $PWD; PWD=/tmp cd /dev; echo $PWD)
+[[ $got == "$exp" ]] ||
+	err_exit "PWD is incorrect after cd" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# Test for $OLDPWD and/or $PWD leaking out of subshell
+exp='/tmp /dev'
+got=$(
+	PWD=/dev
+	OLDPWD=/tmp
+	(
+		cd /usr; cd /bin
+		cd - > /dev/null
+	)
+	echo $OLDPWD $PWD
+)
+[[ $got == "$exp" ]] ||
+	err_exit "OLDPWD and/or PWD leak out of subshell" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# $OLDPWD and $PWD should survive after being set in a subshare
+exp='/usr /bin'
+got=$(
+	PWD=/dev
+	OLDPWD=/tmp
+	foo=${
+		cd /usr; cd /bin
+	}
+	echo $OLDPWD $PWD
+)
+[[ $got == "$exp" ]] ||
+	err_exit "OLDPWD and/or PWD fail to survive subshare" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
+# Test for bugs related to 'uname -d'
+# https://github.com/att/ast/pull/1187
+builtin uname
+exp=$(uname -o)
+
+# Test for a possible crash (to avoid crashing the script, fork the subshell)
+(
+	ulimit -t unlimited 2> /dev/null
+	uname -d > /dev/null
+) || err_exit "'uname -d' crashes"
+
+# 'uname -d' shouldn't change the output of 'uname -o'
+got=$(ulimit -t unlimited 2> /dev/null; uname -d > /dev/null; uname -o)
+[[ $exp == $got ]] || err_exit "'uname -d' changes the output of 'uname -o'" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
+# https://github.com/ksh93/ksh/issues/138
+builtin -d cat
+if	[[ $'\n'${ builtin; }$'\n' == *$'\n/opt/ast/bin/cat\n'* ]]
+then	exp='  version         cat (*) ????-??-??'
+	got=$(/opt/ast/bin/cat --version 2>&1)
+	[[ $got == $exp ]] || err_exit "path-bound builtin not executable by literal canonical path" \
+		"(expected match of $(printf %q "$exp"), got $(printf %q "$got"))"
+	got=$(PATH=/opt/ast/bin:$PATH; "${ whence -p cat; }" --version 2>&1)
+	[[ $got == $exp ]] || err_exit "path-bound builtin not executable by canonical path resulting from expansion" \
+		"(expected match of $(printf %q "$exp"), got $(printf %q "$got"))"
+	got=$(PATH=/opt/ast/bin:$PATH "$SHELL" -o restricted -c 'cat --version' 2>&1)
+	[[ $got == $exp ]] || err_exit "restricted shells do not recognize path-bound builtins" \
+		"(expected match of $(printf %q "$exp"), got $(printf %q "$got"))"
+	got=$(PATH=/opt/ast/bin cat --version 2>&1)
+	[[ $got == $exp ]] || err_exit "path-bound builtin not found on PATH in preceding assignment" \
+		"(expected match of $(printf %q "$exp"), got $(printf %q "$got"))"
+else	warning 'skipping path-bound builtin tests: builtin /opt/ast/bin/cat not found'
+fi
+
+# ======
+# part of https://github.com/ksh93/ksh/issues/153
+mkdir "$tmp/deleted"
+cd "$tmp/deleted"
+tmp=$tmp "$SHELL" -c 'cd /; rmdir "$tmp/deleted"'
+exp=$PWD
+got=$("$SHELL" -c 'cd /; echo "$OLDPWD"' 2>&1)
+[[ $got == "$exp" ]] || err_exit "OLDPWD not correct after cd'ing from a nonexistent PWD" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+cd "$tmp"
+
+# ======
+# BUG_CMDSPEXIT
+exp='ok1ok2ok3ok4ok5ok6ok7ok8ok9ok10ok11ok12end'
+got=$(	readonly v=foo
+	exec 2>/dev/null
+	# All the "special builtins" below should fail, and not exit, so 'print end' is reached.
+	# Ref.: http://pubs.opengroup.org/onlinepubs/9699919799/utilities/contents.html
+	# Left out are 'command exec /dev/null/nonexistent', where no shell follows the standard,
+	# as well as 'command exit' and 'command return', because, well, obviously.
+	command : </dev/null/no		|| print -n ok1
+	command . /dev/null/no		|| print -n ok2
+	command set +o bad@option	|| print -n ok3
+	command shift $(($# + 1))	|| print -n ok4
+	(unalias times; PATH=/dev/null; eval 'command times foo bar >/dev/null || print -n ok5')
+	command trap foo bar baz quux	|| print -n ok6
+	command unset v			|| print -n ok7
+	command eval "("		|| print -n ok8
+	command export v=baz		|| print -n ok9
+	command readonly v=bar		|| print -n ok10
+	command break			&& print -n ok11  # 'break' and 'continue' are POSIXly allowed to quietly...
+	command continue		&& print -n ok12  # ..."succeed" if they are used outside of a loop :-/
+	print end)
+[[ $got == "$exp" ]] || err_exit "prefixing special builtin with 'command' does not stop it from exiting the shell on error" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
 exit $((Errors<125?Errors:125))

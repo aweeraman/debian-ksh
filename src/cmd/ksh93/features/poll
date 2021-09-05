@@ -68,7 +68,6 @@ tst	pipe_socketpair note{ use socketpair() for peekable pipe() }end execute{
 }end
 tst	socketpair_devfd note{ /dev/fd/N handles socketpair() }end execute{
 	#include <ast.h>
-	#include <fs3d.h>
 	#include <sys/types.h>
 	#include <sys/socket.h>
 	int main()
@@ -76,7 +75,6 @@ tst	socketpair_devfd note{ /dev/fd/N handles socketpair() }end execute{
 		int		devfd;
 		int		n;
 		int		sfd[2];
-		fs3d(FS3D_OFF);
 		close(0);
 		open("/dev/null", O_RDONLY);
 		if ((n = open("/dev/fd/0", O_RDONLY)) < 0)
@@ -152,6 +150,6 @@ cat{
 	#   endif /* FD_SET */
 	#   ifndef _typ_fd_set
 		typedef long fd_set;
-	#   endif /*_typ_fd_set */
+	#   endif /* _typ_fd_set */
 	#endif /* _lib_select */
 }end

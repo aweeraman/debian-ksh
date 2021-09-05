@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,6 +21,7 @@
 *                                                                      *
 ***********************************************************************/
 #pragma prototyped
+
 /*
  * Advanced Software Technology Library
  * AT&T Research
@@ -58,34 +60,54 @@ struct _sfio_s;
 #ifndef	__FILE_typedef
 #define __FILE_typedef	1
 #endif
+#ifndef	_FILE_DEFINED
+#define _FILE_DEFINED   1
+#endif
+#ifndef	_FILE_defined
+#define _FILE_defined   1
+#endif
 #ifndef _FILEDEFED
 #define _FILEDEFED	1
 #endif
+#ifndef __FILE_defined
+#define __FILE_defined  1
+#endif
+#ifndef ____FILE_defined
+#define ____FILE_defined  1
+#endif
+#endif
+
+/*
+ * tcc on FreeBSD: Avoid using nonexistent math
+ * builtins by pretending to be an ancient gcc.
+ */
+#if __TINYC__ && __GNUC__ >= 3 && __FreeBSD__
+#undef __GNUC__
+#undef __GNUC_MINOR__
+#undef __GNUC_PATCHLEVEL__
+#define __GNUC__ 2
+#define __GNUC_MINOR__ 95
+#define __GNUC_PATCHLEVEL__ 3
 #endif
 
 /*
  * exit() support -- this matches shell exit codes
  */
 
-#define EXIT_BITS	8			/* # exit status bits	*/
+#define EXIT_BITS	8	/* # exit status bits	*/
 
-#define EXIT_USAGE	2			/* usage exit code	*/
-#define EXIT_QUIT	((1<<(EXIT_BITS))-1)	/* parent should quit	*/
-#define EXIT_NOTFOUND	((1<<(EXIT_BITS-1))-1)	/* command not found	*/
-#define EXIT_NOEXEC	((1<<(EXIT_BITS-1))-2)	/* other exec error	*/
+#define EXIT_USAGE	2	/* usage exit code	*/
+#define EXIT_QUIT	255	/* parent should quit	*/
+#define EXIT_NOTFOUND	127	/* command not found	*/
+#define EXIT_NOEXEC	126	/* other exec error	*/
 
-#define EXIT_CODE(x)	((x)&((1<<EXIT_BITS)-1))
-#define EXIT_CORE(x)	(EXIT_CODE(x)|(1<<EXIT_BITS)|(1<<(EXIT_BITS-1)))
-#define EXIT_TERM(x)	(EXIT_CODE(x)|(1<<EXIT_BITS))
+#define EXIT_CODE(x)	((x) & EXIT_QUIT)
+#define EXIT_CORE(x)	(EXIT_CODE(x) | 256 | 128)
+#define EXIT_TERM(x)	(EXIT_CODE(x) | 256)
 
-/*
- * NOTE: for compatibility the following work for EXIT_BITS={7,8}
- */
-
-#define EXIT_STATUS(x)	(((x)&((1<<(EXIT_BITS-2))-1))?(x):EXIT_CODE((x)>>EXIT_BITS))
-
-#define EXITED_CORE(x)	(((x)&((1<<EXIT_BITS)|(1<<(EXIT_BITS-1))))==((1<<EXIT_BITS)|(1<<(EXIT_BITS-1)))||((x)&((1<<(EXIT_BITS-1))|(1<<(EXIT_BITS-2))))==((1<<(EXIT_BITS-1))|(1<<(EXIT_BITS-2))))
-#define EXITED_TERM(x)	((x)&((1<<EXIT_BITS)|(1<<(EXIT_BITS-1))))
+#define EXIT_STATUS(x)	(((x) & 63) ? (x) : EXIT_CODE((x) >> 8))
+#define EXITED_CORE(x)	(((x) & (256 | 128)) == (256 | 128) || ((x) & (128 | 64)) == (128 | 64))
+#define EXITED_TERM(x)	((x) & (256 | 128))
 
 /*
  * astconflist() flags
@@ -161,7 +183,7 @@ typedef struct
 #define FMT_ALWAYS	0x01		/* always quote			*/
 #define FMT_ESCAPED	0x02		/* already escaped		*/
 #define FMT_SHELL	0x04		/* escape $ ` too		*/
-#define FMT_WIDE	0x08		/* don't escape 8 bit chars	*/
+#define FMT_WIDE	0x08		/* don't escape 8-bit chars	*/
 #define FMT_PARAM	0x10		/* disable FMT_SHELL ${$( quote	*/
 
 /*
@@ -173,6 +195,14 @@ typedef struct
 #define FMT_EXP_WIDE	0x080		/* expand \u \U \x wide chars	*/
 #define FMT_EXP_NOCR	0x100		/* skip \r			*/
 #define FMT_EXP_NONL	0x200		/* skip \n			*/
+
+/*
+ * Define inline as an empty macro if we are
+ * compiling with C89.
+ */
+#if __STDC_VERSION__ < 199901L
+#define inline
+#endif
 
 /*
  * multibyte macros
@@ -213,7 +243,7 @@ typedef struct
 
 #if defined(__STDC__) || defined(__cplusplus) || defined(c_plusplus)
 #define NiL		0
-#define NoP(x)		(void)(x)
+#define NoP(x)		do (void)(x); while(0)	/* for silencing "unused parameter" warnings */
 #else
 #define NiL		((char*)0)
 #define NoP(x)		(&x,1)
@@ -302,6 +332,7 @@ extern int		pathcheck(const char*, const char*, Pathcheck_t*);
 extern int		pathexists(char*, int);
 extern char*		pathfind(const char*, const char*, const char*, char*, size_t);
 extern int		pathgetlink(const char*, char*, int);
+extern int		pathicase(const char*);
 extern int		pathinclude(const char*);
 extern char*		pathkey(char*, char*, const char*, const char*, const char*);
 extern char*		pathkey_20100601(const char*, const char*, const char*, char*, size_t, char*, size_t);

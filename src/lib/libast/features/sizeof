@@ -10,4 +10,6 @@ tst	- note{ sizeof(integral-type) }end output{
 		printf("#define _ast_sizeof_intmax_t	%d\n", sizeof(_ast_intmax_t));
 		return 0;
 	}
+}end fail{
+	echo '#error The output block in src/lib/libast/features/sizeof failed to compile. Rebuild with IFFEFLAGS=-d1 to debug.'
 }end

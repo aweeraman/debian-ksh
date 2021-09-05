@@ -2,6 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2011 AT&T Intellectual Property          #
+#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -17,26 +18,10 @@
 #                  David Korn <dgk@research.att.com>                   #
 #                                                                      #
 ########################################################################
-function err_exit
-{
-	print -u2 -n "\t"
-	print -u2 -r ${Command}[$1]: "${@:2}"
-	(( Errors < 127 && Errors++ ))
-}
-alias err_exit='err_exit $LINENO'
+
+. "${SHTESTS_COMMON:-${0%/*}/_common}"
 
 set -o nounset
-Command=${0##*/}
-integer Errors=0
-
-set -o nounset
-
-typeset tmp
-
-# create temporary test directory
-tmp=$(mktemp -dt) || { err_exit mktemp -dt failed; exit 1; }
-trap "cd /; rm -rf $tmp" EXIT
-cd $tmp || exit
 
 function test_arithmetric_expression_accesss_array_element_through_nameref
 {
@@ -199,4 +184,79 @@ function test_has_iszero
 test_arithmetric_expression_accesss_array_element_through_nameref
 test_has_iszero
 
+# ======
+# Validate that typeset -E/F formatting matches that of their equivalent
+# printf formatting options as well as checking for correct float scaling
+# of the fractional parts.
+
+if	((SHOPT_BRACEPAT))
+then	set --  {'','-'}{0..1}.{0,9}{0,9}{0,1,9}{0,1,9}
+else	set --	0.0000 0.0001 0.0009 0.0010 0.0011 0.0019 0.0090 0.0091 0.0099 \
+		0.0900 0.0901 0.0909 0.0910 0.0911 0.0919 0.0990 0.0991 0.0999 \
+		0.9000 0.9001 0.9009 0.9010 0.9011 0.9019 0.9090 0.9091 0.9099 \
+		0.9900 0.9901 0.9909 0.9910 0.9911 0.9919 0.9990 0.9991 0.9999 \
+		1.0000 1.0001 1.0009 1.0010 1.0011 1.0019 1.0090 1.0091 1.0099 \
+		1.0900 1.0901 1.0909 1.0910 1.0911 1.0919 1.0990 1.0991 1.0999 \
+		1.9000 1.9001 1.9009 1.9010 1.9011 1.9019 1.9090 1.9091 1.9099 \
+		1.9900 1.9901 1.9909 1.9910 1.9911 1.9919 1.9990 1.9991 1.9999 \
+		-0.0000 -0.0001 -0.0009 -0.0010 -0.0011 -0.0019 -0.0090 -0.0091 -0.0099 \
+		-0.0900 -0.0901 -0.0909 -0.0910 -0.0911 -0.0919 -0.0990 -0.0991 -0.0999 \
+		-0.9000 -0.9001 -0.9009 -0.9010 -0.9011 -0.9019 -0.9090 -0.9091 -0.9099 \
+		-0.9900 -0.9901 -0.9909 -0.9910 -0.9911 -0.9919 -0.9990 -0.9991 -0.9999 \
+		-1.0000 -1.0001 -1.0009 -1.0010 -1.0011 -1.0019 -1.0090 -1.0091 -1.0099 \
+		-1.0900 -1.0901 -1.0909 -1.0910 -1.0911 -1.0919 -1.0990 -1.0991 -1.0999 \
+		-1.9000 -1.9001 -1.9009 -1.9010 -1.9011 -1.9019 -1.9090 -1.9091 -1.9099 \
+		-1.9900 -1.9901 -1.9909 -1.9910 -1.9911 -1.9919 -1.9990 -1.9991 -1.9999
+fi
+unset i tf pf; typeset -F 3 tf
+for i
+do	tf=$i
+	pf=${ printf '%.3f' tf ;}
+	if	[[ $tf != "$pf" ]]
+	then	err_exit "typeset -F formatted data does not match its printf. typeset -F 3: $tf != $pf"
+	fi
+done
+unset i tf pf; typeset -lF 3 tf
+for i
+do	tf=$i
+	pf=${ printf '%.3Lf' tf ;}
+	if	[[ $tf != "$pf" ]]
+	then	err_exit "typeset -lF formatted data does not match its printf. typeset -lF 3: $tf != $pf"
+	fi
+done
+unset i tf pf; typeset -E 3 tf
+for i
+do	tf=$i
+	pf=${ printf '%.3g' tf ;}
+	if	[[ $tf != "$pf" ]]
+	then	err_exit "typeset -E formatted data does not match its printf. typeset -E 3: $tf != $pf"
+	fi
+done
+unset i tf pf; typeset -lE 3 tf
+for i
+do	tf=$i
+	pf=${ printf '%.3Lg' tf ;}
+	if	[[ $tf != "$pf" ]]
+	then	err_exit "typeset -lE formatted data does not match its printf. typeset -lE 3: $tf != $pf"
+	fi
+done
+unset i tf pf
+
+unset x
+[[ $(typeset -F 0 x=5.67; typeset -p x) == 'typeset -F 0 x=6' ]] || err_exit 'typeset -F 0 with assignment failed to round.'
+[[ $(typeset -E 0 x=5.67; typeset -p x) == 'typeset -E 0 x=6' ]] || err_exit 'typeset -E 0 with assignment failed to round.'
+[[ $(typeset -X 0 x=5.67; typeset -p x) == 'typeset -X 0 x=0x1p+2' ]] || err_exit 'typeset -X 0 with assignment failed to round.'
+
+[[ $(typeset -lF 0 x=5.67; typeset -p x) == 'typeset -l -F 0 x=6' ]] || err_exit 'typeset -lF 0 with assignment failed to round.'
+[[ $(typeset -lE 0 x=5.67; typeset -p x) == 'typeset -l -E 0 x=6' ]] || err_exit 'typeset -lE 0 with assignment failed to round.'
+[[ $(typeset -lX 0 x=5.67; typeset -p x) == 'typeset -l -X 0 x=0x1p+2' ]] || err_exit 'typeset -lX 0 with assignment failed to round.'
+
+# ======
+# typeset -s used without -i shouldn't set foo to garbage
+exp=30000
+got="$(typeset -s foo=30000; echo $foo)"
+[[ $exp == $got ]] || err_exit "unexpected output from typeset -s without -i" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
 exit $((Errors<125?Errors:125))

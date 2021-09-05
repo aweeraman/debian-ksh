@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -57,7 +58,7 @@ Sfio_t	*f;
 	/* throw away all lock bits except for stacking state SF_PUSH */
 	f->mode &= (SF_RDWR|SF_INIT|SF_POOL|SF_PUSH|SF_SYNCED|SF_STDIO);
 
-	rv = (f->mode&SF_PUSH) ? 0 : (f->flags&SF_FLAGS);
+	rv = (f->mode&SF_PUSH) ? 0 : (f->flags&SFIO_FLAGS);
 
 	SFMTXRETURN(f, rv);
 }

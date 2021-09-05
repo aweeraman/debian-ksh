@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -31,6 +32,7 @@
 
 #include <ast.h>
 #include <dirent.h>
+#include <error.h>
 
 #define DEBUG_TRACE		0
 #define _ICONV_LIST_PRIVATE_
@@ -54,13 +56,6 @@
 #define _ast_iconv_name		iconv_name
 #define _ast_iconv_write	iconv_write
 
-#endif
-
-#ifndef E2BIG
-#define E2BIG			ENOMEM
-#endif
-#ifndef EILSEQ
-#define EILSEQ			EIO
 #endif
 
 #define RETURN(e,n,fn) \
@@ -1107,7 +1102,7 @@ error(DEBUG_TRACE, "AHA#%d _ast_iconv_open f=%s:%s:%d t=%s:%s:%d\n", __LINE__, f
 	cc->cvt = (iconv_t)(-1);
 
 	/*
-	 * 8 bit maps are the easiest
+	 * 8-bit maps are the easiest
 	 */
 
 	if (fc >= 0 && tc >= 0)

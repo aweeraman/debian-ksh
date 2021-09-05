@@ -1,5 +1,5 @@
 iff	AST_COMMON
-hdr	pthread,stdarg,stddef,stdint,inttypes,types,unistd
+hdr	pthread,stdarg,stddef,stdint,stdnoreturn,inttypes,types,unistd
 sys	types
 typ	long.double,size_t,ssize_t
 typ	__va_list stdio.h
@@ -24,10 +24,22 @@ tst	ptr_void note{ standard C void* ok }end compile{
 }end
 
 cat{
+	#pragma clang diagnostic ignored "-Wdeprecated-register"
+	#pragma clang diagnostic ignored "-Wmacro-redefined"
+	#pragma clang diagnostic ignored "-Wparentheses"
+	#pragma clang diagnostic ignored "-Wstring-plus-int"
+	#pragma clang diagnostic ignored "-Wunused-value"
+
 	/* disable non-standard linux/gnu inlines */
 	#ifdef __GNUC__	
 	#	undef	__OPTIMIZE_SIZE__
 	#	define	__OPTIMIZE_SIZE__	1
+	#endif
+
+	/* enable POSIX standard on Solaris */
+	#ifdef __sun
+	#	undef	_XPG6
+	#	define	_XPG6		1
 	#endif
 
 	/* __STD_C indicates that the language is ANSI-C or C++ */
@@ -135,6 +147,16 @@ cat{
 	#	define __EXTERN__(T,obj)	extern T obj
 	#	define __DEFINE__(T,obj,val)	T obj = val
 	#endif
+
+	#if !_hdr_stdnoreturn
+	#if defined(__GNUC__) && (__GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ > 4))
+	#define noreturn __attribute__((noreturn))
+	#else
+	#define noreturn
+	#endif /* __GNUC__ */
+	#else
+	#include <stdnoreturn.h>
+	#endif /* _hdr_stdnoreturn */
 }end
 
 if	tst - note{ <stdarg.h>+<wchar.h> works }end compile{
@@ -342,6 +364,8 @@ tst	- output{
 		printf("\n");
 		return 0;
 	}
+}end fail{
+	echo '#error Output block #2 in src/lib/libast/features/common failed to compile. Rebuild with IFFEFLAGS=-d1 to debug.'
 }end
 
 tst	- -DN=1 - -DN=0 output{
@@ -621,4 +645,38 @@ run{
 	#define __name_h		1
 	#endif
 	!
+}end
+
+tst - note{ does this compiler have __builtin_unreachable() }end output{
+	/*
+	 * To avoid optimizing out the __builtin_unreachable() test call while also avoiding
+	 * executing it, put it in a test function that is called with argc as the argument.
+	 * argc should never be zero on init, but hopefully optimizers aren't that smart.
+	 */
+	#include <stdio.h>
+	void testfn(int a)
+	{
+		switch(a)
+		{
+		case 0:
+			__builtin_unreachable();
+		default:
+			printf("#if _AST_ksh_release\n");
+			printf("#   define UNREACHABLE()\t__builtin_unreachable()\n");
+			printf("#else\n");
+			printf("#   define UNREACHABLE()\tabort()\n");
+			printf("#endif\n");
+		}
+	}
+	int main(int argc, char *argv[])
+	{
+		testfn(argc);
+		return 0;
+	}
+}end fail{
+	echo '#if _AST_ksh_release'
+	echo '#   define UNREACHABLE()	0'
+	echo '#else'
+	echo '#   define UNREACHABLE()	abort()'
+	echo '#endif'
 }end

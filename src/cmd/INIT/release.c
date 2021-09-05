@@ -1,7 +1,8 @@
 /***********************************************************************
 *                                                                      *
 *               This software is part of the ast package               *
-*          Copyright (c) 1994-2011 AT&T Intellectual Property          *
+*          Copyright (c) 1990-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,6 +19,8 @@
 *                                                                      *
 ***********************************************************************/
 #pragma prototyped
+#pragma clang diagnostic ignored "-Wdeprecated-register"
+#pragma clang diagnostic ignored "-Wparentheses"
 
 /*
  * release -- list recent release changes
@@ -34,16 +37,18 @@ static char id[] = "\n@(#)$Id: release (AT&T Research) 2000-01-28 $\0\n";
 
 static const char usage[] =
 "[-?\n@(#)$Id: release (AT&T Research) 2000-01-28 $\n]"
-USAGE_LICENSE
+"[-author?Glenn Fowler <gsf@research.att.com>]"
+"[-copyright?Copyright (c) 1994-2012 AT&T Intellectual Property]"
+"[-license?http://www.eclipse.org/org/documents/epl-v10.html]"
 "[+NAME?release - list recent changes]"
 "[+DESCRIPTION?\brelease\b lists the changes within the date range specified"
 "	by the \b--from\b and \b--to\b options. The input files are assumed to"
 "	contain date tag lines of the form [\acc\a]]\ayy-mm-dd\a [ \atext\a ]]"
 "	(or \bdate\b(1) default format), where \acc\a is determined by a Y2K"
 "	window year of 69 (we can produce an example coding dated 1991 - this"
-"	can be patented?, how about 1+1=2?.) The date tag lines are followed by"
+"	can be patented?, how about 1+1=2?). The date tag lines are followed by"
 "	\areadme\a text in reverse chronological order (newer entries at the"
-"	top of the file.) If no selection options are spcified then all"
+"	top of the file). If no selection options are specified then all"
 "	changes are listed. If no \afile\a operands are specified then the"
 "	standard input is read.]"
 "[+?The entries for each \afile\a are annotated with the file directory name.]"
@@ -235,8 +240,8 @@ main(int argc, char** argv)
 			sfprintf(sfstdout, "%s\n", id + 10);
 			return 0;
 		case '?':
-			error(ERROR_USAGE|4, "%s", opt_info.arg);
-			continue;
+			error(ERROR_usage(2), "%s", opt_info.arg);
+			UNREACHABLE();
 		case ':':
 			error(2, "%s", opt_info.arg);
 			continue;
@@ -244,7 +249,10 @@ main(int argc, char** argv)
 		break;
 	}
 	if (error_info.errors)
-		error(ERROR_USAGE|4, "%s", optusage(NiL));
+	{
+		error(ERROR_usage(2), "%s", optusage(NiL));
+		UNREACHABLE();
+	}
 	argv += opt_info.index;
 #else
 	while ((s = *++argv) && *s == '-' && *(s + 1))
@@ -305,7 +313,7 @@ main(int argc, char** argv)
 				return 0;
 			default:
 				fprintf(stderr, "release: -%c: unknown option\n", i);
-				/*FALLTHROUGH*/
+				/* FALLTHROUGH */
 			case '?':
 				usage();
 				break;

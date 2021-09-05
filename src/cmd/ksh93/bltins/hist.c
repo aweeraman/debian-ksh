@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -57,7 +58,10 @@ int	b_hist(int argc,char *argv[], Shbltin_t *context)
 	Histloc_t location;
 	NOT_USED(argc);
 	if(!sh_histinit((void*)shp))
+	{
 		errormsg(SH_DICT,ERROR_system(1),e_histopen);
+		UNREACHABLE();
+	}
 	hp = shp->gd->hist_ptr;
 	while((flag = optget(argv,sh_opthist))) switch(flag)
 	{
@@ -68,7 +72,7 @@ int	b_hist(int argc,char *argv[], Shbltin_t *context)
 		nflag++;
 		break;
 	    case 'l':
-		lflag++;
+		lflag = 1;
 		break;
 	    case 'r':
 		rflag++;
@@ -89,15 +93,19 @@ int	b_hist(int argc,char *argv[], Shbltin_t *context)
 			range[++indx] = flag;
 			break;
 		}
+		/* FALLTHROUGH */
 	    case ':':
 		errormsg(SH_DICT,2, "%s", opt_info.arg);
 		break;
 	    case '?':
 		errormsg(SH_DICT,ERROR_usage(2), "%s", opt_info.arg);
-		break;
+		UNREACHABLE();
 	}
 	if(error_info.errors)
+	{
 		errormsg(SH_DICT,ERROR_usage(2),"%s",optusage((char*)0));
+		UNREACHABLE();
+	}
 	argv += (opt_info.index-1);
 #if SHOPT_HISTEXPAND
 	if(pflag)
@@ -146,7 +154,10 @@ int	b_hist(int argc,char *argv[], Shbltin_t *context)
 		/* search for last line starting with string */
 		location = hist_find(hp,argv[1],hist_max(hp)-1,0,-1);
 		if((range[++flag] = location.hist_command) < 0)
+		{
 			errormsg(SH_DICT,ERROR_exit(1),e_found,argv[1]);
+			UNREACHABLE();
+		}
 		argv++;
 	}
 	if(flag <0)
@@ -173,10 +184,16 @@ int	b_hist(int argc,char *argv[], Shbltin_t *context)
 		range[1] = flag;
 	/* check for valid ranges */
 	if(range[1]<index2 || range[0]>=flag)
+	{
 		errormsg(SH_DICT,ERROR_exit(1),e_badrange,range[0],range[1]);
+		UNREACHABLE();
+	}
 	if(edit && *edit=='-' && range[0]!=range[1])
+	{
 		errormsg(SH_DICT,ERROR_exit(1),e_eneedsarg);
-	/* now list commands from range[rflag] to range[1-rflag] */
+		UNREACHABLE();
+	}
+	/* now list commands from range[flag] to range[1-flag] */
 	incr = 1;
 	flag = rflag>0;
 	if(range[1-flag] < range[flag])
@@ -189,9 +206,15 @@ int	b_hist(int argc,char *argv[], Shbltin_t *context)
 	else
 	{
 		if(!(fname=pathtmp(NIL(char*),0,0,NIL(int*))))
+		{
 			errormsg(SH_DICT,ERROR_exit(1),e_create,"");
+			UNREACHABLE();
+		}
 		if((fdo=open(fname,O_CREAT|O_RDWR,S_IRUSR|S_IWUSR)) < 0)
+		{
 			errormsg(SH_DICT,ERROR_system(1),e_create,fname);
+			UNREACHABLE();
+		}
 		outfile= sfnew(NIL(Sfio_t*),shp->outbuff,IOBSIZE,fdo,SF_WRITE);
 		arg = "\n";
 		nflag++;
@@ -218,27 +241,11 @@ int	b_hist(int argc,char *argv[], Shbltin_t *context)
 	{
 		arg = (char*)e_defedit;
 		if(*arg!='/')
+		{
 			errormsg(SH_DICT,ERROR_exit(1),"ed not found set FCEDIT");
+			UNREACHABLE();
+		}
 	}
-#ifdef apollo
-	/*
-	 * Code to support the FC using the pad editor.
-	 * Exampled of how to use: HISTEDIT=pad
-	 */
-	if (strcmp (arg, "pad") == 0)
-	{
-		extern int pad_create(char*);
-		sh_close(fdo);
-		fdo = pad_create(fname);
-		pad_wait(fdo);
-		unlink(fname);
-		strcat(fname, ".bak");
-		unlink(fname);
-		lseek(fdo,(off_t)0,SEEK_SET);
-	}
-	else
-	{
-#endif /* apollo */
 	if(*arg != '-')
 	{
 		char *com[3];
@@ -250,9 +257,6 @@ int	b_hist(int argc,char *argv[], Shbltin_t *context)
 	fdo = sh_chkopen(fname);
 	unlink(fname);
 	free((void*)fname);
-#ifdef apollo
-	}
-#endif /* apollo */
 	/* don't history fc itself unless forked */
 	error_info.flags |= ERROR_SILENT;
 	if(!sh_isstate(SH_FORKED))
@@ -267,7 +271,10 @@ int	b_hist(int argc,char *argv[], Shbltin_t *context)
 		Sfio_t *iop = sfnew(NIL(Sfio_t*),buff,IOBSIZE,fdo,SF_READ);
 		/* read in and run the command */
 		if(shp->hist_depth++ > HIST_RECURSE)
+		{
 			errormsg(SH_DICT,ERROR_exit(1),e_toodeep,"history");
+			UNREACHABLE();
+		}
 		sh_eval(iop,1);
 		shp->hist_depth--;
 	}
@@ -305,8 +312,10 @@ static void hist_subst(const char *command,int fd,char *replace)
 	string[c] = 0;
 	*newp++ =  0;
 	if((sp=sh_substitute(string,replace,newp))==0)
+	{
 		errormsg(SH_DICT,ERROR_exit(1),e_subst,command);
+		UNREACHABLE();
+	}
 	*(newp-1) =  '=';
 	sh_eval(sfopen(NIL(Sfio_t*),sp,"s"),1);
 }
-

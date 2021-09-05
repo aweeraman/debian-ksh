@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -53,10 +54,13 @@ int	b_umask(int argc,char *argv[],Shbltin_t *context)
 			break;
 		case '?':
 			errormsg(SH_DICT,ERROR_usage(2), "%s",opt_info.arg);
-			break;
+			UNREACHABLE();
 	}
 	if(error_info.errors)
+	{
 		errormsg(SH_DICT,ERROR_usage(2),"%s",optusage((char*)0));
+		UNREACHABLE();
+	}
 	argv += opt_info.index;
 	if(mask = *argv)
 	{
@@ -68,7 +72,10 @@ int	b_umask(int argc,char *argv[],Shbltin_t *context)
 				if (c>='0' && c<='7')	
 					flag = (flag<<3) + (c-'0');	
 				else
+				{
 					errormsg(SH_DICT,ERROR_exit(1),e_number,*argv);
+					UNREACHABLE();
+				}
 			}
 		}
 		else
@@ -80,6 +87,7 @@ int	b_umask(int argc,char *argv[],Shbltin_t *context)
 			{
 				umask(flag);
 				errormsg(SH_DICT,ERROR_exit(1),e_format,mask);
+				UNREACHABLE();
 			}
 			flag = (~c&0777);
 		}
@@ -95,4 +103,3 @@ int	b_umask(int argc,char *argv[],Shbltin_t *context)
 	}
 	return(0);
 }
-

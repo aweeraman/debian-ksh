@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -49,7 +50,7 @@ Dtmethod_t*	meth;
 	list = dtextract(dt); /* extract elements out of dictionary */
 
 	/* try to create internal structure for new method */
-	if(dt->searchf == oldmt->searchf) /* ie, not viewpathing */
+	if(dt->searchf == oldmt->searchf) /* i.e., not viewpathing */
 		dt->searchf = meth->searchf;
 	dt->meth = meth;
 	dt->data = NIL(Dtdata_t*);

@@ -9,7 +9,7 @@ typeset -T option to the shell.  The method for defining types via
 a shared library is not described here.  However, the source file
 bltins/enum.c is an example of a builtin that creates enumeration types.
 
-By convention, typenames begin with a capitol letter and end in _t.
+By convention, typenames begin with a capital letter and end in _t.
 To define a type, use
 	typeset -T Type_t=(
 		definition
@@ -17,7 +17,7 @@ To define a type, use
 where definition contains assignment commands, declaration commands,
 and function definitions.  A declaration command (for example typeset,
 readonly, and export), is a built-in that differs from other builtins in
-that tilde substitution is performed on arguments after an =, assignments
+that tilde expansion is performed on arguments after an =, assignments
 do not have to precede the command name, and field splitting and pathname
 expansion is not performed on the arguments.
 For example,
@@ -60,7 +60,7 @@ When a type is defined, a declaration built-in command by this name
 is added to ksh.  As with other shell builtins, you can get the man page
 for this newly added command by invoking Pt_t --man.  The information from
 the -h options will be embedded in this man page.  Any functions that
-use getopts to process arguments will be cross referenced on the generated
+use getopts to process arguments will be cross-referenced on the generated
 man page.
 
 Since Pt_t is now a declaration command it can be used in the definition
@@ -92,7 +92,7 @@ can be used.  Unlike (and ) which are always special, the { and } are
 reserved words and require the space after { and a newline or ; before }.
 Unlike $(), the ${ ;} command substitution executes the command in
 the current shell context saving the need to save and restore
-changes, therefore also allowing side effects. 
+changes, therefore also allowing side effects.
 
 When trying to expand an element of a type, if the element does not exist,
 ksh will look for a discipline function with that name and treat this as if

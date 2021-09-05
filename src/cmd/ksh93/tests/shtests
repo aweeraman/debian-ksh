@@ -1,7 +1,5 @@
 : ksh regression test harness :
 
-USAGE_LICENSE="[-author?David Korn <dgk@research.att.com>][-author?Glenn Fowler <gsf@research.att.com>][-copyright?Copyright (c) 2000-2012 AT&T Intellectual Property][-license?http://www.eclipse.org/org/documents/epl-v10.html]"
-
 command=shtests
 
 setslocale='*@(locale).sh'
@@ -10,9 +8,13 @@ valgrindflags='--xml=yes --log-file=/dev/null --track-origins=yes --read-var-inf
 
 USAGE=$'
 [-s8?
-@(#)$Id: shtests (AT&T Research) 2012-05-29 $
+@(#)$Id: shtests (ksh 93u+m) 2021-03-23 $
 ]
-'$USAGE_LICENSE$'
+[-author?David Korn <dgk@research.att.com>]
+[-author?Glenn Fowler <gsf@research.att.com>]
+[-copyright?(c) 2000-2012 AT&T Intellectual Property]
+[-copyright?(c) 2020-2021 Contributors to https://github.com/ksh93/ksh]
+[-license?http://www.eclipse.org/org/documents/epl-v10.html]
 [+NAME?shtests - ksh regression test harness]
 [+DESCRIPTION?\bshtests\b is the \bksh\b(1) regression test harness for
     \b$SHELL\b or \bksh\b if \bSHELL\b is not defined and exported. If
@@ -31,10 +33,11 @@ USAGE=$'
     }
 [c:compile?Run test scripts using \bshcomp\b(1).]
 [d:debug?Enable \bshtests\b execution trace.]
+[k:keep?Keep temporary files after test run; shtests will report the location.]
 [l:locale?Disable \b--utf8\b and run the \b--posix\b and \b--compile\b
-    tests, if enabled, in the locale of the caller. This may cause invalid
-    regressions, especially for locales where \b.\b is not the radix
-    point.]
+    tests, if enabled, in the locale of the caller. However, for locales
+    where \b.\b is not the radix point, \bLC_NUMERIC\b is set to \bC\b
+    to avoid invalid regressions.]
 [p:posix?Run the test scripts in the posix/C locale.]
 [t!:time?Include the current date/time in the test identification
     messages.]
@@ -43,8 +46,8 @@ USAGE=$'
     script names matching \b'$timesensitive$'\b are run with
     \bVMALLOC_OPTIONS\b unset.]
 [V:valgrind?Set \b--novmalloc_options\b and run the test scripts with
-    \bvalgrind\b(1) on \bksh\b. If \b$SHELL-g\b exists and is executable
-    than it is used instead of \b$SHELL\b.]
+    \bvalgrind\b(1) on \bksh\b. If \b$SHELL-g\b exists and is executable,
+    then it is used instead of \b$SHELL\b.]
 [x:trace?Enable script execution trace.]
 
 [ test.sh ... ] [ name=value ... ]
@@ -165,11 +168,13 @@ function valxml
 	return $errors
 }
 
-unset DISPLAY ENV FIGNORE HISTFILE
+command set +o posix 2>/dev/null
+unset DISPLAY FIGNORE HISTFILE POSIXLY_CORRECT _AST_FEATURES
+export ENV=/./dev/null SHTESTS_COMMON=$PWD/_common
 trap + PIPE # unadvertized -- set SIGPIPE to SIG_DFL #
 
 integer compile=-1 posix=-1 utf8=-1
-integer debug=0 locale=0 time=1
+integer debug=0 keep=0 locale=0 time=1
 typeset vmalloc_options=abort trace= valgrind=
 vmalloc_options= #XXX# until multi-region vmalloc trace fixed #XXX#
 
@@ -181,6 +186,8 @@ do	case $OPT in
 		fi
 		;;
 	d)	debug=$OPTARG
+		;;
+	k)	keep=$OPTARG
 		;;
 	l)	locale=$OPTARG
 		;;
@@ -207,7 +214,7 @@ done
 shift $OPTIND-1
 
 if	(( debug )) || [[ $trace ]]
-then	export PS4=':$LINENO: '
+then	export PS4='+ [${SECONDS:+${SECONDS%????}s|}${.sh.pid:+P${.sh.pid},}${.sh.subshell:+S${.sh.subshell},}${.sh.file:+${.sh.file#${.sh.file%/*/*}/},}${.sh.fun:+${.sh.fun},}${LINENO:+L$LINENO,}e$?] '
 	if	(( debug ))
 	then	set -x
 	fi
@@ -230,6 +237,10 @@ if	(( locale ))
 then	utf8=0
 	if	[[ $LC_ALL ]]
 	then	export LANG=$LC_ALL
+		unset ${!LC_*}
+	fi
+	if	! let 1.0 2>/dev/null
+	then	export LC_NUMERIC=C
 	fi
 else	unset LANG LC_ALL
 	export LC_NUMERIC=C
@@ -252,7 +263,10 @@ case $SHELL in
 */*)	SHELL=$d/$SHELL;;
 *)	SHELL=$(whence $SHELL);;
 esac
-PATH=/bin:/usr/bin
+PATH=$(
+	builtin getconf 2>/dev/null || PATH=/run/current-system/sw/bin:/usr/xpg7/bin:/usr/xpg6/bin:/usr/xpg4/bin:/bin:/usr/bin:$PATH
+	getconf PATH 2>/dev/null
+) || PATH=/bin:/usr/bin
 if	[[ -d /usr/ucb ]]
 then	PATH=$PATH:/usr/ucb
 fi
@@ -273,10 +287,38 @@ then	s=${SHELL:##*sh}
 	else	SHCOMP=shcomp
 	fi
 fi
+
+tmp=$(
+	d=${TMPDIR:-/tmp}/ksh93.shtests.$$.${RANDOM:-0}
+	mkdir -m700 -- "$d" && CDPATH= cd -P -- "$d" && pwd
+) || {
+	echo 'mkdir failed' >&2
+	exit 1
+}
+if	(( keep ))
+then	trap 'printf "\nTemporary files left in: %s\n" "$tmp"' EXIT
+else	trap 'cd / && rm -rf "$tmp"' EXIT
+fi
+
+# for interactive shell ('ksh -i') tests: avoid affecting ~/.sh_history
+# (some tests must unset or modify $HISTFILE, so set $HOME instead)
+export HOME=$tmp
+
+# make the SHOPT_* macros available to the tests as environment variables
+SHOPT()
+{
+	[[ $1 == *=* ]] && eval "export SHOPT_${ printf %q "${1%%=*}"; }=${ printf %q "${1#*=}"; }"
+}
+. "${SHOPTFILE:-../SHOPT.sh}"
+unset -f SHOPT
+if	(( !SHOPT_MULTIBYTE && utf8 && !posix && !compile ))
+then	echo "The -u/--utf8 option is unavailable as SHOPT_MULTIBYTE is turned off in ${SHOPTFILE:-SHOPT.sh}." >&2
+	exit 1
+fi
+
 if	(( compile ))
 then	if	whence $SHCOMP > /dev/null
-	then	tmp=$(mktemp -dt) || { echo mktemp -dt failed >&2; exit 1; }
-		trap "cd /; rm -rf $tmp" EXIT
+	then	:
 	elif	(( compile > 1 ))
 	then	echo $0: --compile: $SHCOMP not found >&2
 		exit 1
@@ -287,23 +329,22 @@ if	[[ $valgrind ]]
 then	if	[[ -x $SHELL-g ]]
 	then	SHELL=$SHELL-g
 	fi
-	if	[[ ! $tmp ]]
-	then	tmp=$(mktemp -dt) || { echo mktemp -dt failed >&2; exit 1; }
-		trap "cd /; rm -rf $tmp" EXIT
-	fi
 	valxml=$tmp/valgrind.xml
 	valgrind+=" --xml-file=$valxml"
 fi
 typeset -A tests
+typeset -i total_e=0
 for i in ${*-*.sh}
-do	if	[[ ! -r $i ]]
+do	[[ $i == *.sh ]] || i+='.sh'
+	if	[[ ! -r $i ]]
 	then	echo $0: $i: not found >&2
+		(( ++total_e ))
 		continue
 	fi
-	t=$(grep -c err_exit $i)
-	if	(( t > 2 ))
-	then	(( t = t - 2 ))
-	fi
+	t=$(	case $i in
+		glob.sh)	grep -c '^[[:blank:]]*test_[a-z]\{3,\}' $i ;;
+		*)		grep -c err_exit $i ;;
+		esac	)
 	tests[$i]=$t
 	T=test
 	if	(( t != 1 ))
@@ -317,53 +358,114 @@ do	if	[[ ! -r $i ]]
 	if	(( posix || utf8 ))
 	then	locales=
 		(( posix )) && locales+=" ${LANG:-C}"
-		[[ $utf8 == 0 || $i == $setslocale ]] || locales+=" C.UTF-8"
+		[[ $utf8 == 0 || $i == $setslocale ]] || ((!SHOPT_MULTIBYTE)) || locales+=" C.UTF-8"
 		for lang in $locales
 		do	o=$u
+			tmp_s=$tmp/$u.$lang
+			mkdir -m700 "$tmp_s" || exit
+			cd "$tmp_s" || exit
 			if	[[ $lang == C ]]
 			then	lang=
 			else	o="$o($lang)"
 				lang=LANG=$lang
 			fi
 			echo test $o begins ${time:+"at $(date +%Y-%m-%d+%H:%M:%S)"}
-			E=error
-			eval $lang \$valgrind \$SHELL \$trace \$i
+			(
+				export ${lang:+"$lang"} "tmp=$tmp_s"
+				$valgrind $SHELL $trace "$OLDPWD/$i"
+			)
 			e=$?
+			cd "$OLDPWD" || exit
+			if	(( !keep ))
+			then	rm -rf "$tmp_s"
+			fi
 			if	[[ $valgrind ]]
 			then	valxml $valxml
 				(( e += $? ))
 			fi
-			if	(( e == 0 ))
-			then	echo test $o passed ${time:+"at $(date +%Y-%m-%d+%H:%M:%S)"} "[ $t $T 0 ${E}s ]"
-			else	e=$?
-				if	(( e != 1 ))
-				then	E=${E}s
-				fi
-				echo test $o failed ${time:+"at $(date +%Y-%m-%d+%H:%M:%S)"} with exit code $e "[ $t $T $e $E ]"
+			if	(( e > 128 && ++total_e ))
+			then	E="(killed by SIG$(kill -l "$e"))"
+			elif	(( e == 1 && ++total_e ))
+			then	E="1 error"
+			else	E="$e errors"
+				(( total_e += e ))
 			fi
+			if	(( e == 0 ))
+			then	echo test $o passed ${time:+"at $(date +%Y-%m-%d+%H:%M:%S)"} "[ $t $T $E ]"
+			else	echo test $o failed ${time:+"at $(date +%Y-%m-%d+%H:%M:%S)"} with exit code $e "[ $t $T $E ]"
+			fi
+			case	$E in
+			*INT\))	kill -s INT $$ ;;  # if test was ^C'd, don't keep going but pass down SIGINT
+			esac
 		done
 	fi
 	if	(( compile ))
 	then	c=$tmp/shcomp-$u.ksh
 		o="$u(shcomp)"
 		echo test $o begins ${time:+"at $(date +%Y-%m-%d+%H:%M:%S)"}
-		E=error
-		if	$SHCOMP $i > $c
-		then	if	$valgrind $SHELL $trace $c
-			then	echo test $o passed ${time:+"at $(date +%Y-%m-%d+%H:%M:%S)"} "[ $t $T 0 ${E}s ]"
+		tmp_s=$tmp/$u.shcomp
+		mkdir -m700 "$tmp_s" || exit
+		# must incorporate _common in script itself so the aliases are expanded at compile time
+		sed '/^\. .*\/_common/ {
+			r _common
+			d
+		}' < $i > $c.orig
+		cd "$tmp_s" || exit
+		if	"$SHCOMP" "$c.orig" > $c
+		then	if	tmp=$tmp_s $valgrind $SHELL $trace $c
+			then	echo test $o passed ${time:+"at $(date +%Y-%m-%d+%H:%M:%S)"} "[ $t $T 0 errors ]"
 			else	e=$?
-				if	(( e != 1 ))
-				then	E=${E}s
+				if	(( e > 128 && ++total_e ))
+				then	E="(killed by SIG$(kill -l "$e"))"
+				elif	(( e == 1 && ++total_e ))
+				then	E="1 error"
+				else	E="$e errors"
+					(( total_e += e ))
 				fi
-				echo test $o failed ${time:+"at $(date +%Y-%m-%d+%H:%M:%S)"} with exit code $e "[ $t $T $e $E ]"
+				echo test $o failed ${time:+"at $(date +%Y-%m-%d+%H:%M:%S)"} with exit code $e "[ $t $T $E ]"
+				case	$E in
+				*INT\))	kill -s INT $$ ;;  # if test was ^C'd, don't keep going but pass down SIGINT
+				esac
 			fi
 		else	e=$?
-			t=1
-			T=test
-			echo test $o failed to compile ${time:+"at $(date +%Y-%m-%d+%H:%M:%S)"} with exit code $e "[ $t $T 1 $E ]"
+			(( ++total_e ))
+			echo test $o failed to compile ${time:+"at $(date +%Y-%m-%d+%H:%M:%S)"} with exit code $e "[ 1 test 1 error ]"
+		fi
+		cd "$OLDPWD" || exit
+		if	(( !keep ))
+		then	rm -rf "$tmp_s" "$c"
 		fi
 		if	[[ $i == $timesensitive ]]
 		then	VMALLOC_OPTIONS=$vmalloc_options
 		fi
 	fi
 done
+print "Total errors: $total_e"
+
+# This test harness should continue to work with old and buggy versions of ksh93, so check
+# if we have the 'times' builtin and can use process substitution with output redirection.
+# See:	https://github.com/ksh93/ksh/commit/65d363fd
+#	https://github.com/ksh93/ksh/issues/2
+if 	(	ulimit -t unlimited 2> /dev/null  # fork to circumvent old ksh bugs
+		unalias times
+		PATH=/dev/null whence -q times || exit
+		cd "$tmp" || exit
+		echo ok > >(cat > procsubst_test)
+		wait
+		[[ $(< procsubst_test) == ok ]]
+	) 2>/dev/null
+then	# Transforming 'times' output requires a process substitution.
+	# A regular 'times | ...' pipeline would cause 'times' to be
+	# run in a subshell, which would reset all the times to zero.
+	times > >(
+		t[0]='CPU time'	t[1]='user:'	t[2]='system:'
+		t[3]='main:'; 	read t[4]	t[5]
+		t[6]='tests:';	read t[7]	t[8]
+		printf '%-8s%12s %12s\n' "${t[@]}"
+	)
+	wait "$!"  # process substitutions are executed asynchronously
+else	# No pretty-printing.
+	times
+fi
+
+exit $((total_e > 125 ? 125 : total_e))

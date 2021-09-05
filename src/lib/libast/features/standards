@@ -1,5 +1,19 @@
 set stdio
-if tst note{ _ALL_SOURCE & _POSIX_SOURCE & _POSIX_C_SOURCE & _XOPEN_SOURCE & __EXTENSIONS__ works }end compile{
+# In FreeBSD, definitions like _POSIX_SOURCE and such are used to *limit*
+# functionality to known API; they don't enable anything. The general intent in
+# BSD is to enable everything by default (effectively, providing the
+# _KITCHEN_SINK_SOURCE mentioned below). So we look for that here, but stay
+# careful that we don't get fooled by presence of FreeBSD that underpins some
+# subsystems in Mac OS X; there are other Apple-specific portability hacks
+# elsewhere we should not interfere with.
+if tst note{ FreeBSD, DragonFly BSD, or UnixWare }end compile{
+		#include <sys/param.h>
+		#if (!defined(__FreeBSD__) && !defined(__DragonFly__) && !defined(__USLC__)) || defined(APPLE)
+		#error not a FreeBSD or DragonFly BSD system
+		#endif
+	}end {
+	}
+elif tst note{ _ALL_SOURCE & _POSIX_SOURCE & _POSIX_C_SOURCE & _XOPEN_SOURCE & __EXTENSIONS__ works }end compile{
 		#define _ALL_SOURCE	1
 		#define _POSIX_SOURCE	1
 		#define _POSIX_C_SOURCE	21000101L

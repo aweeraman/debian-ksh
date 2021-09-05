@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -28,7 +29,7 @@
 
 static const char usage[] =
 "[-?\n@(#)$Id: comm (AT&T Research) 1999-04-28 $\n]"
-USAGE_LICENSE
+"[--catalog?" ERROR_CATALOG "]"
 "[+NAME?comm - select or reject lines common to two files]"
 "[+DESCRIPTION?\bcomm\b reads two files \afile1\a and \afile2\a "
 	"which should be ordered in the collating sequence of the "
@@ -170,28 +171,40 @@ b_comm(int argc, char *argv[], Shbltin_t* context)
 			break;
 		case '?':
 			error(ERROR_usage(2), "%s",opt_info.arg);
-			break;
+			UNREACHABLE();
 		}
 		break;
 	}
 	argv += opt_info.index;
 	argc -= opt_info.index;
 	if(error_info.errors || argc!=2)
+	{
 		error(ERROR_usage(2),"%s",optusage(NiL));
+		UNREACHABLE();
+	}
 	cp = *argv++;
 	if(streq(cp,"-"))
 		f1 = sfstdin;
 	else if(!(f1 = sfopen(NiL, cp,"r")))
+	{
 		error(ERROR_system(1),"%s: cannot open",cp);
+		UNREACHABLE();
+	}
 	cp = *argv;
 	if(streq(cp,"-"))
 		f2 = sfstdin;
 	else if(!(f2 = sfopen(NiL, cp,"r")))
+	{
 		error(ERROR_system(1),"%s: cannot open",cp);
+		UNREACHABLE();
+	}
 	if(mode)
 	{
 		if(comm(f1,f2,sfstdout,mode) < 0)
+		{
 			error(ERROR_system(1)," write error");
+			UNREACHABLE();
+		}
 	}
 	else if(f1==sfstdin || f2==sfstdin)
 		sfseek(sfstdin,(Sfoff_t)0,SEEK_END);

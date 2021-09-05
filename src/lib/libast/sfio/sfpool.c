@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -138,7 +139,7 @@ int		n;	/* current position in pool	*/
 			else	/* write failed, recover buffer then quit */
 			{	if(w > 0)
 				{	v -= w;
-					memcpy(head->data,(head->data+w),v);
+					memmove(head->data,(head->data+w),v);
 				}
 				head->next = head->data+v;
 				goto done;
@@ -147,7 +148,7 @@ int		n;	/* current position in pool	*/
 
 		/* move data from head to f */
 		if((head->data+k) != f->data )
-			memcpy(f->data,(head->data+k),v);
+			memmove(f->data,(head->data+k),v);
 		f->next = f->data+v;
 	}
 
@@ -288,7 +289,8 @@ reg int		mode;
 
 	/* f already in the same pool with pf */
 	if(f == pf || (pf && f->pool == pf->pool && f->pool != &_Sfpool) )
-	{	if(f)
+	{
+		if(f)
 			SFMTXUNLOCK(f);
 		if(pf)
 			SFMTXUNLOCK(pf);

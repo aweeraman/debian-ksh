@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -27,7 +28,7 @@
 #include	"streval.h"
 
 const unsigned char strval_precedence[35] =
-	/* opcode	precedence,assignment  */
+	/* opcode	precedence,assignment */
 {
 	/* DEFAULT */		MAXPREC|NOASSIGN,
 	/* DONE */		0|NOASSIGN|RASSOC,

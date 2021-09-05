@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -70,7 +71,7 @@ typedef struct Opt_s
 	char		name[64];	/* current long name or flag	*/
 	Optdisc_t*	disc;		/* user discipline		*/
 	intmax_t	number;		/* # numeric argument		*/
-	unsigned char	assignment;	/* option arg assigment op	*/
+	unsigned char	assignment;	/* option arg assignment op	*/
 	unsigned char	pads[sizeof(void*)-1];
 	_OPT_PRIVATE_
 } Opt_t;

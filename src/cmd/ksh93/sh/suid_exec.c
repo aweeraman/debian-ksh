@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -30,7 +31,7 @@
  */
 
 /* The file name of the script to execute is argv[0]
- * Argv[1] is the  program name
+ * Argv[1] is the program name
  * The basic idea is to open the script as standard input, set the effective
  *   user and group id correctly, and then exec the shell.
  * The complicated part is getting the effective uid of the caller and 
@@ -58,11 +59,15 @@
 #define SPECIAL		04100	/* setuid execute only by owner */
 #define FDIN		10	/* must be same as /dev/fd below */
 #undef FDSYNC 
-#define FDSYNC		11	/* used on sys5 to synchronize cleanup */
+#define FDSYNC		11	/* used on SysV to synchronize cleanup */
 #define FDVERIFY	12	/* used to validate /tmp process */
 #undef BLKSIZE 
 #define BLKSIZE		sizeof(char*)*1024
+#if BUILD_DTKSH
+#define THISPROG	SUIDEXECPATH
+#else
 #define THISPROG	"/etc/suid_exec"
+#endif
 #define DEFSHELL	"/bin/sh"
 
 static void error_exit(const char*);
@@ -83,7 +88,9 @@ static const char version[]	= "\n@(#)$Id: suid_exec "SH_RELEASE" $\n";
 static const char badopen[]	= "cannot open";
 static const char badexec[]	= "cannot exec";
 static const char devfd[]	= "/dev/fd/10";	/* must match FDIN above */
+#ifndef _lib_setreuid
 static char tmpname[]		= "/tmp/SUIDXXXXXX";
+#endif
 static char **arglist;
 
 static char *shell;
@@ -235,6 +242,9 @@ exec:
 	/* only use SHELL if file is in trusted directory and ends in sh */
 	shell = getenv("SHELL");
 	if(shell == 0 || !endsh(shell) || (
+#ifdef BUILD_DTKSH
+		!in_dir(CDE_INSTALLATION_TOP"/bin",shell) &&
+#endif
 		!in_dir("/bin",shell) &&
 		!in_dir("/usr/bin",shell) &&
 		!in_dir("/usr/lbin",shell) &&
@@ -247,7 +257,7 @@ exec:
 }
 
 /*
- * return true of shell ends in sh of ksh
+ * return true if shell ends in sh or ksh
  */
 
 static int endsh(register const char *shell)
@@ -265,7 +275,7 @@ static int endsh(register const char *shell)
 
 
 /*
- * return true of shell is in <dir> directory
+ * return true if shell is in <dir> directory
  */
 
 static int in_dir(register const char *dir,register const char *shell)
@@ -323,6 +333,8 @@ int eaccess(register const char *name, register int mode)
 				}
 			}
 			groups = (gid_t*)malloc((maxgroups+1)*sizeof(gid_t));
+			if(!groups)
+				error(ERROR_PANIC,"out of memory");
 			n = getgroups(maxgroups,groups);
 			while(--n >= 0)
 			{
@@ -348,14 +360,14 @@ static void setids(int mode,int owner,int group)
 
 	/* set effective uid even if S_ISUID is not set.  This is because
 	 * we are *really* executing EUID root at this point.  Even if S_ISUID
-	 * is not set, the value for owner that is passsed should be correct.
+	 * is not set, the value for owner that is passed should be correct.
 	 */
 	setreuid(ruserid,owner);
 }
 
 #else
 /*
- * This version of setids creats a /tmp file and copies itself into it.
+ * This version of setids creates a /tmp file and copies itself into it.
  * The "clone" file is made executable with appropriate suid/sgid bits.
  * Finally, the clone is exec'ed.  This file is unlinked by a grandchild
  * of this program, who waits around until the text is free.
@@ -475,7 +487,7 @@ static void setids(int mode,uid_t owner,gid_t group)
 static void maketemp(char *template)
 {
 	register char *cp = template;
-	register pid_t n = getpid();
+	register pid_t n = shgd->current_pid;
 	/* skip to end of string */
 	while(*++cp);
 	/* convert process id to string */
@@ -505,5 +517,3 @@ static int mycopy(int fdi, int fdo)
 }
 
 #endif /* _lib_setreuid */
-
-

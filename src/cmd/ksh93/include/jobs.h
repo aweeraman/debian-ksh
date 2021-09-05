@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -34,22 +35,6 @@
 #endif /* !SIGINT */
 #include	"FEATURE/options"
 
-#if SHOPT_COSHELL
-#   include	<coshell.h>
-#   define	COPID_BIT	(1L<<30)
-    struct cosh
-    {
-	struct cosh	*next;
-	Coshell_t	*coshell;
-	Cojob_t		*cojob;
-	char		*name;
-	short		id;
-    };
-
-    extern pid_t	sh_copid(struct cosh*);
-    extern char  	*sh_pid2str(Shell_t*,pid_t);
-#endif /* SHOPT_COSHELL */
-
 #undef JOBS
 #if defined(SIGCLD) && !defined(SIGCHLD)
 #   define SIGCHLD	SIGCLD
@@ -76,9 +61,6 @@ struct process
 	struct process *p_nxtjob;	/* next job structure */
 	struct process *p_nxtproc;	/* next process in current job */
 	Shell_t		*p_shp;		/* shell that posted the job */
-#if SHOPT_COSHELL
-	Cojob_t		*p_cojob;	/* coshell job */
-#endif /* SHOPT_COSHELL */
 	int		*p_exitval;	/* place to store the exitval */
 	pid_t		p_pid;		/* process id */
 	pid_t		p_pgrp;		/* process group */
@@ -87,7 +69,7 @@ struct process
 	unsigned short	p_exit;		/* exit value or signal number */
 	unsigned short	p_exitmin;	/* minimum exit value for xargs */
 	unsigned short	p_flag;		/* flags - see below */
-	int		p_env;		/* subshell environment number */
+	unsigned int	p_env;		/* subshell environment number */
 #ifdef JOBS
 	off_t		p_name;		/* history file offset for command */
 	struct termios	p_stty;		/* terminal state for job */
@@ -107,22 +89,20 @@ struct jobs
 	unsigned int	in_critical;	/* >0 => in critical region */
 	int		savesig;	/* active signal */
 	int		numpost;	/* number of posted jobs */
-#ifdef SHOPT_BGX
+#if SHOPT_BGX
 	int		numbjob;	/* number of background jobs */
 #endif /* SHOPT_BGX */
 	short		fd;		/* tty descriptor number */
 #ifdef JOBS
 	int		suspend;	/* suspend character */
-	int		linedisc;	/* line dicipline */
+	int		linedisc;	/* line discipline */
 #endif /* JOBS */
 	char		jobcontrol;	/* turned on for real job control */
 	char		waitsafe;	/* wait will not block */
 	char		waitall;	/* wait for all jobs in pipe */
+	char		bktick_waitall;	/* wait state for `backtick comsubs` */
 	char		toclear;	/* job table needs clearing */
 	unsigned char	*freejobs;	/* free jobs numbers */
-#if SHOPT_COSHELL
-	struct cosh	*colist;	/* coshell job list */
-#endif /* SHOPT_COSHELL */
 };
 
 /* flags for joblist */
@@ -140,12 +120,9 @@ extern struct jobs job;
 #ifdef vmlocked
 #define vmbusy()	vmlocked(Vmregion)
 #else
-#if VMALLOC_VERSION >= 20070911L
 #define vmbusy()	(vmstat(0,0)!=0)
 #endif
-#endif
-#endif
-#ifndef vmbusy
+#else
 #define vmbusy()	0
 #endif
 
@@ -195,7 +172,7 @@ extern int	job_wait(pid_t);
 extern int	job_post(Shell_t*,pid_t,pid_t);
 extern void	*job_subsave(void);
 extern void	job_subrestore(void*);
-#ifdef SHOPT_BGX
+#if SHOPT_BGX
 extern void	job_chldtrap(Shell_t*, const char*,int);
 #endif /* SHOPT_BGX */
 #ifdef JOBS
@@ -203,6 +180,7 @@ extern void	job_chldtrap(Shell_t*, const char*,int);
 	extern int	job_close(Shell_t*);
 	extern int	job_list(struct process*,int);
 	extern int	job_terminate(struct process*,int);
+	extern int	job_hup(struct process *, int);
 	extern int	job_switch(struct process*,int);
 	extern void	job_fork(pid_t);
 	extern int	job_reap(int);
@@ -211,6 +189,5 @@ extern void	job_chldtrap(Shell_t*, const char*,int);
 #	define job_close(s)	(0)
 #	define job_fork(p)
 #endif	/* JOBS */
-
 
 #endif /* !JOB_NFLAG */

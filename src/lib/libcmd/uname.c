@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -29,15 +30,16 @@
 
 static const char usage[] =
 "[-?\n@(#)$Id: uname (AT&T Research) 2007-04-19 $\n]"
-USAGE_LICENSE
+"[--catalog?" ERROR_CATALOG "]"
 "[+NAME?uname - identify the current system ]"
 "[+DESCRIPTION?By default \buname\b writes the operating system name to"
 "	standard output. When options are specified, one or more"
 "	system characteristics are written to standard output, space"
 "	separated, on a single line. When more than one option is specified"
-"	the output is in the order specfied by the \b-A\b option below."
+"	the output is in the order specified by the \b-A\b option below."
 "	Unsupported option values are listed as \a[option]]\a. If any unknown"
-"	options are specified then the local \b/usr/bin/uname\b is called.]"
+"	options are specified, the OS default \buname\b(1) is called (unless"
+"	the shell is in restricted mode, in which case an error will occur).]"
 "[+?If any \aname\a operands are specified then the \bsysinfo\b(2) values"
 "	for each \aname\a are listed, separated by space, on one line."
 "	\bgetconf\b(1), a pre-existing \astandard\a interface, provides"
@@ -65,7 +67,7 @@ USAGE_LICENSE
 "\n[ name ... ]\n"
 "\n"
 "[+SEE ALSO?\bhostname\b(1), \bgetconf\b(1), \buname\b(2),"
-"	\bsysconf\b(2), \bsysinfo\b(2)]"
+"	\bsysconf\b(3), \bsysinfo\b(2)]"
 ;
 
 #if defined(__STDPP__directive) && defined(__STDPP__hide)
@@ -79,6 +81,7 @@ __STDPP__directive pragma pp:hide getdomainname gethostid gethostname sethostnam
 
 #include <cmd.h>
 #include <ctype.h>
+#include <stdio.h>
 #include <proc.h>
 
 #include "FEATURE/utsname"
@@ -86,9 +89,7 @@ __STDPP__directive pragma pp:hide getdomainname gethostid gethostname sethostnam
 #define MAXHOSTNAME	64
 
 #if _lib_uname && _sys_utsname
-
-#include <sys/utsname.h>
-
+# include <sys/utsname.h>
 #endif
 
 #if defined(__STDPP__directive) && defined(__STDPP__hide)
@@ -269,6 +270,9 @@ b_uname(int argc, char** argv, Shbltin_t* context)
 		{
 		case 'a':
 			flags |= OPT_all|((1L<<OPT_ALL)-1);
+#ifdef __linux__
+			flags |= OPT_implementation;
+#endif
 			continue;
 		case 'b':
 			flags |= OPT_base;
@@ -325,23 +329,26 @@ b_uname(int argc, char** argv, Shbltin_t* context)
 			sethost = opt_info.arg;
 			continue;
 		case ':':
-			s = "/usr/bin/uname";
-			if (!streq(argv[0], s) && (!eaccess(s, X_OK) || !eaccess(s+=4, X_OK)))
 			{
-				argv[0] = s;
-				return sh_run(context, argc, argv);
+				char **new_argv = (char **)stakalloc((argc + 3) * sizeof(char*));
+				new_argv[0] = "command";
+				new_argv[1] = "-px";
+				for (n = 0; n <= argc; n++)
+					new_argv[n + 2] = argv[n];
+				return sh_run(context, argc + 2, new_argv);
 			}
-			error(2, "%s", opt_info.arg);
-			break;
 		case '?':
 			error(ERROR_usage(2), "%s", opt_info.arg);
-			break;
+			UNREACHABLE();
 		}
 		break;
 	}
 	argv += opt_info.index;
 	if (error_info.errors || *argv && (flags || sethost) || sethost && flags)
+	{
 		error(ERROR_usage(2), "%s", optusage(NiL));
+		UNREACHABLE();
+	}
 	if (sethost)
 	{
 #if _lib_sethostname
@@ -354,6 +361,7 @@ b_uname(int argc, char** argv, Shbltin_t* context)
 #endif
 #endif
 		error(ERROR_system(1), "%s: cannot set host name", sethost);
+		UNREACHABLE();
 	}
 	else if (list)
 		astconflist(sfstdout, NiL, ASTCONF_base|ASTCONF_defined|ASTCONF_lower|ASTCONF_quote|ASTCONF_matchcall, "CS|SI");
@@ -379,7 +387,10 @@ b_uname(int argc, char** argv, Shbltin_t* context)
 			flags = OPT_system;
 		memzero(&ut, sizeof(ut));
 		if (uname(&ut) < 0)
+		{
 			error(ERROR_usage(2), "information unavailable");
+			UNREACHABLE();
+		}
 		output(OPT_system, ut.sysname, "sysname");
 		if (flags & OPT_nodename)
 		{
@@ -394,13 +405,56 @@ b_uname(int argc, char** argv, Shbltin_t* context)
 		output(OPT_machine, ut.machine, "machine");
 		if (flags & OPT_processor)
 		{
-			if (!*(s = astconf("ARCHITECTURE", NiL, NiL)))
+			s = NULL;
+#ifdef __linux__
+# ifdef UNAME_PROCESSOR
+			if (!s)
+			{
+				size_t len = sizeof(buf) - 1;
+				int ctl[] = {CTL_HW, UNAME_PROCESSOR};
+				if (sysctl(ctl, 2, buf, &len, 0, 0) == 0)
+					s = buf;
+			}
+# endif
+			if (!s)
+			{
+				strcpy((s = buf), ut.machine);
+				if (strcmp(s, "i686") == 0)
+				{
+					char line[1024];
+					Sfio_t *io = sfopen((Sfio_t*)0, "/proc/cpuinfo", "r");
+					if (io)
+					{
+						while (fgets(line, sizeof(line), io) > 0)
+						{
+							if (strncmp(line, "vendor_id", 9) == 0)
+							{
+								if (strstr(line, "AuthenticAMD"))
+									s = "athlon";
+								break;
+							}
+						}
+						sfclose(io);
+					}
+				}
+			}
+#endif
+			if (!s && !*(s = astconf("ARCHITECTURE", NiL, NiL)))
 				s = ut.machine;
 			output(OPT_processor, s, "processor");
 		}
 		if (flags & OPT_implementation)
 		{
-			if (!*(s = astconf("PLATFORM", NiL, NiL)) && !*(s = astconf("HW_NAME", NiL, NiL)))
+			s = NULL;
+#ifdef __linux__
+			if (!s)
+			{
+				strcpy((s = buf), ut.machine);
+				if (s[0] == 'i' && s[2] == '8' && s[3] == '6' && s[4] == '\0')
+					s[1] = '3';
+			}
+#endif
+			if (!s && !*(s = astconf("PLATFORM", NiL, NiL)) && !*(s = astconf("HW_NAME", NiL, NiL)))
 			{
 				if (t = strchr(hosttype, '.'))
 					t++;
@@ -448,11 +502,14 @@ b_uname(int argc, char** argv, Shbltin_t* context)
 		if (flags & OPT_domain)
 		{
 			if (!*(s = astconf("SRPC_DOMAIN", NiL, NiL)))
+			{
 #if _lib_getdomainname
-				getdomainname(s, sizeof(buf));
+				getdomainname(buf, sizeof(buf));
+				s = buf;
 #else
 				/*NOP*/;
 #endif
+			}
 			output(OPT_domain, s, "domain");
 		}
 #if _mem_m_type_utsname

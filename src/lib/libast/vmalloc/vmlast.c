@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -27,7 +28,7 @@ void _STUB_vmlast(){}
 
 #include	"vmhdr.h"
 
-/*	Allocation with freeing and reallocing of last allocated block only.
+/*	Allocation with freeing and reallocating of last allocated block only.
 **
 **	Written by Kiem-Phong Vo, kpv@research.att.com, 01/16/94.
 */

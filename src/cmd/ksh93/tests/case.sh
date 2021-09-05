@@ -2,6 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2011 AT&T Intellectual Property          #
+#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -17,16 +18,8 @@
 #                  David Korn <dgk@research.att.com>                   #
 #                                                                      #
 ########################################################################
-function err_exit
-{
-	print -u2 -n "\t"
-	print -u2 -r ${Command}[$1]: "${@:2}"
-	let Errors+=1
-}
-alias err_exit='err_exit $LINENO'
 
-Command=${0##*/}
-integer Errors=0
+. "${SHTESTS_COMMON:-${0%/*}/_common}"
 
 bar=foo2
 bam=foo[3]
@@ -82,4 +75,29 @@ esac') != b ]] && err_exit 'bug in ;& at end of script'
 x=$($SHELL -ec 'case a in a) echo 1; false; echo 2 ;& b) echo 3;; esac')
 [[ $x == 1 ]] || err_exit 'set -e ignored on case fail through'
 
+# ======
+# An empty 'case' list was a syntax error: https://github.com/ksh93/ksh/issues/177
+got=$(eval 'case x in esac' 2>&1) || err_exit "empty case list fails: got $(printf %q "$got")"
+got=$(eval ': || for i in esac; do :; done' 2>&1) || err_exit "'for i in esac' fails: got $(printf %q "$got")"
+got=$(eval ': || select i in esac; do :; done' 2>&1) || err_exit "'select i in esac' fails: got $(printf %q "$got")"
+(eval 'case x in esac) foo;; esac') 2>/dev/null && err_exit "unquoted 'esac' keyword as first pattern fails to fail"
+got=$(eval 'case x in (esac) foo;; esac' 2>&1) || err_exit "'(' + unquoted 'esac' keyword as first pattern fails: got $(printf %q "$got")"
+(eval 'case x in y) bar;; esac) foo;; esac') 2>/dev/null && err_exit "unquoted 'esac' keyword as nth pattern fails to fail"
+got=$(eval 'case x in (y) bar;; (esac) foo;; esac' 2>&1) || err_exit "'(' + unquoted 'esac' keyword as nth pattern fails: got $(printf %q "$got")"
+got=$(eval 'case x in e\sac) foo;; esac' 2>&1) || err_exit "quoted 'esac' pattern (1st) fails: got $(printf %q "$got")"
+got=$(eval 'case x in (e\sac) foo;; esac' 2>&1) || err_exit "'(' + quoted 'esac' pattern (1st) fails: got $(printf %q "$got")"
+got=$(eval 'case x in y) bar;; es\ac) foo;; esac' 2>&1) || err_exit "quoted 'esac' pattern (nth) fails: got $(printf %q "$got")"
+got=$(eval 'case x in (y) bar;; (es\ac) foo;; esac' 2>&1) || err_exit "'(' + quoted 'esac' pattern (nth) fails: got $(printf %q "$got")"
+got=$(eval 'case x in if);; esac' 2>&1) || err_exit "'if' as first pattern fails: got $(printf %q "$got")"
+got=$(eval 'case x in (if);; esac' 2>&1) || err_exit "'(' + 'if' as first pattern fails: got $(printf %q "$got")"
+got=$(eval 'case x in foo);; if);; esac' 2>&1) || err_exit "'if' as nth pattern fails: got $(printf %q "$got")"
+got=$(eval 'case x in (foo);; (if);; esac' 2>&1) || err_exit "'(' + 'if' as nth pattern fails: got $(printf %q "$got")"
+
+# ======
+# Verify an invalid character class name is handled without a SIGSEGV or similar failure
+# https://github.com/att/ast/issues/1409
+got="$($SHELL -c 'case x in [x[:bogus:]]) echo x ;; esac')"
+[[ -z $got ]] || err_exit "invalid char class name (got $(printf %q "$got"))"
+
+# ======
 exit $((Errors<125?Errors:125))

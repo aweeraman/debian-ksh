@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -28,8 +29,8 @@
  */
 
 static const char usage[] =
-"+[-?\n@(#)$Id: tail (AT&T Research) 2012-06-19 $\n]"
-USAGE_LICENSE
+"+[-?\n@(#)$Id: tail (AT&T Research) 2012-10-10 $\n]"
+"[--catalog?" ERROR_CATALOG "]"
 "[+NAME?tail - output trailing portion of one or more files ]"
 "[+DESCRIPTION?\btail\b copies one or more input files to standard output "
 	"starting at a designated point for each file.  Copying starts "
@@ -48,7 +49,7 @@ USAGE_LICENSE
 		"[+m?1 MiB.]"
 		"[+g?1 GiB.]"
 	"}"
-"[+?For backwards compatibility, \b-\b\anumber\a  is equivalent to "
+"[+?For backwards compatibility, \b-\b\anumber\a is equivalent to "
 	"\b-n\b \anumber\a and \b+\b\anumber\a is equivalent to "
 	"\b-n -\b\anumber\a. \anumber\a may also have these option "
 	"suffixes: \bb c f g k l m r\b.]"
@@ -64,7 +65,7 @@ USAGE_LICENSE
 "[h!:headers?Output filename headers.]"
 "[l:lines?Copy units of lines. This is the default.]"
 "[L:log?When a \b--forever\b file times out via \b--timeout\b, verify that "
-	"the curent file has not been renamed and replaced by another file "
+	"the current file has not been renamed and replaced by another file "
 	"of the same name (a common log file practice) before giving up on "
 	"the file.]"
 "[q:quiet?Don't output filename headers. For GNU compatibility.]"
@@ -86,7 +87,7 @@ USAGE_LICENSE
 		"[+y?years]"
 		"[+S?scores]"
 	"}"
-"[v:verbose?Always ouput filename headers.]"
+"[v:verbose?Always output filename headers.]"
 
 "\n"
 "\n[file ...]\n"
@@ -104,6 +105,7 @@ USAGE_LICENSE
 #include <ls.h>
 #include <tv.h>
 #include <rev.h>
+#include <time.h>
 
 #define COUNT		(1<<0)
 #define ERROR		(1<<1)
@@ -424,7 +426,7 @@ b_tail(int argc, char** argv, Shbltin_t* context)
 	Tail_t*			files;
 	Tv_t			tv;
 
-	cmdinit(argc, argv, context, ERROR_CATALOG, 0);
+	cmdinit(argc, argv, context, ERROR_CATALOG, ERROR_NOTIFY);
 	for (;;)
 	{
 		switch (n = optget(argv, usage))
@@ -461,7 +463,7 @@ b_tail(int argc, char** argv, Shbltin_t* context)
 				t = opt_info.arg;
 				goto suffix;
 			}
-			/*FALLTHROUGH*/
+			/* FALLTHROUGH */
 		case 'n':
 			flags |= COUNT;
 			if (s = opt_info.arg)
@@ -514,7 +516,10 @@ b_tail(int argc, char** argv, Shbltin_t* context)
 			flags |= TIMEOUT;
 			timeout = strelapsed(opt_info.arg, &s, 1);
 			if (*s)
+			{
 				error(ERROR_exit(1), "%s: invalid elapsed time [%s]", opt_info.arg, s);
+				UNREACHABLE();
+			}
 			continue;
 		case 'v':
 			flags |= VERBOSE;
@@ -568,7 +573,7 @@ b_tail(int argc, char** argv, Shbltin_t* context)
 			continue;
 		case '?':
 			error(ERROR_usage(2), "%s", opt_info.arg);
-			break;
+			UNREACHABLE();
 		}
 		break;
 	}
@@ -610,7 +615,10 @@ b_tail(int argc, char** argv, Shbltin_t* context)
 	if (flags & FOLLOW)
 	{
 		if (!(fp = (Tail_t*)stakalloc(argc * sizeof(Tail_t))))
-			error(ERROR_system(1), "out of space");
+		{
+			error(ERROR_system(1), "out of memory");
+			UNREACHABLE();
+		}
 		files = 0;
 		s = *argv;
 		do
@@ -639,7 +647,7 @@ b_tail(int argc, char** argv, Shbltin_t* context)
 		{
 			if (n)
 				n = 0;
-			else if (sh_checksig(context) || tvsleep(&tv, NiL))
+			else if (sh_checksig(context) || tvsleep(&tv, NiL) && sh_checksig(context))
 			{
 				error_info.errors++;
 				break;
@@ -686,11 +694,13 @@ b_tail(int argc, char** argv, Shbltin_t* context)
 					{
 						i = 3;
 						while (--i && stat(fp->name, &st))
-							if (sh_checksig(context) || tvsleep(&tv, NiL))
+							if (sh_checksig(context))
 							{
 								error_info.errors++;
 								goto done;
 							}
+							else
+								tvsleep(&tv, NiL);
 						if (i && (fp->dev != st.st_dev || fp->ino != st.st_ino) && !init(fp, 0, 0, flags, &format))
 						{
 							if (!(flags & SILENT))
@@ -715,7 +725,10 @@ b_tail(int argc, char** argv, Shbltin_t* context)
 				fp = fp->next;
 			}
 			if (sfsync(sfstdout))
+			{
 				error(ERROR_system(1), "write error");
+				UNREACHABLE();
+			}
 		}
 	done:
 		for (fp = files; fp; fp = fp->next)

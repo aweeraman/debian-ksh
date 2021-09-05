@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -30,7 +31,7 @@
 
 static const char usage[] =
 "[-?\n@(#)$Id: paste (AT&T Research) 2010-06-12 $\n]"
-USAGE_LICENSE
+"[--catalog?" ERROR_CATALOG "]"
 "[+NAME?paste - merge lines of files]"
 "[+DESCRIPTION?\bpaste\b concatenates the corresponding lines of a "
 	"given input file and writes the resulting lines to standard "
@@ -199,13 +200,16 @@ b_paste(int argc, char** argv, Shbltin_t* context)
 			break;
 		case '?':
 			error(ERROR_usage(2), "%s", opt_info.arg);
-			break;
+			UNREACHABLE();
 		}
 		break;
 	}
 	argv += opt_info.index;
 	if(error_info.errors)
+	{
 		error(ERROR_usage(2),"%s", optusage(NiL));
+		UNREACHABLE();
+	}
 	if(!delim || !*delim)
 	{
 		delim = defdelim;
@@ -213,7 +217,10 @@ b_paste(int argc, char** argv, Shbltin_t* context)
 		delim[1] = 0;
 	}
 	if (!(delim = strdup(delim)))
-		error(ERROR_system(1), "out of space");
+	{
+		error(ERROR_system(1), "out of memory");
+		UNREACHABLE();
+	}
 	dlen = dsiz = stresc(delim);
 	mp = 0;
 	if (mbwide())
@@ -231,7 +238,8 @@ b_paste(int argc, char** argv, Shbltin_t* context)
 			if (!(mp = newof(0, Delim_t, dlen, 0)))
 			{
 				free(delim);
-				error(ERROR_system(1), "out of space");
+				error(ERROR_system(1), "out of memory");
+				UNREACHABLE();
 			}
 			cp = delim;
 			dlen = 0;
@@ -254,7 +262,10 @@ b_paste(int argc, char** argv, Shbltin_t* context)
 	if(!sflag)
 	{
 		if (!(streams = (Sfio_t**)stakalloc(n*sizeof(Sfio_t*))))
-			error(ERROR_exit(1), "out of space");
+		{
+			error(ERROR_exit(1), "out of memory");
+			UNREACHABLE();
+		}
 		n = 0;
 	}
 	do

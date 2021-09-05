@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -60,13 +61,13 @@ stropt(const char* as, const void* tab, int siz, int(*f)(void*, const void*, int
 	register char*	v;
 	register char*	t;
 	char**		p;
-	char*		u;
+	char*		u = 0;
 	char*		x;
 	char*		e;
 	int		n;
 	int		ql;
 	int		qr;
-	int		qc;
+	int		qc = 0;
 
 	if (!as) n = 0;
 	else if (!(x = s = strdup(as))) n = -1;
@@ -90,7 +91,7 @@ stropt(const char* as, const void* tab, int siz, int(*f)(void*, const void*, int
 			{
 				for (p = (char**)tab; t = *p; p = (char**)((char*)p + siz))
 				{
-					for (v = s; *t && *t++ == *v; v++);
+					for (v = s; *t && *t == *v; t++, v++);
 					if (!*t || isspace(*v) || *v == ',' || *v == '=')
 						break;
 					if (*v == ':' && *(v + 1) == '=')

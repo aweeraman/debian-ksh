@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -157,7 +158,7 @@ dumproot(register Hash_root_t* root, register int flags)
 /*
  * dump hash table accounting info
  * if tab is 0 then dump all tables in hash_info.list
- * flags are HASH_* flags that specifiy optional dump info
+ * flags are HASH_* flags that specify optional dump info
  */
 
 void

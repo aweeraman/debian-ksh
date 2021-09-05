@@ -1,7 +1,8 @@
 /***********************************************************************
 *                                                                      *
 *               This software is part of the ast package               *
-*          Copyright (c) 1985-2011 AT&T Intellectual Property          *
+*          Copyright (c) 1985-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -14,9 +15,9 @@
 *                            AT&T Research                             *
 *                           Florham Park NJ                            *
 *                                                                      *
-*                 Glenn Fowler <gsf@research.att.com>                  *
-*                  David Korn <dgk@research.att.com>                   *
-*                   Phong Vo <kpv@research.att.com>                    *
+*               Glenn Fowler <glenn.s.fowler@gmail.com>                *
+*                    David Korn <dgkorn@gmail.com>                     *
+*                     Phong Vo <phongvo@gmail.com>                     *
 *                                                                      *
 ***********************************************************************/
 #pragma prototyped
@@ -111,6 +112,7 @@ tmxfmt(char* buf, size_t len, const char* format, Time_t t)
 	int		prec;
 	int		parts;
 	char*		arg;
+	char*		e;
 	char*		f;
 	const char*	oformat;
 	Tm_t*		tm;
@@ -176,7 +178,7 @@ tmxfmt(char* buf, size_t len, const char* format, Time_t t)
 					pad = c;
 					continue;
 				}
-				/*FALLTHROUGH*/
+				/* FALLTHROUGH */
 			case '1':
 			case '2':
 			case '3':
@@ -190,7 +192,7 @@ tmxfmt(char* buf, size_t len, const char* format, Time_t t)
 				{
 				case 0:
 					parts++;
-					/*FALLTHROUGH*/
+					/* FALLTHROUGH */
 				case 1:
 					width = width * 10 + (c - '0');
 					break;
@@ -271,8 +273,8 @@ tmxfmt(char* buf, size_t len, const char* format, Time_t t)
 		case 'e':       /* blank padded day of month */
 			cp = number(cp, ep, (long)tm->tm_mday, -2, width, pad);
 			continue;
-		case 'f':	/* (AST) OBSOLETE use %Qf */
-			p = "%Qf";
+		case 'f':	/* Output the date in a format compatible with BusyBox %f */
+			p = "%Y.%m.%d-%H:%M:%S";
 			goto push;
 		case 'F':	/* ISO 8601:2000 standard date format */
 			p = "%Y-%m-%d";
@@ -316,9 +318,9 @@ tmxfmt(char* buf, size_t len, const char* format, Time_t t)
 		case 'J':	/* Julian date (0 offset) */
 			cp = number(cp, ep, (long)tm->tm_yday, 3, width, pad);
 			continue;
-		case 'k':	/* (AST) OBSOLETE use %QD */
-			p = "%QD";
-			goto push;
+		case 'k':	/* hour (0 - 23) with blank padding (can't be an alias to %_H) */
+			cp = number(cp, ep, (long)tm->tm_hour, -2, width, pad);
+			continue;
 		case 'K':	/* (AST) largest to smallest */
 			switch (alt)
 			{
@@ -333,9 +335,11 @@ tmxfmt(char* buf, size_t len, const char* format, Time_t t)
 				break;
 			}
 			goto push;
-		case 'l':	/* (AST) OBSOLETE use %QL */
-			p = "%QL";
-			goto push;
+		case 'l':	/* hour (0 - 12) with blank padding (can't be an alias to %_I) */
+			if ((n = tm->tm_hour) > 12) n -= 12;
+			else if (n == 0) n = 12;
+			cp = number(cp, ep, (long)n, -2, width, pad);
+			continue;
 		case 'L':	/* (AST) OBSOLETE use %Ql */
 			p = "%Ql";
 			goto push;
@@ -364,9 +368,9 @@ tmxfmt(char* buf, size_t len, const char* format, Time_t t)
 			while (cp < ep && (n = *p++))
 				*cp++ = isupper(n) ? tolower(n) : n;
 			continue;
-		case 'q':	/* (AST) OBSOLETE use %Qz */
-			p = "%Qz";
-			goto push;
+		case 'q':	/* quarter of the year (1-4) */
+			cp = number(cp, ep, (long)(tm->tm_mon / 3) + 1, 0, width, pad);
+			continue;
 		case 'Q':	/* (AST) %Q<alpha> or %Q<delim>recent<delim>distant<delim> */
 			if (c = *format)
 			{
@@ -469,12 +473,26 @@ tmxfmt(char* buf, size_t len, const char* format, Time_t t)
 						p = tm_info.format[TM_RECENT];
 						goto push;
 					case 'z':	/* time zone nation code */
-						if (!(flags & TM_UTC))
+						if (arg)
+						{
+							if ((zp = tmzone(arg, &e, NiL, NiL)) && !*e)
+							{
+								tm->tm_zone = zp;
+								flags &= ~TM_UTC;
+							}
+						}
+						else if (!(flags & TM_UTC))
 						{
 							if ((zp = tm->tm_zone) != tm_info.local)
+							{
 								for (; zp >= tm_data.zone; zp--)
+								{
 									if (p = zp->type)
 										goto string;
+									if (zp->standard == zp->daylight)
+										break;
+								}
+							}
 							else if (p = zp->type)
 								goto string;
 						}
@@ -595,10 +613,14 @@ tmxfmt(char* buf, size_t len, const char* format, Time_t t)
 			if (arg)
 			{
 				if ((zp = tmzone(arg, &f, 0, 0)) && !*f && tm->tm_zone != zp)
+				{
 					tm = tmxtm(tm, tmxtime(tm, tm->tm_zone->west + (tm->tm_isdst ? tm->tm_zone->dst : 0)), zp);
+					if (zp->west || zp->dst)
+						flags &= ~TM_UTC;
+				}
 				continue;
 			}
-			p = (flags & TM_UTC) ? tm_info.format[TM_UT] : tm->tm_isdst && tm->tm_zone->daylight ? tm->tm_zone->daylight : tm->tm_zone->standard;
+			p = (flags & TM_UTC) ? tm_info.local->standard : tm->tm_isdst && tm->tm_zone->daylight ? tm->tm_zone->daylight : tm->tm_zone->standard;
 			goto string;
 		case '=':	/* (AST) OBSOLETE use %([+-]flag...)Qo (old %=[=][+-]flag) */
 			for (arg = argbuf; *format == '=' || *format == '-' || *format == '+' || *format == '!'; format++)

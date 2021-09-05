@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -24,8 +25,10 @@
 #include	"FEATURE/options"
 #include	"lexstates.h"
 
+/* The ST_* state table names are defined in include/lexstates.h */
 
 /*
+ * ST_BEGIN (0)
  * This is the initial state for tokens
  */
 static const char sh_lexstate0[256] =
@@ -77,6 +80,7 @@ static const char sh_lexstate0[256] =
 };
 
 /*
+ * ST_NAME
  * This state is for identifiers
  */
 static const char sh_lexstate1[256] =
@@ -123,6 +127,9 @@ static const char sh_lexstate1[256] =
 	S_REG,	S_REG,	S_REG,	S_REG,	S_REG,	S_REG,	S_REG,	S_REG,
 };
 
+/*
+ * ST_NORM
+ */
 static const char sh_lexstate2[256] =
 {
 	S_EOF,	0,	0,	0,	0,	0,	0,	0,
@@ -151,6 +158,7 @@ static const char sh_lexstate2[256] =
 };
 
 /*
+ * ST_LIT
  * for skipping over  '...'
  */
 static const char sh_lexstate3[256] =
@@ -172,6 +180,7 @@ static const char sh_lexstate3[256] =
 };
 
 /*
+ * ST_QUOTE
  * for skipping over  "..." and `...`
  */
 static const char sh_lexstate4[256] =
@@ -195,6 +204,7 @@ static const char sh_lexstate4[256] =
 };
 
 /*
+ * ST_NESTED, ST_QNEST
  * for skipping over ?(...), [...]
  */
 static const char sh_lexstate5[256] =
@@ -218,6 +228,7 @@ static const char sh_lexstate5[256] =
 };
 
 /*
+ * ST_DOL
  * Defines valid expansion characters
  */
 static const char sh_lexstate6[256] =
@@ -265,6 +276,7 @@ static const char sh_lexstate6[256] =
 };
 
 /*
+ * ST_BRACE
  * for skipping over ${...} until modifier
  */
 static const char sh_lexstate7[256] =
@@ -274,7 +286,7 @@ static const char sh_lexstate7[256] =
 	S_ERR,	S_ERR,	S_ERR,	S_ERR,	S_ERR,	S_ERR,	S_ERR,	S_ERR,
 	S_ERR,	S_ERR,	S_ERR,	S_ERR,	S_ERR,	S_ERR,	S_ERR,	S_ERR,
 
-	S_ERR,	S_ERR,	S_ERR,	S_MOD2,	S_ERR,	S_MOD2,	S_ERR,	S_ERR,
+	S_ERR,	0,	S_ERR,	S_MOD2,	0,	S_MOD2,	S_ERR,	S_ERR,
 	S_ERR,	S_ERR,	S_MOD1,	S_MOD1,	S_ERR,	S_MOD1,	S_DOT,	S_MOD2,
 	0,	0,	0,	0,	0,	0,	0,	0,
 	0,	0,	S_MOD1,	S_ERR,	S_ERR,	S_MOD1,	S_ERR,	S_MOD1,
@@ -308,6 +320,7 @@ static const char sh_lexstate7[256] =
 };
 
 /*
+ * ST_DOLNAME
  * This state is for $name
  */
 static const char sh_lexstate8[256] =
@@ -351,6 +364,7 @@ static const char sh_lexstate8[256] =
 };
 
 /*
+ * ST_MACRO
  * This is used for macro expansion
  */
 static const char sh_lexstate9[256] =
@@ -370,18 +384,41 @@ static const char sh_lexstate9[256] =
 	S_GRAVE,0,	0,	0,	0,	0,	0,	0,
 	0,	0,	0,	0,	0,	0,	0,	0,
 	0,	0,	0,	0,	0,	0,	0,	0,
-#if SHOPT_BRACEPAT
 	0,	0,	0,	S_BRACE,S_PAT,	S_ENDCH,0,	0
-#else
-	0,	0,	0,	0,	S_PAT,	S_ENDCH,0,	0
-#endif /* SHOPT_BRACEPAT */
 };
 
+/*
+ * ST_MOD1
+ * for skipping over a string S in ${v-S}, ${v+S}, ${v:-S}, ${v:+S}
+ */
+static const char sh_lexstate11[256] =
+{
+	S_EOF,	0,	0,	0,	0,	0,	0,	0,
+	0,	0,	S_NL,	0,	0,	0,	0,	0,
+	0,	0,	0,	0,	0,	0,	0,	0,
+	0,	0,	0,	0,	0,	0,	0,	0,
+	0,	0,	S_QUOTE,0,	S_DOL,	0,	0,	S_LIT,
+	0,	0,	0,	0,	0,	0,	0,	0,
+	0,	0,	0,	0,	0,	0,	0,	0,
+	0,	0,	0,	0,	0,	0,	0,	0,
+	0,	0,	0,	0,	0,	0,	0,	0,
+	0,	0,	0,	0,	0,	0,	0,	0,
+	0,	0,	0,	0,	0,	0,	0,	0,
+	0,	0,	0,	0,	S_ESC,	0,	0,	0,
+	S_GRAVE,0,	0,	0,	0,	0,	0,	0,
+	0,	0,	0,	0,	0,	0,	0,	0,
+	0,	0,	0,	0,	0,	0,	0,	0,
+	0,	0,	0,	0,	0,	S_RBRA,	0,	0
+};
+
+/*
+ * This must be kept synchronous with all the above and the ST_* definitions in lexstates.h
+ */
 const char *sh_lexrstates[ST_NONE] =
 {
 	sh_lexstate0, sh_lexstate1, sh_lexstate2, sh_lexstate3,
 	sh_lexstate4, sh_lexstate5, sh_lexstate6, sh_lexstate7,
-	sh_lexstate8, sh_lexstate9, sh_lexstate5
+	sh_lexstate8, sh_lexstate9, sh_lexstate5, sh_lexstate11
 };
 
 
@@ -399,10 +436,9 @@ const char e_lexlabunknown[]	= "line %d: %s unknown label";
 const char e_lexobsolete1[]	= "line %d: `...` obsolete, use $(...)";
 const char e_lexobsolete2[]	= "line %d: -a obsolete, use -e";
 const char e_lexobsolete3[]	= "line %d: '=' obsolete, use '=='";
-const char e_lexobsolete4[]	= "line %d: %s within [[...]] obsolete, use ((...))";
+const char e_lexobsolete4[]	= "line %d: %s within [[ ... ]] obsolete, use ((...))";
 const char e_lexobsolete5[]	= "line %d: set %s obsolete";
 const char e_lexobsolete6[]	= "line %d: `{' instead of `in' is obsolete";
-const char e_lexnonstandard[]	= "line %d: `&>file' is nonstandard -- interpreted as `>file 2>&1' for profile input only";
 const char e_lexusebrace[]	= "line %d: use braces to avoid ambiguities with $id[...]";
 const char e_lexusequote[]	= "line %d: %c within ${} should be quoted";
 const char e_lexescape[]	= "line %d: escape %c to avoid ambiguities";

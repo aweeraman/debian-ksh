@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -238,7 +239,7 @@ Sfdisc_t*	disc;
 		case SF_EDISC :
 			if(!local && !(f->flags&SF_STRING))
 				goto do_continue;
-			/* else fall thru */
+			/* FALLTHROUGH */
 		case SF_ESTACK :
 			SFMTXRETURN(f, (ssize_t)(-1));
 		}

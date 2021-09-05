@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,8 +21,8 @@
 #pragma prototyped
 /*
  * echo [arg...]
- * print [-nrps] [-f format] [-u filenum] [arg...]
- * printf  format [arg...]
+ * print [-enprsvC] [-f format] [-u fd] [string ...]
+ * printf format [string ...]
  *
  *   David Korn
  *   AT&T Labs
@@ -125,7 +126,7 @@ static char* 	nullarg[] = { 0, 0 };
 	{
 		if(strcmp(argv[1],"-n")==0)
 			prdata.echon = 1;
-#if !SHOPT_ECHOE
+#if !SHOPT_NOECHOE
 		else if(strcmp(argv[1],"-e")==0)
 			prdata.raw = 0;
 		else if(strcmp(argv[1],"-ne")==0 || strcmp(argv[1],"-en")==0)
@@ -133,7 +134,7 @@ static char* 	nullarg[] = { 0, 0 };
 			prdata.raw = 0;
 			prdata.echon = 1;
 		}
-#endif /* SHOPT_ECHOE */
+#endif /* SHOPT_NOECHOE */
 		else
 			break;
 		argv++;
@@ -214,7 +215,10 @@ int    b_print(int argc, char *argv[], Shbltin_t *context)
 		case 's':
 			/* print to history file */
 			if(!sh_histinit((void*)shp))
+			{
 				errormsg(SH_DICT,ERROR_system(1),e_history);
+				UNREACHABLE();
+			}
 			fd = sffileno(shp->gd->hist_ptr->histfp);
 			sh_onstate(SH_HISTORY);
 			sflag++;
@@ -243,11 +247,7 @@ int    b_print(int argc, char *argv[], Shbltin_t *context)
 			break;
 		case ':':
 			/* The following is for backward compatibility */
-#if OPT_VERSION >= 19990123
 			if(strcmp(opt_info.name,"-R")==0)
-#else
-			if(strcmp(opt_info.option,"-R")==0)
-#endif
 			{
 				rflag = 1;
 				if(error_info.errors==0)
@@ -270,13 +270,19 @@ int    b_print(int argc, char *argv[], Shbltin_t *context)
 			break;
 		case '?':
 			errormsg(SH_DICT,ERROR_usage(2), "%s", opt_info.arg);
-			break;
+			UNREACHABLE();
 	}
 	argv += opt_info.index;
 	if(error_info.errors || (argc<0 && !(format = *argv++)))
+	{
 		errormsg(SH_DICT,ERROR_usage(2),"%s",optusage((char*)0));
+		UNREACHABLE();
+	}
 	if(vflag && format)
+	{
 		errormsg(SH_DICT,ERROR_usage(2),"-%c and -f are mutually exclusive",vflag);
+		UNREACHABLE();
+	}
 skip:
 	if(format)
 		format = genformat(format);
@@ -297,6 +303,7 @@ skip2:
 		if(fd==1)
 			return(1);
 		errormsg(SH_DICT,ERROR_system(1),msg);
+		UNREACHABLE();
 	}
 	if(!(outfile=shp->sftable[fd]))
 	{
@@ -329,10 +336,18 @@ skip2:
 		} while(*pdata.nextarg && pdata.nextarg!=argv);
 		if(pdata.nextarg == nullarg && pdata.argsize>0)
 			sfwrite(outfile,stakptr(staktell()),pdata.argsize);
-		if(sffileno(outfile)!=sffileno(sfstderr))
-			sfsync(outfile);
+		/*
+		 * -f flag skips adding newline at the end of output, which causes issues
+		 * with syncing history if -s and -f are used together. So don't sync now
+		 * if sflag was given. History is synced later with hist_flush() function.
+		 * https://github.com/att/ast/issues/425
+		 */
+		if(!sflag && sffileno(outfile)!=sffileno(sfstderr))
+			if (sfsync(outfile) < 0)
+				exitval = 1;
 		sfpool(sfstderr,pool,SF_WRITE);
-		exitval = pdata.err;
+		if (pdata.err)
+			exitval = 1;
 	}
 	else if(vflag)
 	{
@@ -347,7 +362,10 @@ skip2:
 	{
 		/* echo style print */
 		if(nflag && !argv[0])
-			sfsync((Sfio_t*)0);
+		{
+			if (sfsync((Sfio_t*)0) < 0)
+				exitval = 1;
+		}
 		else if(sh_echolist(shp,outfile,rflag,argv) && !nflag)
 			sfputc(outfile,'\n');
 	}
@@ -359,7 +377,8 @@ skip2:
 	else if(n&SF_SHARE)
 	{
 		sfset(outfile,SF_SHARE|SF_PUBLIC,1);
-		sfsync(outfile);
+		if (sfsync(outfile) < 0)
+			exitval = 1;
 	}
 	return(exitval);
 }
@@ -465,57 +484,68 @@ static char *genformat(char *format)
 
 static char *fmthtml(const char *string, int flags)
 {
-	register const char *cp = string;
+	register const char *cp = string, *op;
 	register int c, offset = staktell();
+	/*
+	 * The only multibyte locale ksh currently supports is UTF-8, which is a superset of ASCII. So, if we're on an
+	 * EBCDIC system, below we attempt to convert EBCDIC to ASCII only if we're not in a multibyte locale (mbwide()).
+	 */
+	mbinit();
 	if(!(flags&SFFMT_ALTER))
 	{
-		while(c= *(unsigned char*)cp++)
+		/* Encode for HTML and XML, for main text and single- and double-quoted attributes. */
+		while(op = cp, c = mbchar(cp))
 		{
-#if SHOPT_MULTIBYTE
-			register int s;
-			if((s=mbsize(cp-1)) > 1)
-			{
-				cp += (s-1);
-				continue;
-			}
-#endif /* SHOPT_MULTIBYTE */
-			if(c=='<')
+			if(!mbwide())
+				c = CCMAPC(c,CC_NATIVE,CC_ASCII);
+			if(mbwide() && c < 0)		/* invalid multibyte char */
+				stakputc('?');
+			else if(c == 60)		/* < */
 				stakputs("&lt;");
-			else if(c=='>')
+			else if(c == 62)		/* > */
 				stakputs("&gt;");
-			else if(c=='&')
+			else if(c == 38)		/* & */
 				stakputs("&amp;");
-			else if(c=='"')
+			else if(c == 34)		/* " */
 				stakputs("&quot;");
-			else if(c=='\'')
-				stakputs("&apos;");
-			else if(c==' ')
-				stakputs("&nbsp;");
-			else if(!isprint(c) && c!='\n' && c!='\r')
-				sfprintf(stkstd,"&#%X;",CCMAPC(c,CC_NATIVE,CC_ASCII));
+			else if(c == 39)		/* ' (&apos; is not HTML) */
+				stakputs("&#39;");
 			else
-				stakputc(c);
+				stakwrite(op, cp-op);
 		}
 	}
 	else
 	{
-		while(c= *(unsigned char*)cp++)
+		/* Percent-encode for URI. Ref.: RFC 3986, section 2.3 */
+		if(mbwide())
 		{
-			if(strchr("!*'();@&+$,#[]<>~.\"{}|\\-`^% ",c) || (!isprint(c) && c!='\n' && c!='\r'))
-				sfprintf(stkstd,"%%%02X",CCMAPC(c,CC_NATIVE,CC_ASCII));
-			else
-				stakputc(c);
+			while(op = cp, c = mbchar(cp))
+			{
+				if(c < 0)
+					stakputs("%3F");
+				else if(c < 128 && strchr(URI_RFC3986_UNRESERVED, c))
+					stakputc(c);
+				else
+					while(c = *(unsigned char*)op++, op <= cp)
+						sfprintf(stkstd, "%%%02X", c);
+			}
+		}
+		else
+		{
+			while(c = *(unsigned char*)cp++)
+			{
+				if(strchr(URI_RFC3986_UNRESERVED, c))
+					stakputc(c);
+				else
+					sfprintf(stkstd, "%%%02X", CCMAPC(c, CC_NATIVE, CC_ASCII));
+			}
 		}
 	}
 	stakputc(0);
 	return(stakptr(offset));
 }
 
-#if 1
 static ssize_t fmtbase64(Sfio_t *iop, char *string, int alt)
-#else
-static void *fmtbase64(char *string, ssize_t *sz, int alt)
-#endif
 {
 	char			*cp;
 	Sfdouble_t		d;
@@ -526,7 +556,10 @@ static void *fmtbase64(char *string, ssize_t *sz, int alt)
 	if(!np || nv_isnull(np))
 	{
 		if(sh_isoption(SH_NOUNSET))
+		{
 			errormsg(SH_DICT,ERROR_exit(1),e_notset,string);
+			UNREACHABLE();
+		}
 		return(0);
 	}
 	if(nv_isattr(np,NV_INTEGER))
@@ -568,16 +601,9 @@ static void *fmtbase64(char *string, ssize_t *sz, int alt)
 				number.i = (int)d; 
 			}
 		}
-#if 1
 		return(sfwrite(iop, (void*)&number, size));
-#else
-		if(sz)
-			*sz = size;
-		return((void*)&number);
-#endif
 	}
 	if(nv_isattr(np,NV_BINARY))
-#if 1
 	{
 		Namfun_t *fp;
 		for(fp=np->nvfun; fp;fp=fp->next)
@@ -624,17 +650,6 @@ static void *fmtbase64(char *string, ssize_t *sz, int alt)
 		size = strlen(cp);
 		return(sfwrite(iop,cp,size));
 	}
-#else
-		nv_onattr(np,NV_RAW);
-	cp = nv_getval(np);
-	if(nv_isattr(np,NV_BINARY))
-		nv_offattr(np,NV_RAW);
-	if((size = nv_size(np))==0)
-		size = strlen(cp);
-	if(sz)
-		*sz = size;
-	return((void*)cp);
-#endif
 }
 
 static int varname(const char *str, int n)
@@ -648,7 +663,7 @@ static int varname(const char *str, int n)
 	}
 	for(;n > 0; n-=len)
 	{
-#ifdef SHOPT_MULTIBYTE
+#if SHOPT_MULTIBYTE
 		len = mbsize(str);
 		c = mbchar(str);
 #else
@@ -678,7 +693,6 @@ static const char *mapformat(Sffmt_t *fe)
 static int extend(Sfio_t* sp, void* v, Sffmt_t* fe)
 {
 	char*		lastchar = "";
-	register int	neg = 0;
 	Sfdouble_t	d;
 	Sfdouble_t	longmin = LDBL_LLONG_MIN;
 	Sfdouble_t	longmax = LDBL_LLONG_MAX;
@@ -716,7 +730,7 @@ static int extend(Sfio_t* sp, void* v, Sffmt_t* fe)
 			break;
 		case 'q':
 			format = 's';
-			/* FALL THROUGH */
+			/* FALLTHROUGH */
 		case 's':
 		case 'H':
 		case 'B':
@@ -755,7 +769,10 @@ static int extend(Sfio_t* sp, void* v, Sffmt_t* fe)
 			break;
 		default:
 			if(!strchr("DdXxoUu",format))
+			{
 				errormsg(SH_DICT,ERROR_exit(1),e_formspec,format);
+				UNREACHABLE();
+			}
 			fe->fmt = 'd';
 			value->ll = 0;
 			break;
@@ -798,6 +815,7 @@ static int extend(Sfio_t* sp, void* v, Sffmt_t* fe)
 						fe->flags |=SFFMT_ALTER;
 				}
 			}
+			/* FALLTHROUGH */
 		case 'b':
 		case 's':
 		case 'B':
@@ -837,12 +855,14 @@ static int extend(Sfio_t* sp, void* v, Sffmt_t* fe)
 		case 'u':
 		case 'U':
 			longmax = LDBL_ULLONG_MAX;
+			/* FALLTHROUGH */
 		case '.':
 			if(fe->size==2 && strchr("bcsqHPRQTZ",*fe->form))
 			{
 				value->ll = ((unsigned char*)argp)[0];
 				break;
 			}
+			/* FALLTHROUGH */
 		case 'd':
 		case 'D':
 		case 'i':
@@ -883,8 +903,6 @@ static int extend(Sfio_t* sp, void* v, Sffmt_t* fe)
 				}
 				break;
 			}
-			if(neg)
-				value->ll = -value->ll;
 			fe->size = sizeof(value->ll);
 			break;
 		case 'a':
@@ -933,7 +951,7 @@ static int extend(Sfio_t* sp, void* v, Sffmt_t* fe)
 			fe->fmt = 'd';
 			fe->size = sizeof(value->ll);
 			errormsg(SH_DICT,ERROR_exit(1),e_formspec,format);
-			break;
+			UNREACHABLE();
 		}
 		if (format == '.')
 			value->i = value->ll;
@@ -979,13 +997,19 @@ static int extend(Sfio_t* sp, void* v, Sffmt_t* fe)
 	case 'P':
 		s = fmtmatch(value->s);
 		if(!s || *s==0)
+		{
 			errormsg(SH_DICT,ERROR_exit(1),e_badregexp,value->s);
+			UNREACHABLE();
+		}
 		value->s = s;
 		break;
 	case 'R':
 		s = fmtre(value->s);
 		if(!s || *s==0)
+		{
 			errormsg(SH_DICT,ERROR_exit(1),e_badregexp,value->s);
+			UNREACHABLE();
+		}
 		value->s = s;
 		break;
 	case 'Q':
@@ -1020,7 +1044,7 @@ static int extend(Sfio_t* sp, void* v, Sffmt_t* fe)
 /*
  * construct System V echo string out of <cp>
  * If there are not escape sequences, returns -1
- * Otherwise, puts null terminated result on stack, but doesn't freeze it
+ * Otherwise, puts null-terminated result on stack, but doesn't freeze it
  * returns length of output.
  */
 
@@ -1029,7 +1053,6 @@ static int fmtvecho(const char *string, struct printf *pp)
 	register const char *cp = string, *cpmax;
 	register int c;
 	register int offset = staktell();
-#if SHOPT_MULTIBYTE
 	int chlen;
 	if(mbwide())
 	{
@@ -1043,8 +1066,8 @@ static int fmtvecho(const char *string, struct printf *pp)
 		}
 	}
 	else
-#endif /* SHOPT_MULTIBYTE */
-	while((c= *cp++) && (c!='\\'));
+		while((c= *cp++) && (c!='\\'))
+			;
 	if(c==0)
 		return(-1);
 	c = --cp - string;
@@ -1052,14 +1075,12 @@ static int fmtvecho(const char *string, struct printf *pp)
 		stakwrite((void*)string,c);
 	for(; c= *cp; cp++)
 	{
-#if SHOPT_MULTIBYTE
 		if (mbwide() && ((chlen = mbsize(cp)) > 1))
 		{
 			stakwrite(cp,chlen);
 			cp +=  (chlen-1);
 			continue;
 		}
-#endif /* SHOPT_MULTIBYTE */
 		if( c=='\\') switch(*++cp)
 		{
 			case 'E':
@@ -1101,6 +1122,7 @@ static int fmtvecho(const char *string, struct printf *pp)
 					c <<= 3;
 					c |= (*cp-'0');
 				}
+				/* FALLTHROUGH */
 			default:
 				cp--;
 		}

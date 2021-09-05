@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -29,7 +30,7 @@
 
 static const char usage[] =
 "[-?\n@(#)$Id: id (AT&T Research) 2004-06-11 $\n]"
-USAGE_LICENSE
+"[--catalog?" ERROR_CATALOG "]"
 "[+NAME?id - return user identity]"
 "[+DESCRIPTION?If no \auser\a operand is specified \bid\b writes user and "
 	"group IDs and the corresponding user and group names of the "
@@ -43,7 +44,7 @@ USAGE_LICENSE
 	"is written.]"
 "[n:name?Write the name instead of the numeric ID.]"
 "[r:real?Writes real ID instead of the effective ID.]"
-"[[a?This option is ignored.]"
+"[a?This option is ignored.]"
 "[g:group?Writes only the group ID.]"
 "[u:user?Writes only the user ID.]"
 "[G:groups?Writes only the supplementary group IDs.]"
@@ -232,7 +233,10 @@ getids(Sfio_t* sp, const char* name, register int flags)
 			if ((maxgroups = getgroups(0, groups)) <= 0)
 				maxgroups = NGROUPS_MAX;
 			if (!(groups = newof(0, gid_t, maxgroups + 1, 0)))
-				error(ERROR_exit(1), "out of space [group array]");
+			{
+				error(ERROR_exit(1), "out of memory [group array]");
+				UNREACHABLE();
+			}
 		}
 		ngroups = getgroups(maxgroups, groups);
 		for (i = j = 0; i < ngroups; i++)
@@ -251,7 +255,10 @@ getids(Sfio_t* sp, const char* name, register int flags)
 			{
 				user = strtol(name, &s, 0);
 				if (*s || !(pw = getpwuid(user)))
+				{
 					error(ERROR_exit(1), "%s: name not found", name);
+					UNREACHABLE();
+				}
 				name = pw->pw_name;
 			}
 			user = pw->pw_uid;
@@ -264,7 +271,10 @@ getids(Sfio_t* sp, const char* name, register int flags)
 			do
                         {
                                 if (!(fs = getfsgnam(name)))
+				{
                                         error(ERROR_exit(1), "%u: fss name not found", name);
+					UNREACHABLE();
+				}
                         } while (isfsg(fs));
                         fs_id = fs->fs_id;
 		}
@@ -451,7 +461,7 @@ b_id(int argc, char** argv, Shbltin_t* context)
 			break;
 		case '?':
 			error(ERROR_usage(2), "%s", opt_info.arg);
-			break;
+			UNREACHABLE();
 		}
 		break;
 	}
@@ -461,7 +471,10 @@ b_id(int argc, char** argv, Shbltin_t* context)
 	if (!power2(n))
 		error(2, "incompatible options selected");
 	if (error_info.errors || argc > 1)
+	{
 		error(ERROR_usage(2), "%s", optusage(NiL));
+		UNREACHABLE();
+	}
 	if (!(flags & ~(N_FLAG|R_FLAG)))
 	{
 		if (flags & N_FLAG) flags |= O_FLAG;

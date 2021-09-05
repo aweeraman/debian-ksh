@@ -2,6 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1994-2011 AT&T Intellectual Property          #
+#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -19,6 +20,8 @@
 ########################################################################
 : cross compiler a.out execution
 
+(command set -o posix) 2>/dev/null && set -o posix
+
 command=crossexec
 
 tmp=/tmp/cross$$
@@ -29,7 +32,9 @@ case `(getopts '[-][123:xyz]' opt --xyz; echo 0$opt) 2>/dev/null` in
 [-?
 @(#)$Id: crossexec (AT&T Labs Research) 2004-01-04 $
 ]
-'$USAGE_LICENSE$'
+[-author?Glenn Fowler <gsf@research.att.com>]
+[-copyright?Copyright (c) 1994-2012 AT&T Intellectual Property]
+[-license?http://www.eclipse.org/org/documents/epl-v10.html]
 [+NAME?crossexec - cross compiler a.out execution]
 [+DESCRIPTION?\bcrossexec\b runs a cross-compiled \acommand\a in an environment
 	that supports a cross-compilation architecture different from the

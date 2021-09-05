@@ -2,6 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
+#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -17,19 +18,8 @@
 #                  David Korn <dgk@research.att.com>                   #
 #                                                                      #
 ########################################################################
-function err_exit
-{
-	print -u2 -n "\t"
-	print -u2 -r ${Command}[$1]: "${@:2}"
-	let Errors+=1
-}
-alias err_exit='err_exit $LINENO'
 
-Command=${0##*/}
-integer Errors=0
-
-tmp=$(mktemp -dt) || { err_exit mktemp -dt failed; exit 1; }
-trap "cd /; rm -rf $tmp" EXIT
+. "${SHTESTS_COMMON:-${0%/*}/_common}"
 
 function fun
 {
@@ -143,7 +133,7 @@ y=* z=[
 s[$y]=1
 s[$z]=2
 if	(( ${#s[@]} != 2  ))
-then	err_exit 'number of elements of  is not 2'
+then	err_exit 'number of elements of s is not 2'
 fi
 (( s[$z] = s[$z] + ${s[$y]} ))
 if	[[ ${s[$z]} != 3  ]]
@@ -178,6 +168,12 @@ x=1
 typeset -i y[$x]=4
 if	[[ ${y[1]} != 4 ]]
 then    err_exit 'arithmetic expressions in typeset not working'
+fi
+unset foo
+typeset foo=bar
+typeset -a foo
+if	[[ ${foo[0]} != bar ]]
+then	err_exit 'initial value not preserved when typecast to indexed array'
 fi
 unset foo
 typeset foo=bar
@@ -221,13 +217,14 @@ if	[[ ${!xxx[@]} ]]
 then	err_exit '${!xxx[@]} should be null'
 fi
 integer i=0
+[[ -o xtrace ]] && was_xtrace=1 || was_xtrace=0
 {
 	set -x
 	xxx[++i]=1
-	set +x
+	((!was_xtrace)) && set +x
 } 2> /dev/null
 if	(( i != 1))
-then	err_exit 'execution trace side effects with array subscripts'
+then	err_exit "execution trace side effects with array subscripts (expected '1', got '$i')"
 fi
 unset list
 : $(set -A list foo bar)
@@ -292,13 +289,13 @@ fi
 unset x
 x=( 1 2 3)
 (x[1]=8)
-[[ ${x[1]} == 2 ]] || err_exit 'index array produce side effects in subshells'
+[[ ${x[1]} == 2 ]] || err_exit 'indexed array produce side effects in subshells'
 x=( 1 2 3)
 (
 	x+=(8)
-	[[ ${#x[@]} == 4 ]] || err_exit 'index array append in subshell error'
+	[[ ${#x[@]} == 4 ]] || err_exit 'indexed array append in subshell error'
 )
-[[ ${#x[@]} == 3 ]] || err_exit 'index array append in subshell effects parent'
+[[ ${#x[@]} == 3 ]] || err_exit 'indexed array append in subshell effects parent'
 x=( [one]=1 [two]=2 [three]=3)
 (x[two]=8)
 [[ ${x[two]} == 2 ]] || err_exit 'associative array produce side effects in subshells'
@@ -314,7 +311,7 @@ integer i
 for ((i=0; i < 40; i++))
 do	x[i]=$i
 done
-[[  ${#x[@]} == 40 ]] || err_exit 'index arrays loosing values'
+[[  ${#x[@]} == 40 ]] || err_exit 'indexed arrays losing values'
 [[ $( ($SHELL -c 'typeset -A var; (IFS=: ; set -A var a:b:c ;print ${var[@]});:' )2>/dev/null) == 'a b c' ]] || err_exit 'change associative to index failed'
 unset foo
 [[ $(foo=good
@@ -486,7 +483,7 @@ function x.get
 }
 x[2]=
 z=$(: ${x[1]} )
-[[ $z == sub=1 ]] || err_exit 'get function not invoked for index array'
+[[ $z == sub=1 ]] || err_exit 'get function not invoked for indexed array'
 
 unset x
 typeset -A x
@@ -502,8 +499,8 @@ unset y
 i=1
 a=(11 22)
 typeset -m y=a[i]
-[[ $y == 22 ]] || err_exit 'typeset -m for index array not working'
-[[ ${a[i]} || ${a[0]} != 11 ]] && err_exit 'typeset -m for index array not deleting element'
+[[ $y == 22 ]] || err_exit 'typeset -m for indexed array not working'
+[[ ${a[i]} || ${a[0]} != 11 ]] && err_exit 'typeset -m for indexed array not deleting element'
 
 unset y
 a=([0]=11 [1]=22)
@@ -516,8 +513,9 @@ typeset -a a=( [0]="aa" [1]="bb" [2]="cc" )
 typeset -m 'j=a[0]'
 typeset -m 'a[0]=a[1]'
 typeset -m 'a[1]=j'
-[[ ${a[@]} == 'bb aa cc' ]] || err_exit 'moving index array elements not working'
+[[ ${a[@]} == 'bb aa cc' ]] || err_exit 'moving indexed array elements not working'
 unset a j
+[[ $(typeset -p a) ]] && err_exit 'unset associative array after typeset -m not working'
 
 typeset -A a=( [0]="aa" [1]="bb" [2]="cc" )
 typeset -m 'j=a[0]'
@@ -529,12 +527,12 @@ unset a j
 z=(a b c)
 unset x
 typeset -m x[1]=z
-[[ ${x[1][@]} == 'a b c' ]] || err_exit 'moving indexed array to index array element not working'
+[[ ${x[1][@]} == 'a b c' ]] || err_exit 'moving indexed array to indexed array element not working'
 
 unset x z
 z=([0]=a [1]=b [2]=c)
 typeset -m x[1]=z
-[[ ${x[1][@]} == 'a b c' ]] || err_exit 'moving associative array to index array element not working'
+[[ ${x[1][@]} == 'a b c' ]] || err_exit 'moving associative array to indexed array element not working'
 
 {
 typeset -a arr=(
@@ -586,7 +584,7 @@ foo=( ${foo[yy]} ${foo[zz]} )
 
 unset foo
 typeset -a foo=(abc=1 def=2)
-[[ ${foo[1]} == def=2 ]] || err_exit "index array with elements containing = not working"
+[[ ${foo[1]} == def=2 ]] || err_exit "indexed array with elements containing = not working"
 
 unset foo
 typeset -a foo=( a b )
@@ -610,7 +608,7 @@ x=$(
 ) 2> /dev/null
 [[ $x == "$exp" ]] || err_exit 'setting element 1 of array to compound variable failed'
 
-#test for cloning a very large index array - can core dump
+# test for cloning a very large indexed array - can core dump
 (	
     trap 'x=$?;exit $(( $x!=0 ))' EXIT
     $SHELL <<- \EOF
@@ -664,7 +662,79 @@ arr5=(foo bar)
 [[ $(typeset -p arr5) == 'typeset -a arr5=(foo bar)' ]] || err_exit 'typeset expanding non-declaration aliases'
 
 typeset -A Foo
-Foo=( [a]=AA;[b]=BB)
-[[ ${Foo[a]} == AA ]] || err_exit 'Fooa[a] is {Foo[a]} not AA' 
+Foo=([a]=AA;[b]=BB)
+[[ ${Foo[a]} == AA ]] || err_exit 'Foo[a] is {Foo[a]} not AA'
 
+# ======
+# Crash when listing an indexed array
+expect=$'A=($\'\\\'\')\nB=(aa)\nC=(aa)'
+actual=$("$SHELL" -c 'A[0]="'\''" B[0]=aa C[0]=aa; typeset -a') \
+	|| err_exit "Crash when listing indexed array (exit status $?)"
+[[ $actual == "$expect" ]] || err_exit 'Incorrect output when listing indexed array' \
+	"(expected $(printf %q "$expect"), got $(printf %q "$actual"))"
+
+# ======
+# Arrays in virtual/non-forked subshells
+
+unset foo
+(typeset -a foo)
+[[ -n ${ typeset -p foo; } ]] && err_exit 'Null indexed array leaks out of subshell'
+
+unset foo
+(typeset -a foo=(1 2 3))
+[[ -n ${ typeset -p foo; } ]] && err_exit 'Indexed array with init value leaks out of subshell'
+
+unset foo
+(typeset -a foo; foo=(1 2 3))
+[[ -n ${ typeset -p foo; } ]] && err_exit 'Indexed array leaks out of subshell'
+
+unset foo
+(typeset -A foo)
+[[ -n ${ typeset -p foo; } ]] && err_exit 'Null associative array leaks out of subshell'
+
+unset foo
+(typeset -A foo=([bar]=baz [lorem]=ipsum))
+[[ -n ${ typeset -p foo; } ]] && err_exit 'Associative array with init value leaks out of subshell'
+
+unset foo
+(typeset -A foo; foo=([bar]=baz [lorem]=ipsum))
+[[ -n ${ typeset -p foo; } ]] && err_exit 'Associative array leaks out of subshell'
+
+# ======
+# Multidimensional associative arrays shouldn't be created with an extra 0 element
+unset foo
+typeset -A foo
+typeset -A foo[bar]
+expect="typeset -A foo=([bar]=() )"
+actual="$(typeset -p foo)"
+# $expect and $actual are quoted intentionally
+[[ "$expect" == "$actual" ]] || err_exit "Multidimensional associative arrays are created with an extra array member (expected $expect, got $actual)"
+
+# ======
+# Unsetting an array element removed all following elements if after subscript range expansion
+# https://github.com/ksh93/ksh/issues/254
+for range in \
+	0..3 1..3 0..2 0..1 1..2 2..3 0..-1 0..-2 \
+	.. 0.. 1.. 2.. 3.. ..0 ..1 ..2 ..3 \
+	-4.. -3.. -2.. -1.. ..-4 ..-3 ..-2 ..-1 \
+	-4..-1 -3..-1 -2..-1 -1..-1
+do
+	unset foo
+	set -A foo a b c d e f
+	eval "true \${foo[$range]}"
+	unset foo[2] # remove 3rd element 'c'
+	exp="a b d e f"
+	got=${foo[@]}
+	[[ $got == "$exp" ]] || err_exit "Expanding indexed array range \${foo[$range]} breaks 'unset foo[2]'" \
+		"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+done
+
+# ======
+# https://github.com/att/ast/issues/23
+unset foo bar
+typeset -a foo=([1]=w [2]=x) bar=(a b c)
+foo+=("${bar[@]}")
+[[ $(typeset -p foo) == 'typeset -a foo=([1]=w [2]=x [3]=a [4]=b [5]=c)' ]] || err_exit 'Appending does not work if array contains empty indexes'
+
+# ======
 exit $((Errors<125?Errors:125))

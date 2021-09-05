@@ -2,6 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
+#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -17,18 +18,8 @@
 #                  David Korn <dgk@research.att.com>                   #
 #                                                                      #
 ########################################################################
-function err_exit
-{
-	print -u2 -r $'\t'"${Command}[$1] ${@:2}"
-	((Errors++))
-}
-alias err_exit='err_exit $LINENO'
 
-Command=${0##*/}
-integer aware=0 contrary=0 Errors=0 ignorant=0
-
-tmp=$(mktemp -dt) || { err_exit mktemp -dt failed; exit 1; }
-trap "cd /; rm -rf $tmp" EXIT
+. "${SHTESTS_COMMON:-${0%/*}/_common}"
 
 function test_glob
 {
@@ -67,7 +58,7 @@ function test_glob
 		fi
 	fi
 	if	[[ $got != "$expected" ]]
-	then	'err_exit' $lineno "glob -- expected '$expected', got '$got'"
+	then	'err_exit' $lineno "glob${ [[ -o globstar ]] && print star; } -- expected '$expected', got '$got'"
 	fi
 }
 alias test_glob='test_glob $LINENO'
@@ -90,8 +81,6 @@ alias test_case='test_case $LINENO'
 
 unset undefined
 
-cd $tmp || { err_exit "cd $tmp failed"; exit 1; }
-
 export LC_COLLATE=C
 touch B b
 set -- *
@@ -99,7 +88,7 @@ case $* in
 'b B')	contrary=1 ;;
 b|B)	ignorant=1 ;;
 esac
-set -- $(LC_ALL=C /bin/sh -c 'echo [a-c]')
+set -- $(LC_ALL=C sh -c 'echo [a-c]')
 case $* in
 B)	aware=1 ;;
 esac
@@ -277,10 +266,18 @@ test_glob '<Beware> <abc> <abe> <bdir> <ca> <de> <man>' *
 
 FIGNORE=
 test_glob '<man/man1/sh.1>' */man*/sh.*
+test_glob '<.x> <.y> <Beware> <a> <a-b> <aXb> <abc> <abd> <abe> <b> <bb> <bcd> <bdir> <c> <ca> <cb> <d> <dd> <de> <man>' *
+test_glob '<.x> <.y>' .*
+
+FIGNORE='@(*[abcd]*)'
+test_glob '<.x> <.y>' *
+test_glob '<.x> <.y>' .*
 
 unset FIGNORE
 test_glob '<bb> <ca> <cb> <dd> <de>' ??
 test_glob '<man/man1/sh.1>' */man*/sh.*
+test_glob '<Beware> <a> <a-b> <aXb> <abc> <abd> <abe> <b> <bb> <bcd> <bdir> <c> <ca> <cb> <d> <dd> <de> <man>' *
+test_glob '<.x> <.y>' .*
 
 GLOBIGNORE='.*:*'
 set -- *
@@ -311,7 +308,8 @@ function test_sub
 }
 alias test_sub='test_sub $LINENO'
 
-set --noglob --nobraceexpand
+set --noglob
+((SHOPT_BRACEPAT)) && set --nobraceexpand
 
 subject='A regular expressions test'
 
@@ -371,4 +369,50 @@ test_sub '//@(!(a))/[\1]'     '[aha]'
 test_sub '/@(!(aha))/[\1]'    '[ah]a'
 test_sub '//@(!(aha))/[\1]'   '[ah][a]'
 
+# ======
+# Recursive double-star globbing (globstar) tests
+set --glob --globstar
+mkdir -p d_un/d_duo/d_tres/d_quatro d_un/d_duo/d_3/d_4
+touch d_un/d_duo/.tres
+ln -s d_duo d_un/d_sym
+
+# As of commit 5312a59d, globstar failed to expand **/. or **/.. or **/./file or **/../file
+# https://github.com/ksh93/ksh/issues/146#issuecomment-790845391
+test_glob \
+ '<d_un/.> <d_un/d_duo/.> <d_un/d_duo/d_3/.> <d_un/d_duo/d_3/d_4/.> <d_un/d_duo/d_tres/.> <d_un/d_duo/d_tres/d_quatro/.>' \
+  d_un/**/.
+test_glob \
+ '<d_un/..> <d_un/d_duo/..> <d_un/d_duo/d_3/..> <d_un/d_duo/d_3/d_4/..> <d_un/d_duo/d_tres/..> <d_un/d_duo/d_tres/d_quatro/..>' \
+  d_un/**/..
+test_glob \
+ '<d_un/./d_duo> <d_un/./d_sym> <d_un/d_duo/./d_3> <d_un/d_duo/./d_tres> <d_un/d_duo/d_3/./d_4> <d_un/d_duo/d_tres/./d_quatro>' \
+  d_un/**/./d_*
+test_glob \
+ '<d_un/../d_un> <d_un/d_duo/../d_duo> <d_un/d_duo/../d_sym> <d_un/d_duo/d_3/../d_3> <d_un/d_duo/d_3/../d_tres>'\
+' <d_un/d_duo/d_3/d_4/../d_4> <d_un/d_duo/d_tres/../d_3> <d_un/d_duo/d_tres/../d_tres> <d_un/d_duo/d_tres/d_quatro/../d_quatro>' \
+  d_un/**/../d_*
+test_glob '<d_un/d_duo/.tres>' d_un/**/.*
+test_glob '<d_un/d_duo/d_3/../.tres> <d_un/d_duo/d_tres/../.tres>' d_un/*/**/../.*
+test_glob \
+	'<d_un/d_duo/d_3/../.tres> <d_un/d_duo/d_tres/../.tres> <d_un/d_sym/d_3/../.tres> <d_un/d_sym/d_tres/../.tres>' \
+	d_un/**/*/../.*
+test_glob '<d_un/./d_duo/./d_3/./.././.tres> <d_un/./d_duo/./d_tres/./.././.tres>' d_un/./**/./*/./.././.*
+
+# New in 93u+m 2021-03-06: follow symlink to directory if specified literally or matched by a regular glob pattern component
+# https://github.com/ksh93/ksh/issues/146#issuecomment-792142794
+test_glob '<d_un/d_sym/d_3> <d_un/d_sym/d_3/d_4> <d_un/d_sym/d_tres> <d_un/d_sym/d_tres/d_quatro>' d_un/d_sym/**
+test_glob '<d_un/d_sym> <d_un/d_sym/d_3> <d_un/d_sym/d_3/d_4> <d_un/d_sym/d_tres> <d_un/d_sym/d_tres/d_quatro>' d_un/d_sy[m]/**
+test_glob '<d_un/d_sym/d_3/d_4>' d_un/d_sym/d_3/**
+test_glob '<d_un/d_sym/d_3/d_4>' d_un/d_sy[m]/d_3/**
+test_glob '<d_un/d_duo> <d_un/d_duo/d_3> <d_un/d_duo/d_3/d_4> <d_un/d_duo/d_tres> <d_un/d_duo/d_tres/d_quatro>' **/d_duo/**
+test_glob '<d_un/d_sym> <d_un/d_sym/d_3> <d_un/d_sym/d_3/d_4> <d_un/d_sym/d_tres> <d_un/d_sym/d_tres/d_quatro>' **/d_sym/**
+test_glob '<d_un/d_sym> <d_un/d_sym/d_3> <d_un/d_sym/d_3/d_4> <d_un/d_sym/d_tres> <d_un/d_sym/d_tres/d_quatro>' **/d_s[y]m/**
+test_glob '<d_un/d_sym> <d_un/d_sym/d_3> <d_un/d_sym/d_3/d_4> <d_un/d_sym/d_tres> <d_un/d_sym/d_tres/d_quatro>' **/d_*ym/**
+test_glob '<d_un/d_sym//d_3> <d_un/d_sym//d_3/d_4> <d_un/d_sym//d_tres> <d_un/d_sym//d_tres/d_quatro>' **/d_sym//**
+test_glob '<d_un/d_sym//d_3> <d_un/d_sym//d_3/d_4> <d_un/d_sym//d_tres> <d_un/d_sym//d_tres/d_quatro>' **/d_[s]ym//**
+test_glob '<d_un/d_sym//d_3> <d_un/d_sym//d_3/d_4> <d_un/d_sym//d_tres> <d_un/d_sym//d_tres/d_quatro>' **/d_*ym//**
+
+set --noglobstar
+
+# ======
 exit $((Errors<125?Errors:125))

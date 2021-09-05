@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -61,5 +62,6 @@ extern const struct shtable3	shtab_builtins[];
 extern const Shtable_t		shtab_reserved[];
 extern const Shtable_t		*sh_locate(const char*, const Shtable_t*, int);
 extern int			sh_lookopt(const char*, int*);
+extern Dt_t			*sh_inittree(Shell_t*, const struct shtable2*);
 
 #endif /* SH_TABLE_H */

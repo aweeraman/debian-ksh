@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -32,7 +33,7 @@
 
 static const char usage[] =
 "[-?\n@(#)$Id: rev (AT&T Research) 2007-11-29 $\n]"
-USAGE_LICENSE
+"[--catalog?" ERROR_CATALOG "]"
 "[+NAME?rev - reverse the characters or lines of one or more files]"
 "[+DESCRIPTION?\brev\b copies one or more files to standard output "
 	"reversing the order of characters on every line of the file "
@@ -76,7 +77,7 @@ static int rev_char(Sfio_t *in, Sfio_t *out)
 				w = roundof(n + 1, 1024);
 				if (!(wp = newof(wp, wchar_t, w, 0)))
 				{
-					error(ERROR_SYSTEM|2, "out of space");
+					error(ERROR_SYSTEM|2, "out of memory");
 					return 0;
 				}
 			}
@@ -134,13 +135,16 @@ b_rev(int argc, register char** argv, Shbltin_t* context)
 			break;
 		case '?':
 			error(ERROR_usage(2), "%s", opt_info.arg);
-			break;
+			UNREACHABLE();
 		}
 		break;
 	}
 	argv += opt_info.index;
 	if(error_info.errors)
+	{
 		error(ERROR_usage(2),"%s",optusage((char*)0));
+		UNREACHABLE();
+	}
 	n=0;
 	if(cp = *argv)
 		argv++;
@@ -161,7 +165,10 @@ b_rev(int argc, register char** argv, Shbltin_t* context)
 		if(fp!=sfstdin)
 			sfclose(fp);
 		if(line < 0)
+		{
 			error(ERROR_system(1),"write failed");
+			UNREACHABLE();
+		}
 	}
 	while(cp= *argv++);
 	return(n);

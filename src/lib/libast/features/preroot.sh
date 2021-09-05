@@ -2,6 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1985-2011 AT&T Intellectual Property          #
+#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -20,6 +21,12 @@
 #                                                                      #
 ########################################################################
 : generate preroot features
+
+case $ZSH_VERSION in
+?*)	emulate ksh ;;
+*)	(command set -o posix) 2>/dev/null && set -o posix ;;
+esac
+
 case $# in
 0)	;;
 *)	eval $1

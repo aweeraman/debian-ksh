@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -66,7 +67,7 @@ struct slnod 	/* struct for link list of stacks */
 };
 
 /*
- * This struct is use to hold $* lists and arrays
+ * This struct is used to hold $* lists and arrays
  */
 
 struct dolnod
@@ -120,7 +121,7 @@ struct argnod
 #define ARG_QUOTED	0x20	/* word contained quote characters */
 #define ARG_MESSAGE	0x40	/* contains international string */
 #define ARG_APPEND	0x80	/* for += assignment */
-/*  The following can be passed as options to sh_macexpand() */
+/* The following can be passed as options to sh_macexpand() */
 #define ARG_ARITH	0x100	/* arithmetic expansion */
 #define ARG_OPTIMIZE	0x200	/* try to optimize */
 #define ARG_NOGLOB	0x400	/* no file name expansion */
@@ -133,8 +134,6 @@ extern int		sh_argopts(int,char*[],void*);
 
 
 extern const char	e_heading[];
-extern const char	e_off[];
-extern const char	e_on[];
 extern const char	e_sptbnl[];
 extern const char	e_subst[];
 extern const char	e_option[];

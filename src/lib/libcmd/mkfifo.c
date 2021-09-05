@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -28,9 +29,9 @@
 
 static const char usage[] =
 "[-?\n@(#)$Id: mkfifo (AT&T Research) 2009-01-02 $\n]"
-USAGE_LICENSE
+"[--catalog?" ERROR_CATALOG "]"
 "[+NAME?mkfifo - make FIFOs (named pipes)]"
-"[+DESCRIPTION?\bmkfifo\b creates one or more FIFO's.  By "
+"[+DESCRIPTION?\bmkfifo\b creates one or more FIFOs.  By "
 	"default, the mode of created FIFO is \ba=rw\b minus the "
 	"bits set in the \bumask\b(1).]"
 "[m:mode]:[mode?Set the mode of created FIFO to \amode\a.  "
@@ -40,8 +41,8 @@ USAGE_LICENSE
 "\nfile ...\n"
 "\n"
 "[+EXIT STATUS?]{"
-        "[+0?All FIFO's created successfully.]"
-        "[+>0?One or more FIFO's could not be created.]"
+        "[+0?All FIFOs created successfully.]"
+        "[+>0?One or more FIFOs could not be created.]"
 "}"
 "[+SEE ALSO?\bchmod\b(1), \bumask\b(1)]"
 ;
@@ -73,13 +74,16 @@ b_mkfifo(int argc, char** argv, Shbltin_t* context)
 			break;
 		case '?':
 			error(ERROR_usage(2), "%s", opt_info.arg);
-			break;
+			UNREACHABLE();
 		}
 		break;
 	}
 	argv += opt_info.index;
 	if (error_info.errors || !*argv)
+	{
 		error(ERROR_usage(2), "%s", optusage(NiL));
+		UNREACHABLE();
+	}
 	mask = umask(0);
 	if (!mflag)
 	{

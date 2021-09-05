@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -26,26 +27,38 @@
 #include	"FEATURE/dynamic"
 #include	"shtable.h"
 
-#define	SYSLOGIN	(shgd->bltin_cmds)
-#define SYSEXEC		(shgd->bltin_cmds+1)
-#define SYSSET		(shgd->bltin_cmds+2)
-#define SYSTRUE		(shgd->bltin_cmds+4)
-#define SYSCOMMAND	(shgd->bltin_cmds+5)
-#define SYSCD		(shgd->bltin_cmds+6)
-#define SYSBREAK	(shgd->bltin_cmds+7)
-#define SYSCONT		(shgd->bltin_cmds+8)
-#define SYSTYPESET	(shgd->bltin_cmds+9)
-#define SYSTEST		(shgd->bltin_cmds+10)
-#define SYSBRACKET	(shgd->bltin_cmds+11)
-#define SYSLET		(shgd->bltin_cmds+12)
-#define SYSEXPORT	(shgd->bltin_cmds+13)
-#define SYSDOT		(shgd->bltin_cmds+14)
-#define SYSRETURN	(shgd->bltin_cmds+15)
-#if SHOPT_BASH
-#   define SYSLOCAL	(shgd->bltin_cmds+16)
-#else
-#   define SYSLOCAL	0
-#endif
+/*
+ * IDs for the parser (parse.c) and parse tree executer (xec.c)
+ * to implement special handling for the corresponding builtins.
+ * IMPORTANT: The offsets on these macros must be synchronous
+ * with the order of shtab_builtins[] in data/builtins.c!
+ */
+#define SYSEXEC		(shgd->bltin_cmds)	/* exec */
+#define SYSREDIR	(shgd->bltin_cmds+1)	/* redirect */
+#define SYSSET		(shgd->bltin_cmds+2)	/* set */
+						/* : */
+#define SYSTRUE		(shgd->bltin_cmds+4)	/* true */
+#define SYSCOMMAND	(shgd->bltin_cmds+5)	/* command */
+#define SYSCD		(shgd->bltin_cmds+6)	/* cd */
+#define SYSBREAK	(shgd->bltin_cmds+7)	/* break */
+#define SYSCONT		(shgd->bltin_cmds+8)	/* continue */
+
+#define SYSTYPESET	(shgd->bltin_cmds+9)	/* typeset     \		*/
+						/* autoload	|		*/
+#define SYSCOMPOUND	(shgd->bltin_cmds+11)	/* compound	|		*/
+						/* float	 >typeset range	*/
+						/* functions	|		*/
+						/* integer	|		*/
+#define SYSNAMEREF	(shgd->bltin_cmds+15)	/* nameref      |		*/
+#define SYSTYPESET_END	(shgd->bltin_cmds+15)	/*	       /		*/
+
+#define SYSTEST		(shgd->bltin_cmds+16)	/* test */
+#define SYSBRACKET	(shgd->bltin_cmds+17)	/* [ */
+#define SYSLET		(shgd->bltin_cmds+18)	/* let */
+#define SYSEXPORT	(shgd->bltin_cmds+19)	/* export */
+#define SYSDOT		(shgd->bltin_cmds+20)	/* . */
+#define SYSSOURCE	(shgd->bltin_cmds+21)	/* source */
+#define SYSRETURN	(shgd->bltin_cmds+22)	/* return */
 
 /* entry point for shell special builtins */
 
@@ -78,6 +91,9 @@ extern int b_unalias(int, char*[],Shbltin_t*);
 #   ifdef SIGTSTP
 	extern int b_bg(int, char*[],Shbltin_t*);
 #   endif	/* SIGTSTP */
+#   ifdef SIGSTOP
+	extern int b_suspend(int, char*[],Shbltin_t*);
+#   endif	/* SIGSTOP */
 #endif
 
 /* The following utilities are built-in because of side-effects */
@@ -93,9 +109,6 @@ extern int b_umask(int, char*[],Shbltin_t*);
 #ifdef _cmd_universe
     extern int b_universe(int, char*[],Shbltin_t*);
 #endif /* _cmd_universe */
-#if SHOPT_FS_3D
-    extern int b_vpath(int, char*[],Shbltin_t*);
-#endif /* SHOPT_FS_3D */
 extern int b_wait(int, char*[],Shbltin_t*);
 extern int b_whence(int, char*[],Shbltin_t*);
 
@@ -105,6 +118,7 @@ extern int b_printf(int, char*[],Shbltin_t*);
 extern int b_pwd(int, char*[],Shbltin_t*);
 extern int b_sleep(int, char*[],Shbltin_t*);
 extern int b_test(int, char*[],Shbltin_t*);
+extern int b_times(int, char*[],Shbltin_t*);
 #if !SHOPT_ECHOPRINT
     extern int B_echo(int, char*[],Shbltin_t*);
 #endif /* SHOPT_ECHOPRINT */
@@ -125,6 +139,7 @@ extern const char	e_overlimit[];
 
 extern const char	e_eneedsarg[];
 extern const char	e_oneoperand[];
+extern const char	e_toomanyops[];
 extern const char	e_toodeep[];
 extern const char	e_badname[];
 extern const char	e_badsyntax[];
@@ -139,12 +154,6 @@ extern const char	e_direct[];
 extern const char	e_defedit[];
 extern const char	e_cneedsarg[];
 extern const char	e_defined[];
-#if SHOPT_FS_3D
-    extern const char	e_cantset[];
-    extern const char	e_cantget[];
-    extern const char	e_mapping[];
-    extern const char	e_versions[];
-#endif /* SHOPT_FS_3D */
 
 /* for option parsing */
 extern const char sh_set[];
@@ -161,15 +170,21 @@ extern const char sh_optdot[];
 #endif /* !ECHOPRINT */
 extern const char sh_opteval[];
 extern const char sh_optexec[];
+extern const char sh_optredirect[];
 extern const char sh_optexit[];
 extern const char sh_optexport[];
 extern const char sh_optgetopts[];
 extern const char sh_optbg[];
 extern const char sh_optdisown[];
 extern const char sh_optfg[];
+extern const char sh_opthash[];
 extern const char sh_opthist[];
 extern const char sh_optjobs[];
 extern const char sh_optkill[];
+#if defined(JOBS) && defined(SIGSTOP)
+extern const char sh_optstop[];
+extern const char sh_optsuspend[];
+#endif /* defined(JOBS) && defined(SIGSTOP) */
 extern const char sh_optksh[];
 extern const char sh_optlet[];
 extern const char sh_optprint[];
@@ -191,12 +206,8 @@ extern const char sh_optwait[];
     extern const char sh_optuniverse[];
 #endif /* _cmd_universe */
 extern const char sh_optunset[];
-#if SHOPT_FS_3D
-    extern const char sh_optvpath[];
-    extern const char sh_optvmap[];
-#endif /* SHOPT_FS_3D */
 extern const char sh_optwhence[];
 #endif /* SYSDECLARE */
+extern const char sh_opttimes[];
 
 extern const char e_dict[];
-

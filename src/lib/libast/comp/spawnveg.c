@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -63,7 +64,10 @@ spawnveg(const char* path, char* const argv[], char* const envv[], pid_t pgid)
 			goto bad;
 	}
 	if (err = posix_spawn(&pid, path, NiL, &attr, argv, envv ? envv : environ))
-		goto bad;
+	{
+		if ((err != EPERM) || (err = posix_spawn(&pid, path, NiL, NiL, argv, envv ? envv : environ)))
+			goto bad;
+	}
 	posix_spawnattr_destroy(&attr);
 #if _lib_posix_spawn < 2
 	if (waitpid(pid, &err, WNOHANG|WNOWAIT) == pid && EXIT_STATUS(err) == 127)
@@ -91,14 +95,18 @@ spawnveg(const char* path, char* const argv[], char* const envv[], pid_t pgid)
 #ifndef P_NOWAIT
 #define P_NOWAIT	_P_NOWAIT
 #endif
-#ifndef P_DETACH
+#if !defined(P_DETACH) && defined(_P_DETACH)
 #define P_DETACH	_P_DETACH
 #endif
 
 pid_t
 spawnveg(const char* path, char* const argv[], char* const envv[], pid_t pgid)
 {
+#if defined(P_DETACH)
 	return spawnve(pgid ? P_DETACH : P_NOWAIT, path, argv, envv ? envv : environ);
+#else
+	return spawnve(P_NOWAIT, path, argv, envv ? envv : environ);
+#endif
 }
 
 #else
@@ -132,10 +140,6 @@ spawnveg(const char* path, char* const argv[], char* const envv[], pid_t pgid)
 #include <sig.h>
 #include <ast_tty.h>
 #include <ast_vfork.h>
-
-#ifndef ENOSYS
-#define ENOSYS	EINVAL
-#endif
 
 #if _lib_spawnve && _hdr_process
 #include <process.h>

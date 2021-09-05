@@ -2,6 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1994-2011 AT&T Intellectual Property          #
+#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -26,7 +27,10 @@ case `(getopts '[-][123:xyz]' opt --xyz; echo 0$opt) 2>/dev/null` in
 [-?
 @(#)$Id: ditto (AT&T Labs Research) 2010-11-22 $
 ]
-'$USAGE_LICENSE$'
+[-author?Glenn Fowler <gsf@research.att.com>]
+[-author?Lefty Koutsofios <ek@research.att.com>]
+[-copyright?Copyright (c) 2001-2012 AT&T Intellectual Property]
+[-license?http://www.eclipse.org/org/documents/epl-v10.html]
 [+NAME?ditto - replicate directory hierarchies]
 [+DESCRIPTION?\bditto\b replicates the \asource\a directory hierarchy
 	to the \adestination\a directory hierarchy. Both \asource\a and
@@ -53,7 +57,7 @@ case `(getopts '[-][123:xyz]' opt --xyz; echo 0$opt) 2>/dev/null` in
 [d:delete?Delete \adestination\a files that are not in the \asource\a.]
 [e:expr?\btw\b(1) select expression.]:[tw-expression]
 [m!:mode?Preserve file mode.]
-[n:show?Show the operations but do not exectute.]
+[n:show?Show the operations but do not execute.]
 [o:owner?Preserve file user and group ownership.]
 [p:physical?Generate source and destination hierarchies by \btw\b(1) with
 	the \b--physical\b option.]

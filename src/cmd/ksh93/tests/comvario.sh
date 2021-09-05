@@ -2,6 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
+#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -15,36 +16,11 @@
 #                           Florham Park NJ                            #
 #                                                                      #
 #                  David Korn <dgk@research.att.com>                   #
-#                                                                      #
-########################################################################
-########################################################################
-#                                                                      #
-#               This software is part of the ast package               #
-#          Copyright (c) 1982-2012 AT&T Intellectual Property          #
-#                      and is licensed under the                       #
-#                 Eclipse Public License, Version 1.0                  #
-#                    by AT&T Intellectual Property                     #
-#                                                                      #
-#                A copy of the License is available at                 #
-#          http://www.eclipse.org/org/documents/epl-v10.html           #
-#         (with md5 checksum b35adb5213ca9657e911e9befb180842)         #
-#                                                                      #
-#              Information and Software Systems Research               #
-#                            AT&T Research                             #
-#                           Florham Park NJ                            #
-#                                                                      #
 #              Roland Mainz <roland.mainz@nrubsig.org>                 #
 #                                                                      #
 ########################################################################
 
-# test setup
-function err_exit
-{
-	print -u2 -n '\t'
-	print -u2 -r ${Command}[$1]: "${@:2}"
-	(( Errors++ ))
-}
-alias err_exit='err_exit $LINENO'
+. "${SHTESTS_COMMON:-${0%/*}/_common}"
 
 # "nounset" disabled for now
 #set -o nounset
@@ -53,7 +29,7 @@ integer Errors=0 HAVE_signbit=0
 
 if	typeset -f .sh.math.signbit >/dev/null && (( signbit(-NaN) ))
 then	HAVE_signbit=1
-else	print -u2 "$0: warning: -lm does not support signbit(-NaN)"
+else	warning "-lm does not support signbit(-NaN)"
 fi
 
 compound bracketstat=(
@@ -528,11 +504,6 @@ print -v c2
 
         [[ "${out.stdout}" != '' ]] || err_exit "$0: Expected nonempty stdout."
        	[[ "${out.stderr}" == '' ]] || err_exit "$0: Expected empty stderr, got $(printf '%q\n' "${out.stderr}")"
-
-	if [[ -f 'core' && -x '/usr/bin/pstack' ]] ; then
-		pstack 'core'
-		rm 'core'
-	fi
 
 	return 0
 }

@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -36,6 +37,10 @@
 #include	"FEATURE/externs"
 #include	"defs.h"	/* for sh.decomma */
 
+/* POSIX requires error status > 1 if called from test builtin */
+#undef ERROR_exit
+#define ERROR_exit(n) _ERROR_exit_b_test(n)
+
 #ifndef ERROR_dictionary
 #   define ERROR_dictionary(s)	(s)
 #endif
@@ -43,7 +48,7 @@
 #   define SH_DICT	"libshell"
 #endif
 
-#define MAXLEVEL	9
+#define MAXLEVEL	1024
 #define SMALL_STACK	12
 
 /*
@@ -60,8 +65,6 @@
 				stakseek((v)->offset+sizeof(type)), \
 				*((type*)stakptr((v)->offset)) = (val)),(v)->offset)
 #define roundptr(ep,cp,type)	(((unsigned char*)(ep))+round(cp-((unsigned char*)(ep)),pow2size(sizeof(type))))
-
-static int level;
 
 struct vars				/* vars stacked per invocation */
 {
@@ -121,14 +124,12 @@ static int _seterror(struct vars *vp,const char *msg)
 		vp->errmsg.value = (char*)msg;
 	vp->errchr = vp->nextchr;
 	vp->nextchr = "";
-	level = 0;
 	return(0);
 }
 
 
 static void arith_error(const char *message,const char *expr, int mode)
 {
-        level = 0;
 	mode = (mode&3)!=0;
         errormsg(SH_DICT,ERROR_exit(mode),message,expr);
 }
@@ -171,9 +172,10 @@ Sfdouble_t	arith_exec(Arith_t *ep)
 	node.elen = ep->elen;
 	node.value = 0;
 	node.nosub = 0;
+	node.sub = 0;
 	node.ptr = 0;
 	node.eflag = 0;
-	if(level++ >=MAXLEVEL)
+	if(shp->arithrecursion++ >= MAXLEVEL)
 	{
 		arith_error(e_recursive,ep->expr,ep->emode);
 		return(0);
@@ -234,6 +236,7 @@ Sfdouble_t	arith_exec(Arith_t *ep)
 			continue;
 		    case A_ASSIGNOP1:
 			node.emode |= ARITH_ASSIGNOP;
+			/* FALLTHROUGH */
 		    case A_PUSHV:
 			cp = roundptr(ep,cp,Sfdouble_t*);
 			dp = *((Sfdouble_t**)cp);
@@ -244,7 +247,7 @@ Sfdouble_t	arith_exec(Arith_t *ep)
 			if(node.flag = c)
 				lastval = 0;
 			node.isfloat=0;
-			node.level = level;
+			node.level = shp->arithrecursion;
 			node.nosub = 0;
 			num = (*ep->fun)(&ptr,&node,VALUE,num);
 			if(node.emode&ARITH_ASSIGNOP)
@@ -278,6 +281,7 @@ Sfdouble_t	arith_exec(Arith_t *ep)
 			continue;
 		    case A_ASSIGNOP:
 			node.nosub = lastsub;
+			/* FALLTHROUGH */
 		    case A_STORE:
 			cp = roundptr(ep,cp,Sfdouble_t*);
 			dp = *((Sfdouble_t**)cp);
@@ -491,8 +495,8 @@ Sfdouble_t	arith_exec(Arith_t *ep)
 		*sp = num;
 		*tp = type;
 	}
-	if(level>0)
-		level--;
+	if(shp->arithrecursion>0)
+		shp->arithrecursion--;
 	if(type==0 && !num)
 		num = 0;
 	return(num);
@@ -528,7 +532,7 @@ static int gettok(register struct vars *vp)
 				op = A_DIG;
 			else
 				op = A_REG;
-			/*FALL THRU*/
+			/* FALLTHROUGH */
 		    case A_DIG: case A_REG: case A_LIT:
 		    keep:
 			ungetchr(vp);
@@ -547,10 +551,10 @@ static int gettok(register struct vars *vp)
 				op -= 2;
 				break;
 			}
-			/* FALL THRU */
+			/* FALLTHROUGH */
 		    case A_NOT:	case A_COLON:
 			c = '=';
-			/* FALL THRU */
+			/* FALLTHROUGH */
 		    case A_ASSIGN:
 		    case A_TIMES:
 		    case A_PLUS:	case A_MINUS:
@@ -604,7 +608,7 @@ again:
 	    case A_PLUSPLUS:
 		c = A_LVALUE;
 		op = A_INCR|T_NOFLOAT;
-		/* FALL THRU */
+		/* FALLTHROUGH */
 	    case A_TILDE:
 		op |= T_NOFLOAT;
 	    common:
@@ -758,6 +762,7 @@ again:
 		case A_MINUSMINUS:
 			wasop=0;
 			op |= T_NOFLOAT;
+			/* FALLTHROUGH */
 		case A_ASSIGN:
 			if(!lvalue.value)
 				ERROR(vp,e_notlvalue);
@@ -823,7 +828,7 @@ again:
 		case A_AND:	case A_OR:	case A_XOR:	case A_LSHIFT:
 		case A_RSHIFT:	case A_MOD:
 			op |= T_NOFLOAT;
-			/* FALL THRU */
+			/* FALLTHROUGH */
 		case A_PLUS:	case A_MINUS:	case A_TIMES:	case A_DIV:
 		case A_EQ:	case A_NEQ:	case A_LT:	case A_LE:
 		case A_GT:	case A_GE:	case A_POW:
@@ -1015,9 +1020,8 @@ Sfdouble_t strval(Shell_t *shp,const char *s,char **end,Sfdouble_t(*conv)(const 
 	    default:
 		return(1);
 	}
-	level=0;
 	errormsg(SH_DICT,ERROR_exit(1),message,ep->name);
-	return(0);
+	UNREACHABLE();
     }
 
 #undef	extern

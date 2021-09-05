@@ -15,6 +15,7 @@ __STDPP__directive pragma pp:hide utime utimes
 #include <error.h>
 #include <tm.h>
 
+#include "FEATURE/float"
 #include "FEATURE/omitted"
 
 #undef	OMITTED
@@ -529,7 +530,7 @@ runve(int mode, const char* path, char* const* argv, char* const* envv)
 	 *	(3) /c/(WINNT|WINDOWS)/system32 /c/(WINNT|WINDOWS)
 	 *	(4) the directories on $PATH
 	 * there are no cygwin dlls in (3), so if (1) and (2) fail
-	 * to produce the required dlls its up to (4)
+	 * to produce the required dlls it's up to (4)
 	 *
 	 * the standard allows PATH to be anything once the path
 	 * to an executable is determined; this code ensures that PATH
@@ -1143,6 +1144,36 @@ getpagesize()
 __EXPORT__ double (*_imp__strtod)(const char*, char**) = strtod;
 #endif
 
+#endif
+
+/* Kludge to deal with GCC's overzealous optimizer breaking the pow functions.
+ *
+ * Removal of this will break IEEE floating point on the SVR4 platforms.
+ */
+#if _need_ast_pow_funs
+# if _lib_powf
+float (*volatile _ast_ppowf)(float,float) = &powf;
+float _ast_powf(float x, float y)
+{
+	return x == 1.0F ? 1.0F : (*_ast_ppowf)(x,y);
+}
+# endif
+
+# if _lib_pow
+double (*volatile _ast_ppow)(double,double) = &pow;
+double _ast_pow(double x, double y)
+{
+	return x == 1.0 ? 1.0 : (*_ast_ppow)(x,y);
+}
+# endif
+
+# if _lib_powl
+long double (*volatile _ast_ppowl)(long double,long double) = &powl;
+long double _ast_powl(long double x, long double y)
+{
+	return x == 1.0L ? 1.0L : (*_ast_ppowl)(x,y);
+}
+# endif
 #endif
 
 #ifndef OMITTED

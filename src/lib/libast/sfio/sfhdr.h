@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -301,7 +302,7 @@
 
 #include	"FEATURE/float"
 
-#include	<errno.h>
+#include	<error.h>
 #include	<ctype.h>
 
 /* deal with multi-byte character and string conversions */
@@ -619,26 +620,6 @@
 #endif /*F_SETFD*/
 
 #define SF_FD_CLOEXEC			0x0001
-
-/* a couple of error number that we use, default values are like Linux */
-#ifndef EINTR
-#define EINTR	4
-#endif
-#ifndef EBADF
-#define EBADF	9
-#endif
-#ifndef EAGAIN
-#define EAGAIN	11
-#endif
-#ifndef ENOMEM
-#define ENOMEM	12
-#endif
-#ifndef EINVAL
-#define EINVAL	22
-#endif
-#ifndef ESPIPE
-#define ESPIPE	29
-#endif
 
 /* function to get the decimal point for local environment */
 #if !defined(SFSETLOCALE) && _PACKAGE_ast
@@ -1152,24 +1133,36 @@ typedef struct _sftab_
 #define MEMCPY(to,fr,n) \
 	switch(n) \
 	{ default : memcpy((Void_t*)to,(Void_t*)fr,n); to += n; fr += n; break; \
-	  case  7 : *to++ = *fr++; \
-	  case  6 : *to++ = *fr++; \
-	  case  5 : *to++ = *fr++; \
-	  case  4 : *to++ = *fr++; \
-	  case  3 : *to++ = *fr++; \
-	  case  2 : *to++ = *fr++; \
-	  case  1 : *to++ = *fr++; \
+	  case  7 : *to++ = *fr++;	\
+		/* FALLTHROUGH */	\
+	  case  6 : *to++ = *fr++;	\
+		/* FALLTHROUGH */	\
+	  case  5 : *to++ = *fr++;	\
+		/* FALLTHROUGH */	\
+	  case  4 : *to++ = *fr++;	\
+		/* FALLTHROUGH */	\
+	  case  3 : *to++ = *fr++;	\
+		/* FALLTHROUGH */	\
+	  case  2 : *to++ = *fr++;	\
+		/* FALLTHROUGH */	\
+	  case  1 : *to++ = *fr++;	\
 	}
 #define MEMSET(s,c,n) \
 	switch(n) \
 	{ default : memset((Void_t*)s,(int)c,n); s += n; break; \
-	  case  7 : *s++ = c; \
-	  case  6 : *s++ = c; \
-	  case  5 : *s++ = c; \
-	  case  4 : *s++ = c; \
-	  case  3 : *s++ = c; \
-	  case  2 : *s++ = c; \
-	  case  1 : *s++ = c; \
+	  case  7 : *s++ = c;		\
+		    /* FALLTHROUGH */	\
+	  case  6 : *s++ = c;		\
+		    /* FALLTHROUGH */	\
+	  case  5 : *s++ = c;		\
+		    /* FALLTHROUGH */	\
+	  case  4 : *s++ = c;		\
+		    /* FALLTHROUGH */	\
+	  case  3 : *s++ = c;		\
+		    /* FALLTHROUGH */	\
+	  case  2 : *s++ = c;		\
+		    /* FALLTHROUGH */	\
+	  case  1 : *s++ = c;		\
 	}
 
 _BEGIN_EXTERNS_
@@ -1304,5 +1297,10 @@ extern int	poll _ARG_((ulong, struct pollfd*, int));
 #endif /* _PACKAGE_ast */
 
 _END_EXTERNS_
+
+#ifdef _SF_HIDESFFLAGS
+#undef SFIO_FLAGS
+#define SFIO_FLAGS        0177177 /* PUBLIC FLAGS PASSABLE TO SFNEW()     */
+#endif
 
 #endif /*_SFHDR_H*/

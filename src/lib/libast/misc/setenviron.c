@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -22,8 +23,6 @@
 #pragma prototyped
 
 #include "intercepts.h"
-
-#include <fs3d.h>
 
 /*
  * put name=value in the environment
@@ -75,15 +74,6 @@ setenviron(const char* akey)
 			n = INCREMENT;
 		if (!p || (last - p + 1) < n)
 		{
-			if (!p && fs3d(FS3D_TEST))
-			{
-				/*
-				 * kick 3d initialization
-				 */
-
-				close(open(".", O_RDONLY|O_cloexec));
-				v = environ;
-			}
 			if (!(p = newof(p, char*, n, 0)))
 				return 0;
 			last = p + n - 1;

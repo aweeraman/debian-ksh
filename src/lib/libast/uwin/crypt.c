@@ -465,7 +465,7 @@ static C_block	PC2ROT[2][64/CHUNKBITS][1<<CHUNKBITS];
 /* Initial permutation/expansion table */
 static C_block	IE3264[32/CHUNKBITS][1<<CHUNKBITS];
 
-/* Table that combines the S, P, and E operations.  */
+/* Table that combines the S, P, and E operations. */
 static long SPE[2][8][64];
 
 /* compressed/interleaved => final permutation table */
@@ -675,7 +675,7 @@ static int des_setkey(register const char *key) {
 
 /*
  * Encrypt (or decrypt if num_iter < 0) the 8 chars at "in" with abs(num_iter)
- * iterations of DES, using the the given 24-bit salt and the pre-computed key
+ * iterations of DES, using the given 24-bit salt and the pre-computed key
  * schedule, and store the resulting 8 chars at "out" (in == out is permitted).
  *
  * NOTE: the performance of this routine is critically dependent on your

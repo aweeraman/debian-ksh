@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -28,7 +29,7 @@
 
 static const char usage[] =
 "[-?\n@(#)$Id: rmdir (AT&T Research) 2006-08-24 $\n]"
-USAGE_LICENSE
+"[--catalog?" ERROR_CATALOG "]"
 "[+NAME?rmdir - remove empty directories]"
 "[+DESCRIPTION?\brmdir\b deletes each given directory.  The directory "
 	"must be empty; containing no entries other than \b.\b or \b..\b.  "
@@ -82,13 +83,16 @@ b_rmdir(int argc, char** argv, Shbltin_t* context)
 			break;
 		case '?':
 			error(ERROR_usage(2), "%s", opt_info.arg);
-			break;
+			UNREACHABLE();
 		}
 		break;
 	}
 	argv += opt_info.index;
 	if (error_info.errors || !*argv)
+	{
 		error(ERROR_usage(2), "%s", optusage(NiL));
+		UNREACHABLE();
+	}
 	if (!pflag)
 		sflag = 0;
 	while (dir = *argv++)
@@ -123,4 +127,3 @@ b_rmdir(int argc, char** argv, Shbltin_t* context)
 	}
 	return(error_info.errors != 0);
 }
-

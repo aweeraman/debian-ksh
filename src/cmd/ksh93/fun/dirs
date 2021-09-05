@@ -55,7 +55,11 @@ function _cd
     case $dir in
     \~*)   dir=$HOME${dir#\~}
     esac
-    \cd "${dir:-$@}" >| /dev/null || return 1
+    # If there are no arguments, use $dir if non-empty.
+    (($#)) || set -- ${dir:+"$dir"}
+    # \cd prevents alias substitution.
+    # You can use command cd with 12/28/93 and newer.
+    \cd "$@" >| /dev/null || return 1
     dir=${OLDPWD#$HOME/}
     case $TERM in
     630)

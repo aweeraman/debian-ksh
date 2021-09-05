@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -148,7 +149,7 @@ spliceline(Sfio_t* s, int op, void* val, Sfdisc_t* ad)
  *
  *	flags: 0		arg: open Sfio_t* 
  *	flags: SF_READ		arg: file name
- *	flags: SF_STRING	arg: null terminated char*
+ *	flags: SF_STRING	arg: null-terminated char*
  *
  * if line!=0 then it points to a line count that starts at 0
  * and is incremented for each input line

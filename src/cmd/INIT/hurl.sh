@@ -2,6 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1994-2011 AT&T Intellectual Property          #
+#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -19,6 +20,8 @@
 ########################################################################
 : copy http url data
 
+(command set -o posix) 2>/dev/null && set -o posix
+
 command=hurl
 agent="$command/2009-01-20 (AT&T Research)"
 authorize=
@@ -30,7 +33,9 @@ case `(getopts '[-][123:xyz]' opt --xyz; echo 0$opt) 2>/dev/null` in
 [-?
 @(#)$Id: hurl (AT&T Research) 2009-01-20 $
 ]
-'$USAGE_LICENSE$'
+[-author?Glenn Fowler <gsf@research.att.com>]
+[-copyright?Copyright (c) 2003-2012 AT&T Intellectual Property]
+[-license?http://www.eclipse.org/org/documents/epl-v10.html]
 [+NAME?hurl - copy http url data]
 [+DESCRIPTION?\bhurl\b copies the data for the \bhttp\b \aurl\a operand
 	to the standard output. The \aurl\a must be of the form
@@ -45,7 +50,7 @@ case `(getopts '[-][123:xyz]' opt --xyz; echo 0$opt) 2>/dev/null` in
 	[+curl -s -L -o - \aurl\a?]
 }
 [a:authorize?The url authorization user name and password, separated
-	by \b:\b (one colon character.)]:[user::password]
+	by \b:\b (one colon character).]:[user::password]
 [s:size?Terminate the data transmission after \abytes\a have been
 	transferred.]:[bytes]
 [v:verbose?Verbose trace.]

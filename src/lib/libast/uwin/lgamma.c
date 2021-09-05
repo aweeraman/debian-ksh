@@ -42,7 +42,7 @@ static char sccsid[] = "@(#)lgamma.c	8.2 (Berkeley) 11/30/93";
 /*
  * Coded by Peter McIlroy, Nov 1992;
  *
- * The financial support of UUNET Communications Services is greatfully
+ * The financial support of UUNET Communications Services is gratefully
  * acknowledged.
  */
 

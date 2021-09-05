@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -150,58 +151,14 @@ extern void fcrestore(Fcin_t *fp)
 	_Fcin = *fp;
 }
 
-/* for testing purposes with small buffers */
-#if defined(IOBSIZE) && (IOBSIZE < 2*MB_LEN_MAX)
-#   undef MB_LEN_MAX
-#   define MB_LEN_MAX	(IOBSIZE/2)
-#endif
-
-struct Extra
-{
-	unsigned char	buff[2*MB_LEN_MAX];
-	unsigned char	*next;
-};
-
 int _fcmbget(short *len)
 {
-	static struct Extra	extra;
-	register int		i, c, n;
-	if(_Fcin.fcleft)
-	{
-		if((c = mbsize(extra.next)) < 0)
-			c = 1;
-		if((_Fcin.fcleft -= c) <=0)
-		{
-			_Fcin.fcptr = (unsigned char*)fcfirst() - _Fcin.fcleft; 
-			_Fcin.fcleft = 0;
-		}
-		*len = c;
-		if(c==1)
-			c = *extra.next++;
-		else if(c==0)
-			_Fcin.fcleft = 0;
-		else
-			c = mbchar(extra.next);
-		return(c);
-	}
+	register int		c;
 	switch(*len = mbsize(_Fcin.fcptr))
 	{
 	    case -1:
-		if(_Fcin._fcfile && (n=(_Fcin.fclast-_Fcin.fcptr)) < MB_LEN_MAX)
-		{
-			memcpy(extra.buff, _Fcin.fcptr, n);
-			_Fcin.fcptr = _Fcin.fclast;
-			for(i=n; i < MB_LEN_MAX+n; i++)
-			{
-				if((extra.buff[i] = fcgetc(c))==0)
-					break;
-			}
-			_Fcin.fcleft = n;
-			extra.next = extra.buff;
-			return(fcmbget(len));
-		}
 		*len = 1;
-		/* fall through */
+		/* FALLTHROUGH */
 	    case 0:
 	    case 1:
 		c=fcget();
@@ -211,4 +168,3 @@ int _fcmbget(short *len)
 	}
 	return(c);
 } 
-

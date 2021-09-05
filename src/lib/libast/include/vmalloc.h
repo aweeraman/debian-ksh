@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -91,7 +92,7 @@ struct _vmalloc_s
 #define VM_TRACE	0000001		/* generate traces of calls	*/
 #define VM_DBCHECK	0000002		/* check for boundary overwrite	*/
 #define VM_DBABORT	0000004		/* abort on any warning		*/
-#define VM_SHARE	0000010		/* sharable across processes	*/
+#define VM_SHARE	0000010		/* shareable across processes	*/
 #define VM_MEMORYF	0000020		/* vm was allocated by memoryf	*/
 #define VM_FLAGS	0000017		/* user-settable flags		*/
 
@@ -136,7 +137,9 @@ extern Vmethod_t*	Vmprofile;	/* profiling memory usage	*/
 
 extern Vmdisc_t*	Vmdcsystem;	/* get memory from the OS	*/
 extern Vmdisc_t*	Vmdcheap;	/* get memory from Vmheap	*/
+#if _mem_sbrk
 extern Vmdisc_t*	Vmdcsbrk;	/* like Vmdcsystem - legacy use	*/
+#endif
 
 extern Vmalloc_t	_Vmheap;	/* heap region - use with care! */
 extern Vmalloc_t*	Vmheap;		/* = &_Vmheap - safe to use	*/

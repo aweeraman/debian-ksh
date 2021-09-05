@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -23,99 +24,62 @@
 #include	"name.h"
 #include	"shtable.h"
 
-#if SHOPT_BASH
-#   define bashopt(a,b)		a,	b|SH_BASHOPT,
-#   define bashextra(a,b)	a,	b|SH_BASHEXTRA,
-#else
-#   define bashopt(a,b)
-#   define bashextra(a,b)
-#endif
-
 /*
  * This is the list of invocation and set options
- * This list must be in in ascii sorted order
+ * This list must be in ASCII sorted order
  */
 
 const Shtable_t shtab_options[] =
 {
 	"allexport",			SH_ALLEXPORT,
-#if SHOPT_BASH
-	"bash",				(SH_BASH|SH_COMMANDLINE),
-#endif
+	"nobackslashctrl",		SH_NOBACKSLCTRL,
 	"bgnice",			SH_BGNICE,
+#if SHOPT_BRACEPAT
 	"braceexpand",			SH_BRACEEXPAND,
-	bashopt("cdable_vars",		SH_CDABLE_VARS)
-	bashopt("cdspell",		SH_CDSPELL)
-	bashopt("checkhash",		SH_CHECKHASH)
-	bashopt("checkwinsize",		SH_CHECKWINSIZE)
+#endif
 	"noclobber",			SH_NOCLOBBER,
-	bashopt("dotglob",		SH_DOTGLOB)
+#if SHOPT_ESH
 	"emacs",			SH_EMACS,
+#endif
 	"errexit",			SH_ERREXIT,
 	"noexec",			SH_NOEXEC,
-	bashopt("execfail",		SH_EXECFAIL)
-	bashopt("expand_aliases",	SH_EXPAND_ALIASES)
-	bashopt("extglob",		SH_EXTGLOB)
 	"noglob",			SH_NOGLOB,
+#if SHOPT_GLOBCASEDET
+	"globcasedetect",		SH_GLOBCASEDET,
+#endif
 	"globstar",			SH_GLOBSTARS,
+#if SHOPT_ESH
 	"gmacs",			SH_GMACS,
-	bashextra("hashall",		SH_TRACKALL)
-	bashopt("histappend",		SH_HISTAPPEND)
+#endif
 #if SHOPT_HISTEXPAND
 	"histexpand",			SH_HISTEXPAND,
-#else
-	bashextra("histexpand",		SH_HISTEXPAND)
 #endif
-	bashextra("history",		SH_HISTORY2)
-	bashopt("histreedit",		SH_HISTREEDIT)
-	bashopt("histverify",		SH_HISTVERIFY)
-	bashopt("hostcomplete",		SH_HOSTCOMPLETE)
-	bashopt("huponexit",		SH_HUPONEXIT)
 	"ignoreeof",			SH_IGNOREEOF,
 	"interactive",			SH_INTERACTIVE|SH_COMMANDLINE,
-	bashextra("interactive_comments",	SH_INTERACTIVE_COMM)
 	"keyword",			SH_KEYWORD,
 	"letoctal",			SH_LETOCTAL,
-	bashopt("lithist",		SH_LITHIST)
 	"nolog",			SH_NOLOG,
 	"login_shell",			SH_LOGIN_SHELL|SH_COMMANDLINE,
-	bashopt("mailwarn",		SH_MAILWARN)
 	"markdirs",			SH_MARKDIRS,
 	"monitor",			SH_MONITOR,
 	"multiline",			SH_MULTILINE,
-	bashopt("no_empty_cmd_completion", SH_NOEMPTYCMDCOMPL)
-	bashopt("nocaseglob",		SH_NOCASEGLOB)
 	"notify",			SH_NOTIFY,
-	bashopt("nullglob",		SH_NULLGLOB)
-	bashextra("onecmd",		SH_TFLAG)
 	"pipefail",			SH_PIPEFAIL,
-	bashextra("physical",		SH_PHYSICAL)
-	bashextra("posix",		SH_POSIX)
+	"posix",			SH_POSIX,
 	"privileged",			SH_PRIVILEGED,
-#if SHOPT_BASH
-	"profile",			SH_LOGIN_SHELL|SH_COMMANDLINE,
-#   if SHOPT_PFSH
-	"pfsh",				SH_PFSH|SH_COMMANDLINE,
-#   endif
-#else
-#   if SHOPT_PFSH
+#if SHOPT_PFSH
 	"profile",			SH_PFSH|SH_COMMANDLINE,
-#   endif
 #endif
-	bashopt("progcomp",		SH_PROGCOMP)
-	bashopt("promptvars",		SH_PROMPTVARS)
 	"rc",				SH_RC|SH_COMMANDLINE,
 	"restricted",			SH_RESTRICTED,
-	bashopt("restricted_shell",	SH_RESTRICTED2|SH_COMMANDLINE)
-	bashopt("shift_verbose",	SH_SHIFT_VERBOSE)
 	"showme",			SH_SHOWME,
-	bashopt("sourcepath",		SH_SOURCEPATH)
 	"trackall",			SH_TRACKALL,
 	"nounset",			SH_NOUNSET,
 	"verbose",			SH_VERBOSE,
+#if SHOPT_VSH
 	"vi",				SH_VI,
 	"viraw",			SH_VIRAW,
-	bashopt("xpg_echo",		SH_XPG_ECHO)
+#endif
 	"xtrace",			SH_XTRACE,
 	"",				0
 };

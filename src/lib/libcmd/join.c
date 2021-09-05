@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -29,7 +30,7 @@
 
 static const char usage[] =
 "[-?\n@(#)$Id: join (AT&T Research) 2009-12-10 $\n]"
-USAGE_LICENSE
+"[--catalog?" ERROR_CATALOG "]"
 "[+NAME?join - relational database operator]"
 "[+DESCRIPTION?\bjoin\b performs an \aequality join\a on the files \afile1\a "
 	"and \afile2\a and writes the resulting joined files to standard "
@@ -348,7 +349,7 @@ getrec(Join_t* jp, int index, int discard)
 						cp = tp;
 						break;
 					}
-					/*FALLTHROUGH*/
+					/* FALLTHROUGH */
 				default:
 					goto next;
 				}
@@ -478,7 +479,7 @@ outfield(Join_t* jp, int index, register int n, int last)
 		{
 			register unsigned char*	sp = jp->state;
 
-			/*eliminate leading spaces */
+			/* eliminate leading spaces */
 			if (jp->mb)
 				for (;;)
 				{
@@ -704,7 +705,7 @@ sfprintf(sfstdout, "[2#%d:0,%lld,%lld]", __LINE__, lo, hi);
 						jp->samesize = roundof(n2, 16);
 						if (!(jp->same = newof(jp->same, char, jp->samesize, 0)))
 						{
-							error(ERROR_SYSTEM|2, "out of space");
+							error(ERROR_SYSTEM|2, "out of memory");
 							return -1;
 						}
 					}
@@ -824,7 +825,10 @@ b_join(int argc, char** argv, Shbltin_t* context)
 	cmdinit(argc, argv, context, ERROR_CATALOG, ERROR_NOTIFY);
 #endif
 	if (!(jp = init()))
-		error(ERROR_system(1),"out of space");
+	{
+		error(ERROR_system(1),"out of memory");
+		UNREACHABLE();
+	}
 	jp->context = context;
 	for (;;)
 	{
@@ -866,7 +870,7 @@ b_join(int argc, char** argv, Shbltin_t* context)
 				jp->file[0].field = (int)(opt_info.num-1);
 				n = '2';
 			}
-			/*FALLTHROUGH*/
+			/* FALLTHROUGH */
  		case '1':
 		case '2':
 			if (opt_info.num <=0)
@@ -875,7 +879,7 @@ b_join(int argc, char** argv, Shbltin_t* context)
 			continue;
 		case 'v':
 			jp->outmode &= ~C_COMMON;
-			/*FALLTHROUGH*/
+			/* FALLTHROUGH */
 		case 'a':
 			if (opt_info.num!=1 && opt_info.num!=2)
 				error(2,"%s: file number must be 1 or 2", opt_info.name);
@@ -918,7 +922,7 @@ b_join(int argc, char** argv, Shbltin_t* context)
 		case '?':
 			done(jp);
 			error(ERROR_usage(2), "%s", opt_info.arg);
-			break;
+			UNREACHABLE();
 		}
 		break;
 	}
@@ -928,6 +932,7 @@ b_join(int argc, char** argv, Shbltin_t* context)
 	{
 		done(jp);
 		error(ERROR_usage(2),"%s", optusage(NiL));
+		UNREACHABLE();
 	}
 	jp->ooutmode = jp->outmode;
 	jp->file[0].name = cp = *argv++;
@@ -946,6 +951,7 @@ b_join(int argc, char** argv, Shbltin_t* context)
 	{
 		done(jp);
 		error(ERROR_system(1),"%s: cannot open",cp);
+		UNREACHABLE();
 	}
 	jp->file[1].name = cp = *argv;
 	if (streq(cp,"-"))
@@ -963,6 +969,7 @@ b_join(int argc, char** argv, Shbltin_t* context)
 	{
 		done(jp);
 		error(ERROR_system(1),"%s: cannot open",cp);
+		UNREACHABLE();
 	}
 	if (jp->buffered)
 	{
@@ -976,6 +983,7 @@ b_join(int argc, char** argv, Shbltin_t* context)
 	{
 		done(jp);
 		error(ERROR_system(1),"write error");
+		UNREACHABLE();
 	}
 	else if (jp->file[0].iop==sfstdin || jp->file[1].iop==sfstdin)
 		sfseek(sfstdin,(Sfoff_t)0,SEEK_END);

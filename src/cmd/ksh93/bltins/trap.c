@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,8 +21,10 @@
 #pragma prototyped
 /*
  * trap  [-p]  action sig...
- * kill  [-l] [sig...]
- * kill  [-s sig] pid...
+ * kill  [-lL] [sig...]
+ * kill  [-n signum] [-s signame] pid...
+ * stop  job...
+ * suspend
  *
  *   David Korn
  *   AT&T Labs
@@ -58,11 +61,13 @@ int	b_trap(int argc,char *argv[],Shbltin_t *context)
 	    case '?':
 		errormsg(SH_DICT,ERROR_usage(0), "%s", opt_info.arg);
 		return(2);
-		break;
 	}
 	argv += opt_info.index;
 	if(error_info.errors)
+	{
 		errormsg(SH_DICT,ERROR_usage(2),"%s", optusage((char*)0));
+		UNREACHABLE();
+	}
 	if(arg = *argv)
 	{
 		char *action = arg;
@@ -89,7 +94,10 @@ int	b_trap(int argc,char *argv[],Shbltin_t *context)
 				}
 			}
 			if(!argv[0])
+			{
 				errormsg(SH_DICT,ERROR_exit(1),e_condition);
+				UNREACHABLE();
+			}
 		}
 		while(arg = *argv++)
 		{
@@ -120,13 +128,21 @@ int	b_trap(int argc,char *argv[],Shbltin_t *context)
 					free(shp->st.trap[sig]);
 				shp->st.trap[sig] = 0;
 				if(!clear && *action)
-					shp->st.trap[sig] = strdup(action);
+					shp->st.trap[sig] = sh_strdup(action);
 				if(sig == SH_DEBUGTRAP)
 				{
 					if(shp->st.trap[sig])
 						shp->trapnote |= SH_SIGTRAP;
 					else
 						shp->trapnote = 0;
+
+				}
+				if(sig == SH_ERRTRAP)
+				{
+					if(clear)
+						shp->errtrap = 0;
+					else if(!shp->fn_depth || shp->end_fn)
+						shp->errtrap = 1;
 				}
 				continue;
 			}
@@ -144,6 +160,8 @@ int	b_trap(int argc,char *argv[],Shbltin_t *context)
 			else if(clear)
 			{
 				sh_sigclear(sig);
+				if(sig == 0)
+					shp->exittrap = 0;
 				if(dflag)
 					signal(sig,SIG_DFL);
 			}
@@ -153,9 +171,11 @@ int	b_trap(int argc,char *argv[],Shbltin_t *context)
 					shp->st.trapmax = sig+1;
 				arg = shp->st.trapcom[sig];
 				sh_sigtrap(sig);
-				shp->st.trapcom[sig] = (shp->sigflag[sig]&SH_SIGOFF) ? Empty : strdup(action);
+				shp->st.trapcom[sig] = (shp->sigflag[sig]&SH_SIGOFF) ? Empty : sh_strdup(action);
 				if(arg && arg != Empty)
 					free(arg);
+				if(sig == 0 && (!shp->fn_depth || shp->end_fn))
+					shp->exittrap = 1;
 			}
 		}
 	}
@@ -164,6 +184,10 @@ int	b_trap(int argc,char *argv[],Shbltin_t *context)
 	return(0);
 }
 
+#if 0
+    /* for the dictionary generator */
+    int    b_stop(int argc,char *argv[],Shbltin_t *context){}
+#endif
 int	b_kill(int argc,char *argv[],Shbltin_t *context)
 {
 	register char *signame;
@@ -171,7 +195,16 @@ int	b_kill(int argc,char *argv[],Shbltin_t *context)
 	register Shell_t *shp = context->shp;
 	int usemenu = 0;
 	NOT_USED(argc);
+#if defined(JOBS) && defined(SIGSTOP)
+	if(**argv == 's')	/* <s>top == kill -s STOP */
+	{
+		flag |= S_FLAG;
+		signame = "STOP";
+	}
+	while((n = optget(argv, **argv == 's' ? sh_optstop : sh_optkill))) switch(n)
+#else
 	while((n = optget(argv,sh_optkill))) switch(n)
+#endif /* defined(JOBS) && defined(SIGSTOP) */
 	{
 		case ':':
 			if((signame=argv[opt_info.index++]) && (sig=sig_number(shp,signame+1))>=0)
@@ -188,19 +221,23 @@ int	b_kill(int argc,char *argv[],Shbltin_t *context)
 			goto endopts;
 		case 'L':
 			usemenu = -1;
+			/* FALLTHROUGH */
 		case 'l':
 			flag |= L_FLAG;
 			break;
 		case '?':
 			errormsg(SH_DICT,ERROR_usage(2), "%s", opt_info.arg);
-			break;
+			UNREACHABLE();
 	}
 endopts:
 	argv += opt_info.index;
 	if(*argv && strcmp(*argv,"--")==0 && strcmp(*(argv-1),"--")!=0)
 		argv++;
 	if(error_info.errors || flag==(L_FLAG|S_FLAG) || (!(*argv) && !(flag&L_FLAG)))
+	{
 		errormsg(SH_DICT,ERROR_usage(2),"%s", optusage((char*)0));
+		UNREACHABLE();
+	}
 	/* just in case we send a kill -9 $$ */
 	sfsync(sfstderr);
 	if(flag&L_FLAG)
@@ -217,6 +254,7 @@ endopts:
 				{
 					shp->exitval = 2;
 					errormsg(SH_DICT,ERROR_exit(1),e_nosignal,signame);
+					UNREACHABLE();
 				}
 				sfprintf(sfstdout,"%d\n",sig);
 			}
@@ -226,12 +264,57 @@ endopts:
 	if(flag&S_FLAG)
 	{
 		if((sig=sig_number(shp,signame)) < 0 || sig > shp->gd->sigmax)
+		{
 			errormsg(SH_DICT,ERROR_exit(1),e_nosignal,signame);
+			UNREACHABLE();
+		}
 	}
 	if(job_walk(sfstdout,job_kill,sig,argv))
 		shp->exitval = 1;
 	return(shp->exitval);
 }
+
+#if defined(JOBS) && defined(SIGSTOP)
+/*
+ * former default alias suspend='kill -s STOP $$'
+ */
+int	b_suspend(int argc,char *argv[],Shbltin_t *context)
+{
+	NOT_USED(argc);
+
+	int n;
+	while((n = optget(argv, sh_optsuspend))) switch(n)
+	{
+		case ':':
+			errormsg(SH_DICT,2, "%s", opt_info.arg);
+			break;
+		case '?':
+			errormsg(SH_DICT,ERROR_usage(2), "%s", opt_info.arg);
+			UNREACHABLE();
+	}
+	if(error_info.errors)	/* no options supported (except AST --man, etc.) */
+	{
+		errormsg(SH_DICT,ERROR_usage(2),"%s", optusage((char*)0));
+		UNREACHABLE();
+	}
+	if(argv[opt_info.index])	/* no operands supported */
+	{
+		errormsg(SH_DICT, ERROR_exit(2), e_toomanyops);
+		UNREACHABLE();
+	}
+	if(sh_isoption(SH_LOGIN_SHELL))
+	{
+		errormsg(SH_DICT, ERROR_exit(1), "cannot suspend a login shell");
+		UNREACHABLE();
+	}
+	if(kill(context->shp->gd->pid, SIGSTOP) != 0)
+	{
+		errormsg(SH_DICT, ERROR_exit(1), "could not signal main shell at PID %d", context->shp->gd->pid);
+		UNREACHABLE();
+	}
+	return(0);
+}
+#endif /* defined(JOBS) && defined(SIGSTOP) */
 
 /*
  * Given the name or number of a signal return the signal number

@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -39,7 +40,6 @@
 #if !defined(errno) && defined(__DYNAMIC__)
 #define errno		__DYNAMIC__(errno)
 #endif
-
 #define ERROR_debug(n)	(-(n))
 #define ERROR_exit(n)	((n)+ERROR_ERROR)
 #define ERROR_system(n)	(((n)+ERROR_ERROR)|ERROR_SYSTEM)
@@ -64,7 +64,7 @@
 #define ERROR_FATAL	3		/* error message with err_exit	*/
 #define ERROR_NOEXEC	EXIT_NOEXEC	/* shell convention		*/
 #define ERROR_NOENT	EXIT_NOTFOUND	/* shell convention		*/
-#define ERROR_PANIC	ERROR_LEVEL	/* panic message with err_exit	*/
+#define ERROR_PANIC	77		/* panic message with err_exit	*/
 
 #define ERROR_LEVEL	0x00ff		/* level portion of status	*/
 #define ERROR_SYSTEM	0x0100		/* report system errno message	*/
@@ -85,9 +85,9 @@
 #define ERROR_SET		0x0080	/* set context			*/
 
 #ifdef ECONNRESET
-#define ERROR_PIPE(e)		((e)==EPIPE||(e)==ECONNRESET)
+#define ERROR_PIPE(e)		((e)==EPIPE||(e)==ECONNRESET||(e)==EIO)
 #else
-#define ERROR_PIPE(e)		((e)==EPIPE)
+#define ERROR_PIPE(e)		((e)==EPIPE||(e)==EIO)
 #endif
 
 /*
@@ -155,6 +155,45 @@ struct Error_info_s			/* error state			*/
 
 #ifndef errno
 extern int	errno;			/* system call error status	*/
+#endif
+#ifndef E2BIG
+#define E2BIG	ENOMEM
+#endif
+#ifndef EAGAIN
+#define EAGAIN	11
+#endif
+#ifndef EBADF
+#define EBADF	9
+#endif
+#ifndef EBUSY
+#define EBUSY	16
+#endif
+#ifndef EDEADLK
+#define EDEADLK	45
+#endif
+#ifndef EINTR
+#define EINTR	4
+#endif
+#ifndef EILSEQ
+#define EILSEQ	EIO
+#endif
+#ifndef EINVAL
+#define EINVAL	22
+#endif
+#ifndef ENOMEM
+#define ENOMEM	12
+#endif
+#ifndef ENOSYS
+#define ENOSYS	EINVAL
+#endif
+#ifndef EPERM
+#define EPERM	1
+#endif
+#ifndef ERANGE
+#define ERANGE	E2BIG
+#endif
+#ifndef ESPIPE
+#define ESPIPE	29
 #endif
 
 #if _BLD_ast && defined(__EXPORT__)

@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1997-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -80,7 +81,7 @@ dllopen(const char* name, int mode)
 #else
 
 /*
- * dlopen() wrapper -- waiting for prestidigitaions
+ * dlopen() wrapper -- waiting for prestidigitations
  */
 
 void*

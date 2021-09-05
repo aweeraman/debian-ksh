@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -27,7 +28,7 @@
 
 static const char mkservice_usage[] =
 "[-?\n@(#)$Id: mkservice (AT&T Research) 2001-06-13 $\n]"
-USAGE_LICENSE
+"[--catalog?" SH_DICT "]"
 "[+NAME? mkservice - create a shell server ]"
 "[+DESCRIPTION?\bmkservice\b creates a tcp or udp server that is "
 	"implemented by shell functions.]"
@@ -68,7 +69,7 @@ USAGE_LICENSE
 
 static const char eloop_usage[] =
 "[-?\n@(#)$Id: eloop (AT&T Research) 2001-06-13 $\n]"
-USAGE_LICENSE
+"[--catalog?" SH_DICT "]"
 "[+NAME? eloop - process event loop]"
 "[+DESCRIPTION?\beloop\b causes the shell to block waiting for events "
 	"to process.  By default, \beloop\b does not return.]"
@@ -227,10 +228,8 @@ static int waitnotify(int fd, long timeout, int rw)
 			if(service_list[file_list[i]])
 				*pstream++ = sh_fd2sfio(file_list[i]);
 		}
-#if 1
 		for(i=0; i < pstream-poll_list; i++)
 			sfset(poll_list[i],SF_WRITE,0);
-#endif
 		nready = ready = 0;
 		errno = 0;
 #ifdef DEBUG
@@ -246,10 +245,8 @@ static int waitnotify(int fd, long timeout, int rw)
 			sfprintf(sfstderr," %d",sffileno(poll_list[i]));
 		sfputc(sfstderr,'\n');
 #endif
-#if 1
 		for(i=0; i < pstream-poll_list; i++)
 			sfset(poll_list[i],SF_WRITE,1);
-#endif
 		if(nready<=0)
 			return(errno? -1: 0);
 		if(special && poll_list[0]==special)
@@ -262,9 +259,9 @@ static int waitnotify(int fd, long timeout, int rw)
 
 static int service_init(void)
 {
-	file_list =  newof(NULL,short,n,0);
-	poll_list =  newof(NULL,Sfio_t*,n,0);
-	service_list =  newof(NULL,Service_t*,n,0);
+	file_list = sh_newof(NULL,short,n,0);
+	poll_list = sh_newof(NULL,Sfio_t*,n,0);
+	service_list = sh_newof(NULL,Service_t*,n,0);
 	covered_fdnotify = sh_fdnotify(fdnotify);
 	sh_waitnotify(waitnotify);
 	return(1);
@@ -425,15 +422,17 @@ int	b_mkservice(int argc, char** argv, Shbltin_t *context)
 			continue;
 		case '?':
 			error(ERROR_usage(2), opt_info.arg);
-			continue;
+			UNREACHABLE();
 		}
 		break;
 	}
 	argv += opt_info.index;
 	if (error_info.errors || !(var = *argv++) || !(path = *argv++) || *argv)
+	{
 		error(ERROR_usage(2), optusage(NiL));
-	if (!(sp = newof(0, Service_t, 1, 0)))
-		error(ERROR_exit(1), "out of space");
+		UNREACHABLE();
+	}
+	sp = sh_newof(0, Service_t, 1, 0);
 	sp->acceptf = Accept;
 	sp->actionf = Action;
 	sp->errorf = Error;
@@ -445,6 +444,7 @@ int	b_mkservice(int argc, char** argv, Shbltin_t *context)
 	{
 		free((void*)sp);
 		error(ERROR_exit(1), "%s: cannot start service", path);
+		UNREACHABLE();
 	}
 	if((sp->fd = fcntl(fd, F_DUPFD, 10))>=10)
 		close(fd);
@@ -477,13 +477,16 @@ int	b_eloop(int argc, char** argv, Shbltin_t *context)
 			continue;
 		case '?':
 			error(ERROR_usage(2), opt_info.arg);
-			continue;
+			UNREACHABLE();
 		}
 		break;
 	}
 	argv += opt_info.index;
 	if (error_info.errors  || *argv)
+	{
 		error(ERROR_usage(2), optusage(NiL));
+		UNREACHABLE();
+	}
 	while(1)
 	{
 		if(waitnotify(-1, timeout, 0)==0)

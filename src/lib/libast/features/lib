@@ -4,6 +4,7 @@ cmd	universe
 
 hdr	dirent,direntry,filio,fmtmsg,fnmatch,jioctl,libgen,limits
 hdr	locale,ndir,nl_types,process,spawn,syslog,utime,vfork
+hdr	linux/fs,linux/msdos_fs,sys/ioctl
 hdr	wchar note{ <wchar.h> and isw*() really work }end execute{
 	#include <wchar.h>
 	int
@@ -28,7 +29,7 @@ lib	getopt,getsubopt,getopt_long,getopt_long_only
 lib	glob,index,iswblank,iswctype,killpg,link,localeconv,madvise
 lib	mbtowc,mbrtowc,memalign,memchr,memcpy,memdup,memmove,memset
 lib	mkdir,mkfifo,mktemp,mktime
-lib	mount,on_exit,onexit,opendir,pathconf
+lib	mount,onexit,opendir,pathconf
 lib	readlink,remove,rename,rewinddir,rindex,rmdir,setlocale
 lib	setpgid,setpgrp,setpgrp2,setreuid,setsid,setuid,sigaction
 lib	sigprocmask,sigsetmask,sigunblock,sigvec,socketpair
@@ -37,9 +38,9 @@ lib	strchr,strcoll,strdup,strerror,strcasecmp,strncasecmp,strrchr,strstr
 lib	strmode,strxfrm,strftime,swab,symlink,sysconf,sysinfo,syslog
 lib	telldir,tmpnam,tzset,universe,unlink,utime,wctype
 lib	ftruncate,truncate
-lib	creat64,fstat64,fstatvfs64,ftruncate64 -D_LARGEFILE64_SOURCE
-lib	lseek64,lstat64 -D_LARGEFILE64_SOURCE
-lib	open64,readdir64,stat64,statvfs64,truncate64 -D_LARGEFILE64_SOURCE
+lib	creat64,fstat64,fstatvfs64,ftruncate64
+lib	lseek64,lstat64
+lib	open64,readdir64,stat64,statvfs64,truncate64
 
 lib,npt	strtod,strtold,strtol,strtoll,strtoul,strtoull stdlib.h
 lib,npt	sigflag signal.h
@@ -53,8 +54,8 @@ mem	inheritance.pgroup spawn.h
 sys	dir,filio,jioctl,localedef,ptem,resource
 sys	socket,stream,systeminfo,universe,vfork
 
-typ	ino64_t,off64_t -D_LARGEFILE64_SOURCE
-typ	struct.dirent64 -D_LARGEFILE64_SOURCE dirent.h
+typ	ino64_t,off64_t
+typ	struct.dirent64 dirent.h
 
 tst	tst_errno note{ errno can be assigned }end link{
 	_BEGIN_EXTERNS_
@@ -241,7 +242,7 @@ tst	real_vfork note{ vfork child shares data with parent }end execute{
 	}
 }end
 
-tst	lib_posix_spawn unistd.h stdlib.h spawn.h -Dfork=______fork note{ posix_spawn exists and it works and its worth using }end status{
+tst	lib_posix_spawn unistd.h stdlib.h spawn.h -Dfork=______fork note{ posix_spawn exists, it works and it's worth using }end status{
 	#include <sys/types.h>
 	#include <sys/stat.h>
 	#include <sys/wait.h>
@@ -304,7 +305,7 @@ tst	lib_posix_spawn unistd.h stdlib.h spawn.h -Dfork=______fork note{ posix_spaw
 			NOTE("SIGHUP ignored in parent not ignored in child");
 			_exit(0);
 		}
-		/* must return exec-type errors or its useless to us *unless* there is no [v]fork() */
+		/* must return exec-type errors or it's useless to us *unless* there is no [v]fork() */
 		n = strlen(cmd[0]);
 		if (n >= (sizeof(tmp) - 3))
 		{
@@ -556,7 +557,7 @@ tst	lib_memccpy string.h unistd.h stdlib.h fcntl.h signal.h sys/types.h sys/stat
 		signal(SIGALRM, gotcha);
 		/*
 		 * sgi ia64 dumps here as of 3Q 2001
-		 * bug acknowleged 1Q 2003
+		 * bug acknowledged 1Q 2003
 		 */
 		memccpy(dstbuf, srcbuf, 0, siz + 10);
 		alarm(0);
@@ -699,9 +700,11 @@ tst	- output{
 		return 0;
 	}
 
+}end fail{
+	echo '#error The output block in src/lib/libast/features/lib failed to compile. Rebuild with IFFEFLAGS=-d1 to debug.'
 }end
 
-tst	no64 -D_LARGEFILE64_SOURCE note{ largefile 64 broken }end execute{
+tst	no64 note{ largefile 64 broken }end execute{
 	#include <sys/types.h>
 	#include <sys/stat.h>
 	int
@@ -722,4 +725,14 @@ tst	no64 -D_LARGEFILE64_SOURCE note{ largefile 64 broken }end execute{
 	echo "#undef	_lib_stat64"
 	echo "#undef	_lib_statvfs64"
 	echo "#undef	_lib_truncate64"
+}end
+
+tst	need64 note{ off64_t necessary }end nocompile{
+	#include <sys/types.h>
+	typedef off64_t __ast_off64_t__;
+	typedef off_t __ast_off_t__;
+	extern __ast_off64_t__ x;
+	__ast_off_t__ x;
+}end fail{
+	echo "#undef	_typ_off64_t"
 }end

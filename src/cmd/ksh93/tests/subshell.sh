@@ -2,6 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
+#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -17,22 +18,21 @@
 #                  David Korn <dgk@research.att.com>                   #
 #                                                                      #
 ########################################################################
-function err_exit
-{
-	print -u$Error_fd -n "\t"
-	print -u$Error_fd -r ${Command}[$1]: "${@:2}"
-	(( Errors+=1 ))
-}
-alias err_exit='err_exit $LINENO'
 
-Command=${0##*/}
-integer Errors=0 Error_fd=2
+. "${SHTESTS_COMMON:-${0%/*}/_common}"
 
-tmp=$(mktemp -dt) || { err_exit mktemp -dt failed; exit 1; }
-trap "cd /; rm -rf $tmp" EXIT
+typeset -F SECONDS  # for fractional seconds in PS4
 
 builtin getconf
 bincat=$(PATH=$(getconf PATH) whence -p cat)
+binecho=$(PATH=$(getconf PATH) whence -p echo)
+# make an external 'sleep' command that supports fractional seconds
+binsleep=$tmp/.sleep.sh  # hide to exclude from simple wildcard expansion
+cat >"$binsleep" <<EOF
+#!$SHELL
+sleep "\$@"
+EOF
+chmod +x "$binsleep"
 
 z=()
 z.foo=( [one]=hello [two]=(x=3 y=4) [three]=hi)
@@ -59,7 +59,7 @@ val='(
 )'
 [[ $z == "$val" ]] || err_exit 'compound variable with mixed arrays not working'
 z.bar[1]=yesyes
-[[ ${z.bar[1]} == yesyes ]] || err_exit 'reassign of index array compound variable fails'
+[[ ${z.bar[1]} == yesyes ]] || err_exit 'reassign of indexed array compound variable fails'
 z.bar[1]=(x=12 y=5)
 [[ ${z.bar[1]} == $'(\n\tx=12\n\ty=5\n)' ]] || err_exit 'reassign array simple to compound variable fails'
 eval val="$z"
@@ -73,7 +73,7 @@ eval val="$z"
 	z.foo[two]=ok
 	[[ ${z.foo[two]} == ok ]] || err_exit 'associative array assignment to compound variable in subshell not working'
 	z.bar[1]=yes
-	[[ ${z.bar[1]} == yes ]] || err_exit 'index array assignment to compound variable in subshell not working'
+	[[ ${z.bar[1]} == yes ]] || err_exit 'indexed array assignment to compound variable in subshell not working'
 )
 [[ $z == "$val" ]] || err_exit 'compound variable changes after associative array assignment'
 
@@ -94,9 +94,6 @@ unset l
 	l=( a=1 b="BE" )
 )
 [[ ${l+foo} != foo ]] || err_exit 'l should be unset'
-
-Error_fd=9
-eval "exec $Error_fd>&2 2>/dev/null"
 
 TEST_notfound=notfound
 while	whence $TEST_notfound >/dev/null 2>&1
@@ -134,7 +131,7 @@ do	$SHELL -c '
 	(( no == (BS * nb) )) || err_exit "shell hangs on command substitution output size >= $BS*$nb with write size $bs and trailing redirection -- expected $((BS*nb)), got ${no:-0}"
 done
 
-# exercise command substitutuion trailing newline logic w.r.t. pipe vs. tmp file io
+# exercise command substitution trailing newline logic w.r.t. pipe vs. tmp file io
 
 set -- \
 	'post-line print'								\
@@ -213,7 +210,7 @@ do	for TEST_exec in '' 'exec'
 			sleep 2
 			kill -KILL $$
 		} &
-		'"$TEST_test"'
+		{ '"$TEST_test"'; } 2>/dev/null
 		kill $!
 		print ok
 		')
@@ -233,6 +230,7 @@ foo=$($SHELL  <<- ++EOF++
 [[ $foo == foobar ]] || err_exit 'trap on exit when last commands is subshell is not triggered'
 
 err=$(
+	ulimit -n 1024
 	$SHELL  2>&1  <<- \EOF
 	        date=$(whence -p date)
 	        function foo
@@ -324,6 +322,18 @@ do	for ((TEST=1; TEST<=${#testcase[@]}; TEST++))
 	shift 2
 done
 
+# Regression introduced in 93v- beta; let's make sure not to backport it to 93u+m
+# Ref.: https://github.com/att/ast/issues/478
+expect='foo=bar'
+actual=$(
+	bin_echo=${ whence -p echo; } || bin_echo=echo
+	foo=$(print `"$bin_echo" bar`) # should print nothing
+	print foo=$foo                 # should print "foo=bar"
+)
+[[ $actual == "$expect" ]] \
+|| err_exit 'Backticks nested in $( ) result in misdirected output' \
+	"(expected $(printf %q "$expect"), got $(printf %q "$actual"))"
+
 # the next tests loop on all combinations of
 #	{ SUB CAT INS TST APP } X { file-sizes }
 # where the file size starts at 1Ki and doubles up to and including 1Mi
@@ -387,7 +397,7 @@ do	cat $tmp/buf $tmp/buf > $tmp/tmp
 		wait $m
 		h=$?
 		kill -9 $k
-		wait $k
+		{ wait $k; } 2>/dev/null  # suppress 'wait: $pid: Killed'
 		got=$(<$tmp/out)
 		if	[[ ! $got ]] && (( h ))
 		then	got=HUNG
@@ -420,7 +430,7 @@ done
 # specifics -- there's more?
 
 {
-	cmd='{ exec 5>/dev/null; print "$(eval ls -d . 2>&1 1>&5)"; } >$tmp/out &'
+	cmd='{ exec 5>/dev/null; print "$(set +x; eval ls -d . 2>&1 1>&5)"; } >$tmp/out &'
 	eval $cmd
 	m=$!
 	{ sleep 4; kill -9 $m; } &
@@ -440,13 +450,11 @@ then	err_exit "eval '$cmd' failed -- expected '$exp', got '$got'"
 fi
 
 float t1=$SECONDS
-sleep=$(whence -p sleep)
-if	[[ $sleep ]]
-then
-	$SHELL -c "( $sleep 5 </dev/null >/dev/null 2>&1 & );exit 0" | cat 
-	(( (SECONDS-t1) > 4 )) && err_exit '/bin/sleep& in subshell hanging'
-	((t1=SECONDS))
-fi
+
+$SHELL -c '( "$1" 5 </dev/null >/dev/null 2>&1 & );exit 0' x "$binsleep" | cat 
+(( (SECONDS-t1) > 4 )) && err_exit '/bin/sleep& in subshell hanging'
+((t1=SECONDS))
+
 $SHELL -c '( sleep 5 </dev/null >/dev/null 2>&1 & );exit 0' | cat 
 (( (SECONDS-t1) > 4 )) && err_exit 'sleep& in subshell hanging'
 
@@ -460,23 +468,28 @@ exp=ok
 got=$($SHELL -c "$cmd" 2>&1)
 [[ $got == "$exp" ]] ||  err_exit "'$cmd' failed -- expected '$exp', got '$got'"
 
-cmd='eval "for i in 1 2; do eval /bin/echo x; done"'
+cmd='eval '\''for i in 1 2; do eval "\"\$binecho\" x"; done'\'
 exp=$'x\nx'
-got=$($SHELL -c "$cmd")
+got=$(export binecho; $SHELL -c "$cmd")
 if	[[ $got != "$exp" ]]
 then	EXP=$(printf %q "$exp")
 	GOT=$(printf %q "$got")
 	err_exit "'$cmd' failed -- expected $EXP, got $GOT"
 fi
 
-(
-$SHELL -c 'sleep 20 & pid=$!; { x=$( ( seq 60000 ) );kill -9 $pid;}&;wait $pid'
-) 2> /dev/null
+("$SHELL" -c '
+	sleep 20 & pid=$!
+	{
+		x=$( ( "$SHELL" -c "integer i; for((i=1;i<=60000;i++)); do print \$i; done" ) )
+		kill -9 $pid
+	} &
+	wait $pid
+') 2> /dev/null
 (( $? )) ||  err_exit 'nested command substitution with large output hangs'
 
 (.sh.foo=foobar)
 [[ ${.sh.foo} == foobar ]] && err_exit '.sh subvariables in subshells remain set'
-[[ $($SHELL -c 'print 1 | : "$(/bin/cat <(/bin/cat))"') ]] && err_exit 'process substitution not working correctly in subshells'
+[[ $(export bincat; $SHELL -c 'print 1 | : "$("$bincat" <("$bincat"))"') ]] && err_exit 'process substitution not working correctly in subshells'
 
 # config hang bug
 integer i
@@ -513,7 +526,8 @@ err() { return $1; }
 ( err 12 ) & pid=$!
 : $( $date)
 wait $pid
-[[ $? == 12 ]] || err_exit 'exit status from subshells not being preserved'
+exit_status=$?
+[[ $exit_status == 12 ]] || err_exit "exit status from subshells not being preserved (expected 12, got $exit_status)"
 
 if	cat /dev/fd/3 3</dev/null >/dev/null 2>&1 || whence mkfifo > /dev/null
 then	x="$(sed 's/^/Hello /' <(print "Fred" | sort))"
@@ -535,7 +549,7 @@ $SHELL <<- \EOF
 	(( ${#out} == 96011 )) || err_exit "\${#out} is ${#out} should be 96011"
 EOF
 } & pid=$!
-$SHELL -c "{ sleep 4 && kill $pid ;}" 2> /dev/null
+$SHELL -c "{ sleep .4 && kill $pid ;}" 2> /dev/null
 (( $? == 0 )) &&  err_exit 'process has hung'
 
 {
@@ -588,13 +602,13 @@ trap ERR ERR
 [[ $(trap -p) == *ERR* ]] || err_exit 'trap -p in subshell does not contain ERR'
 trap - USR1 ERR
 
-( PATH=/bin:/usr/bin
+( builtin getconf && PATH=$(getconf PATH)
 dot=$(cat <<-EOF
 		$(ls -d .)
 	EOF
 ) ) & sleep 1
 if      kill -0 $! 2> /dev/null
-then    err_exit  'command substitution containg here-doc with command substitution fails'
+then    err_exit  'command substitution containing here-doc with command substitution fails'
 fi
 
 printf=$(whence -p printf)
@@ -603,18 +617,436 @@ printf=$(whence -p printf)
 $SHELL 2> /dev/null -c '( PATH=/bin; set -o restricted) ; exit 0'  || err_exit 'restoring PATH when a subshell enables restricted exits not working'
 
 $SHELL <<- \EOF
-	wc=$(whence wc) head=$(whence head)
-	print > /dev/null  $( ( $head -c 1 /dev/zero | ( $wc -c) 3>&1 ) 3>&1) &
+	print > /dev/null  $( ( dd if=/dev/zero bs=1 count=1 2>/dev/null | ( wc -c) 3>&1 ) 3>&1) &
 	pid=$!
-	sleep 2
+	sleep .2
 	kill -9 $! 2> /dev/null && err_exit '/dev/zero in command substitution hangs'
 	wait $!
 EOF
 
 for f in /dev/stdout /dev/fd/1
-do	if	[[ -e $f ]]
+do	if	"${ whence -p test; }" -e "$f"
 	then	$SHELL -c "x=\$(command -p tee $f </dev/null 2>/dev/null)" || err_exit "$f in command substitution fails"
 	fi
 done
 
+# ======
+# Unsetting or redefining functions within subshells
+
+# ...function can be unset in subshell
+
+func() { echo mainfunction; }
+(unset -f func; typeset -f func >/dev/null 2>&1) && err_exit 'function fails to be unset in subshell'
+v=$(unset -f func; typeset -f func >/dev/null 2>&1) && err_exit 'function fails to be unset in comsub'
+v=${ unset -f func 2>&1; } && ! typeset -f func >/dev/null 2>&1 || err_exit 'function unset fails to survive ${ ...; }'
+
+# ...function can be redefined in subshell
+func() { echo mainfunction; }
+(func() { echo sub; }; [[ ${ func; } == sub ]]) || err_exit 'function fails to be redefined in subshell'
+v=$(func() { echo sub; }; func) && [[ $v == sub ]] || err_exit 'function fails to be redefined in comsub'
+v=${ { func() { echo sub; }; } 2>&1; } && [[ $(PATH=/dev/null func) == sub ]] \
+	|| err_exit 'function redefine fails to survive ${ ...; }'
+
+# ...some more fun from Stéphane Chazelas: https://github.com/att/ast/issues/73#issuecomment-384178095
+a=$tmp/morefun.sh
+cat >| "$a" <<EOF
+true() { echo WRONG; }
+(true() { echo ok; } && true && unset -f true && true) || false
+# the extra '|| false' avoids optimising out the subshell
+EOF
+v=$("$SHELL" "$a") && [[ $v == ok ]] || err_exit 'fail: more fun 1'
+v=$("$SHELL" -c "$(cat "$a")") && [[ $v == ok ]] || err_exit 'fail: more fun 2'
+v=$("$SHELL" -c 'eval "$(cat "$1")"' x "$a") && [[ $v == ok ]] || err_exit "fail: more fun 3"
+v=$("$SHELL" -c '. "$1"' x "$a") && [[ $v == ok ]] || err_exit "fail: more fun 4"
+
+# ...multiple levels of subshell
+func() { echo mainfunction; }
+v=$(
+	set +x
+	(
+		func() { echo sub1; }
+		(
+			func() { echo sub2; }
+			(
+				func() { echo sub3; }
+				func
+				PATH=/dev/null
+				dummy=${ dummy=${ dummy=${ dummy=${ unset -f func; }; }; }; };  # test subshare within subshell
+				func 2>/dev/null
+				(($? == 127)) && echo ok_nonexistent || echo fail_zombie
+			)
+			func
+		)
+		func
+	) 2>&1
+	func 2>&1
+)
+expect=$'sub3\nok_nonexistent\nsub2\nsub1\nmainfunction'
+[[ $v == "$expect" ]] \
+|| err_exit "multi-level subshell function failure (expected $(printf %q "$expect"), got $(printf %q "$v"))"
+
+# ... https://github.com/ksh93/ksh/issues/228
+fail() {
+	echo 'Failure'
+}
+exp=Success
+got=$(
+	foo() { true; }			# Define function before forking
+	ulimit -t unlimited 2>/dev/null	# Fork the subshell
+	unset -f fail
+	PATH=/dev/null fail 2>/dev/null || echo "$exp"
+)
+[[ $got == "$exp" ]] || err_exit 'unset -f fails in forked subshells if a function is defined before forking' \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# function set in subshell, unset in subshell of that subshell
+exp='*: f: not found'
+got=$( f() { echo WRONG; }; ( unset -f f; PATH=/dev/null f 2>&1 ) )
+[[ $got == $exp ]] || err_exit 'unset -f fails in sub-subshell on function set in subshell' \
+	"(expected match of $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# Functions unset in a subshell shouldn't be detected by type (whence -v)
+# https://github.com/ksh93/ksh/pull/287
+notafunc() {
+	echo 'Failure'
+}
+exp=Success
+got=$(unset -f notafunc; type notafunc 2>/dev/null || echo Success)
+[[ $got == "$exp" ]] || err_exit "type/whence -v finds function in virtual subshell after it's unset with 'unset -f'" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
+# Unsetting or redefining aliases within subshells
+
+# ...alias can be unset in subshell
+
+alias al="echo 'mainalias'"
+
+(unalias al; alias al 2>/dev/null) && err_exit 'alias fails to be unset in subshell'
+
+v=$(unalias al; alias al 2>/dev/null) && err_exit 'alias fails to be unset in comsub'
+
+[[ $(eval 'al') == 'mainalias' ]] || err_exit 'main alias fails to survive unset in subshell(s)'
+
+v=${ eval 'al'; unalias al 2>&1; } && [[ $v == 'mainalias' ]] && ! alias al 2>/dev/null \
+|| err_exit 'main shell alias wrongly survives unset within ${ ...; }'
+
+# ...alias can be redefined in subshell
+
+alias al="echo 'mainalias'"
+
+(alias al='echo sub'; [[ $(eval 'al') == sub ]]) || err_exit 'alias fails to be redefined in subshell'
+
+v=$(alias al='echo sub'; eval 'al') && [[ $v == sub ]] || err_exit 'alias fails to be redefined in comsub'
+
+[[ $(eval 'al') == 'mainalias' ]] || err_exit 'main alias fails to survive redefinition in subshell(s)'
+
+v=${ eval 'al'; alias al='echo subshare'; } && [[ $v == 'mainalias' && $(eval 'al') == subshare ]] \
+|| err_exit 'alias redefinition fails to survive ${ ...; }'
+
+# Resetting a subshell's hash table should not affect the parent shell
+check_hash_table()
+{
+	[[ -n ${ hash; } ]] || err_\exit $1 "resetting the hash table in a subshell affects the parent shell's hash table"
+	# Ensure the hash table isn't empty before the next test is run
+	hash -r chmod
+}
+(hash -r); check_hash_table $LINENO					# err_exit (count me)
+(PATH="$PATH"); check_hash_table $LINENO				# err_exit (count me)
+(unset PATH); check_hash_table $LINENO					# err_exit (count me)
+(nameref PATH_TWO=PATH; unset PATH_TWO); check_hash_table $LINENO	# err_exit (count me)
+
+# Adding a utility to a subshell's hash table should not affect the parent shell
+hash -r
+(hash ls)
+[[ -z ${ hash; } ]] || err_exit "changes to a subshell's hash table affect the parent shell"
+
+# Running a command in a subshell should not affect the parent shell's hash table
+hash -r
+(ls /dev/null >/dev/null)
+[[ -z ${ hash; } ]] || err_exit "command run in subshell added to parent shell's hash table"
+
+# ======
+# Variables set in functions inside of a virtual subshell should not affect the
+# outside environment. This regression test must be run from the disk.
+testvars=$tmp/testvars.sh
+cat >| "$testvars" << 'EOF'
+c=0
+function set_ac { a=1; c=1; }
+function set_abc { ( set_ac ; b=1 ) }
+set_abc
+echo "a=$a b=$b c=$c"
+EOF
+v=$($SHELL $testvars) && [[ "$v" == "a= b= c=0" ]] || err_exit 'variables set in subshells are not confined to the subshell'
+
+# ======
+got=$("$SHELL" -c '
+	PATH=/dev/null/1
+	(
+		echo "DEBUG ${.sh.pid}"
+		PATH=/dev/null/2
+		readonly PATH
+		echo "DEBUG ${.sh.pid}"
+	)
+	[[ $PATH == /dev/null/1 ]] && echo "DEBUG ${.sh.pid}" || echo "DEBUG -1 == wrong"
+	: extra command to disable "-c" exec optimization
+' 2>&1) \
+&& awk '/^DEBUG/ { pid[NR] = $2; }  END { exit !(pid[1] == pid[2] && pid[2] == pid[3]); }' <<<"$got" \
+|| err_exit "setting PATH to a readonly value in a subshell either fails or forks (got $(printf %q "$got"))"
+
+# ======
+# Test command substitution with external command in here-document
+# https://github.com/ksh93/ksh/issues/104
+expect=$'/dev/null\n/dev/null'
+actual=$(
+	cat <<-EOF
+		$(ls /dev/null)
+		`ls /dev/null`
+	EOF
+)
+[[ $actual == "$expect" ]] || err_exit 'Command substitution in here-document fails' \
+	"(expected $(printf %q "$expect"), got $(printf %q "$actual"))"
+
+# ...and in pipeline (rhbz#994251)
+expect=/dev/null
+actual=$(cat /dev/null | "$binecho" `ls /dev/null`)
+[[ $actual == "$expect" ]] || err_exit 'Command substitution in pipeline fails (1)' \
+	"(expected $(printf %q "$expect"), got $(printf %q "$actual"))"
+
+# ...and in pipeline again (rhbz#1036802: standard error was misdirected)
+expect=$'END2\naaa\nEND1\nEND3'
+actual=$(export bincat binecho; "$SHELL" 2>&1 -c \
+	'function foo
+	{
+		"$binecho" hello >/dev/null 2>&1
+		"$binecho" aaa | "$bincat"
+		echo END1
+		echo END2 >&2
+	}
+	echo "$(foo)" >&2
+	echo END3 >&2
+	exit')
+[[ $actual == "$expect" ]] || err_exit 'Command substitution in pipeline fails (2)' \
+	"(expected $(printf %q "$expect"), got $(printf %q "$actual"))"
+
+# ======
+# Crash in job handling code when running backtick-style command substitutions (rhbz#825520)
+# The regression sometimes doesn't just crash, but freezes hard, so requires special handling.
+cat >$tmp/backtick_crash.ksh <<'EOF'
+binfalse=$(whence -p false) || exit
+for ((i=0; i<250; i++))
+do	test -z `"$binfalse" | "$binfalse" | /dev/null/nothing`
+done
+EOF
+"$SHELL" -i "$tmp/backtick_crash.ksh" 2>/dev/null &	# run test as bg job
+test_pid=$!
+(sleep 10; kill -s KILL "$test_pid" 2>/dev/null) &	# another bg job to kill frozen test job
+sleep_pid=$!
+{ wait "$test_pid"; } 2>/dev/null			# get job's exit status, suppressing signal messages
+((!(e = $?))) || err_exit "backtick comsub crash/freeze (got status $e$( ((e>128)) && print -n / && kill -l "$e"))"
+kill "$sleep_pid" 2>/dev/null
+
+# ======
+# Backtick command substitution hangs when filling out pipe buffer (rhbz#1062296)
+"$SHELL" -c 'HANG=`dd if=/dev/zero bs=1k count=117 2>/dev/null`' &
+test_pid=$!
+(sleep 2; kill -s KILL "$test_pid" 2>/dev/null) &
+sleep_pid=$!
+{ wait "$test_pid"; } 2>/dev/null
+((!(e = $?))) || err_exit "backtick comsub hang (got status $e$( ((e>128)) && print -n / && kill -l "$e"))"
+kill "$sleep_pid" 2>/dev/null
+
+# Backtick command substitution with pipe hangs when filling out pipe buffer (rhbz#1138751)
+"$SHELL" -c 'HANG=`dd if=/dev/zero bs=1k count=117 2>/dev/null | cat`' &
+test_pid=$!
+(sleep 2; kill -s KILL "$test_pid" 2>/dev/null) &
+sleep_pid=$!
+{ wait "$test_pid"; } 2>/dev/null
+((!(e = $?))) || err_exit "backtick comsub with pipe hangs (got status $e$( ((e>128)) && print -n / && kill -l "$e"))"
+kill "$sleep_pid" 2>/dev/null
+
+# ======
+# https://bugzilla.redhat.com/1116072
+
+expect='return-value'
+function get_value
+{
+	/dev/null/foo 2>/dev/null	# trigger part 1: external command (even nonexistent)
+	exec 3>&-			# trigger part 2: close file descriptor 3
+	print return-value		# with the bug, the comsub won't output this
+}
+actual=$(get_value)
+[[ $actual == "$expect" ]] || err_exit "\$(Comsub) failed to return output (expected '$expect', got '$actual')"
+actual=${ get_value; }
+[[ $actual == "$expect" ]] || err_exit "\${ Comsub; } failed to return output (expected '$expect', got '$actual')"
+actual=`get_value`
+[[ $actual == "$expect" ]] || err_exit "\`Comsub\` failed to return output (expected '$expect', got '$actual')"
+
+# more tests from https://github.com/oracle/solaris-userland/blob/master/components/ksh93/patches/285-30771135.patch
+tmpfile=$tmp/1116072.dummy
+touch "$tmpfile"
+exp='return value'
+function get_value
+{
+	case=$1
+	(( case >= 1 )) && exec 3< $tmpfile
+	(( case >= 2 )) && exec 4< $tmpfile
+	(( case >= 3 )) && exec 6< $tmpfile
+	# To trigger the bug we have to spawn an external command.
+	$(whence -p true)
+	(( case >= 1 )) && exec 3<&-
+	(( case >= 2 )) && exec 4<&-
+	(( case >= 3 )) && exec 6<&-
+	print "$exp"
+}
+got=$(get_value 0)
+[[ $got == "$exp" ]] || err_exit "failed to capture subshell output when closing fd: case 0"
+got=$(get_value 1)
+[[ $got == "$exp" ]] || err_exit "failed to capture subshell output when closing fd: case 1"
+got=$(get_value 2)
+[[ $got == "$exp" ]] || err_exit "failed to capture subshell output when closing fd: case 2"
+got=$(get_value 3)
+[[ $got == "$exp" ]] || err_exit "failed to capture subshell output when closing fd: case 3"
+
+# ======
+# https://bugzilla.redhat.com/1117404
+
+cat >$tmp/crash_rhbz1117404.ksh <<-'EOF'
+	trap "" HUP			# trigger part 1: signal ignored in main shell
+	for((i=0; i<2500; i++))
+	do	(trap ": foo" HUP)	# trigger part 2: any trap (empty or not) on same signal in subshell
+	done
+EOF
+got=$( { "$SHELL" "$tmp/crash_rhbz1117404.ksh"; } 2>&1)
+((!(e = $?))) || err_exit 'crash while handling subshell trap' \
+	"(got status $e$( ((e>128)) && print -n / && kill -l "$e"), $(printf %q "$got"))"
+
+# ======
+# Segmentation fault when using cd in a subshell, when current directory cannot be determined
+# https://github.com/ksh93/ksh/issues/153
+mkdir "$tmp/deleted"
+cd "$tmp/deleted"
+tmp=$tmp "$SHELL" -c 'cd /; rmdir "$tmp/deleted"'
+
+exp="subPWD: ${PWD%/deleted}"$'\n'"mainPWD: $PWD"
+got=$( { "$SHELL" -c '(subshfn() { bad; }; cd ..; echo "subPWD: $PWD"); typeset -f subshfn; echo "mainPWD: $PWD"'; } 2>&1 )
+[[ $got == "$exp" ]] || err_exit "subshell state not restored after 'cd ..' from deleted PWD" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+exp="PWD=$PWD"
+got=$( { "$SHELL" -c '(cd /; (cd /)); print -r -- "PWD=$PWD"'; } 2>&1 )
+((!(e = $?))) && [[ $got == "$exp" ]] || err_exit 'failed to restore nonexistent PWD on exiting a virtual subshell' \
+	"(got status $e$( ((e>128)) && print -n / && kill -l "$e"), $(printf %q "$got"))"
+mkdir "$tmp/recreated"
+cd "$tmp/recreated"
+tmp=$tmp "$SHELL" -c 'cd /; rmdir "$tmp/recreated"; mkdir "$tmp/recreated"'
+exp="PWD=$PWD"
+got=$( { "$SHELL" -c '(cd /); print -r -- "PWD=$PWD"'; } 2>&1 )
+((!(e = $?))) && [[ $got == "$exp" ]] || err_exit 'failed to restore re-created PWD on exiting a virtual subshell' \
+	"(got status $e$( ((e>128)) && print -n / && kill -l "$e"), $(printf %q "$got"))"
+cd "$tmp"
+
+# ======
+# Before 93u+m 2021-02-17, the state of ${ shared-state command substitutions; } leaked out of parent virtual subshells.
+# https://github.com/ksh93/ksh/issues/143
+
+v=main
+d=${ v=shared; }
+[[ $v == shared ]] || err_exit "shared comsub in main shell wrongly scoped"
+
+v=main
+(d=${ v=shared; }; [[ $v == shared ]]) || err_exit "shared comsub in subshell wrongly scoped (1)"
+[[ $v == main ]] || err_exit "shared comsub leaks out of subshell (1)"
+
+v=main
+(v=sub; d=${ v=shared; }; [[ $v == shared ]]) || err_exit "shared comsub in subshell wrongly scoped (2)"
+[[ $v == main ]] || err_exit "shared comsub leaks out of subshell (2)"
+
+v=main
+(v=sub; (d=${ v=shared; }); [[ $v == sub ]]) || err_exit "shared comsub leaks out of nested subshell"
+[[ $v == main ]] || err_exit "shared comsub leaks out of subshell (3)"
+
+v=main
+(d=${ d=${ v=shared; }; }; [[ $v == shared ]]) || err_exit "nested shared comsub in subshell wrongly scoped (1)"
+[[ $v == main ]] || err_exit "shared comsub leaks out of subshell (4)"
+
+v=main
+(v=sub; d=${ d=${ v=shared; }; }; [[ $v == shared ]]) || err_exit "nested shared comsub in subshell wrongly scoped (2)"
+[[ $v == main ]] || err_exit "shared comsub leaks out of subshell (5)"
+
+v=main
+( (d=${ v=shared; }; [[ $v == shared ]]) ) || err_exit "shared comsub in nested subshell wrongly scoped (1)"
+[[ $v == main ]] || err_exit "shared comsub leaks out of subshell (6)"
+
+v=main
+(v=sub; (d=${ v=shared; }; [[ $v == shared ]]) ) || err_exit "shared comsub in nested subshell wrongly scoped (2)"
+[[ $v == main ]] || err_exit "shared comsub leaks out of subshell (7)"
+
+# ...multiple levels of subshell
+v=main
+got=$(
+	(
+		v=sub1
+		(
+			v=sub2
+			(
+				v=sub3
+				echo $v
+				dummy=${ dummy=${ dummy=${ dummy=${ unset v; }; }; }; };  # test subshare within subshell
+				[[ -n $v || -v v ]] && echo fail_zombie || echo ok_nonexistent
+			)
+			echo $v
+		)
+		echo $v
+	)
+	echo $v
+)
+exp=$'sub3\nok_nonexistent\nsub2\nsub1\nmain'
+[[ $got == "$exp" ]] || err_exit "multi-level subshell function failure" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
+# After the memory leak patch for rhbz#982142, this minor regression was introduced:
+# if a backtick command substitution expanded an alias, an extra space was inserted.
+exp='word'
+alias a='print -n wo\'
+got=$(eval 'echo "`a`rd"')
+unalias a
+[[ $got == "$exp" ]] || err_exit 'backtick comsub with alias:' \
+	"expected $(printf %q "$exp"), got $(printf %q "$got")"
+
+# ======
+# Redirecting standard output for a single command should not cause a subshare to fork
+exp='good'
+got='bad'
+dummy=${ : >&2; got='good'; }
+[[ $got == "$exp" ]] || err_exit 'subshare stopped sharing state after command that redirects stdout' \
+	"(expected '$exp', got '$got')"
+
+# ======
+unset d x
+exp='end 1'
+got=$(d=${ true & x=1; echo end; }; echo $d $x)
+[[ $got == "$exp" ]] || err_exit 'subshare forks when running background job' \
+	"(expected '$exp', got '$got')"
+
+# ======
+# https://github.com/ksh93/ksh/issues/289
+got=$(ulimit -t unlimited 2>/dev/null; (dummy=${ ulimit -t 1; }); ulimit -t)
+[[ $got == 1 ]] && err_exit "'ulimit' command run in subshare leaks out of parent virtual subshell"
+got=$(_AST_FEATURES="TEST_TMP_VAR - $$" "$SHELL" -c '(d=${ builtin getconf;}); getconf TEST_TMP_VAR' 2>&1)
+[[ $got == $$ ]] && err_exit "'builtin' command run in subshare leaks out of parent virtual subshell"
+got=$(ulimit -t unlimited 2>/dev/null; (dummy=${ exec true; }); echo ok)
+[[ $got == ok ]] || err_exit "'exec' command run in subshare disregards parent virtual subshell"
+
+# ======
+# https://github.com/ksh93/ksh/pull/294#discussion_r624627501
+exp='this should be run once'
+$SHELL -c '( ( : & ) ); echo "this should be run once"' >r624627501.out
+sleep .01
+got=$(<r624627501.out)
+[[ $got == "$exp" ]] || err_exit 'background job optimization within virtual subshell causes program flow corruption' \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
 exit $((Errors<125?Errors:125))

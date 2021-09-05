@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -44,6 +45,7 @@ static char		*Zero = "0";
 #define isnan(n)	(fpclassify(n)==FP_NAN)
 #define isnanl(n)	(fpclassify(n)==FP_NAN)
 #else
+#error "This is an invalid test for NaN"
 #define isnan(n)	(memcmp((void*)&n,(void*)&_Sfdnan,sizeof(n))==0)
 #define isnanl(n)	(memcmp((void*)&n,(void*)&_Sflnan,sizeof(n))==0)
 #endif
@@ -52,6 +54,16 @@ static char		*Zero = "0";
 #undef	isnanl
 #define isnanl(n)	isnan(n)
 #endif
+#endif
+
+#if defined(__ia64__) && defined(signbit)
+# if defined __GNUC__ && __GNUC__ >= 4
+#  define __signbitl(f)			__builtin_signbitl(f)
+# else
+#  if _lib_copysignl
+#    define __signbitl(f)	(int)(copysignl(1.0,(f))<0.0)
+#  endif
+# endif
 #endif
 
 #if !_lib_signbit
@@ -149,44 +161,16 @@ int		format;		/* conversion format		*/
 			return SF_INF;
 		}
 #endif
-# if _c99_in_the_wild
-#  if _lib_signbit
+
+#if _lib_signbit
 		if (signbit(f))
-#  else
-#   if _lib_copysignl
-		if (copysignl(1.0, f) < 0.0)
-#   else
-#    if _lib_copysign
-		if (copysign(1.0, (double)f) < 0.0)
-#    else
-		if (f < 0.0)
-#    endif
-#   endif
-#  endif
-		{	f = -f;
-			*sign = 1;
-		}
-#  if _lib_fpclassify
-		switch (fpclassify(f))
-		{
-		case FP_INFINITE:
-			return SF_INF;
-		case FP_NAN:
-			return SF_NAN;
-		case FP_ZERO:
-			return SF_ZERO;
-		}
-#  endif
-# else
-#  if _lib_signbit
-		if (signbit(f))
-#  else
+#else
 		if (f < 0.0 || f == 0.0 && neg0ld(f))
-#  endif
+#endif
 		{	f = -f;
 			*sign = 1;
 		}
-# endif
+
 		if(f < LDBL_MIN)
 			return SF_ZERO;
 		if(f > LDBL_MAX)
@@ -287,7 +271,7 @@ int		format;		/* conversion format		*/
 
 			while(sp < ep)
 			{	/* generate fractional digits */
-				if(f <= 0.)
+				if(f <= 0. && *decpt >= 0)
 				{	/* fill with 0's */
 					do { *sp++ = '0'; } while(sp < ep);
 					goto done;
@@ -327,40 +311,16 @@ int		format;		/* conversion format		*/
 			return SF_INF;
 		}
 #endif
-#if _c99_in_the_wild
-# if _lib_signbit
+
+#if _lib_signbit
 		if (signbit(f))
-# else
-#  if _lib_copysign
-		if (copysign(1.0, f) < 0.0)
-#  else
-		if (f < 0.0)
-#  endif
-# endif
-		{	f = -f;
-			*sign = 1;
-		}
-# if _lib_fpclassify
-		switch (fpclassify(f))
-		{
-		case FP_INFINITE:
-			return SF_INF;
-		case FP_NAN:
-			return SF_NAN;
-		case FP_ZERO:
-			return SF_ZERO;
-		}
-# endif
 #else
-# if _lib_signbit
-		if (signbit(f))
-# else
 		if (f < 0.0 || f == 0.0 && neg0d(f))
-# endif
+#endif
 		{	f = -f;
 			*sign = 1;
 		}
-#endif
+
 		if(f < DBL_MIN)
 			return SF_ZERO;
 		if(f > DBL_MAX)
@@ -404,7 +364,7 @@ int		format;		/* conversion format		*/
 				}
 			} while(f >= (double)CVT_DBL_MAXINT);
 		}
-		else if(f > 0.0 && f < 1e-8)
+		else if(f > 0.0 && f < 0.1)
 		{	/* scale to avoid excessive multiply by 10 below */
 			v = SF_MAXEXP10-1;
 			do
@@ -459,7 +419,7 @@ int		format;		/* conversion format		*/
 
 			while(sp < ep)
 			{	/* generate fractional digits */
-				if(f <= 0.)
+				if(f <= 0. && *decpt >= 0)
 				{	/* fill with 0's */
 					do { *sp++ = '0'; } while(sp < ep);
 					goto done;
@@ -480,20 +440,29 @@ int		format;		/* conversion format		*/
 		ep = b+1;
 	else if(ep < endsp)
 	{	/* round the last digit */
-		*--sp += 5;
+		if (!(format&SFFMT_EFORMAT) && *decpt < 0)
+			sp += *decpt-1;
+		else
+			--sp;
+		*sp += 5;
 		while(*sp > '9')
-		{	*sp = '0';
-			if(sp > b)
+		{	if(sp > b)
+			{	*sp = '0';
 				*--sp += 1;
+			}
 			else
-			{	/* next power of 10 */
+			{	/* next power of 10 and at beginning */
 				*sp = '1';
 				*decpt += 1;
 				if(!(format&SFFMT_EFORMAT))
 				{	/* add one more 0 for %f precision */
-					ep[-1] = '0';
+					if (sp != &ep[-1])
+					{	/* prevents overwriting the previous 1 with 0 */
+						ep[-1] = '0';
+					}
 					ep += 1;
 				}
+				break;
 			}
 		}
 	}

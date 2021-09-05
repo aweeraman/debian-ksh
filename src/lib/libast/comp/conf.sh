@@ -2,6 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1985-2011 AT&T Intellectual Property          #
+#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -34,8 +35,9 @@
 # but you shall be confused anyway
 #
 
-case $-:$BASH_VERSION in
-*x*:[0123456789]*)	: bash set -x is broken :; set +ex ;;
+case $ZSH_VERSION in
+?*)	emulate ksh ;;
+*)	(command set -o posix) 2>/dev/null && set -o posix ;;
 esac
 
 LC_ALL=C
@@ -333,25 +335,40 @@ $cc -E $tmp.c >/dev/null 2>&1 || systeminfo=
 
 CONF_getconf=
 CONF_getconf_a=
-for d in /usr/bin /bin /usr/sbin /sbin
-do	if	test -x $d/getconf
-	then	case `$d/getconf --?-version 2>&1` in
+IFS=':'; set -f
+for d in \
+	/run/current-system/sw/bin \
+	/usr/xpg7/bin \
+	/usr/xpg6/bin \
+	/usr/xpg4/bin \
+	/usr/bin \
+	/bin \
+	/usr/sbin \
+	/sbin \
+	$PATH
+do	case $d in
+	/*)	;;
+	*)	continue ;;
+	esac
+	if	test -x "$d/getconf"
+	then	case `"$d/getconf" --?-version 2>&1` in
 		*"AT&T"*"Research"*)
 			: presumably an implementation also configured from conf.tab
-			;;
-		*)	CONF_getconf=$d/getconf
-			if	$CONF_getconf -a >/dev/null 2>&1
-			then	CONF_getconf_a=-a
-			fi
+			continue
 			;;
 		esac
+		CONF_getconf=$d/getconf
+		if	"$CONF_getconf" -a >/dev/null 2>&1
+		then	CONF_getconf_a=-a
+		fi
 		break
 	fi
 done
+IFS=$ifs; set +f
 export CONF_getconf CONF_getconf_a
 
 case $verbose in
-1)	echo "$command: check ${CONF_getconf:+$CONF_getconf(1),}confstr(2),pathconf(2),sysconf(2),sysinfo(2) configuration names" >&2 ;;
+1)	echo "$command: check ${CONF_getconf:+$CONF_getconf(1),}confstr(3),pathconf(2),sysconf(3),sysinfo(2) configuration names" >&2 ;;
 esac
 {
 	echo "#include <unistd.h>$systeminfo
@@ -523,7 +540,7 @@ do	flags=F
 	done
 	case $name in
 	'')	;;
-	CONFORMANCE|FS_3D|HOSTTYPE|LIBPATH|LIBPREFIX|LIBSUFFIX|PATH_ATTRIBUTES|PATH_RESOLVE|UNIVERSE)
+	CONFORMANCE|HOSTTYPE|LIBPATH|LIBPREFIX|LIBSUFFIX|PATH_ATTRIBUTES|PATH_RESOLVE|UNIVERSE)
 		;;
 	*)	values=
 		script=
@@ -1179,7 +1196,7 @@ printf("#endif\n");
 				*:U*)	cat >> $tmp.l <<!
 printf("#ifndef ${conf_name}\n");
 printf("#ifndef ${x}\n");
-printf("#define ${x} %lu\n", ${x});
+printf("#define ${x} %lu\n", (unsigned long)${x});
 printf("#endif\n");
 printf("#define ${conf_name} ${x}\n");
 printf("#endif\n");
@@ -1188,7 +1205,7 @@ printf("#endif\n");
 				*:$sym)	cat >> $tmp.l <<!
 printf("#ifndef ${conf_name}\n");
 printf("#ifndef ${x}\n");
-printf("#define ${x} %ld\n", ${x});
+printf("#define ${x} %ld\n", (long)${x});
 printf("#endif\n");
 printf("#define ${conf_name} ${x}\n");
 printf("#endif\n");
@@ -1551,7 +1568,7 @@ extern const int	prefix_elements;
 } > $tmp.2
 case $debug in
 -d7)	echo $command: $tmp.2 ${base}.h ;;
-*)	cmp -s $tmp.2 ${base}.h 2>/dev/null || mv $tmp.2 ${base}.h ;;
+*)	cmp -s "$tmp.2" "${base}.h" 2>/dev/null && touch "${base}.h" || mv "$tmp.2" "${base}.h" ;;
 esac
 
 case $verbose in
@@ -1608,7 +1625,7 @@ const int	conf_elements = (int)sizeof(conf) / (int)sizeof(conf[0]);
 } > $tmp.4
 case $debug in
 -d7)	echo $command: $tmp.4 ${base}.c ;;
-*)	cmp -s $tmp.4 ${base}.c 2>/dev/null || mv $tmp.4 ${base}.c ;;
+*)	cmp -s "$tmp.4" "${base}.c" 2>/dev/null && touch "${base}.c" || mv "$tmp.4" "${base}.c" ;;
 esac
 
 # limits.h generation code
@@ -1630,6 +1647,6 @@ test -f $tmp.l && cat $tmp.l
 } > $tmp.5
 case $debug in
 -d7)	echo $command: $tmp.5 ${base}.h ;;
-*)	cmp -s $tmp.5 ${base}.h 2>/dev/null || mv $tmp.5 ${base}.h ;;
+*)	cmp -s "$tmp.5" "${base}.h" 2>/dev/null && touch "${base}.h" || mv "$tmp.5" "${base}.h" ;;
 esac
 exit 0

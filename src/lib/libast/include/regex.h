@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -118,7 +119,7 @@
 #define REG_EBRACE	9		/* \{...\} or {...} imbalance	*/
 #define REG_BADBR	10		/* invalid {...} digits		*/
 #define REG_ERANGE	11		/* invalid [...] range endpoint	*/
-#define REG_ESPACE	12		/* out of space			*/
+#define REG_ESPACE	12		/* out of memory		*/
 #define REG_BADRPT	13		/* unary op not preceded by re	*/
 #define REG_ENULL	14		/* empty subexpr in pattern	*/
 #define REG_ECOUNT	15		/* re component count overflow	*/

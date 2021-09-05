@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -176,7 +177,7 @@ static unsigned char	map[UCHAR_MAX];
 
 static Optstate_t	state;
 
-#if !_PACKAGE_astsa
+#if 0 /* #if !_PACKAGE_astsa  // this somehow corrupts "Or:" usage messages, e.g. in 'typeset -\?' */
 
 #define ID		ast.id
 
@@ -229,29 +230,29 @@ standard error."),
 static const Help_t	styles[] =
 {
 	C("about"),	"-",		STYLE_match,
-	Z("List all implementation info."),
+	Z("Show all implementation info."),
 	C("api"),	"?api",		STYLE_api,
-	Z("List detailed info in program readable form."),
+	Z("Output detailed info in program readable form."),
 	C("help"),	"",		-1,
-	Z("List detailed help option info."),
+	Z("Show detailed help option info."),
 	C("html"),	"?html",	STYLE_html,
-	Z("List detailed info in html."),
+	Z("Output detailed info in HTML."),
 	C("keys"),	"?keys",	STYLE_keys,
-	Z("List the usage translation key strings with C style escapes."),
+	Z("Output usage key strings for translation."),
 	C("long"),	"?long",	STYLE_long,
-	Z("List long option usage."),
+	Z("Show brief usage with long options."),
 	C("man"),	"?man",		STYLE_man,
-	Z("List detailed info in displayed man page form."),
+	Z("Show detailed info as a manual page."),
 	C("nroff"),	"?nroff",	STYLE_nroff,
-	Z("List detailed info in nroff."),
+	Z("Output detailed info in nroff format."),
 	C("options"),	"?options",	STYLE_options,
 	Z("List short and long option details."),
 	C("posix"),	"?posix",	STYLE_posix,
-	Z("List posix getopt usage."),
+	Z("Output POSIX-compliant getopt(3) short options string."),
 	C("short"),	"?short",	STYLE_short,
-	Z("List short option usage."),
+	Z("Show brief usage with short options."),
 	C("usage"),	"?usage",	STYLE_usage,
-	Z("List the usage string with C style escapes."),
+	Z("Output the full AST optget(3) usage string."),
 };
 
 static const List_t	help_tail[] =
@@ -296,20 +297,6 @@ static const Attr_t	attrs[] =
 };
 
 static const char	unknown[] = C("unknown option or attribute");
-
-static const char*	heading[] =
-{
-	C("INDEX"),
-	C("USER COMMANDS"),
-	C("SYSTEM LIBRARY"),
-	C("USER LIBRARY"),
-	C("FILE FORMATS"),
-	C("MISCELLANEOUS"),
-	C("GAMES and DEMOS"),
-	C("SPECIAL FILES"),
-	C("ADMINISTRATIVE COMMANDS"),
-	C("GUIs"),
-};
 
 /*
  * list of common man page strings
@@ -1634,14 +1621,26 @@ args(register Sfio_t* sp, register char* p, register int n, int flags, int style
 			t = (char*)memchr(p, '\n', n);
 			if (style >= STYLE_man)
 			{
+				int firstline = !a;
+				/* --man page: print command name */
 				if (!(a = id))
 					a = "...";
-				sfprintf(sp, "\t%s%s%s%s[%s%s%s%s%s]", font(FONT_BOLD, style, 1), a, font(FONT_BOLD, style, 0), b, b, font(FONT_ITALIC, style, 1), o, font(FONT_ITALIC, style, 0), b);
+				sfprintf(sp, "\t%s%s%s", font(FONT_BOLD, style, 1), a, font(FONT_BOLD, style, 0));
+				if (firstline)
+				{
+					/* Append "[ options ]" label */
+					sfprintf(sp, "%s[%s%s%s%s%s]",
+						b, b, font(FONT_ITALIC, style, 1), o, font(FONT_ITALIC, style, 0), b);
+				}
 			}
 			else if (a)
-				sfprintf(sp, "%*.*s%s%s%s[%s%s%s]", OPT_USAGE - 1, OPT_USAGE - 1, T(NiL, ID, "Or:"), b, a, b, b, o, b);
+			{
+				/* Usage/--help, line 2+: specific usages. Prefix by "Or:" */
+				sfprintf(sp, "%*.*s%s%s", OPT_USAGE - 1, OPT_USAGE - 1, T(NiL, ID, "Or:"), b, a);
+			}
 			else
 			{
+				/* Usage on unknown long option error: no short options are printed, so print "[ options ]" */
 				if (!(a = error_info.id) && !(a = id))
 					a = "...";
 				if (!sfstrtell(sp))
@@ -1652,6 +1651,7 @@ args(register Sfio_t* sp, register char* p, register int n, int flags, int style
 			i = ++t - p;
 			if (i)
 			{
+				/* Print options for usage line */
 				sfputr(sp, b, -1);
 				if (X(catalog))
 				{
@@ -1664,6 +1664,7 @@ args(register Sfio_t* sp, register char* p, register int n, int flags, int style
 				else
 					sfwrite(sp, p, i);
 			}
+			/* New line */
 			if (style == STYLE_html)
 				sfputr(sp, "<BR>", '\n');
 			else if (style == STYLE_nroff)
@@ -1679,8 +1680,15 @@ args(register Sfio_t* sp, register char* p, register int n, int flags, int style
 			}
 		}
 	}
+	/* Print options for the last usage line */
 	if (n)
 		label(sp, sep, p, 0, n, 0, style, 0, ip, version, id, catalog);
+	/* In usage/--help messages, tell the user how to get more help */
+	if (style < STYLE_man)
+	{
+		sfprintf(sp, "\n%*.*s%s%s [%s--help%s|%s--man%s] 2>&1",
+			OPT_USAGE - 1, OPT_USAGE - 1, T(NiL, ID, "Help:"), b, a, b, b, b, b);
+	}
 }
 
 /*
@@ -2509,26 +2517,26 @@ opthelp(const char* oopts, const char* what)
 		for (q = o; q < e; q++)
 			if (!(q->flags & OPT_ignore) && !streq(q->catalog, o->catalog))
 				o = q;
-		/*FALLTHROUGH*/
+		/* FALLTHROUGH */
 	case STYLE_posix:
 		sfputc(mp, '\f');
 		break;
 	default:
-		if (!state.emphasis)
+		state.emphasis = 0;
+		if (x = getenv("ERROR_OPTIONS"))
 		{
-			if (x = getenv("ERROR_OPTIONS"))
+			if (strmatch(x, "*noemphasi*"))
+				break;
+			if (strmatch(x, "*emphasi*"))
 			{
-				if (strmatch(x, "*noemphasi*"))
-					break;
-				if (strmatch(x, "*emphasi*"))
-				{
-					state.emphasis = 1;
-					break;
-				}
-			}
-			if ((x = getenv("TERM")) && strmatch(x, "(ansi|vt100|xterm)*") && isatty(sffileno(sfstderr)))
 				state.emphasis = 1;
+				break;
+			}
 		}
+		if (isatty(sffileno(sfstderr))
+		&& (x = getenv("TERM"))
+		&& strmatch(x, "(ansi|cons|dtterm|linux|screen|sun|vt???|wsvt|xterm)*"))
+			state.emphasis = 1;
 		break;
 	}
 	x = "";
@@ -4367,9 +4375,9 @@ optget(register char** argv, const char* oopts)
 	 */
 
 	opt_info.assignment = 0;
-	num = 1;
-	w = v = 0;
-	x = 0;
+	nov = no = num = 1;
+	e = w = v = 0;
+	n = x = 0;
 	for (;;)
 	{
 		if (!opt_info.offset)

@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -94,6 +95,11 @@ struct _glob_
 
 };
 
+/*
+ * The standard/extended interface GLOB_* flags below must
+ * fit in the GLOB_FLAGMASK bitmask defined in misc/glob.c.
+ */
+
 /* standard interface */
 #define GLOB_APPEND	0x0001		/* append to previous		*/
 #define GLOB_DOOFFS	0x0002		/* gl_offs defines argv offset	*/
@@ -107,29 +113,30 @@ struct _glob_
 #define GLOB_STARSTAR	0x0080		/* enable [/]**[/] expansion	*/
 #define GLOB_BRACE	0x0100		/* enable {...} expansion	*/
 #define GLOB_ICASE	0x0200		/* ignore case on match		*/
-#define GLOB_COMPLETE	0x0400		/* shell file completeion	*/
+#define GLOB_COMPLETE	0x0400		/* shell file completion	*/
 #define GLOB_AUGMENTED	0x0800		/* augmented shell patterns	*/
 #define GLOB_STACK	0x1000		/* allocate on current stack	*/
 #define GLOB_LIST	0x2000		/* just create gl_list		*/
 #define GLOB_ALTDIRFUNC	0x4000		/* gnu discipline functions	*/
 #define GLOB_DISC	0x8000		/* discipline initialized	*/
-
 #define GLOB_GROUP	0x10000		/* REG_SHELL_GROUP		*/
+#define GLOB_DCASE	0x20000		/* detect FS case insensitivity	*/
 
 /* gl_status */
 #define GLOB_NOTDIR	0x0001		/* last gl_dirnext() not a dir	*/
 
 /* gl_type return */
 #define GLOB_NOTFOUND	0		/* does not exist		*/
-#define GLOB_DEV	1		/* exists but not DIR EXE REG	*/
 #define GLOB_DIR	2		/* directory			*/
 #define GLOB_EXE	3		/* executable regular file	*/
 #define GLOB_REG	4		/* regular file			*/
+#define GLOB_SYM	5		/* symbolic link		*/
+#define GLOB_DEV	1		/* exists but none of the above	*/
 
 /* error return values */
 #define GLOB_ABORTED	1
 #define GLOB_NOMATCH	2
-#define GLOB_NOSPACE	3
+#define GLOB_NOSPACE	3	/* note: this error is for ENOMEM */
 #define GLOB_INTR	4
 #define GLOB_APPERR	5
 #define GLOB_NOSYS	6

@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -28,19 +29,19 @@
 
 static const char usage[] =
 "[-?\n@(#)$Id: logname (AT&T Research) 1999-04-30 $\n]"
-USAGE_LICENSE
+"[--catalog?" ERROR_CATALOG "]"
 "[+NAME?logname - return the user's login name]"
 "[+DESCRIPTION?\blogname\b writes the users's login name to standard "
 	"output.  The login name is the string that is returned by the "
 	"\bgetlogin\b(2) function.  If \bgetlogin\b(2) does not return "
-	"successfully, the corresponding to the real user id of the calling "
-	"process is used instead.]"
+	"successfully, the name corresponding to the real user ID of the "
+	"calling process is used instead.]"
 
 "\n"
 "\n\n"
 "\n"
 "[+EXIT STATUS?]{"
-        "[+0?Successful Completion.]"
+        "[+0?Successful completion.]"
         "[+>0?An error occurred.]"
 "}"
 "[+SEE ALSO?\bgetlogin\b(2)]"
@@ -64,15 +65,17 @@ b_logname(int argc, char** argv, Shbltin_t* context)
 			continue;
 		case '?':
 			error(ERROR_usage(2), "%s", opt_info.arg);
-			continue;
+			UNREACHABLE();
 		}
 		break;
 	}
 	if (error_info.errors)
+	{
 		error(ERROR_usage(2), "%s", optusage(NiL));
+		UNREACHABLE();
+	}
 	if (!(logname = getlogin()))
 		logname = fmtuid(getuid());
 	sfputr(sfstdout, logname, '\n');
 	return 0;
 }
-

@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -32,6 +33,8 @@
 /*
  * This is the list of built-in shell variables and default values
  * and default attributes.
+ *
+ * The order must be kept synchronous with the defines in include/variables.h.
  */
 
 const struct shtable2 shtab_variables[] =
@@ -76,6 +79,7 @@ const struct shtable2 shtab_variables[] =
 	"LC_CTYPE",	0,				(char*)0,
 	"LC_MESSAGES",	0,				(char*)0,
 	"LC_NUMERIC",	0,				(char*)0,
+	"LC_TIME",	0,				(char*)0,
 	"FIGNORE",	0,				(char*)0,
 	"KSH_VERSION",	0,				(char*)0,
 	"JOBMAX",	NV_NOFREE|NV_INTEGER,		(char*)0,
@@ -93,28 +97,24 @@ const struct shtable2 shtab_variables[] =
 	".sh.command",	0,				(char*)0,
 	".sh.file",	0,				(char*)0,
 	".sh.fun",	0,				(char*)0,
-	".sh.subshell",	NV_INTEGER|NV_SHORT|NV_NOFREE,	(char*)0,
+	".sh.subshell",	NV_INTEGER|NV_NOFREE,		(char*)0,
 	".sh.level",	0,				(char*)0,
-	".sh.lineno",	NV_INTEGER,			(char*)0,
+	".sh.lineno",	NV_INTEGER|NV_NOFREE,		(char*)0,
 	".sh.stats",	0,				(char*)0,
 	".sh.math",	0,				(char*)0,
 	".sh.pool",	0,				(char*)0,
+	".sh.pid",	NV_INTEGER|NV_NOFREE,		(char*)0,
+	".sh.tilde",	0,				(char*)0,
 	"SHLVL",	NV_INTEGER|NV_NOFREE|NV_EXPORT,	(char*)0,
-#if SHOPT_FS_3D
-	"VPATH",	0,				(char*)0,
-#endif /* SHOPT_FS_3D */
 #if SHOPT_MULTIBYTE
 	"CSWIDTH",	0,				(char*)0,
 #endif /* SHOPT_MULTIBYTE */
-#ifdef apollo
-	"SYSTYPE",	0,				(char*)0,
-#endif /* apollo */
 	"",	0,					(char*)0
 };
 
 const char *nv_discnames[] = { "get", "set", "append", "unset", "getn", 0 };
 
-#ifdef SHOPT_STATS
+#if SHOPT_STATS
 const Shtable_t shtab_stats[] =
 {
 	"arg_cachehits",	STAT_ARGHITS,

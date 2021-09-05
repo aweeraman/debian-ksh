@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -115,7 +116,7 @@ gobble(Match_t* mp, register char* s, register int sub, int* g, int clear)
 		case '\\':
 			if (mbgetchar(s))
 				break;
-			/*FALLTHROUGH*/
+			/* FALLTHROUGH */
 		case 0:
 			return 0;
 		case '[':
@@ -295,7 +296,7 @@ onematch(Match_t* mp, int g, char* s, char* p, char* e, char* r, int flags)
 						if (n <= g && mp->current.beg[n])
 							pc = *mp->current.beg[n];
 					}
-					/*FALLTHROUGH*/
+					/* FALLTHROUGH */
 				default:
 					if (icase && isupper(pc))
 						pc = tolower(pc);
@@ -321,7 +322,7 @@ onematch(Match_t* mp, int g, char* s, char* p, char* e, char* r, int flags)
 		case 0:
 			if (!(flags & STR_MAXIMAL))
 				sc = 0;
-			/*FALLTHROUGH*/
+			/* FALLTHROUGH */
 		case '|':
 		case '&':
 		case ')':
@@ -502,7 +503,7 @@ onematch(Match_t* mp, int g, char* s, char* p, char* e, char* r, int flags)
 					break;
 				}
 			}
-			/*FALLTHROUGH*/
+			/* FALLTHROUGH */
 		default:
 			if (icase && isupper(pc))
 				pc = tolower(pc);

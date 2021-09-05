@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -24,7 +25,7 @@
 
 static const char usage[] =
 "[-?\n@(#)$Id: vmstate (AT&T Research) 2010-04-08 $\n]"
-USAGE_LICENSE
+"[--catalog?" ERROR_CATALOG "]"
 "[+NAME?vmstate - list the calling process vmalloc region state]"
 "[+DESCRIPTION?When invoked as a shell builtin, \bvmstate\b lists the "
     "calling process \bvmalloc\b(3) state for all regions.]"
@@ -163,8 +164,8 @@ b_vmstate(int argc, char** argv, Shbltin_t* context)
 			state.format = opt_info.arg;
 			continue;
 		case '?':
-			error(ERROR_USAGE|4, "%s", opt_info.arg);
-			break;
+			error(ERROR_usage(2), "%s", opt_info.arg);
+			UNREACHABLE();
 		case ':':
 			error(2, "%s", opt_info.arg);
 			break;
@@ -173,7 +174,10 @@ b_vmstate(int argc, char** argv, Shbltin_t* context)
 	}
 	argv += opt_info.index;
 	if (error_info.errors || *argv)
-		error(ERROR_USAGE|4, "%s", optusage(NiL));
+	{
+		error(ERROR_usage(2), "%s", optusage(NiL));
+		UNREACHABLE();
+	}
 	if (!state.format)
 		state.format = FORMAT;
 

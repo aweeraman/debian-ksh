@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -211,8 +212,8 @@ S2F_function(str, end) char* str; char** end;
 	int			decimal = 0;
 	int			thousand = 0;
 	int			part = 0;
-	int			back_part;
-	S2F_batch		back_n;
+	int			back_part = 0;
+	S2F_batch		back_n = 0;
 	S2F_number		v;
 	S2F_number		p;
 	S2F_part_t		parts[16];
@@ -414,7 +415,7 @@ S2F_function(str, end) char* str; char** end;
 			m = 0;
 			fraction = digits;
 		}
-		else if (c != thousand)
+		else if (c != thousand || (c == thousand && decimal == -1))
 			break;
 		else if (!(m = digits))
 		{

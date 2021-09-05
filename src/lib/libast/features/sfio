@@ -4,6 +4,8 @@ sys	filio,ioctl
 lib	qfrexp,qldexp
 key	signed
 
+typ	struct.sf_hdtr sys/socket.h
+
 tst	- note{ number of bits in pointer }end output{
 	#include <stdio.h>
 	int
@@ -12,6 +14,8 @@ tst	- note{ number of bits in pointer }end output{
 		printf("#define _ptr_bits	%d\n", sizeof(char*) * 8);
 		return 0;
 	}
+}end fail{
+	echo '#error The output block in src/lib/libast/features/sfio failed to compile. Rebuild with IFFEFLAGS=-d1 to debug.'
 }end
 
 tst	tmp_rmfail note{ open files cannot be removed }end execute{

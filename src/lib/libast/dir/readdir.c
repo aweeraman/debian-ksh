@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -55,7 +56,7 @@ readdir(register DIR* dirp)
 		dirp->dd_loc += dp->d_reclen;
 		if (dp->d_fileno) return(dp);
 	}
-	/*NOTREACHED*/
+	UNREACHABLE();
 }
 
 #endif

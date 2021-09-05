@@ -2,6 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
+#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -17,28 +18,38 @@
 #                  David Korn <dgk@research.att.com>                   #
 #                                                                      #
 ########################################################################
-function err_exit
-{
-	print -u2 -n "\t"
-	print -u2 -r ${Command}[$1]: "${@:2}"
-	let Errors+=1
-}
-alias err_exit='err_exit $LINENO'
 
-integer Errors=0
-Command=${0##*/}
+. "${SHTESTS_COMMON:-${0%/*}/_common}"
+
 compiled=''
 read -n4 c < $0 2> /dev/null
 [[ $c == *$'\ck'* ]] && compiled=1
 
 ulimit -c 0
 
-tmp=$(mktemp -dt) || { err_exit mktemp -dt failed; exit 1; }
-trap "cd /; rm -rf $tmp" EXIT
+bin_echo=$(whence -p echo)
+bin_sleep=$(whence -p sleep)
+bin_kill=$(whence -p kill)
 
+# ======
+# In ksh93v- and ksh2020 eval'ing a function definition may dump the function body to stdout.
+# https://github.com/att/ast/issues/1160
+got="$($SHELL -c '
+	for ((i=0; i<1025; i++))
+	do	str="${str}12345678"
+	done
+	eval "foo() { $str; }"
+
+	baz() { eval "bar() { FAILURE; }"; }
+	( baz >&3 ) 3>&1
+')"
+[[ -n "$got" ]] && err_exit "eval'ing function dumps function body to stdout" \
+	"(got $(printf %q "$got"))"
+
+# ======
+# Check for global variables and $0
 integer foo=33
 bar=bye
-# check for global variables and $0
 function foobar
 {
 	case $1 in
@@ -135,7 +146,7 @@ fi
 if	[[ $PWD != "$dir" ]]
 then	err_exit 'cd inside nested subshell changes $PWD'
 fi
-fun() /bin/echo hello
+fun() "$bin_echo" hello
 if	[[ $(fun) != hello ]]
 then	err_exit one line functions not working
 fi
@@ -341,7 +352,7 @@ then	err_exit "export inside function not working -- expected 'fun', got '$val'"
 fi
 val=$(export | sed -e '/^zzz=/!d' -e 's/^zzz=//')
 if	[[ $val ]]
-then	err_exit "unset varaible exported after function call -- expected '', got '$val'"
+then	err_exit "unset variable exported after function call -- expected '', got '$val'"
 fi
 
 unset zzz
@@ -974,10 +985,17 @@ function _Dbg_debug_trap_handler
 	done
 }
 
+(
+: 'Disabling xtrace while running _Dbg_* functions'
+set +x	# TODO: the _Dbg_* functions are incompatible with xtrace. To expose the regression
+	# test failures, run 'bin/shtests -x -p functions'. Is this a bug in ksh?
 ((baseline=LINENO+2))
 trap '_Dbg_debug_trap_handler' DEBUG
 .  $tmp/debug foo bar
 trap '' DEBUG
+exit $Errors
+)
+Errors=$?
 
 caller() {
   integer .level=.sh.level .max=.sh.level-1
@@ -990,7 +1008,7 @@ caller() {
 bar() { caller;}
 set -- $(bar)
 [[ $1 == $2 ]] && err_exit ".sh.inline optimization bug"
-( $SHELL  -c ' function foo { typeset x=$1;print $1;};z=();z=($(foo bar)) ') 2> /dev/null ||  err_exit 'using a function to set an array in a command sub  fails'
+( $SHELL  -c ' function foo { typeset x=$1;print $1;};z=();z=($(foo bar)) ') 2> /dev/null ||  err_exit 'using a function to set an array in a command sub fails'
 
 {
 got=$(
@@ -1111,13 +1129,20 @@ function foo
 bar=bam
 foo
 
-sleep=$(whence -p sleep)
 function gosleep
 {
-	$sleep 4
+	"$bin_sleep" 1
 }
 x=$(
-	(sleep 2; pid=; ps | grep sleep | read pid extra; [[ $pid ]] && kill -- $pid) &
+	ulimit -t unlimited 2>/dev/null 	# fork this subshell
+	mysubpid=${.sh.pid}			# this subshell's new PID (new 93u+m feature)
+	(
+		sleep .25
+		# kill 'gosleep' by getting the PIDs that have $mysubpid as their parent PID
+		# (which includes this background process itself, but that's fine as we're invoking external 'kill')
+		pids=$(UNIX95=1 ps -o ppid= -o pid= 2>/dev/null | awk -v p=$mysubpid '$1==p { print $2 }')
+		[[ -n $pids ]] && "$bin_kill" $pids
+	) &
 	gosleep 2> /dev/null
 	print ok
 )
@@ -1145,7 +1170,7 @@ func2
 	}
 	foo
 EOF
-} 2> /dev/null || err_exit  'problem with unset -f  foo within function foo'
+} 2> /dev/null || err_exit  "problem with 'unset -f foo' within function foo"
 
 val=$($SHELL 2> /dev/null <<- \EOF
 	.sh.fun.set() { set -x; }
@@ -1207,4 +1232,112 @@ rc=$?
 exp=$((256+$(kill -l TERM) ))
 [[  $rc == "$exp" ]] || err_exit "expected exitval $exp got $rc"
 
+# ======
+# Verify that directories in the path search list which should be skipped
+# (e.g. because they don't exist) interact correctly with autoloaded functions.
+# See https://github.com/att/ast/issues/1454
+expect="Func cd called with |$tmp/usr|
+$tmp/usr"
+actual=$(
+	set -- wrong args passed
+	mkdir -p "$tmp/usr/bin"
+	print 'echo "wrong file executed ($*)"' >"$tmp/usr/bin/cd"
+	prefix=$tmp/ksh.$$
+
+	FPATH=$prefix/bad:$prefix/functions
+	mkdir -p "$prefix/functions"
+	print 'function cd { echo "Func cd called with |$*|"; command cd "$@"; }' >"$prefix/functions/cd"
+	typeset -fu cd
+
+	PATH=$tmp/arglebargle:$PATH:$tmp/usr/bin:$tmp/bin
+	cd "$tmp/usr"
+	pwd
+)
+actual_status=$?
+expect_status=0
+[[ $actual_status == "$expect_status" ]] ||
+    err_exit "autoload function skipped dir test wrong status (expected $expect_status, got $actual_status)"
+[[ $actual == "$expect" ]] ||
+    err_exit "autoload function skipped dir test wrong output (expected $(printf %q "$expect"), got $(printf %q "$actual"))"
+
+# ======
+# When a function unsets itself, it should not fail to be unset
+$SHELL -c 'PATH=/dev/null; fn() { unset -f fn; true; }; fn' || err_exit 'unset of POSIX function in the calling stack fails'
+$SHELL -c 'PATH=/dev/null; function ftest { ftest2; }; function ftest2 { unset -f ftest; }; ftest' || err_exit 'unset of ksh function in the calling stack fails'
+$SHELL -c 'PATH=/dev/null; fn() { unset -f fn; true; }; fn; fn' 2> /dev/null
+[[ $? != 127 ]] && err_exit 'unset of POSIX function fails when it is still running'
+$SHELL -c 'PATH=/dev/null; function fn { unset -f fn; true; }; fn; fn' 2> /dev/null
+[[ $? != 127 ]] && err_exit 'unset of ksh function fails when it is still running'
+
+# ======
+# Check if environment variables passed while invoking a function are exported
+# https://github.com/att/ast/issues/32
+unset foo
+function f2 { env | grep -q "^foo" || err_exit "Environment variable is not propagated from caller function"; }
+function f1 { f2; env | grep -q "^foo" || err_exit "Environment variable is not passed to a function"; }
+foo=bar f1
+
+# ======
+# Over-shifting in a POSIX function should terminate the script
+$SHELL <<- \EOF
+	fun() {
+		shift 10
+	}
+	for i in a b
+	do
+		fun 2> /dev/null
+		[[ $i == b ]] && exit 2
+	done
+EOF
+[[ $? == 2 ]] && err_exit 'Over-shifting in a POSIX function does not terminate the script if the function call has a redirection'
+
+# ======
+# https://bugzilla.redhat.com/1116508
+expect=$'13/37/1/1'
+actual=$(
+	foo() {
+		print foo | read
+		return 13
+	}
+	out=$(foo)
+	print -n $?/
+	foo() {
+		print foo | read
+		ls /dev/null
+		return 37
+	}
+	out=$(foo)
+	print -n $?/
+	foo() {
+		print foo | ! read
+	}
+	out=$(foo)
+	print -n $?/
+	foo() {
+		! true
+	}
+	out=$(foo)
+	print -n $?
+)
+[[ $actual == "$expect" ]] || err_exit "wrong exit status from function invoked by command substitution" \
+	"(expected $(printf %q "$expect"), got $(printf %q "$actual"))"
+
+# ======
+# https://bugzilla.redhat.com/1117404
+
+cat >$tmp/crash_rhbz1117404.ksh <<-'EOF'
+	trap "" HUP			# trigger part 1: signal ignored in main shell
+	function ksh_fun
+	{
+		trap ": foo" HUP	# trigger part 2: any local trap (empty or not) on same signal in ksh function
+	}
+	for((i=0; i<2500; i++))
+	do	ksh_fun
+	done
+EOF
+got=$( { "$SHELL" "$tmp/crash_rhbz1117404.ksh"; } 2>&1)
+((!(e = $?))) || err_exit 'crash while handling function-local trap' \
+	"(got status $e$( ((e>128)) && print -n / && kill -l "$e"), $(printf %q "$got"))"
+
+# ======
 exit $((Errors<125?Errors:125))

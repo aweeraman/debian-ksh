@@ -40,7 +40,7 @@
  * ASSERT NOTE:
  * Some sanity checking code is included using assert().  On my FreeBSD
  * system, this additional code can be removed by compiling with NDEBUG
- * defined.  Check your own systems manpage on assert() to see how to
+ * defined.  Check your own system's man page on assert() to see how to
  * compile WITHOUT the sanity checking code on your system.
  *
  * UNROLLED TRANSFORM LOOP NOTE:
@@ -88,7 +88,7 @@ typedef uint64_t sha2_word64;	/* Exactly 8 bytes */
  * Please make sure that your system defines BYTE_ORDER.  If your
  * architecture is little-endian, make sure it also defines
  * LITTLE_ENDIAN and that the two (BYTE_ORDER and LITTLE_ENDIAN) are
- * equivilent.
+ * equivalent.
  *
  * If your system does not define the above, then you can do so by
  * hand like this:
@@ -116,9 +116,9 @@ typedef uint64_t sha2_word64;	/* Exactly 8 bytes */
 
 /*
  * Define the following sha2_* types to types of the correct length on
- * the native archtecture.   Most BSD systems and Linux define u_intXX_t
+ * the native architecture.   Most BSD systems and Linux define u_intXX_t
  * types.  Machines with very recent ANSI C headers, can use the
- * uintXX_t definintions from inttypes.h by defining SHA2_USE_INTTYPES_H
+ * uintXX_t definitions from inttypes.h by defining SHA2_USE_INTTYPES_H
  * during compile or in the sha.h header file.
  *
  * Machines that support neither u_intXX_t nor inttypes.h's uintXX_t

@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -32,7 +33,7 @@
 
 static const char usage[] =
 "[-?\n@(#)$Id: cat (AT&T Research) 2012-05-31 $\n]"
-USAGE_LICENSE
+"[--catalog?" ERROR_CATALOG "]"
 "[+NAME?cat - concatenate files]"
 "[+DESCRIPTION?\bcat\b copies each \afile\a in sequence to the standard"
 "	output. If no \afile\a is given, or if the \afile\a is \b-\b,"
@@ -57,7 +58,7 @@ USAGE_LICENSE
     "converted back to the native encoding. Multibyte characters in the "
     "current locale are treated as printable characters.]"
 "[A:show-all?Equivalent to \b-vET\b.]"
-"[B:squeeze-blank?Multiple adjacent new-line characters are replace by one"
+"[B:squeeze-blank?Multiple adjacent new-line characters are replaced by one"
 "	new-line.]"
 "[D:dos-output?Output files are opened in \atext\amode which inserts carriage"
 "	returns in front of new-lines on some systems.]"
@@ -463,7 +464,7 @@ b_cat(int argc, char** argv, Shbltin_t* context)
 			break;
 		case '?':
 			error(ERROR_usage(2), "%s", opt_info.arg);
-			break;
+			UNREACHABLE();
 		}
 		if (!n)
 			break;
@@ -474,7 +475,10 @@ b_cat(int argc, char** argv, Shbltin_t* context)
 	}
 	argv += opt_info.index;
 	if (error_info.errors)
+	{
 		error(ERROR_usage(2), "%s", optusage(NiL));
+		UNREACHABLE();
+	}
 	memset(states, 0, sizeof(states));
 	if (flags&V_FLAG)
 	{

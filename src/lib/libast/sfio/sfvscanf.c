@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -57,7 +58,7 @@ int*	peek;
 }
 
 /* buffer used during scanning of a double value or a multi-byte
-   character. the fields mirror certain local variables in sfvscanf.  */
+   character. the fields mirror certain local variables in sfvscanf. */
 typedef struct _scan_s
 {	int	error;	/* get set by _sfdscan if no value specified	*/
 	int	inp;	/* last input character read			*/
@@ -247,7 +248,7 @@ Void_t*		mbs;	/* multibyte parsing state	*/
 	/* shift left data so that there will be more room to back up on error.
 	   this won't help streams with small buffers - c'est la vie! */
 	if(sc->d > sc->f->data && (n = sc->endd - sc->d) > 0 && n < SFMBMAX)
-	{	memcpy(sc->f->data, sc->d, n);
+	{	memmove(sc->f->data, sc->d, n);
 		if(sc->f->endr == sc->f->endb)
 			sc->f->endr = sc->f->data+n;
 		if(sc->f->endw == sc->f->endb)
@@ -686,7 +687,7 @@ loop_fmt:
 
 			if(v < 0)
 				goto pop_fmt;
-			else if(v > 0) /* extf comsumed v input bytes */
+			else if(v > 0) /* extf consumed v input bytes */
 			{	n_input += v;
 				if(!(ft->flags&SFFMT_SKIP) )
 					n_assign += 1;

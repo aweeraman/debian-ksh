@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -73,15 +74,49 @@
 #include <ls.h>
 #include <tv.h>
 #include <tm.h>
+#include <error.h>
 
 #define ATTEMPT		10
 
 #define TMP_ENV		"TMPDIR"
 #define TMP_PATH_ENV	"TMPPATH"
 #define TMP1		"/tmp"
-#define TMP2		"/usr/tmp"
+#define TMP2		"/var/tmp"
 
-#define VALID(d)	(*(d)&&!eaccess(d,W_OK|X_OK))
+static inline int xaccess(const char *path, int mode)
+{
+	static size_t pgsz;
+	struct statvfs vfs;
+	int ret;
+
+	if (!pgsz)
+		pgsz = strtoul(astconf("PAGESIZE",NiL,NiL),NiL,0);
+
+	if (!path || !*path)
+	{
+		errno = EFAULT;
+		goto err;
+	}
+
+	do
+		ret = statvfs(path, &vfs);
+	while (ret < 0 && errno == EINTR);
+
+	if (ret < 0)
+		goto err;
+
+	if (vfs.f_frsize*vfs.f_bavail < pgsz)
+	{
+		errno = ENOSPC;
+		goto err;
+	}
+
+	return eaccess(path, mode);
+err:
+	return -1;
+}
+
+#define VALID(d)	(*(d)&&!xaccess(d,W_OK|X_OK))
 
 static struct
 {
@@ -182,7 +217,7 @@ pathtemp(char* buf, size_t len, const char* dir, const char* pfx, int* fdp)
 		tv.tv_nsec = 0;
 	else
 		tvgettime(&tv);
-	if (!(d = (char*)dir) || *d && eaccess(d, W_OK|X_OK))
+	if (!(d = (char*)dir) || (*d && xaccess(d, W_OK|X_OK)))
 	{
 		if (!tmp.vec)
 		{
@@ -227,7 +262,7 @@ pathtemp(char* buf, size_t len, const char* dir, const char* pfx, int* fdp)
 			tmp.dir = tmp.vec;
 			d = *tmp.dir++;
 		}
-		if (!d && (!*(d = astconf("TMP", NiL, NiL)) || eaccess(d, W_OK|X_OK)) && eaccess(d = TMP1, W_OK|X_OK) && eaccess(d = TMP2, W_OK|X_OK))
+		if (!d && (!*(d = astconf("TMP", NiL, NiL)) || xaccess(d, W_OK|X_OK)) && xaccess(d = TMP1, W_OK|X_OK) && xaccess(d = TMP2, W_OK|X_OK))
 			return 0;
 	}
 	if (!len)

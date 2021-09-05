@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -47,12 +48,12 @@
 #ifdef S_ISSOCK
 #   if _pipe_socketpair
 #       if _socketpair_shutdown_mode
-#           define isapipe(f,p) (test_stat(f,p)>=0&&S_ISFIFO((p)->st_mode)||S_ISSOCK((p)->st_mode)&&(p)->st_ino&&((p)->st_mode&(S_IRUSR|S_IWUSR))!=(S_IRUSR|S_IWUSR))
+#           define isapipe(f,p) (test_stat(f,p)>=0&&(S_ISFIFO((p)->st_mode)||(S_ISSOCK((p)->st_mode)&&(p)->st_ino&&((p)->st_mode&(S_IRUSR|S_IWUSR))!=(S_IRUSR|S_IWUSR))))
 #       else
-#           define isapipe(f,p) (test_stat(f,p)>=0&&S_ISFIFO((p)->st_mode)||S_ISSOCK((p)->st_mode)&&(p)->st_ino)
+#           define isapipe(f,p) (test_stat(f,p)>=0&&(S_ISFIFO((p)->st_mode)||S_ISSOCK((p)->st_mode)&&(p)->st_ino))
 #       endif
 #   else
-#       define isapipe(f,p) (test_stat(f,p)>=0&&S_ISFIFO((p)->st_mode)||S_ISSOCK((p)->st_mode)&&(p)->st_ino)
+#       define isapipe(f,p) (test_stat(f,p)>=0&&(S_ISFIFO((p)->st_mode)||S_ISSOCK((p)->st_mode)&&(p)->st_ino))
 #   endif
 #   define isasock(f,p) (test_stat(f,p)>=0&&S_ISSOCK((p)->st_mode))
 #else
@@ -81,6 +82,24 @@ struct test
 static char *nxtarg(struct test*,int);
 static int expr(struct test*,int);
 static int e3(struct test*);
+
+/*
+ * POSIX requires error status > 1 for test builtin.
+ * Since ksh 'test' can parse arithmetic expressions, the #define
+ * override is also needed in sh/arith.c and sh/streval.c
+ */
+int _ERROR_exit_b_test(int exitval)
+{
+	if(sh_isstate(SH_INTESTCMD))
+	{
+		sh_offstate(SH_INTESTCMD);
+		if(exitval < 2)
+			exitval = 2;
+	}
+	return(ERROR_exit(exitval));
+}
+#undef ERROR_exit
+#define ERROR_exit(n) _ERROR_exit_b_test(n)
 
 static int test_strmatch(Shell_t *shp,const char *str, const char *pat)
 {
@@ -113,6 +132,9 @@ int b_test(int argc, char *argv[],Shbltin_t *context)
 	struct test tdata;
 	register char *cp = argv[0];
 	register int not;
+	int exitval;
+
+	sh_onstate(SH_INTESTCMD);
 	tdata.sh = context->shp;
 	tdata.av = argv;
 	tdata.ap = 1;
@@ -120,15 +142,21 @@ int b_test(int argc, char *argv[],Shbltin_t *context)
 	{
 		cp = argv[--argc];
 		if(!c_eq(cp, ']'))
+		{
 			errormsg(SH_DICT,ERROR_exit(2),e_missing,"']'");
+			UNREACHABLE();
+		}
 	}
 	if(argc <= 1)
-		return(1);
+	{
+		exitval = 1;
+		goto done;
+	}
 	cp = argv[1];
 	if(c_eq(cp,'(') && argc<=6 && c_eq(argv[argc-1],')'))
 	{
-		/* special case  ( binop ) to conform with standard */
-		if(!(argc==4  && (not=sh_lookup(cp=argv[2],shtab_testops))))
+		/* special case ( binop ) to conform with standard */
+		if(!(argc==4 && (not=sh_lookup(cp=argv[2],shtab_testops))))
 		{
 			cp =  (++argv)[1];
 			argc -= 2;
@@ -142,7 +170,7 @@ int b_test(int argc, char *argv[],Shbltin_t *context)
 			if(!not)
 				break;
 			argv++;
-			/* fall through */
+			/* FALLTHROUGH */
 		case 4:
 		{
 			register int op = sh_lookup(cp=argv[2],shtab_testops);
@@ -153,20 +181,39 @@ int b_test(int argc, char *argv[],Shbltin_t *context)
 				if(argc==5)
 					break;
 				if(not && cp[0]=='-' && cp[2]==0)
-					return(test_unop(tdata.sh,cp[1],argv[3])!=0);
+				{
+					exitval = (test_unop(tdata.sh,cp[1],argv[3])!=0);
+					goto done;
+				}
 				else if(argv[1][0]=='-' && argv[1][2]==0)
-					return(!test_unop(tdata.sh,argv[1][1],cp));
+				{
+					exitval = (!test_unop(tdata.sh,argv[1][1],cp));
+					goto done;
+				}
 				else if(not && c_eq(argv[2],'!'))
-					return(*argv[3]==0);
+				{
+					exitval = (*argv[3]==0);
+					goto done;
+				}
 				errormsg(SH_DICT,ERROR_exit(2),e_badop,cp);
+				UNREACHABLE();
 			}
-			return(test_binop(tdata.sh,op,argv[1],argv[3])^(argc!=5));
+			exitval = (test_binop(tdata.sh,op,argv[1],argv[3])^(argc!=5));
+			goto done;
 		}
 		case 3:
 			if(not)
-				return(*argv[2]!=0);
-			if(cp[0] != '-' || cp[2] || cp[1]=='?')
 			{
+				exitval = (*argv[2]!=0);
+				goto done;
+			}
+			if(cp[0] != '-' || cp[2] || cp[1]=='?')
+			{	/*
+				 * The following ugly hack supports 'test --man --' and '[ --man -- ]' and related
+				 * getopts documentation options (which all overload the error message mechanism).
+				 * This is the only way to make the 'test' command self-documenting; supporting the
+				 * getopts doc options without the extra '--' argument would break the test/[ syntax.
+				 */
 				if(cp[0]=='-' && (cp[1]=='-' || cp[1]=='?') &&
 					strcmp(argv[2],"--")==0)
 				{
@@ -176,16 +223,21 @@ int b_test(int argc, char *argv[],Shbltin_t *context)
 					av[2] = 0;
 					optget(av,sh_opttest);
 					errormsg(SH_DICT,ERROR_usage(2), "%s",opt_info.arg);
-					return(2);
+					UNREACHABLE();
 				}
 				break;
 			}
-			return(!test_unop(tdata.sh,cp[1],argv[2]));
+			exitval = (!test_unop(tdata.sh,cp[1],argv[2]));
+			goto done;
 		case 2:
-			return(*cp==0);
+			exitval = (*cp==0);
+			goto done;
 	}
 	tdata.ac = argc;
-	return(!expr(&tdata,0));
+	exitval = (!expr(&tdata,0));
+done:
+	sh_offstate(SH_INTESTCMD);
+	return(exitval);
 }
 
 /*
@@ -229,6 +281,7 @@ static int expr(struct test *tp,register int flag)
 		if(flag==0)
 			break;
 		errormsg(SH_DICT,ERROR_exit(2),e_badsyntax);
+		UNREACHABLE();
 	}
 	return(r);
 }
@@ -243,6 +296,7 @@ static char *nxtarg(struct test *tp,int mt)
 			return(0);
 		}
 		errormsg(SH_DICT,ERROR_exit(2),e_argument);
+		UNREACHABLE();
 	}
 	return(tp->av[tp->ap++]);
 }
@@ -261,14 +315,21 @@ static int e3(struct test *tp)
 		op = expr(tp,1);
 		cp = nxtarg(tp,0);
 		if(!cp || !c_eq(cp, ')'))
+		{
 			errormsg(SH_DICT,ERROR_exit(2),e_missing,"')'");
+			UNREACHABLE();
+		}
 		return(op);
 	}
 	cp = nxtarg(tp,1);
 	if(cp!=0 && (c_eq(cp,'=') || c2_eq(cp,'!','=')))
 		goto skip;
-	if(c2_eq(arg,'-','t'))
-	{
+	if(!sh_isoption(SH_POSIX) && c2_eq(arg,'-','t'))
+	{	/*
+		 * Ancient compatibility hack supporting test -t with no arguments == test -t 1.
+		 * This is only reached when doing a compound expression like: test 1 -eq 1 -a -t
+		 * (for simple 'test -t' this is handled in the parser, see qscan() in sh/parse.c).
+		 */
 		if(cp)
 		{
 			op = strtol(cp,&binop, 10);
@@ -276,7 +337,6 @@ static int e3(struct test *tp)
 		}
 		else
 		{
-		/* test -t with no arguments */
 			tp->ap--;
 			return(tty_check(1));
 		}
@@ -290,6 +350,7 @@ static int e3(struct test *tp)
 			if(op==0 || !strchr(test_opchars+10,op))
 				return(1);
 			errormsg(SH_DICT,ERROR_exit(2),e_argument);
+			UNREACHABLE();
 		}
 		if(strchr(test_opchars,op))
 			return(test_unop(tp->sh,op,cp));
@@ -304,7 +365,10 @@ skip:
 	if(!(op&TEST_BINOP))
 		cp = nxtarg(tp,0);
 	if(!op)
+	{
 		errormsg(SH_DICT,ERROR_exit(2),e_badop,binop);
+		UNREACHABLE();
+	}
 	if(op==TEST_AND || op==TEST_OR)
 		tp->ap--;
 	return(test_binop(tp->sh,op,arg,cp));
@@ -322,23 +386,6 @@ int test_unop(Shell_t *shp,register int op,register const char *arg)
 		return(permission(arg, W_OK));
 	    case 'x':
 		return(permission(arg, X_OK));
-	    case 'V':
-#if SHOPT_FS_3D
-	    {
-		register int offset = staktell();
-		if(stat(arg,&statb)<0 || !S_ISREG(statb.st_mode))
-			return(0);
-		/* add trailing / */
-		stakputs(arg);
-		stakputc('/');
-		stakputc(0);
-		arg = (const char*)stakptr(offset);
-		stakseek(offset);
-		/* FALL THRU */
-	    }
-#else
-		return(0);
-#endif /* SHOPT_FS_3D */
 	    case 'd':
 		return(test_stat(arg,&statb)>=0 && S_ISDIR(statb.st_mode));
 	    case 'c':
@@ -401,6 +448,7 @@ int test_unop(Shell_t *shp,register int op,register const char *arg)
 		return(*arg == 0);
 	    case 's':
 		sfsync(sfstdout);
+		/* FALLTHROUGH */
 	    case 'O':
 	    case 'G':
 		if(*arg==0 || test_stat(arg,&statb)<0)
@@ -448,22 +496,23 @@ int test_unop(Shell_t *shp,register int op,register const char *arg)
 		}
 		if(ap = nv_arrayptr(np))
 			return(nv_arrayisset(np,ap));
-		return(!nv_isnull(np) || nv_isattr(np,NV_INTEGER));
+		if(*arg=='I' && strcmp(arg,"IFS")==0)
+			return(nv_getval(np)!=NULL);  /* avoid BUG_IFSISSET */
+		return(!nv_isnull(np));
 	    }
 	    default:
 	    {
 		static char a[3] = "-?";
 		a[1]= op;
 		errormsg(SH_DICT,ERROR_exit(2),e_badop,a);
-		/* NOTREACHED  */
-		return(0);
+		UNREACHABLE();
 	    }
 	}
 }
 
 int test_binop(Shell_t *shp,register int op,const char *left,const char *right)
 {
-	register double lnum,rnum;
+	register double lnum = 0, rnum = 0;
 	if(op&TEST_ARITH)
 	{
 		while(*left=='0')
@@ -475,7 +524,6 @@ int test_binop(Shell_t *shp,register int op,const char *left,const char *right)
 	}
 	switch(op)
 	{
-		/* op must be one of the following values */
 		case TEST_AND:
 		case TEST_OR:
 			return(*left!=0);
@@ -509,9 +557,16 @@ int test_binop(Shell_t *shp,register int op,const char *left,const char *right)
 			return(lnum>=rnum);
 		case TEST_LE:
 			return(lnum<=rnum);
+		default:
+		{
+			/* fallback for operators not supported by the test builtin */
+			int i=0;
+			while(shtab_testops[i].sh_number && shtab_testops[i].sh_number != op)
+				i++;
+			errormsg(SH_DICT, ERROR_exit(2), op==TEST_END ? e_badop : e_unsupported_op, shtab_testops[i].sh_name);
+		}
 	}
-	/* NOTREACHED */
-	return(0);
+	UNREACHABLE();
 }
 
 /*

@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -28,6 +29,7 @@
  *		cbosgd!pds
 -*/
 
+#if SHOPT_VSH
 
 #if KSHELL
 #   include	"defs.h"
@@ -66,12 +68,10 @@
 #	define iswprint(c)	((c&~0177) || isprint(c))
 #   endif
     static int _isalph(int);
-    static int _ismetach(int);
     static int _isblank(int);
 #   undef  isblank
 #   define isblank(v)	_isblank(virtual[v])
 #   define isalph(v)	_isalph(virtual[v])
-#   define ismetach(v)	_ismetach(virtual[v])
 #else
     static genchar	_c;
 #   define gencpy(a,b)	strcpy((char*)(a),(char*)(b))
@@ -80,7 +80,6 @@
 #   define isalph(v)	((_c=virtual[v])=='_'||isalnum(_c))
 #   undef  isblank
 #   define isblank(v)	isspace(virtual[v])
-#   define ismetach(v)	ismeta(virtual[v])
 #   define digit(c)	isdigit(c)
 #   define is_print(c)	isprint(c)
 #endif	/* SHOPT_MULTIBYTE */
@@ -103,7 +102,6 @@ typedef struct _vi_
 	char last_find;		/* last find command */
 	char last_cmd;		/* last command */
 	char repeat_set;
-	char nonewline;
 	int findchar;		/* last find char */
 	genchar *lastline;
 	int first_wind;		/* first column of window */
@@ -234,8 +232,8 @@ int ed_viread(void *context, int fd, register char *shbuf, int nchar, int reedit
 #endif /* SHOPT_RAWONLY */
 	if(!vp)
 	{
-		ed->e_vi = vp =  newof(0,Vi_t,1,0);
-		vp->lastline = (genchar*)malloc(MAXLINE*CHARSIZE);
+		ed->e_vi = vp = sh_newof(0,Vi_t,1,0);
+		vp->lastline = (genchar*)sh_malloc(MAXLINE*CHARSIZE);
 		vp->direction = -1;
 		vp->ed = ed;
 	}
@@ -252,7 +250,7 @@ int ed_viread(void *context, int fd, register char *shbuf, int nchar, int reedit
 		/*** Change the eol characters to '\r' and eof  ***/
 		/* in addition to '\n' and make eof an ESC	*/
 		if(tty_alt(ERRIO) < 0)
-			return(reexit?reedit:ed_read(context, fd, shbuf, nchar,0));
+			return(reedit?reedit:ed_read(context, fd, shbuf, nchar,0));
 
 #ifdef FIORDCHK
 		ioctl(fd,FIORDCHK,&vp->typeahead);
@@ -292,7 +290,7 @@ int ed_viread(void *context, int fd, register char *shbuf, int nchar, int reedit
 	    {
 		register int c = shbuf[0];
 
-		/*** Save and remove the last character if its an eol, ***/
+		/*** Save and remove the last character if it's an eol, ***/
 		/* changing '\r' to '\n' */
 
 		if( i == 0 )
@@ -300,7 +298,7 @@ int ed_viread(void *context, int fd, register char *shbuf, int nchar, int reedit
 			/*** ESC was typed as first char of line ***/
 			esc_or_hang = 1;
 			term_char = ESC;
-			shbuf[i--] = '\0';	/* null terminate line */
+			shbuf[i--] = '\0';	/* null-terminate line */
 		}
 		else if( i<0 || c==usreof )
 		{
@@ -324,12 +322,12 @@ int ed_viread(void *context, int fd, register char *shbuf, int nchar, int reedit
 #endif
 			if( term_char=='\n' || term_char==usreof )
 			{
-				/*** remove terminator & null terminate ***/
+				/*** remove terminator & null-terminate ***/
 				shbuf[i--] = '\0';
 			}
 			else
 			{
-				/** terminator was ESC, which is not xmitted **/
+				/** terminator was ESC, which is not emitted **/
 				term_char = ESC;
 				shbuf[i+1] = '\0';
 			}
@@ -384,7 +382,9 @@ int ed_viread(void *context, int fd, register char *shbuf, int nchar, int reedit
 	window[0] = '\0';
 
 	if(!yankbuf)
-		yankbuf = (genchar*)malloc(MAXLINE*CHARSIZE);
+		yankbuf = (genchar*)sh_malloc(MAXLINE*CHARSIZE);
+	if(!vp->lastline)
+		vp->lastline = (genchar*)sh_malloc(MAXLINE*CHARSIZE);
 	if( vp->last_cmd == '\0' )
 	{
 		/*** first time for this shell ***/
@@ -394,6 +394,8 @@ int ed_viread(void *context, int fd, register char *shbuf, int nchar, int reedit
 		vp->lastmotion = '\0';
 		vp->lastrepeat = 1;
 		vp->repeat = 1;
+		if(!yankbuf)
+			return(-1);
 		*yankbuf = 0;
 	}
 
@@ -500,7 +502,7 @@ int ed_viread(void *context, int fd, register char *shbuf, int nchar, int reedit
 		}
 
 		/*** Line terminated with escape, or escaped eol/eof, ***/
-		/*  so set raw mode */
+		/*** so set raw mode ***/
 
 		if( tty_raw(ERRIO,0) < 0 )
 		{
@@ -530,7 +532,7 @@ int ed_viread(void *context, int fd, register char *shbuf, int nchar, int reedit
 			/*** start over since there may be ***/
 			/*** a control char, or cursor might not ***/
 			/*** be at left margin (this lets us know ***/
-			/*** where we are ***/
+			/*** where we are) ***/
 			cur_phys = 0;
 			window[0] = '\0';
 			pr_string(vp,Prompt);
@@ -593,10 +595,8 @@ int ed_viread(void *context, int fd, register char *shbuf, int nchar, int reedit
 	/* to cause the shell to process the line */
 	tty_cooked(ERRIO);
 	if(ed->e_nlist)
-	{
 		ed->e_nlist = 0;
-		stakset(ed->e_stkptr,ed->e_stkoff);
-	}
+	stakset(ed->e_stkptr,ed->e_stkoff);
 	if( vp->addnl )
 	{
 		virtual[++last_virt] = '\n';
@@ -665,8 +665,7 @@ static void backword(Vi_t *vp,int nwords, register int cmd)
 	register int tcur_virt = cur_virt;
 	while( nwords-- && tcur_virt > first_virt )
 	{
-		if( !isblank(tcur_virt) && isblank(tcur_virt-1)
-			&& tcur_virt>first_virt )
+		if( !isblank(tcur_virt) && isblank(tcur_virt-1) )
 			--tcur_virt;
 		else if(cmd != 'B')
 		{
@@ -675,21 +674,20 @@ static void backword(Vi_t *vp,int nwords, register int cmd)
 			if((!cur && last) || (cur && !last))
 				--tcur_virt;
 		}
-		while( isblank(tcur_virt) && tcur_virt>=first_virt )
+		while( tcur_virt >= first_virt && isblank(tcur_virt) )
 			--tcur_virt;
 		if( cmd == 'B' )
 		{
-			while( !isblank(tcur_virt) && tcur_virt>=first_virt )
+			while( tcur_virt >= first_virt && !isblank(tcur_virt) )
 				--tcur_virt;
 		}
 		else
 		{
 			if(isalph(tcur_virt))
-				while( isalph(tcur_virt) && tcur_virt>=first_virt )
+				while( tcur_virt >= first_virt && isalph(tcur_virt) )
 					--tcur_virt;
 			else
-				while( !isalph(tcur_virt) && !isblank(tcur_virt)
-					&& tcur_virt>=first_virt )
+				while( tcur_virt >= first_virt && !isalph(tcur_virt) && !isblank(tcur_virt) )
 					--tcur_virt;
 		}
 		cur_virt = ++tcur_virt;
@@ -762,7 +760,8 @@ static int cntlmode(Vi_t *vp)
 		if(mvcursor(vp,c))
 		{
 			sync_cursor(vp);
-			vp->repeat = 1;
+			if( c != '[' )
+				vp->repeat = 1;
 			continue;
 		}
 
@@ -805,14 +804,8 @@ static int cntlmode(Vi_t *vp)
 		case cntl('L'):		/** Redraw line **/
 			/*** print the prompt and ***/
 			/* force a total refresh */
-			if(vp->nonewline==0 && !vp->ed->e_nocrnl)
-				putchar('\n');
-			vp->nonewline = 0;
-			pr_string(vp,Prompt);
-			window[0] = '\0';
-			cur_phys = vp->first_wind;
-			vp->ofirst_wind = INVALID;
-			vp->long_line = ' ';
+			putchar('\n');
+			vi_redraw((void*)vp);
 			break;
 
 		case cntl('V'):
@@ -844,6 +837,7 @@ static int cntlmode(Vi_t *vp)
 			case BAD:
 				/*** no match ***/
 					ed_ringbell();
+				/* FALLTHROUGH */
 
 			default:
 				if( vp->u_column == INVALID )
@@ -893,8 +887,7 @@ static int cntlmode(Vi_t *vp)
 				vp->ed->hoff--;
 			 hupdate:
 				ed_histlist(vp->ed,*vp->ed->hlist!=0);
-				vp->nonewline++;
-				ed_ungetchar(vp->ed,cntl('L'));
+				vi_redraw((void*)vp);
 				continue;
 			}
 #endif /* SHOPT_EDPREDICT */
@@ -937,11 +930,10 @@ static int cntlmode(Vi_t *vp)
 				ed_histlist(vp->ed,0);
 				if(c=='\n')
 					ed_ungetchar(vp->ed,c);
-				ed_ungetchar(vp->ed,cntl('L'));
-				vp->nonewline = 1;
 				cur_virt = 0;
+				vi_redraw((void*)vp);
 			}
-#endif /*SHOPT_EDPREDICT */
+#endif /* SHOPT_EDPREDICT */
 			break;
 
 
@@ -966,6 +958,7 @@ static int cntlmode(Vi_t *vp)
 			if(vp->repeat_set==0)
 				goto vcommand;
 #endif /* KSHELL */
+			/* FALLTHROUGH */
 
 		case 'G':		/** goto command repeat **/
 			if(vp->repeat_set==0)
@@ -999,7 +992,7 @@ static int cntlmode(Vi_t *vp)
 				c = (virtual[0]=='#');
 				while(p-- >= virtual)
 				{
-					if(*p=='\n' || p<virtual)
+					if(p<virtual || *p=='\n')
 					{
 						if(c) /* delete '#' */
 						{
@@ -1024,11 +1017,13 @@ static int cntlmode(Vi_t *vp)
 				}
 				refresh(vp,INPUT);
 			}
+			/* FALLTHROUGH */
 
 		case '\n':		/** send to shell **/
 #if SHOPT_EDPREDICT
 			if(!vp->ed->hlist)
-			return(ENTER);
+				return(ENTER);
+			/* FALLTHROUGH */
 		case '\t':		/** bring choice to edit **/
 			if(vp->ed->hlist)
 			{
@@ -1053,11 +1048,9 @@ static int cntlmode(Vi_t *vp)
 			{
 				ed_ungetchar(vp->ed,c=ed_getchar(vp->ed,1));
 				if(c=='[')
-				{
-					vp->repeat = 1;
 					continue;
-				}
 			}
+			/* FALLTHROUGH */
 		default:
 		ringbell:
 			ed_ringbell();
@@ -1068,7 +1061,6 @@ static int cntlmode(Vi_t *vp)
 		refresh(vp,CONTROL);
 		vp->repeat = 1;
 	}
-/* NOTREACHED */
 	return(0);
 }
 
@@ -1121,7 +1113,7 @@ static void cdelete(Vi_t *vp,register int nchars, int mode)
 
 		/*** save characters to be deleted ***/
 
-		if( mode != 'c' )
+		if( mode != 'c' && yankbuf )
 		{
 			i = cp[nchars];
 			cp[nchars] = 0;
@@ -1246,23 +1238,22 @@ static void endword(Vi_t *vp, int nwords, register int cmd)
 	register int tcur_virt = cur_virt;
 	while( nwords-- )
 	{
-		if( !isblank(tcur_virt) && tcur_virt<=last_virt )
+		if( tcur_virt <= last_virt && !isblank(tcur_virt) )
 			++tcur_virt;
-		while( isblank(tcur_virt) && tcur_virt<=last_virt )
+		while( tcur_virt <= last_virt && isblank(tcur_virt) )
 			++tcur_virt;	
 		if( cmd == 'E' )
 		{
-			while( !isblank(tcur_virt) && tcur_virt<=last_virt )
+			while( tcur_virt <= last_virt && !isblank(tcur_virt) )
 				++tcur_virt;
 		}
 		else
 		{
 			if( isalph(tcur_virt) )
-				while( isalph(tcur_virt) && tcur_virt<=last_virt )
+				while( tcur_virt <= last_virt && isalph(tcur_virt) )
 					++tcur_virt;
 			else
-				while( !isalph(tcur_virt) && !isblank(tcur_virt)
-					&& tcur_virt<=last_virt )
+				while( tcur_virt <= last_virt && !isalph(tcur_virt) && !isblank(tcur_virt) )
 					++tcur_virt;
 		}
 		if( tcur_virt > first_virt )
@@ -1285,24 +1276,23 @@ static void forward(Vi_t *vp,register int nwords, int cmd)
 	{
 		if( cmd == 'W' )
 		{
-			while( !isblank(tcur_virt) && tcur_virt < last_virt )
+			while( tcur_virt < last_virt && !isblank(tcur_virt) )
 				++tcur_virt;
 		}
 		else
 		{
 			if( isalph(tcur_virt) )
 			{
-				while( isalph(tcur_virt) && tcur_virt<last_virt )
+				while( tcur_virt < last_virt && isalph(tcur_virt) )
 					++tcur_virt;
 			}
 			else
 			{
-				while( !isalph(tcur_virt) && !isblank(tcur_virt)
-					&& tcur_virt < last_virt )
+				while( tcur_virt < last_virt && !isalph(tcur_virt) && !isblank(tcur_virt) )
 					++tcur_virt;
 			}
 		}
-		while( isblank(tcur_virt) && tcur_virt < last_virt )
+		while( tcur_virt < last_virt && isblank(tcur_virt) )
 			++tcur_virt;
 	}
 	cur_virt = tcur_virt;
@@ -1363,7 +1353,7 @@ static void getline(register Vi_t* vp,register int mode)
 {
 	register int c;
 	register int tmp;
-	int	max_virt=0, last_save=0;
+	int	max_virt=0, last_save=0, backslash=0;
 	genchar saveline[MAXLINE];
 	vp->addnl = 1;
 
@@ -1460,8 +1450,9 @@ static void getline(register Vi_t* vp,register int mode)
 				/*** treat as backspace ***/
 
 		case '\b':		/** backspace **/
-			if( virtual[cur_virt] == '\\' )
+			if( sh_isoption(SH_VI) && backslash && virtual[cur_virt] == '\\' )
 			{
+				backslash = 0;
 				cdelete(vp,1, BAD);
 				append(vp,usrerase, mode);
 			}
@@ -1505,8 +1496,9 @@ static void getline(register Vi_t* vp,register int mode)
 			break;
 
 		case UKILL:		/** user kill line char **/
-			if( virtual[cur_virt] == '\\' )
+			if( sh_isoption(SH_VI) && backslash && virtual[cur_virt] == '\\' )
 			{
+				backslash = 0;
 				cdelete(vp,1, BAD);
 				append(vp,usrkill, mode);
 			}
@@ -1532,6 +1524,7 @@ static void getline(register Vi_t* vp,register int mode)
 			if( cur_virt != INVALID )
 				continue;
 			vp->addnl = 0;
+			/* FALLTHROUGH */
 
 		case '\n':		/** newline or return **/
 			if( mode != SEARCH )
@@ -1541,7 +1534,11 @@ static void getline(register Vi_t* vp,register int mode)
 			return;
 
 		case '\t':		/** command completion **/
-			if(mode!=SEARCH && last_virt>=0 && (vp->ed->e_tabcount|| !isblank(cur_virt)) && vp->ed->sh->nextprompt)
+			if(sh_isoption(SH_VI) &&
+				mode != SEARCH &&
+				last_virt >= 0 &&
+				(vp->ed->e_tabcount || !isblank(cur_virt)) &&
+				vp->ed->sh->nextprompt)
 			{
 				if(virtual[cur_virt]=='\\')
 				{
@@ -1561,7 +1558,7 @@ static void getline(register Vi_t* vp,register int mode)
 				}
 				vp->ed->e_tabcount = 0;
 			}
-			/* FALL THRU*/
+			/* FALLTHROUGH */
 		default:
 			if( mode == REPLACE )
 			{
@@ -1576,6 +1573,7 @@ static void getline(register Vi_t* vp,register int mode)
 				mode = APPEND;
 				max_virt = last_virt+3;
 			}
+			backslash = (c == '\\' && !sh_isoption(SH_NOBACKSLCTRL));
 			append(vp,c, mode);
 			break;
 		}
@@ -1610,7 +1608,7 @@ static int mvcursor(register Vi_t* vp,register int motion)
 
 	case '^':		/** First nonblank character **/
 		tcur_virt = first_virt;
-		while( isblank(tcur_virt) && tcur_virt < last_virt )
+		while( tcur_virt < last_virt && isblank(tcur_virt) )
 			++tcur_virt;
 		break;
 
@@ -1618,16 +1616,17 @@ static int mvcursor(register Vi_t* vp,register int motion)
 		tcur_virt = vp->repeat-1;
 		if(tcur_virt <= last_virt)
 			break;
-		/* fall through */
+		/* FALLTHROUGH */
 
 	case '$':		/** End of line **/
 		tcur_virt = last_virt;
 		break;
 
 	case '[':
-		switch(motion=getcount(vp,ed_getchar(vp->ed,-1)))
+		switch(motion=ed_getchar(vp->ed,-1))
 		{
 		    case 'A':
+			/* VT220 up arrow */
 #if SHOPT_EDPREDICT
 			if(!vp->ed->hlist && cur_virt>=0  && cur_virt<(SEARCHSIZE-2) && cur_virt == last_virt)
 #else
@@ -1650,21 +1649,36 @@ static int mvcursor(register Vi_t* vp,register int motion)
 				ed_ungetchar(vp->ed,'k');
 			return(1);
 		    case 'B':
+			/* VT220 down arrow */
 			ed_ungetchar(vp->ed,'j');
 			return(1);
 		    case 'C':
-			motion = last_virt;
-			incr = 1;
-			goto walk;
+			/* VT220 right arrow */
+			ed_ungetchar(vp->ed,'l');
+			return(1);
 		    case 'D':
-			motion = first_virt;
-			goto walk;
+			/* VT220 left arrow */
+			ed_ungetchar(vp->ed,'h');
+			return(1);
 		    case 'H':
-			tcur_virt = 0;
-			break;
+			/* VT220 Home key */
+			ed_ungetchar(vp->ed,'0');
+			return(1);
+		    case 'F':
 		    case 'Y':
-			tcur_virt = last_virt;
-			break;
+			/* VT220 End key */
+			ed_ungetchar(vp->ed,'$');
+			return(1);
+		    case '3':
+			bound = ed_getchar(vp->ed,-1);
+			if(bound=='~')
+			{
+				/* VT220 forward-delete key */
+				ed_ungetchar(vp->ed,'x');
+				return(1);
+			}
+			ed_ungetchar(vp->ed,bound);
+			/* FALLTHROUGH */
 		    default:
 			ed_ungetchar(vp->ed,motion);
 			return(0);
@@ -1740,6 +1754,7 @@ static int mvcursor(register Vi_t* vp,register int motion)
 	case 'f':		/** find new char forward **/
 		bound = last_virt;
 		incr = 1;
+		/* FALLTHROUGH */
 
 	case 'T':		/** find up to new char backward **/
 	case 'F':		/** find new char backward **/
@@ -1837,6 +1852,26 @@ static void putstring(register Vi_t *vp,register int col, register int nchars)
 	while( nchars-- )
 		putchar(physical[col++]);
 	return;
+}
+
+/*{	VI_REDRAW( )
+ *
+ *	Print the prompt and force a total refresh.
+ *
+ * This is invoked from edit.c for redrawing the command line
+ * upon SIGWINCH. It is also used by the Ctrl+L routine.
+ *
+}*/
+
+void vi_redraw(void *ep)
+{
+	Vi_t	*vp = (Vi_t*)ep;
+	pr_string(vp,Prompt);
+	window[0] = '\0';
+	cur_phys = vp->first_wind;
+	vp->ofirst_wind = INVALID;
+	vp->long_line = ' ';
+	refresh(vp, *vp->ed->e_vi_insert ? INPUT : CONTROL);
 }
 
 /*{	REFRESH( mode )
@@ -2041,9 +2076,8 @@ static void refresh(register Vi_t* vp, int mode)
 		vp->long_line = vp->long_char;
 	}
 
-	if(vp->ed->e_multiline &&  vp->ofirst_wind==INVALID && !vp->ed->e_nocrnl)
+	if(vp->ed->e_multiline && vp->ofirst_wind==INVALID)
 		ed_setcursor(vp->ed, physical, last_phys+1, last_phys+1, -1);
-	vp->ed->e_nocrnl = 0;
 	vp->ocur_phys = ncur_phys;
 	vp->ocur_virt = cur_virt;
 	vp->ofirst_wind = first_w;
@@ -2054,6 +2088,7 @@ static void refresh(register Vi_t* vp, int mode)
 	cursor(vp,ncur_phys);
 	ed_flush(vp->ed);
 	return;
+#	undef	w
 }
 
 /*{	REPLACE( char, increment )
@@ -2153,6 +2188,8 @@ static void save_last(register Vi_t* vp)
 {
 	register int i;
 
+	if(vp->lastline == NULL)
+		return;
 	if( (i = cur_virt - first_virt + 1) > 0 )
 	{
 		/*** save last thing user typed ***/
@@ -2231,7 +2268,7 @@ static int search(register Vi_t* vp,register int mode)
 		first_virt = 1;
 		getline(vp,SEARCH);
 		first_virt = 0;
-		virtual[last_virt + 1] = '\0';	/*** make null terminated ***/
+		virtual[last_virt + 1] = '\0';	/*** make null-terminated ***/
 		vp->direction = mode=='/' ? -1 : 1;
 	}
 
@@ -2277,7 +2314,7 @@ static int search(register Vi_t* vp,register int mode)
 		location = hist_find(shgd->hist_ptr,((char*)virtual)+1, curhline, 1, new_direction);
 	}
 	cur_virt = i;
-	strncpy(lsearch, ((char*)virtual)+1, SEARCHSIZE);
+	strncpy(lsearch, ((char*)virtual)+1, SEARCHSIZE-1);
 	lsearch[SEARCHSIZE-1] = 0;
 	if( (curhline=location.hist_command) >=0 )
 	{
@@ -2391,6 +2428,7 @@ static int textmod(register Vi_t *vp,register int c, int mode)
 	register genchar *p = vp->lastline;
 	register int trepeat = vp->repeat;
 	genchar *savep;
+	int ch;
 
 	if(mode && (fold(vp->lastmotion)=='F' || fold(vp->lastmotion)=='T')) 
 		vp->lastmotion = ';';
@@ -2400,6 +2438,8 @@ static int textmod(register Vi_t *vp,register int c, int mode)
 		/*** change p from lastline to yankbuf ***/
 		p = yankbuf;
 	}
+	if(!p)
+		return(BAD);
 
 addin:
 	switch( c )
@@ -2411,17 +2451,22 @@ addin:
 		if(vp->ed->e_tabcount!=1)
 			return(BAD);
 		c = '=';
+		/* FALLTHROUGH */
 	case '*':		/** do file name expansion in place **/
 	case '\\':		/** do file name completion in place **/
 		if( cur_virt == INVALID )
 			return(BAD);
+		/* FALLTHROUGH */
 	case '=':		/** list file name expansions **/
 		save_v(vp);
 		i = last_virt;
 		++last_virt;
 		mode = cur_virt-1;
 		virtual[last_virt] = 0;
-		if(ed_expand(vp->ed,(char*)virtual, &cur_virt, &last_virt, c, vp->repeat_set?vp->repeat:-1)<0)
+		ch = c;
+		if(mode>=0 && c=='\\' && virtual[mode+1]=='/')
+			c = '=';
+		if(ed_expand(vp->ed,(char*)virtual, &cur_virt, &last_virt, ch, vp->repeat_set?vp->repeat:-1)<0)
 		{
 			if(vp->ed->e_tabcount)
 			{
@@ -2433,11 +2478,10 @@ addin:
 			last_virt = i;
 			ed_ringbell();
 		}
-		else if((c=='=' || (c=='\\'&&virtual[i]=='/')) && !vp->repeat_set)
+		else if((c=='=' || (c=='\\'&&virtual[last_virt]=='/')) && !vp->repeat_set)
 		{
 			last_virt = i;
-			vp->nonewline++;
-			ed_ungetchar(vp->ed,cntl('L'));
+			vi_redraw((void*)vp);
 			return(GOOD);
 		}
 		else
@@ -2493,10 +2537,12 @@ addin:
 			while(i = *p++);
 			return(APPEND);
 		}
+		/* FALLTHROUGH */
 
 	case 'A':		/** append to end of line **/
 		cur_virt = last_virt;
 		sync_cursor(vp);
+		/* FALLTHROUGH */
 
 	case 'a':		/** append **/
 		if( fold(mode) == 'A' )
@@ -2516,6 +2562,7 @@ addin:
 	case 'I':		/** insert at beginning of line **/
 		cur_virt = first_virt;
 		sync_cursor(vp);
+		/* FALLTHROUGH */
 
 	case 'i':		/** insert **/
 		if( fold(mode) == 'I' )
@@ -2592,6 +2639,7 @@ deleol:
 				vp->ocur_virt = INVALID;
 			--cur_virt;
 		}
+		/* FALLTHROUGH */
 
 	case 'p':		/** print **/
 		if( p[0] == '\0' )
@@ -2671,6 +2719,8 @@ yankeol:
 		vp->lastmotion = c;
 		if( c == 'y' )
 		{
+			if(!yankbuf)
+				return(BAD);
 			gencpy(yankbuf, virtual);
 		}
 		else if(!delmotion(vp, c, 'y'))
@@ -2733,12 +2783,6 @@ yankeol:
     {
 	return((v&~STRIP)==0 && isspace(v));
     }
-
-    static int _ismetach(register int v)
-    {
-	return((v&~STRIP)==0 && ismeta(v));
-    }
-
 #endif	/* SHOPT_MULTIBYTE */
 
 /*
@@ -2751,3 +2795,5 @@ static int getrchar(register Vi_t *vp)
 		c = ed_getchar(vp->ed,2);
 	return(c);
 }
+
+#endif /* SHOPT_VSH */
