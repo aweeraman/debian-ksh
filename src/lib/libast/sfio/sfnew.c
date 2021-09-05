@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -106,7 +107,7 @@ int	flags;	/* type of file stream */
 
 	/* stream type */
 	f->mode = (flags&SF_READ) ? SF_READ : SF_WRITE;
-	f->flags = (flags&SF_FLAGS) | (sflags&(SF_MALLOC|SF_STATIC));
+	f->flags = (flags&SFIO_FLAGS) | (sflags&(SF_MALLOC|SF_STATIC));
 	f->bits = (flags&SF_RDWR) == SF_RDWR ? SF_BOTH : 0;
 	f->file = file;
 	f->here = f->extent = 0;

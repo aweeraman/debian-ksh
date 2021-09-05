@@ -1,12 +1,38 @@
+########################################################################
+#                                                                      #
+#               This software is part of the ast package               #
+#          Copyright (c) 1994-2011 AT&T Intellectual Property          #
+#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
+#                      and is licensed under the                       #
+#                 Eclipse Public License, Version 1.0                  #
+#                    by AT&T Intellectual Property                     #
+#                                                                      #
+#                A copy of the License is available at                 #
+#          http://www.eclipse.org/org/documents/epl-v10.html           #
+#         (with md5 checksum b35adb5213ca9657e911e9befb180842)         #
+#                                                                      #
+#              Information and Software Systems Research               #
+#                            AT&T Research                             #
+#                           Florham Park NJ                            #
+#                                                                      #
+#                 Glenn Fowler <gsf@research.att.com>                  #
+#                                                                      #
+########################################################################
 ### this script contains archaic constructs that work with all sh variants ###
 # mamprobe - generate MAM cc probe info
 # Glenn Fowler <gsf@research.att.com>
 
-case $-:$BASH_VERSION in
-*x*:[0123456789]*)	: bash set -x is broken :; set +ex ;;
-esac
+(command set -o posix) 2>/dev/null && set -o posix
 
 command=mamprobe
+
+bins=`
+	(
+		userPATH=$PATH
+		PATH=/run/current-system/sw/bin:/usr/xpg7/bin:/usr/xpg6/bin:/usr/xpg4/bin:/bin:/usr/bin:$PATH
+		getconf PATH 2>/dev/null && echo "$userPATH" || echo /bin:/usr/bin:/sbin:/usr/sbin:"$userPATH"
+	) | sed 's/:/ /g'
+` || exit
 
 # check the options
 
@@ -170,7 +196,7 @@ esac
 
 case $info in
 -)	;;
-*)	tmp=/tmp/mam$$
+*)	tmp=${TMPDIR:-/tmp}/mam$$
 	trap "exec >/dev/null; rm -f $tmp" 0 1 2 3 15
 	exec > $tmp
 	echo "probing C language processor $cc for mam information" >&2
@@ -217,7 +243,7 @@ do	case $# in
 	0|1)	break ;;
 	esac
 	p=$2
-	for d in /bin /usr/bin /usr/sbin
+	for d in $bins
 	do	if	test -x $d/$p
 		then	p=$d/$p
 			break
@@ -241,8 +267,8 @@ done
 case $info in
 -)	;;
 *)	exec >/dev/null
-	test -f $info && rm -f $info
-	cp $tmp $info
-	chmod -w $info
+	test -f "$info" && rm -f "$info"
+	cp "$tmp" "$info"
+	chmod -w "$info"
 	;;
 esac

@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -19,7 +20,8 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#if defined(_UWIN) && defined(_BLD_ast)
+#include "FEATURE/vmalloc"
+#if !_hdr_sys_shm || (defined(_UWIN) && defined(_BLD_ast))
 
 void _STUB_vmmapopen(){}
 
@@ -63,8 +65,10 @@ void _STUB_vmmapopen(){}
 /* magic word signaling file/segment is ready */
 #define	MM_MAGIC	((unsigned int)(('P'<<24) | ('&'<<16) | ('N'<<8) | ('8')) )
 
-/* default mimimum region size */
+#ifndef __linux__
+/* default minimum region size */
 #define MM_MINSIZE	(64*_Vmpagesize)
+#endif
 
 /* macros to get the data section and size */
 #define MMHEAD(file)	ROUND(sizeof(Mmvm_t)+strlen(file), ALIGN)
@@ -167,9 +171,18 @@ static int mminit(Mmdisc_t* mmdc)
 	if(mmdc->mmvm) /* already done this */
 		return 0;
 
+#ifndef __linux__
 	/* fixed size region so make it reasonably large */
 	if((size = mmdc->size) < MM_MINSIZE )
 		size =  MM_MINSIZE;
+#else /* on Linux */
+	if (sizeof(void*) > 32)
+		extent = ROUND(0x80000,_Vmpagesize);
+	else
+		extent = ROUND(0x40000,_Vmpagesize);
+	if((size = mmdc->size) < extent)
+		size = extent;
+#endif
 	size += MMHEAD(mmdc->file) + ALIGN;
 	size  = ROUND(size, _Vmpagesize);
 
@@ -342,7 +355,6 @@ Vmdisc_t*	disc;
 #endif
 {
 	int		rv;
-	Void_t		*base;
 	Mmdisc_t	*mmdc = (Mmdisc_t*)disc;
 
 	if(type == VM_OPEN)

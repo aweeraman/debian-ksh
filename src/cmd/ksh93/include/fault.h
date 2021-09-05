@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -59,7 +60,7 @@ typedef void (*SH_SIGTYPE)(int,void(*)(int));
 #define SH_SIGSET		4	/* pending signal */
 #define SH_SIGTRAP		010	/* pending trap */
 #define SH_SIGDONE		020	/* default is exit */
-#define SH_SIGIGNORE		040	/* default is ingore signal */
+#define SH_SIGIGNORE		040	/* default is ignore signal */
 #define SH_SIGINTERACTIVE	0100	/* handle interactive specially */
 #define SH_SIGTSTP		0200	/* tstp signal received */
 #define SH_SIGALRM		0200	/* timer alarm received */
@@ -98,11 +99,7 @@ struct checkpt
 	int		topfd;
 	int		mode;
 	struct openlist	*olist;
-#if (ERROR_VERSION >= 20030214L)
 	Error_context_t err;
-#else
-	struct errorcontext err;
-#endif
 };
 
 #define sh_pushcontext(shp,bp,n)( (bp)->mode=(n) , (bp)->olist=0,  \
@@ -112,8 +109,8 @@ struct checkpt
 				)
 #define sh_popcontext(shp,bp)	(shp->jmplist=(bp)->prev, errorpop(&((bp)->err)))
 
+extern noreturn void 	sh_done(void*,int);
 extern void 	sh_fault(int);
-extern void 	sh_done(void*,int);
 extern void 	sh_sigclear(int);
 extern void 	sh_sigdone(void);
 extern void	sh_siginit(void*);

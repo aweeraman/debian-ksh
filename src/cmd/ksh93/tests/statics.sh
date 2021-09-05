@@ -2,6 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2011 AT&T Intellectual Property          #
+#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -21,20 +22,9 @@
 # Written by Roland Mainz <roland.mainz@nrubsig.org>
 #
 
-function err_exit
-{
-	print -u2 -n "\t"
-	print -u2 -r ${Command}[$1]: "${@:2}"
-	(( Errors < 127 && Errors++ ))
-}
-
-alias err_exit='err_exit $LINENO'
+. "${SHTESTS_COMMON:-${0%/*}/_common}"
 
 set -o nounset
-Command=${0##*/}
-integer Errors=0
-
-
 
 typeset -T test_t=(
 	typeset name
@@ -654,7 +644,7 @@ test1
 test2
 
 
-# Test visibilty of "global" vs. "static" variables. if we have a "static" variable in a
+# Test visibility of "global" vs. "static" variables. if we have a "static" variable in a
 # function and "unset" it we should see a global variable with the same
 # name, right ?
 integer hx=5

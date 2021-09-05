@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -58,8 +59,10 @@ One line screen editor for any program
  *		- ^X^D command to show any debugging info
  *
  *  I do not pretend these for changes are completely independent,
- *  but you can use them to seperate features.
+ *  but you can use them to separate features.
  */
+
+#if SHOPT_ESH
 
 #include	<ast.h>
 #include	"FEATURE/cmds"
@@ -90,6 +93,7 @@ One line screen editor for any program
     static int	print(int);
     static int	_isword(int);
 #   define  isword(c)	_isword(out[c])
+#   define digit(c)	((c&~STRIP)==0 && isdigit(c))
 
 #else
 #   define gencpy(a,b)	strcpy((char*)(a),(char*)(b))
@@ -97,7 +101,8 @@ One line screen editor for any program
 #   define genlen(str)	strlen(str)
 #   define print(c)	isprint(c)
 #   define isword(c)	(isalnum(out[c]) || (out[c]=='_'))
-#endif /*SHOPT_MULTIBYTE */
+#   define digit(c)	isdigit(c)
+#endif /* SHOPT_MULTIBYTE */
 
 typedef struct _emacs_
 {
@@ -184,6 +189,7 @@ int ed_emacsread(void *context, int fd,char *buff,int scend, int reedit)
 	register int count;
 	register Emacs_t *ep = ed->e_emacs;
 	int adjust,oadjust;
+	int vt220_save_repeat = 0;
 	char backslash;
 	genchar *kptr;
 	char prompt[PRSIZE];
@@ -191,7 +197,7 @@ int ed_emacsread(void *context, int fd,char *buff,int scend, int reedit)
 	memset(Screen,0,sizeof(Screen));
 	if(!ep)
 	{
-		ep = ed->e_emacs = newof(0,Emacs_t,1,0);
+		ep = ed->e_emacs = sh_newof(0,Emacs_t,1,0);
 		ep->ed = ed;
 		ep->prevdirection =  1;
 		location.hist_command =  -5;
@@ -215,7 +221,7 @@ int ed_emacsread(void *context, int fd,char *buff,int scend, int reedit)
 #endif /* SHOPT_MULTIBYTE */
 	if(!kstack)
 	{
-		kstack = (genchar*)malloc(CHARSIZE*MAXLINE);
+		kstack = (genchar*)sh_malloc(CHARSIZE*MAXLINE);
 		kstack[0] = '\0';
 	}
 	drawbuff = out;
@@ -276,11 +282,12 @@ int ed_emacsread(void *context, int fd,char *buff,int scend, int reedit)
 #endif /* ESH_NFIRST */
 	}
 	ep->CntrlO = 0;
-	while ((c = ed_getchar(ep->ed,0)) != (-1))
+	while ((c = ed_getchar(ep->ed,backslash)) != (-1))
 	{
 		if (backslash)
 		{
-			backslash = 0;
+			if(c!='\\')
+				backslash = 0;
 			if (c==usrerase||c==usrkill||(!print(c) &&
 				(c!='\r'&&c!='\n')))
 			{
@@ -315,9 +322,14 @@ int ed_emacsread(void *context, int fd,char *buff,int scend, int reedit)
 		oadjust = count = adjust;
 		if(count<0)
 			count = 1;
+		if(vt220_save_repeat>0)
+		{
+			count = vt220_save_repeat;
+			vt220_save_repeat = 0;
+		}
 		adjust = -1;
 		i = cur;
-		if(c!='\t' && c!=ESC && !isdigit(c))
+		if(c!='\t' && c!=ESC && !digit(c))
 			ep->ed->e_tabcount = 0;
 		switch(c)
 		{
@@ -358,17 +370,19 @@ int ed_emacsread(void *context, int fd,char *buff,int scend, int reedit)
 				}
 				ep->ed->e_tabcount = 0;
 			}
+			beep();
+			continue;
 		do_default_processing:
 		default:
 
-			if ((eol+1) >= (scend)) /*  will not fit on line */
+			if ((eol+1) >= (scend)) /* will not fit on line */
 			{
 				ed_ungetchar(ep->ed,c); /* save character for next line */
 				goto process;
 			}
 			for(i= ++eol; i>cur; i--)
 				out[i] = out[i-1];
-			backslash =  (c == '\\');
+			backslash = (c == '\\' && !sh_isoption(SH_NOBACKSLCTRL));
 			out[cur++] = c;
 			draw(ep,APPEND);
 			continue;
@@ -553,6 +567,7 @@ update:
 		case KILLCHAR :
 			cur = 0;
 			oadjust = -1;
+			/* FALLTHROUGH */
 		case cntl('K') :
 			if(oadjust >= 0)
 			{
@@ -601,14 +616,15 @@ update:
 			}
 			continue;
 		case cntl('L'):
-			if(!ep->ed->e_nocrnl)
-				ed_crlf(ep->ed);
+			ed_crlf(ep->ed);
 			draw(ep,REFRESH);
-			ep->ed->e_nocrnl = 0;
 			continue;
-		case cntl('[') :
+		case ESC :
+			vt220_save_repeat = oadjust;
 		do_escape:
 			adjust = escape(ep,out,oadjust);
+			if(adjust > -1)
+				vt220_save_repeat = 0;
 			continue;
 		case cntl('R') :
 			search(ep,out,count);
@@ -717,10 +733,8 @@ process:
 	draw(ep,FINAL);
 	tty_cooked(ERRIO);
 	if(ed->e_nlist)
-	{
 		ed->e_nlist = 0;
-		stakset(ed->e_stkptr,ed->e_stkoff);
-	}
+	stakset(ed->e_stkptr,ed->e_stkoff);
 	if(c == '\n')
 	{
 		out[eol++] = '\n';
@@ -775,7 +789,7 @@ static int escape(register Emacs_t* ep,register genchar *out,int count)
 	int digit,ch;
 	digit = 0;
 	value = 0;
-	while ((i=ed_getchar(ep->ed,0)),isdigit(i))
+	while ((i=ed_getchar(ep->ed,0)),digit(i))
 	{
 		value *= 10;
 		value += (i - '0');
@@ -973,8 +987,9 @@ static int escape(register Emacs_t* ep,register genchar *out,int count)
 			if(ch=='\n')
 				ed_ungetchar(ep->ed,'\n');
 #endif /* SHOPT_EDPREDICT */
+			/* FALLTHROUGH */
 		/* file name expansion */
-		case cntl('[') :	/* filename completion */
+		case ESC :
 #if SHOPT_EDPREDICT
 			if(ep->ed->hlist)
 			{
@@ -990,16 +1005,25 @@ static int escape(register Emacs_t* ep,register genchar *out,int count)
 				}
 			}
 #endif /* SHOPT_EDPREDICT */
-			i = '\\';
+			i = '\\';	/* filename completion */
+			/* FALLTHROUGH */
 		case '*':		/* filename expansion */
 		case '=':	/* escape = - list all matching file names */
 			ep->mark = cur;
-			if(ed_expand(ep->ed,(char*)out,&cur,&eol,i,count) < 0)
+			if(cur<1)
+			{
+				beep();
+				return(-1);
+			}
+			ch = i;
+			if(i=='\\' && out[cur-1]=='/')
+				i = '=';
+			if(ed_expand(ep->ed,(char*)out,&cur,&eol,ch,count) < 0)
 			{
 				if(ep->ed->e_tabcount==1)
 				{
 					ep->ed->e_tabcount=2;
-					ed_ungetchar(ep->ed,cntl('\t'));
+					ed_ungetchar(ep->ed,'\t');
 					return(-1);
 				}
 				beep();
@@ -1007,13 +1031,13 @@ static int escape(register Emacs_t* ep,register genchar *out,int count)
 			else if(i=='=' || (i=='\\' && out[cur-1]=='/'))
 			{
 				draw(ep,REFRESH);
-				if(count>0)
+				if(count>0 || i=='\\')
 					ep->ed->e_tabcount=0;
 				else
 				{
 					i=ed_getchar(ep->ed,0);
 					ed_ungetchar(ep->ed,i);
-					if(isdigit(i))
+					if(digit(i))
 						ed_ungetchar(ep->ed,ESC);
 				}
 			}
@@ -1056,10 +1080,9 @@ static int escape(register Emacs_t* ep,register genchar *out,int count)
 			cur = i;
 			draw(ep,UPDATE);
 			return(-1);
-
-#ifdef _cmd_tput
+#ifdef _pth_tput
 		case cntl('L'): /* clear screen */
-			sh_trap("tput clear", 0);
+			system(_pth_tput " clear");
 			draw(ep,REFRESH);
 			return(-1);
 #endif
@@ -1067,13 +1090,14 @@ static int escape(register Emacs_t* ep,register genchar *out,int count)
 			switch(i=ed_getchar(ep->ed,1))
 			{
 			    case 'A':
+				/* VT220 up arrow */
 #if SHOPT_EDPREDICT
 				if(!ep->ed->hlist && cur>0 && eol==cur && (cur<(SEARCHSIZE-2) || ep->prevdirection == -2))
 #else
 				if(cur>0 && eol==cur && (cur<(SEARCHSIZE-2) || ep->prevdirection == -2))
 #endif /* SHOPT_EDPREDICT */
 				{
-					if(ep->lastdraw==APPEND && ep->prevdirection != -2)
+					if(ep->lastdraw==APPEND)
 					{
 						out[cur] = 0;
 						gencpy((genchar*)lstring+1,out);
@@ -1094,24 +1118,45 @@ static int escape(register Emacs_t* ep,register genchar *out,int count)
 				ed_ungetchar(ep->ed,cntl('P'));
 				return(-1);
 			    case 'B':
+				/* VT220 down arrow */
 				ed_ungetchar(ep->ed,cntl('N'));
 				return(-1);
 			    case 'C':
+				/* VT220 right arrow */
 				ed_ungetchar(ep->ed,cntl('F'));
 				return(-1);
 			    case 'D':
+				/* VT220 left arrow */
 				ed_ungetchar(ep->ed,cntl('B'));
 				return(-1);
 			    case 'H':
+				/* VT220 Home key */
 				ed_ungetchar(ep->ed,cntl('A'));
 				return(-1);
+			    case 'F':
 			    case 'Y':
+				/* VT220 End key */
 				ed_ungetchar(ep->ed,cntl('E'));
 				return(-1);
+			    case '3':
+				if((ch=ed_getchar(ep->ed,1))=='~')
+				{	/*
+					 * VT220 forward-delete key.
+					 * Since ERASECHAR and EOFCHAR are usually both mapped to ^D, we
+					 * should only issue ERASECHAR if there is something to delete,
+					 * otherwise forward-delete on empty line will terminate the shell.
+					 */
+					if(cur < eol)
+						ed_ungetchar(ep->ed,ERASECHAR);
+					return(-1);
+				}
+				ed_ungetchar(ep->ed,ch);
+				/* FALLTHROUGH */
 			    default:
 				ed_ungetchar(ep->ed,i);
 			}
 			i = '_';
+			/* FALLTHROUGH */
 
 		default:
 			/* look for user defined macro definitions */
@@ -1198,7 +1243,7 @@ static void xcommands(register Emacs_t *ep,int count)
 				show_info(ep,hbuf);
 				return;
 			}
-#	if 0	/* debugging, modify as required */
+#	if !_AST_ksh_release		/* debugging, modify as required */
 		case cntl('D'):		/* ^X^D show debugging info */
 			{
 				char debugbuf[MAXLINE];
@@ -1267,20 +1312,35 @@ static void search(Emacs_t* ep,genchar *out,int direction)
 			beep();
 			goto restore;
 		}
-		if (i == '\\')
+		if (!sh_isoption(SH_NOBACKSLCTRL))
 		{
-			string[sl++] = '\\';
-			string[sl] = '\0';
-			cur = sl;
-			draw(ep,APPEND);
-			i = ed_getchar(ep->ed,1);
-			string[--sl] = '\0';
+			while (i == '\\')
+			{
+				/*
+				 * Append the backslash to the command line, then escape
+				 * the next control character. Repeat the loop if the
+				 * next input is another backslash (otherwise every
+				 * second backslash is skipped).
+				 */
+				string[sl++] = '\\';
+				string[sl] = '\0';
+				cur = sl;
+				draw(ep,APPEND);
+				i = ed_getchar(ep->ed,1);
+
+				/* Backslashes don't affect newlines */
+				if (i == '\n' || i == '\r')
+					goto skip;
+				else if (i == usrerase || !print(i))
+					string[--sl] = '\0';
+			}
 		}
 		string[sl++] = i;
 		string[sl] = '\0';
 		cur = sl;
 		draw(ep,APPEND);
 	}
+	skip:
 	i = genlen(string);
 	
 	if(ep->prevdirection == -2 && i!=2 || direction!=1)
@@ -1297,7 +1357,7 @@ static void search(Emacs_t* ep,genchar *out,int direction)
 #if SHOPT_MULTIBYTE
 		ed_external(string,(char*)string);
 #endif /* SHOPT_MULTIBYTE */
-		strncpy(lstring,((char*)string)+2,SEARCHSIZE);
+		strncpy(lstring,((char*)string)+2,SEARCHSIZE-1);
 		lstring[SEARCHSIZE-1] = 0;
 		ep->prevdirection = direction;
 	}
@@ -1393,12 +1453,15 @@ static void draw(register Emacs_t *ep,Draw_t option)
 	/***************************************
 	If in append mode, cursor at end of line, screen up to date,
 	the previous character was a 'normal' character,
-	and the window has room for another character.
-	Then output the character and adjust the screen only.
+	and the window has room for another character,
+	then output the character and adjust the screen only.
 	*****************************************/
 	
 
-	i = *(logcursor-1);	/* last character inserted */
+	if(logcursor > drawbuff)
+		i = *(logcursor-1);	/* last character inserted */
+	else
+		i = 0;
 #if SHOPT_EDPREDICT
 	if(option==FINAL)
 	{
@@ -1411,11 +1474,11 @@ static void draw(register Emacs_t *ep,Draw_t option)
 		drawbuff[cur+1]=0;
 #   if SHOPT_MULTIBYTE
 		ed_external(drawbuff,(char*)drawbuff);
-#   endif /*SHOPT_MULTIBYTE */
+#   endif /* SHOPT_MULTIBYTE */
 		n = ed_histgen(ep->ed,(char*)drawbuff);
 #   if SHOPT_MULTIBYTE
 		ed_internal((char*)drawbuff,drawbuff);
-#   endif /*SHOPT_MULTIBYTE */
+#   endif /* SHOPT_MULTIBYTE */
 		if(ep->ed->hlist)
 		{
 			ed_histlist(ep->ed,n);
@@ -1503,8 +1566,8 @@ static void draw(register Emacs_t *ep,Draw_t option)
 		}
 #endif /* SHOPT_MULTIBYTE */
 	}
-	if(ep->ed->e_multiline && option == REFRESH && ep->ed->e_nocrnl==0)
-		ed_setcursor(ep->ed, ep->screen, ep->cursor-ep->screen, ep->ed->e_peol, -1);
+	if(ep->ed->e_multiline && option == REFRESH)
+		ed_setcursor(ep->ed, ep->screen, ep->ed->e_peol, ep->ed->e_peol, -1);
 
 	
 	/******************
@@ -1542,6 +1605,18 @@ static void draw(register Emacs_t *ep,Draw_t option)
 }
 
 /*
+ * Print the prompt and force a total refresh.
+ * This is used from edit.c for redrawing the command line upon SIGWINCH.
+ */
+
+void emacs_redraw(void *vp)
+{
+	Emacs_t	*ep = (Emacs_t*)vp;
+	draw(ep, REFRESH);
+	ed_flush(ep->ed);
+}
+
+/*
  * put the cursor to the <newp> position within screen buffer
  * if <c> is non-zero then output this character
  * cursor is set to reflect the change
@@ -1571,3 +1646,5 @@ static int _isword(register int c)
 	return((c&~STRIP) || isalnum(c) || c=='_');
 }
 #endif /* SHOPT_MULTIBYTE */
+
+#endif /* SHOPT_ESH */

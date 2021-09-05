@@ -2,6 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2011 AT&T Intellectual Property          #
+#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -43,6 +44,8 @@
 # Use is subject to license terms.
 #
 
+. "${SHTESTS_COMMON:-${0%/*}/_common}"
+
 #
 # This test checks whether "typeset -m" correctly moves local variables
 # into a global variable tree.
@@ -52,17 +55,6 @@
 #XXXX
 # -- snip --
 #
-
-function err_exit
-{
-	print -u2 -n "\t"
-	print -u2 -r ${Command}[$1]: "${@:2}"
-	(( Errors+=1 ))
-}
-
-alias err_exit='err_exit $LINENO'
-
-integer Errors=0
 
 ## test start
 typeset -C tree1 tree2

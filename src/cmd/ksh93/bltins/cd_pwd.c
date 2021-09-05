@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -37,6 +38,7 @@
 #include	"name.h"
 #include	"builtins.h"
 #include	<ls.h>
+#include	"test.h"
 
 /*
  * Invalidate path name bindings to relative paths
@@ -44,9 +46,8 @@
 static void rehash(register Namval_t *np,void *data)
 {
 	Pathcomp_t *pp = (Pathcomp_t*)np->nvalue.cp;
-	NOT_USED(data);
 	if(pp && *pp->name!='/')
-		_nv_unset(np,0);
+		nv_rehash(np,data);
 }
 
 int	b_cd(int argc, char *argv[],Shbltin_t *context)
@@ -60,7 +61,10 @@ int	b_cd(int argc, char *argv[],Shbltin_t *context)
 	char *oldpwd;
 	Namval_t *opwdnod, *pwdnod;
 	if(sh_isoption(SH_RESTRICTED))
+	{
 		errormsg(SH_DICT,ERROR_exit(1),e_restricted+4);
+		UNREACHABLE();
+	}
 	while((rval = optget(argv,sh_optcd))) switch(rval)
 	{
 		case 'L':
@@ -74,16 +78,26 @@ int	b_cd(int argc, char *argv[],Shbltin_t *context)
 			break;
 		case '?':
 			errormsg(SH_DICT,ERROR_usage(2), "%s", opt_info.arg);
-			break;
+			UNREACHABLE();
 	}
 	argv += opt_info.index;
 	argc -= opt_info.index;
 	dir =  argv[0];
 	if(error_info.errors>0 || argc >2)
+	{
 		errormsg(SH_DICT,ERROR_usage(2),"%s",optusage((char*)0));
-	oldpwd = (char*)shp->pwd;
-	opwdnod = (shp->subshell?sh_assignok(OLDPWDNOD,1):OLDPWDNOD); 
-	pwdnod = (shp->subshell?sh_assignok(PWDNOD,1):PWDNOD); 
+		UNREACHABLE();
+	}
+	oldpwd = path_pwd(shp,0);
+	opwdnod = sh_scoped(shp,OLDPWDNOD);
+	pwdnod = sh_scoped(shp,PWDNOD);
+	if(oldpwd == e_dot && pwdnod->nvalue.cp)
+		oldpwd = (char*)pwdnod->nvalue.cp;  /* if path_pwd() failed to get the pwd, use $PWD */
+	if(shp->subshell)
+	{
+		opwdnod = sh_assignok(opwdnod,1);
+		pwdnod = sh_assignok(pwdnod,1);
+	}
 	if(argc==2)
 		dir = sh_substitute(oldpwd,dir,argv[1]);
 	else if(!dir)
@@ -91,12 +105,30 @@ int	b_cd(int argc, char *argv[],Shbltin_t *context)
 	else if(*dir == '-' && dir[1]==0)
 		dir = nv_getval(opwdnod);
 	if(!dir || *dir==0)
+	{
 		errormsg(SH_DICT,ERROR_exit(1),argc==2?e_subst+4:e_direct);
+		UNREACHABLE();
+	}
+	/*
+	 * If sh_subshell() in subshell.c cannot use fchdir(2) to restore the PWD using a saved file descriptor,
+	 * we must fork any virtual subshell now to avoid the possibility of ending up in the wrong PWD on exit.
+	 */
+	if(shp->subshell && !shp->subshare)
+	{
+#if _lib_fchdir
+		if(!test_inode(nv_getval(pwdnod),e_dot))
+#endif
+			sh_subfork();
+	}
+	/*
+	 * Do $CDPATH processing, except if the path is absolute or the first component is '.' or '..'
+	 */
+	if(dir[0] != '/'
 #if _WINIX
-	if(*dir != '/' && (dir[1]!=':'))
-#else
-	if(*dir != '/')
+	&& dir[1] != ':'  /* on Windows, an initial drive letter plus ':' denotes an absolute path */
 #endif /* _WINIX */
+	&& !(dir[0]=='.' && (dir[1]=='/' || dir[1]==0))
+	&& !(dir[0]=='.' && dir[1]=='.' && (dir[2]=='/' || dir[2]==0)))
 	{
 		if(!(cdpath = (Pathcomp_t*)shp->cdpathlist) && (dp=sh_scoped(shp,CDPNOD)->nvalue.cp))
 		{
@@ -106,37 +138,21 @@ int	b_cd(int argc, char *argv[],Shbltin_t *context)
 				cdpath->shp = shp;
 			}
 		}
-		if(!oldpwd)
-			oldpwd = path_pwd(shp,1);
 	}
-	if(*dir=='.')
+	if(*dir!='/')
 	{
-		/* test for pathname . ./ .. or ../ */
-		int	n=0;
-		char	*sp;
-		for(dp=dir; *dp=='.'; dp++)
+		/* check for leading .. */
+		char *cp;
+		sfprintf(shp->strbuf,"%s",dir);
+		cp = sfstruse(shp->strbuf);
+		pathcanon(cp, 0);
+		if(cp[0]=='.' && cp[1]=='.' && (cp[2]=='/' || cp[2]==0))
 		{
-			if(*++dp=='.' && (*++dp=='/' || *dp==0))
-				n++;
-			else if(*dp && *dp!='/')
-				break;
-			if(*dp==0)
-				break;
-		}
-		if(n)	
-		{
-			cdpath = 0;
-			sp = oldpwd + strlen(oldpwd);
-			while(n--)
-			{
-				while(--sp > oldpwd && *sp!='/');
-				if(sp==oldpwd)
-					break;
-				
-			}
-			sfwrite(shp->strbuf,oldpwd,sp+1-oldpwd);
-			sfputr(shp->strbuf,dp,0);
-			dir = sfstruse(shp->strbuf);
+			if(!shp->strbuf2)
+				shp->strbuf2 = sfstropen();
+			sfprintf(shp->strbuf2,"%s/%s",oldpwd,cp);
+			dir = sfstruse(shp->strbuf2);
+			pathcanon(dir, 0);
 		}
 	}
 	rval = -1;
@@ -167,17 +183,9 @@ int	b_cd(int argc, char *argv[],Shbltin_t *context)
 		{
 			register char *cp;
 			stakseek(PATH_MAX+PATH_OFFSET);
-#if SHOPT_FS_3D
-			if(!(cp = pathcanon(stakptr(PATH_OFFSET),PATH_DOTDOT)))
-				continue;
-			/* eliminate trailing '/' */
-			while(*--cp == '/' && cp>stakptr(PATH_OFFSET))
-				*cp = 0;
-#else
 			if(*(cp=stakptr(PATH_OFFSET))=='/')
 				if(!pathcanon(cp,PATH_DOTDOT))
 					continue;
-#endif /* SHOPT_FS_3D */
 		}
 		if((rval=chdir(path_relative(shp,stakptr(PATH_OFFSET)))) >= 0)
 			goto success;
@@ -193,6 +201,7 @@ int	b_cd(int argc, char *argv[],Shbltin_t *context)
 		if(saverrno)
 			errno = saverrno;
 		errormsg(SH_DICT,ERROR_system(1),"%s:",dir);
+		UNREACHABLE();
 	}
 success:
 	if(dir == nv_getval(opwdnod) || argc==2)
@@ -204,27 +213,43 @@ success:
 		{
 			dir = stakptr(PATH_OFFSET);
 			errormsg(SH_DICT,ERROR_system(1),"%s:",dir);
+			UNREACHABLE();
 		}
 		stakseek(dir-stakptr(0));
 	}
 	dir = (char*)stakfreeze(1)+PATH_OFFSET;
 	if(*dp && (*dp!='.'||dp[1]) && strchr(dir,'/'))
 		sfputr(sfstdout,dir,'\n');
-	if(*dir != '/')
-		return(0);
 	nv_putval(opwdnod,oldpwd,NV_RDONLY);
-	flag = strlen(dir);
-	/* delete trailing '/' */
-	while(--flag>0 && dir[flag]=='/')
-		dir[flag] = 0;
-	nv_putval(pwdnod,dir,NV_RDONLY);
-	nv_onattr(pwdnod,NV_NOFREE|NV_EXPORT);
-	shp->pwd = pwdnod->nvalue.cp;
-	nv_scan(shp->track_tree,rehash,(void*)0,NV_TAGGED,NV_TAGGED);
+	if(*dir == '/')
+	{
+		flag = strlen(dir);
+		/* delete trailing '/' */
+		while(--flag>0 && dir[flag]=='/')
+			dir[flag] = 0;
+		nv_putval(pwdnod,dir,NV_RDONLY);
+		nv_onattr(pwdnod,NV_EXPORT);
+		if(shp->pwd)
+			free((void*)shp->pwd);
+		shp->pwd = sh_strdup(pwdnod->nvalue.cp);
+	}
+	else
+	{
+		/* pathcanon() failed to canonicalize the directory, which happens when 'cd' is invoked from a
+		   nonexistent PWD with a relative path as the argument. Reinitialize $PWD as it will be wrong. */
+		if(shp->pwd)
+			free((void*)shp->pwd);
+		shp->pwd = NIL(const char*);
+		path_pwd(shp,0);
+		if(*shp->pwd != '/')
+		{
+			errormsg(SH_DICT,ERROR_system(1),e_direct);
+			UNREACHABLE();
+		}
+	}
+	nv_scan(sh_subtracktree(1),rehash,(void*)0,NV_TAGGED,NV_TAGGED);
 	path_newdir(shp,shp->pathlist);
 	path_newdir(shp,shp->cdpathlist);
-	if(oldpwd)
-		free(oldpwd);
 	return(0);
 }
 
@@ -247,26 +272,23 @@ int	b_pwd(int argc, char *argv[],Shbltin_t *context)
 			break;
 		case '?':
 			errormsg(SH_DICT,ERROR_usage(2), "%s", opt_info.arg);
-			break;
+			UNREACHABLE();
 	}
 	if(error_info.errors)
+	{
 		errormsg(SH_DICT,ERROR_usage(2),"%s",optusage((char*)0));
+		UNREACHABLE();
+	}
 	if(*(cp = path_pwd(shp,0)) != '/')
+	{
 		errormsg(SH_DICT,ERROR_system(1), e_pwd);
+		UNREACHABLE();
+	}
 	if(flag)
 	{
-#if SHOPT_FS_3D
-		if(shp->gd->lim.fs3d && (flag = mount(e_dot,NIL(char*),FS3D_GET|FS3D_VIEW,0))>=0)
-		{
-			cp = (char*)stakseek(++flag+PATH_MAX);
-			mount(e_dot,cp,FS3D_GET|FS3D_VIEW|FS3D_SIZE(flag),0);
-		}
-		else
-#endif /* SHOPT_FS_3D */
-			cp = strcpy(stakseek(strlen(cp)+PATH_MAX),cp);
+		cp = strcpy(stakseek(strlen(cp)+PATH_MAX),cp);
 		pathcanon(cp,PATH_PHYSICAL);
 	}
 	sfputr(sfstdout,cp,'\n');
 	return(0);
 }
-

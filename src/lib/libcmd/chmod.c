@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -29,14 +30,14 @@
 
 static const char usage[] =
 "[-?\n@(#)$Id: chmod (AT&T Research) 2012-04-20 $\n]"
-USAGE_LICENSE
+"[--catalog?" ERROR_CATALOG "]"
 "[+NAME?chmod - change the access permissions of files]"
 "[+DESCRIPTION?\bchmod\b changes the permission of each file "
 	"according to mode, which can be either a symbolic representation "
 	"of changes to make, or an octal number representing the bit "
 	"pattern for the new permissions.]"
 "[+?Symbolic mode strings consist of one or more comma separated list "
-	"of operations that can be perfomed on the mode. Each operation is of "
+	"of operations that can be performed on the mode. Each operation is of "
 	"the form \auser\a \aop\a \aperm\a where \auser\a is zero or more of "
 	"the following letters:]{"
 	"[+u?User permission bits.]"
@@ -106,7 +107,7 @@ USAGE_LICENSE
 "[P:physical|nofollow?Don't follow symbolic links when traversing directories.]"
 "[R:recursive?Change the mode for files in subdirectories recursively.]"
 "[c:changes?Describe only files whose permission actually change.]"
-"[f:quiet|silent?Do not report files whose permissioins fail to change.]"
+"[f:quiet|silent?Do not report files whose permissions fail to change.]"
 "[h|l:symlink?Change the mode of symbolic links on systems that "
     "support \blchmod\b(2). Implies \b--physical\b.]"
 "[i:ignore-umask?Ignore the \bumask\b(2) value in symbolic mode "
@@ -136,10 +137,6 @@ __STDPP__directive pragma pp:hide lchmod
 #include <cmd.h>
 #include <ls.h>
 #include <fts_fix.h>
-
-#ifndef ENOSYS
-#define ENOSYS	EINVAL
-#endif
 
 #include "FEATURE/symlink"
 
@@ -206,7 +203,10 @@ b_chmod(int argc, char** argv, Shbltin_t* context)
 			continue;
 		case 'F':
 			if (stat(opt_info.arg, &st))
+			{
 				error(ERROR_exit(1), "%s: cannot stat", opt_info.arg);
+				UNREACHABLE();
+			}
 			mode = st.st_mode;
 			amode = "";
 			continue;
@@ -229,13 +229,16 @@ b_chmod(int argc, char** argv, Shbltin_t* context)
 			continue;
 		case '?':
 			error(ERROR_usage(2), "%s", opt_info.arg);
-			break;
+			UNREACHABLE();
 		}
 		break;
 	}
 	argv += opt_info.index;
 	if (error_info.errors || !*argv || !amode && !*(argv + 1))
+	{
 		error(ERROR_usage(2), "%s", optusage(NiL));
+		UNREACHABLE();
+	}
 	if (chlink)
 	{
 		flags &= ~FTS_META;
@@ -257,6 +260,7 @@ b_chmod(int argc, char** argv, Shbltin_t* context)
 			if (ignore)
 				umask(ignore);
 			error(ERROR_exit(1), "%s: invalid mode", amode);
+			UNREACHABLE();
 		}
 	}
 	if (!(fts = fts_open(argv, flags, NiL)))
@@ -264,6 +268,7 @@ b_chmod(int argc, char** argv, Shbltin_t* context)
 		if (ignore)
 			umask(ignore);
 		error(ERROR_system(1), "%s: not found", *argv);
+		UNREACHABLE();
 	}
 	while (!sh_checksig(context) && (ent = fts_read(fts)))
 		switch (ent->fts_info)

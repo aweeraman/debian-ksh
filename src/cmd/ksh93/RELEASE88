@@ -1,9 +1,13 @@
+This file is of historic interest. For recent changes in both ksh 93u+m and
+the accompanying libraries, see the file NEWS in the top-level directory.
+____
+
 This is a list of changes that have been made since the 11/16/88 version
 of ksh.
 
 1.  New features in 12/28/93
     a.	Associative arrays.  The new version of ksh supports both
-        associate arrays and the older indexed arrays with the same
+        associative arrays and the older indexed arrays with the same
 	array syntax.  A new -A option of typeset is used to declare
 	an array to be associative.  As with indexed arrays, $name is
 	equivalent to ${name[0]}.  The prefix operator ! was added
@@ -38,7 +42,7 @@ of ksh.
 	6.  ${@:expr1:expr2} expands to at most expr2 positional parameters
 	    starting at expr1.
 	7.  ${!name} expands to the name of the variable named by name.
-	    It will expand to name unless name is reference variable.
+	    It will expand to name unless name is a reference variable.
 	8.  ${!name[sub]} expands to the name of the subscript of the
 	    given variable.  If sub is @ or * the list of subscripts
 	    is generated.
@@ -54,7 +58,7 @@ of ksh.
 	13. ${name/%pattern/string} Same as above but the pattern
 	    to be replaced must match at the end.
 	14. ${name//pattern/string} expands to the value of name with
-	    the each occurrence of pattern replaced by string.
+	    each occurrence of pattern replaced by string.
 	    With aggregates (@ or *) this operation is applied to each.
 
     d.  The name space for variables has been extended.  The character '.'
@@ -62,7 +66,7 @@ of ksh.
 	within a name.  However, to create a name of the form, foo.bar,
 	the variable foo must exist. The namespace starting with .sh
 	is reserved for shell implementation variables.  Exported
-	variable cannot contain a '.'.
+	variables cannot contain a '.'.
 
     e.  Compound assignments.  The assignment syntax, varname=value,
 	has been extended to allow assignments of the form
@@ -72,10 +76,10 @@ of ksh.
 	assignment_list can be one of the following:
 	1.  A list of words.  In this case each word is expanded as
 	    in a for list and the resulting items become elements
-	    of the indexed array varname. 
+	    of the indexed array varname.
 	2.  A list of subscript assignments in the form
-	    [subscript]=value.  In this, these elements become 
-	    elements of the associative array varname. 
+	    [subscript]=value.  In this, these elements become
+	    elements of the associative array varname.
 	3.  A list of assignments; simple or compound.  In this
 	    case, each assignment is made to varname.name, where
 	    name is the name of the enclosed assignment.
@@ -103,7 +107,7 @@ of ksh.
 
     h.	On systems that support dynamic loading with dlopen(), it is
 	now possible to add built-in commands at runtime with the
-	a builtin command named builtin. 
+	builtin command named 'builtin'.
 
     i.	The following builtins have been added:
 	1.  command name [ ... ]
@@ -157,7 +161,7 @@ of ksh.
 	8.  Variable .sh.version is set to the version string for
 	    this shell.
 	9.  Variable .sh.name is set to the name of the variable
-	    that that was referenced or assigned to when executing a get
+	    that was referenced or assigned to when executing a get
 	    or set discipline function.
 	10. Variable .sh.subscript is set to the subscript for the variable
 	    that was referenced or assign to when executing a get or
@@ -182,7 +186,7 @@ of ksh.
 	    that the string needs translation but is otherwise ignored.
 	    This means that if a message catalog of all $"..." strings
 	    is generated, then a program such as print $"hello world"
-	    could display "bonjour monde" in the french locale.
+	    could display "bonjour monde" in the French locale.
     q.	Backreferences have been added to pattern matching.  The sequence
 	\d, where d is a digit from 1-9, matches the same string as
 	the d-th previous parenthesis group.  Backreferences
@@ -202,7 +206,7 @@ of ksh.
 	    characters are quoted in a manner that then can be re-input.
 	4.  The trace output puts quotes around the output so that it
 	    can be reused as input.
-	5.  The output for trap is in a format that can be reinput the
+	5.  The output for trap is in a format that can be reinput to
 	    the shell to restore the traps.
 	6.  kill -l lists the signal names without numbers as
 	    required by the POSIX standard.
@@ -258,7 +262,7 @@ of ksh.
 	2.  The -C option is equivalent to -o noclobber.  Files are
 	    created with O_EXCL when -C is on.
 
-    h.	The following changes have been made to [[...]]:
+    h.	The following changes have been made to [[ ... ]]:
 	1.  A string by itself is equivalent to -n string.
 	2.  -e has been added as equivalent to -a.
 	3.  == has been added as equivalent =.
@@ -314,7 +318,7 @@ of ksh.
 	
     n.	The trap command has been changed as follows:
 	1.  Trap names can be either upper case or lower case.
-	2.  Trap -p cause only the specified trap values to be displayed. 
+	2.  Trap -p only causes the specified trap values to be displayed.
 	3.  The value of trap in a subshell will be the value in the parent
 	    shell until a call to trap which changes the trap settings has
 	    been made.  Thus, savetraps=$(trap) works as required by the
@@ -339,7 +343,7 @@ of ksh.
 	uses for the given command name to be reported.
 
     u.  unalias has -a option to clear all the aliases.
- 
+
     v.	The times built-in command has been removed.  The time
 	reserved word, without a command, gives time cumulative
 	time for the shell and its children.  A built-in alias
@@ -395,7 +399,7 @@ of ksh.
 	the FEATURE mechanism of nmake.  Other options are set
 	in the OPTIONS file.
 
-    c.	The are several new compile time options. See the README
+    c.	There are several new compile time options. See the README
 	file for details.  Some of the old ones have been removed.
 
     d.	The install script is a Mamfile that is generated by

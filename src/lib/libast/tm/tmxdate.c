@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -14,9 +15,9 @@
 *                            AT&T Research                             *
 *                           Florham Park NJ                            *
 *                                                                      *
-*                 Glenn Fowler <gsf@research.att.com>                  *
-*                  David Korn <dgk@research.att.com>                   *
-*                   Phong Vo <kpv@research.att.com>                    *
+*               Glenn Fowler <glenn.s.fowler@gmail.com>                *
+*                    David Korn <dgkorn@gmail.com>                     *
+*                     Phong Vo <phongvo@gmail.com>                     *
 *                                                                      *
 ***********************************************************************/
 #pragma prototyped
@@ -135,7 +136,7 @@ powerize(Tm_t* tm, unsigned long p, unsigned long q, unsigned long u)
 		q *= 10;
 		t *= 10;
 	}
-	tm->tm_nsec += (int)(t % TMX_RESOLUTION);
+	tm->tm_nsec += (int)((unsigned long)t % TMX_RESOLUTION);
 	tm->tm_sec += (int)(t / TMX_RESOLUTION);
 }
 
@@ -228,12 +229,14 @@ tmxdate(register const char* s, char** e, Time_t now)
 		state &= (state & HOLD) ? ~(HOLD) : ~(EXACT|LAST|NEXT|THIS);
 		if ((set|state) & (YEAR|MONTH|DAY))
 			skip['/'] = 1;
-		message((-1, "AHA#%d state=" FFMT " set=" FFMT, __LINE__, FLAGS(state), FLAGS(set)));
+		while (isspace(*s))
+			s++;
+		message((-1, "AHA#%d state=" FFMT " set=" FFMT " '%s'", __LINE__, FLAGS(state), FLAGS(set), s));
 		for (;;)
 		{
 			if (*s == '.' || *s == '-' || *s == '+')
 			{
-				if (((set|state) & (YEAR|MONTH|HOUR|MINUTE|ZONE)) == (YEAR|MONTH|HOUR|MINUTE) && (i = tmgoff(s, &t, TM_LOCALZONE)) != TM_LOCALZONE)
+				if (((set|state) & (MONTH|HOUR|MINUTE|ZONE)) == (MONTH|HOUR|MINUTE) && (i = tmgoff(s, &t, TM_LOCALZONE)) != TM_LOCALZONE)
 				{
 					zone = i;
 					state |= ZONE;
@@ -323,7 +326,7 @@ tmxdate(register const char* s, char** e, Time_t now)
 				case 'm':
 					if (!m)
 						m = 1;
-					/*FALLTHROUGH*/
+					/* FALLTHROUGH */
 				case 'M':
 					switch (*(s + 1))
 					{
@@ -401,7 +404,7 @@ tmxdate(register const char* s, char** e, Time_t now)
 				case 'S':
 				case 's':
 					m = 2;
-					/*FALLTHROUGH*/
+					/* FALLTHROUGH */
 				case ' ':
 				case '_':
 				case '\n':
@@ -518,12 +521,14 @@ tmxdate(register const char* s, char** e, Time_t now)
 		if (!(state & CRON))
 		{
 			/*
-			 * check for cron date
+			 * check for cron/iso date
 			 *
 			 *	min hour day-of-month month day-of-week
 			 *
 			 * if it's cron then determine the next time
 			 * that satisfies the specification
+			 *
+			 * if it's iso then its a point in time
 			 *
 			 * NOTE: the only spacing is ' '||'_'||';'
 			 */
@@ -765,7 +770,8 @@ tmxdate(register const char* s, char** e, Time_t now)
 					if (dig2(t, k) < 1 || k > 31)
 						break;
 					flags |= DAY;
-					goto save_yymmdd;
+					if (*t != 'T' && *t != 't' || !isdigit(*++t))
+						goto save_yymmdd;
 				}
 				n = strtol(s = t, &t, 0);
 				if ((t - s) < 2)
@@ -831,7 +837,8 @@ tmxdate(register const char* s, char** e, Time_t now)
 			}
 			else
 			{
-				for (u = t; isspace(*u); u++);
+				for (u = t; isspace(*u); u++)
+					;
 				message((-1, "AHA#%d n=%d u=\"%s\"", __LINE__, n, u));
 				if ((j = tmlex(u, NiL, tm_info.format, TM_NFORM, tm_info.format + TM_SUFFIXES, TM_PARTS - TM_SUFFIXES)) >= 0 && tm_data.lex[j] == TM_PARTS)
 					s = u;
@@ -965,9 +972,16 @@ tmxdate(register const char* s, char** e, Time_t now)
 						tm->tm_year = m;
 						s = t;
 						set |= flags;
+						if ((*s == '-' || *s == '+') && (i = tmgoff(s, &t, TM_LOCALZONE)) != TM_LOCALZONE)
+						{
+							zone = i;
+							set |= ZONE;
+							s = t;
+						}
 						continue;
 					}
-					for (s = t; skip[*s]; s++);
+					for (s = t; skip[*s]; s++)
+						;
 					message((-1, "AHA#%d s=\"%s\"", __LINE__, s));
 					if (*s == ':' || *s == '.' && ((set|state) & (YEAR|MONTH|DAY|HOUR)) == (YEAR|MONTH|DAY))
 					{
@@ -1230,7 +1244,7 @@ tmxdate(register const char* s, char** e, Time_t now)
 							set |= state & (EXACT|LAST|NEXT|THIS);
 							continue;
 						}
-						/*FALLTHROUGH*/
+						/* FALLTHROUGH */
 					case TM_FINAL:
 						state |= HOLD|THIS|FINAL;
 						set &= ~(EXACT|LAST|NEXT|THIS);
@@ -1251,7 +1265,7 @@ tmxdate(register const char* s, char** e, Time_t now)
 					case TM_ORDINAL:
 						j += TM_ORDINALS - TM_ORDINAL;
 						message((-1, "AHA#%d j=%d", __LINE__, j));
-						/*FALLTHROUGH*/
+						/* FALLTHROUGH */
 					case TM_ORDINALS:
 						n = j - TM_ORDINALS + 1;
 						message((-1, "AHA#%d n=%d", __LINE__, n));
@@ -1287,7 +1301,7 @@ tmxdate(register const char* s, char** e, Time_t now)
 						continue;
 					case TM_DAY_ABBREV:
 						j += TM_DAY - TM_DAY_ABBREV;
-						/*FALLTHROUGH*/
+						/* FALLTHROUGH */
 					case TM_DAY:
 					case TM_PARTS:
 					case TM_HOURS:
@@ -1317,7 +1331,7 @@ tmxdate(register const char* s, char** e, Time_t now)
 								set &= ~(EXACT|LAST|NEXT|THIS);
 								set |= state & (EXACT|LAST|NEXT|THIS);
 							}
-						/*FALLTHROUGH*/
+						/* FALLTHROUGH */
 					case TM_DAYS:
 						message((-1, "AHA#%d n=%d j=%d f=%d state=" FFMT, __LINE__, n, j, f, FLAGS(state)));
 						if (n == -1)
@@ -1481,7 +1495,7 @@ tmxdate(register const char* s, char** e, Time_t now)
 						continue;
 					case TM_MONTH_ABBREV:
 						j += TM_MONTH - TM_MONTH_ABBREV;
-						/*FALLTHROUGH*/
+						/* FALLTHROUGH */
 					case TM_MONTH:
 						if (state & MONTH)
 							goto done;

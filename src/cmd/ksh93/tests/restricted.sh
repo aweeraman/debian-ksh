@@ -2,6 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2011 AT&T Intellectual Property          #
+#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -17,19 +18,10 @@
 #                  David Korn <dgk@research.att.com>                   #
 #                                                                      #
 ########################################################################
-function err_exit
-{
-	print -u2 -n "\t"
-	print -u2 -r ${Command}[$1]: "${@:2}"
-	let Errors+=1
-}
-alias err_exit='err_exit $LINENO'
 
-Command=${0##*/}
-integer Errors=0
+. "${SHTESTS_COMMON:-${0%/*}/_common}"
 
-tmp=$(mktemp -dt) || { err_exit mktemp -dt failed; exit 1; }
-trap "cd /; rm -rf $tmp" EXIT
+binecho=$(whence -p echo)
 
 # test restricted shell
 pwd=$PWD
@@ -45,18 +37,16 @@ function check_restricted
 	grep restricted out  > /dev/null 2>&1
 }
 
-[[ $SHELL != /* ]] && SHELL=$pwd/$SHELL
-cd $tmp || err_exit "cd $tmp failed"
 ln -s $SHELL rksh
 PATH=$PWD:$PATH
 rksh -c  '[[ -o restricted ]]' || err_exit 'restricted option not set'
 [[ $(rksh -c 'print hello') == hello ]] || err_exit 'unable to run print'
-check_restricted /bin/echo || err_exit '/bin/echo not resticted'
-check_restricted ./echo || err_exit './echo not resticted'
-check_restricted 'SHELL=ksh' || err_exit 'SHELL asignment not resticted'
-check_restricted 'PATH=/bin' || err_exit 'PATH asignment not resticted'
-check_restricted 'FPATH=/bin' || err_exit 'FPATH asignment not resticted'
-check_restricted 'ENV=/bin' || err_exit 'ENV asignment not resticted'
+check_restricted "$binecho" || err_exit "$binecho not restricted"
+check_restricted ./echo || err_exit './echo not restricted'
+check_restricted 'SHELL=ksh' || err_exit 'SHELL assignment not restricted'
+check_restricted 'PATH=/bin' || err_exit 'PATH assignment not restricted'
+check_restricted 'FPATH=/bin' || err_exit 'FPATH assignment not restricted'
+check_restricted 'ENV=/bin' || err_exit 'ENV assignment not restricted'
 check_restricted 'print > file' || err_exit '> file not restricted'
 > empty
 check_restricted 'print <> empty' || err_exit '<> file not restricted'
@@ -64,7 +54,7 @@ print 'echo hello' > script
 chmod +x ./script
 ! check_restricted script ||  err_exit 'script without builtins should run in restricted mode'
 check_restricted ./script ||  err_exit 'script with / in name should not run in restricted mode'
-print '/bin/echo hello' > script
+printf '%q hello\n' "$binecho" > script
 ! check_restricted script ||  err_exit 'script with pathnames should run in restricted mode'
 print 'echo hello> file' > script
 ! check_restricted script ||  err_exit 'script with output redirection should run in restricted mode'
@@ -80,4 +70,11 @@ for i in PATH ENV FPATH
 do	check_restricted  "function foo { typeset $i=foobar;};foo" || err_exit "$i can be changed in function by using typeset"
 done
 
+# ======
+# The restricted option cannot be unset
+check_restricted 'set +r' || err_exit "'set +r' unsets the restricted option"
+check_restricted 'set +o restricted' || err_exit "'set +o restricted' unsets the restricted option"
+check_restricted 'set --default; $(whence -p true)' || err_exit "'set --default' unsets the restricted option"
+
+# ======
 exit $((Errors<125?Errors:125))

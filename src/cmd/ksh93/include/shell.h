@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -37,9 +38,6 @@
 #   include	<nval.h>
 #endif /* _SH_PRIVATE */
 
-#undef NOT_USED
-#define NOT_USED(x)	(&x,1)
-
 /* options */
 typedef struct
 {
@@ -60,6 +58,33 @@ typedef void	(*Shinit_f)(Shell_t*, int);
 union Shnode_u;
 typedef union Shnode_u Shnode_t;
 
+/*
+ * Shell state flags. Used with sh_isstate(), sh_onstate(), sh_offstate().
+ * See also shell options below. States 0-5 are also used as shell options.
+ */
+#define SH_NOFORK	0	/* set when fork not necessary */
+#define	SH_FORKED	7	/* set when process has been forked */
+#define	SH_PROFILE	8	/* set when processing profiles */
+#define SH_NOALIAS	9	/* do not expand non-exported aliases */
+#define SH_NOTRACK	10	/* set to disable sftrack() function */
+#define SH_STOPOK	11	/* set for stopable builtins */
+#define SH_GRACE	12	/* set for timeout grace period */
+#define SH_TIMING	13	/* set while timing pipelines */
+#define SH_DEFPATH	14	/* set when using default path */
+#define SH_INIT		15	/* set when initializing the shell */
+#define SH_TTYWAIT	16	/* waiting for keyboard input */
+#define	SH_FCOMPLETE	17	/* set for filename completion */
+#define	SH_PREINIT	18	/* set with SH_INIT before parsing options */
+#define SH_COMPLETE	19	/* set for command completion */
+#define SH_INTESTCMD	20	/* set while test/[ command is being run */
+#define SH_XARG		21	/* set while in xarg (command -x) mode */
+
+/*
+ * Shell options (set -o). Used with sh_isoption(), sh_onoption(), sh_offoption().
+ * There can be a maximum of 256 (0..0xFF) shell options.
+ * The short option letters are defined in optksh[] and flagval[] in sh/args.c.
+ * The long option names are defined in shtab_options[] in data/options.c.
+ */
 #define SH_CFLAG	0
 #define SH_HISTORY	1	/* used also as a state */
 #define	SH_ERREXIT	2	/* used also as a state */
@@ -72,30 +97,46 @@ typedef union Shnode_u Shnode_t;
 #define SH_NOUNSET	9
 #define SH_NOGLOB	10
 #define SH_ALLEXPORT	11
+#if SHOPT_PFSH
 #define SH_PFSH		12
+#endif
 #define SH_IGNOREEOF	13
 #define SH_NOCLOBBER	14
 #define SH_MARKDIRS	15
 #define SH_BGNICE	16
+#if SHOPT_VSH
 #define SH_VI		17
 #define SH_VIRAW	18
+#endif
 #define	SH_TFLAG	19
 #define SH_TRACKALL	20
 #define	SH_SFLAG	21
 #define	SH_NOEXEC	22
+#if SHOPT_ESH
 #define SH_GMACS	24
 #define SH_EMACS	25
+#endif
 #define SH_PRIVILEGED	26
-#define SH_SUBSHARE	27	/* subshell shares state with parent */
 #define SH_NOLOG	28
 #define SH_NOTIFY	29
 #define SH_DICTIONARY	30
 #define SH_PIPEFAIL	32
 #define SH_GLOBSTARS	33
-#define SH_XARGS	34
+#if SHOPT_GLOBCASEDET
+#define SH_GLOBCASEDET	34
+#endif
 #define SH_RC		35
 #define SH_SHOWME	36
 #define SH_LETOCTAL	37
+#if SHOPT_BRACEPAT
+#define SH_BRACEEXPAND	42
+#endif
+#define SH_POSIX	46
+#define SH_MULTILINE	47
+#define SH_NOBACKSLCTRL	48
+#define SH_LOGIN_SHELL	67
+#define SH_NOUSRPROFILE	79	/* internal use only */
+#define SH_COMMANDLINE	0x100	/* bit flag for invocation-only options ('set -o' cannot change them) */
 
 /*
  * passed as flags to builtins in Nambltin_t struct when BLT_OPTIM is on
@@ -106,9 +147,10 @@ typedef union Shnode_u Shnode_t;
 /* The following type is used for error messages */
 
 /* error messages */
-extern const char	e_defpath[];
 extern const char	e_found[];
-extern const char	e_nospace[];
+#ifdef ENAMETOOLONG
+extern const char	e_toolong[];
+#endif
 extern const char	e_format[];
 extern const char 	e_number[];
 extern const char	e_restricted[];
@@ -141,14 +183,26 @@ struct Shell_s
 	Dt_t		*bltin_tree;    /* for builtin commands */
 	Shscope_t	*topscope;	/* pointer to top-level scope */
 	int		inlineno;	/* line number of current input file */
-	int		exitval;	/* most recent exit value */
+	int		exitval;	/* exit status of the command currently being run */
+	int		savexit;	/* $? == exit status of the last command executed */
 	unsigned char	trapnote;	/* set when trap/signal is pending */
-	char		shcomp;		/* set when runing shcomp */
-	short		subshell;	/* set for virtual subshell */
+	char		shcomp;		/* set when running shcomp */
+	unsigned int	subshell;	/* set for virtual subshell */
 #ifdef _SH_PRIVATE
 	_SH_PRIVATE
 #endif /* _SH_PRIVATE */
 };
+
+/* used for builtins */
+typedef struct Libcomp_s
+{
+	void*		dll;
+	char*		lib;
+	dev_t		dev;
+	ino_t		ino;
+	unsigned int	attr;
+} Libcomp_t;
+extern Libcomp_t *liblist;
 
 /* flags for sh_parse */
 #define SH_NL		1	/* Treat new-lines as ; */
@@ -176,7 +230,7 @@ extern void		sh_subfork(void);
 extern Shell_t		*sh_init(int,char*[],Shinit_f);
 extern int		sh_reinit(char*[]);
 extern int 		sh_eval(Sfio_t*,int);
-extern void 		sh_delay(double);
+extern void 		sh_delay(double,int);
 extern void		*sh_parse(Shell_t*, Sfio_t*,int);
 extern int 		sh_trap(const char*,int);
 extern int 		sh_fun(Namval_t*,Namval_t*, char*[]);

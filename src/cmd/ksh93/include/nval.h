@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -32,13 +33,7 @@
 #include	<ast.h>
 #include	<cdt.h>
 #include	<option.h>
-
-/* for compatibility with old hash library */
-#define Hashtab_t	Dt_t
-#define HASH_BUCKET	1
-#define HASH_NOSCOPE	2
-#define HASH_SCOPE	4
-#define hashscope(x)	dtvnext(x)
+#include	<hash.h>
 
 typedef struct Namval Namval_t;
 typedef struct Namfun Namfun_t;
@@ -71,7 +66,7 @@ struct Namfun
 {
 	const Namdisc_t	*disc;
 	char		nofree;
-	unsigned char	subshell;
+	unsigned int	subshell;
 	uint32_t	dsize;
 	Namfun_t	*next;
 	char		*last;
@@ -94,7 +89,7 @@ struct Namarray
 	void	*(*fun)(Namval_t*,const char*,int);	/* associative arrays */
 	void		*fixed;			/* for fixed sized arrays */
 	Dt_t		*table;			/* for subscripts */
-	void		*scope;			/* non-zerp when scoped */
+	void		*scope;			/* non-zero when scoped */
 };
 
 /* The context pointer for declaration command */
@@ -171,8 +166,9 @@ struct Namval
 #define NV_DOUBLE	(NV_INTEGER|NV_ZFILL)	/* for floating point */
 #define NV_EXPNOTE	(NV_LJUST)	/* for scientific notation */
 #define NV_HEXFLOAT	(NV_LTOU)	/* for C99 base16 float notation */
+#define NV_FLTSIZEZERO	-1		/* a float with size of 0 being <0 */
 
-/*  options for nv_open */
+/* options for nv_open */
 
 #define NV_APPEND	0x10000		/* append value */
 #define NV_MOVE		0x8000000	/* for use with nv_clone */
@@ -236,7 +232,7 @@ struct Namval
 #define ARRAY_UNDEF	(4L<<ARRAY_BITS)	/* For ${array} */
 
 
-/* These  are disciplines provided by the library for use with nv_discfun */
+/* These are disciplines provided by the library for use with nv_discfun */
 #define NV_DCADD	0	/* used to add named disciplines */
 #define NV_DCRESTRICT	1	/* variable that are restricted in rsh */
 
@@ -247,7 +243,7 @@ struct Namval
 #	define extern __IMPORT__
 #   endif /* _BLD_shell */
 #endif /* _DLL */
-/* prototype for array interface*/
+/* prototype for array interface */
 extern Namarr_t	*nv_arrayptr(Namval_t*);
 extern Namarr_t	*nv_setarray(Namval_t*,void*(*)(Namval_t*,const char*,int));
 extern int	nv_arraynsub(Namarr_t*);
@@ -281,6 +277,7 @@ extern Namval_t		*nv_open(const char*,Dt_t*,int);
 extern void 		nv_putval(Namval_t*,const char*,int);
 extern void 		nv_putv(Namval_t*,const char*,int,Namfun_t*);
 extern int		nv_rename(Namval_t*,int);
+extern void		nv_rehash(Namval_t*,void*);
 extern int		nv_scan(Dt_t*,void(*)(Namval_t*,void*),void*,int,int);
 extern char 		*nv_setdisc(Namval_t*,const char*,Namval_t*,Namfun_t*);
 extern void		nv_setref(Namval_t*, Dt_t*,int);
@@ -289,7 +286,7 @@ extern void 		nv_setvec(Namval_t*,int,int,char*[]);
 extern void		nv_setvtree(Namval_t*);
 extern int 		nv_setsize(Namval_t*,int);
 extern Namfun_t		*nv_disc(Namval_t*,Namfun_t*,int);
-extern void 		nv_unset(Namval_t*);	 /*obsolete */
+extern void 		nv_unset(Namval_t*);	 /* obsolete */
 extern void 		_nv_unset(Namval_t*,int);
 extern Namval_t		*nv_search(const char *, Dt_t*, int);
 extern char		*nv_name(Namval_t*);

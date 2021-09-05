@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -105,16 +106,15 @@ int		rc;	/* record separator.	*/
 			break;
 		}
 
-#if _lib_memccpy && !__ia64 /* these guys may never get it right */
-		if((ps = (uchar*)memccpy(ps,s,'\0',p)) != NIL(uchar*))
-			ps -= 1;
-		else	ps  = f->next+p;
-		s += ps - f->next;
-#else
+		/*
+		 * Do not replace the following loop with memccpy(). The
+		 * 'ps' and 's' buffers may overlap or even point to the
+		 * same buffer. See: https://github.com/att/ast/issues/78
+		 */
 		for(; p > 0; --p, ++ps, ++s)
 			if((*ps = *s) == 0)
 				break;
-#endif
+
 		w += ps - f->next;
 		f->next = ps;
 	}

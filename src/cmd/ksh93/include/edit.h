@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -31,9 +32,6 @@
 
 #include	"FEATURE/options"
 #include        "FEATURE/locale"
-#if !SHOPT_VSH && !SHOPT_ESH
-#   define ed_winsize()	(SEARCHSIZE)
-#else
 
 #if !KSHELL
 #   include	<setjmp.h>
@@ -59,7 +57,7 @@
 #endif /* SHOPT_MULTIBYTE */
 
 #define TABSIZE	8
-#define PRSIZE	160
+#define PRSIZE	256
 #define MAXLINE	1024		/* longest edit line permitted */
 
 typedef struct _edit_pos
@@ -90,10 +88,8 @@ typedef struct edit
 	int	e_werase;
 	int	e_eof;
 	int	e_lnext;
-	int	e_fchar;
 	int	e_plen;		/* length of prompt string */
 	char	e_crlf;		/* zero if cannot return to beginning of line */
-	char	e_nocrnl;	/* don't put a new-line with ^L */
 	char	e_keytrap;	/* set when in keytrap */
 	int	e_llimit;	/* line length limit */
 	int	e_hline;	/* current history line number */
@@ -107,24 +103,19 @@ typedef struct edit
 	int	e_peol;		/* end of physical line position */
 	int	e_mode;		/* edit mode */
 	int	e_lookahead;	/* index in look-ahead buffer */
-	int	e_repeat;
-	int	e_saved;
 	int	e_fcol;		/* first column */
-	int	e_ucol;		/* column for undo */
 	int	e_wsize;	/* width of display window */
 	char	*e_outbase;	/* pointer to start of output buffer */
 	char	*e_outptr;	/* pointer to position in output buffer */
 	char	*e_outlast;	/* pointer to end of output buffer */
 	genchar	*e_inbuf;	/* pointer to input buffer */
-	char	*e_prompt;	/* pointer to buffer containing the prompt */
-	genchar	*e_ubuf;	/* pointer to the undo buffer */
+	char	*e_prompt;	/* pointer to trimmed final line of PS1 prompt, used when redrawing command line */
 	genchar	*e_killbuf;	/* pointer to delete buffer */
 	char	e_search[SEARCHSIZE];	/* search string */
-	genchar	*e_Ubuf;	/* temporary workspace buffer */
 	genchar	*e_physbuf;	/* temporary workspace buffer */
 	int	e_lbuf[LOOKAHEAD];/* pointer to look-ahead buffer */
 	int	e_fd;		/* file descriptor */
-	int	e_ttyspeed;	/* line speed, also indicates tty parms are valid */
+	int	e_ttyspeed;	/* line speed, also indicates tty parameters are valid */
 	int	e_tabcount;
 #ifdef _hdr_utime
 	ino_t	e_tty_ino;
@@ -136,12 +127,8 @@ typedef struct edit
 	char	e_tcgeta;
 	struct termio e_ott;
 #endif
-#if SHOPT_MULTIBYTE
-	int	e_curchar;
-	int	e_cursize;
-#endif
 	int	*e_globals;	/* global variables */
-	genchar	*e_window;	/* display window  image */
+	genchar	*e_window;	/* display window image */
 	char	e_inmacro;	/* processing macro expansion */
 #if KSHELL
 	char	e_vi_insert[2];	/* for sh_keytrap */
@@ -174,7 +161,6 @@ typedef struct edit
 	unsigned short	hoff;
 	unsigned short	hmax;
 	char		hpat[40];
-	char		*hstak;
 #endif /* SHOPT_EDPREDICT */
 } Edit_t;
 
@@ -242,11 +228,12 @@ extern int	ed_setcursor(Edit_t*, genchar*, int, int, int);
 	extern void ed_gencpy(genchar*,const genchar*);
 	extern void ed_genncpy(genchar*,const genchar*,int);
 	extern int ed_genlen(const genchar*);
-	extern int ed_setwidth(const char*);
 #  endif /* SHOPT_MULTIBYTE */
 #if SHOPT_EDPREDICT
-   extern int	ed_histgen(Edit_t*, const char*);
-   extern void	ed_histlist(Edit_t*, int);
+    extern int	ed_histgen(Edit_t*, const char*);
+#   if SHOPT_ESH || SHOPT_VSH
+        extern void	ed_histlist(Edit_t*, int);
+#   endif /* SHOPT_ESH || SHOPT_VSH */
 #endif /* SHOPT_EDPREDICT */
 
 extern const char	e_runvi[];
@@ -262,8 +249,8 @@ extern const char	e_runvi[];
 #define HIST_QUESTION	0x2	/* question mark event designator */
 #define	HIST_HASH	0x4	/* hash event designator */
 #define HIST_WORDDSGN	0x8	/* word designator seen */
-#define HIST_QUICKSUBST	0x10	/* quick substition designator seen */
-#define HIST_SUBSTITUTE	0x20	/* for substition loop */
+#define HIST_QUICKSUBST	0x10	/* quick substitution designator seen */
+#define HIST_SUBSTITUTE	0x20	/* for substitution loop */
 #define	HIST_NEWLINE	0x40	/* newline in squashed white space */
 
 /* modifier flags */
@@ -271,16 +258,24 @@ extern const char	e_runvi[];
 #define	HIST_PRINT		0x100	/* print new command */
 #define	HIST_QUOTE		0x200	/* quote resulting history line */
 #define	HIST_QUOTE_BR		0x400	/* quote every word on space break */
-#define	HIST_GLOBALSUBST	0x800	/* apply substition globally */
+#define	HIST_GLOBALSUBST	0x800	/* apply substitution globally */
 
-#define	HIST_ERROR		0x1000	/* an error ocurred */
+#define	HIST_ERROR		0x1000	/* an error occurred */
 
 /* flags to be returned */
 
 #define	HIST_FLAG_RETURN_MASK	(HIST_EVENT|HIST_PRINT|HIST_ERROR)
 
 extern int hist_expand(const char *, char **);
-#endif
 
-#endif
-#endif
+#endif /* SHOPT_HISTEXPAND */
+
+#if SHOPT_ESH
+extern void	emacs_redraw(Void_t*);
+#endif /* SHOPT_ESH */
+
+#if SHOPT_VSH
+extern void	vi_redraw(Void_t*);
+#endif /* SHOPT_VSH */
+
+#endif /* !SEARCHSIZE */

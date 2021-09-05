@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -194,24 +195,7 @@ static struct argnod *r_arg(Shell_t *shp)
 		ap->argval[l] = 0;
 		ap->argchn.cp = 0;
 		ap->argflag = sfgetc(infile);
-#if 0
-		if((ap->argflag&ARG_MESSAGE) && *ap->argval)
-		{
-			/* replace international messages */
-			sh_endword(shp,1);
-			ap->argflag &= ~ARG_MESSAGE;
-			if(!(ap->argflag&(ARG_MAC|ARG_EXP)))
-				ap = sh_endword(shp,0);
-			else
-			{
-				ap = (struct argnod*)stkfreeze(stkp,0);
-				if(ap->argflag==0)
-					ap->argflag = ARG_RAW;
-			}
-		}
-		else
-#endif
-			ap = (struct argnod*)stkfreeze(stkp,0);
+		ap = (struct argnod*)stkfreeze(stkp,0);
 		if(*ap->argval==0 && (ap->argflag&ARG_EXP))
 			ap->argchn.ap = (struct argnod*)r_tree(shp);
 		else if(*ap->argval==0 && (ap->argflag&~(ARG_APPEND|ARG_MESSAGE|ARG_QUOTED))==0)
@@ -241,7 +225,10 @@ static struct ionod *r_redirect(Shell_t* shp)
 		else
 			iopold->ionxt = iop;
 		iop->iofile = l;
-		iop->ioname = r_string(shp->stk);
+		if((l & IOPROCSUB) && !(l & IOLSEEK))
+			iop->ioname = (char*)r_tree(shp);  /* process substitution as file name to redirection */
+		else
+			iop->ioname = r_string(shp->stk);  /* file name, descriptor, etc. */
 		if(iop->iodelim = r_string(shp->stk))
 		{
 			iop->iosize = sfgetl(infile);

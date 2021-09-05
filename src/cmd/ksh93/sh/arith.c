@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -30,6 +31,10 @@
 #include	"streval.h"
 #include	"variables.h"
 #include	"builtins.h"
+
+/* POSIX requires error status > 1 if called from test builtin */
+#undef ERROR_exit
+#define ERROR_exit(n) _ERROR_exit_b_test(n)
 
 #ifndef LLONG_MAX
 #define LLONG_MAX	LONG_MAX
@@ -157,8 +162,6 @@ static Namval_t *scope(register Namval_t *np,register struct lval *lvalue,int as
 				sfprintf(shp->strbuf,"%s%s%c",nv_name(np),sub,0);
 				sub = sfstruse(shp->strbuf);
 			}
-			if(strchr(sub,'$'))
-				sub = sh_mactrim(shp,sub,0);
 			*cp = flag;
 			if(c || hasdot)
 			{
@@ -167,9 +170,9 @@ static Namval_t *scope(register Namval_t *np,register struct lval *lvalue,int as
 			}
 #if SHOPT_FIXEDARRAY
 			ap = nv_arrayptr(np);
-			cp = nv_endsubscript(np,sub,NV_ADD|NV_SUBQUOTE|(ap&&ap->fixed?NV_FARRAY:0));
+			cp = nv_endsubscript(np,sub,NV_ADD|(ap&&ap->fixed?NV_FARRAY:0));
 #else
-			cp = nv_endsubscript(np,sub,NV_ADD|NV_SUBQUOTE);
+			cp = nv_endsubscript(np,sub,NV_ADD);
 #endif /* SHOPT_FIXEDARRAY */
 			if(*cp!='[')
 				break;
@@ -180,7 +183,10 @@ static Namval_t *scope(register Namval_t *np,register struct lval *lvalue,int as
 			{
 				ap = nv_arrayptr(np);
 				if(ap && !ap->table)
+				{
 					ap->table = dtopen(&_Nvdisc,Dtoset);
+					dtuserdata(ap->table,shp,1);
+				}
 				if(ap && ap->table && (nq=nv_search(nv_getsub(np),ap->table,NV_ADD)))
 					nq->nvenv = (char*)np;
 				if(nq && nv_isnull(nq))
@@ -227,8 +233,20 @@ static Sfdouble_t arith(const char **ptr, struct lval *lvalue, int type, Sfdoubl
 	{
 	    case ASSIGN:
 	    {
-		register Namval_t *np = (Namval_t*)(lvalue->value);
-		np = scope(np,lvalue,1);
+		register Namval_t *np;
+		if (lvalue->sub && lvalue->nosub > 0) /* indexed array ARITH_ASSIGNOP */
+		{
+			np = (Namval_t*)lvalue->sub; /* use saved subscript reference instead of last worked value */
+			nv_putsub(np, NIL(char*), lvalue->nosub-1);
+			/* reset nosub and sub for next assignment in a compound arithmetic expression */
+			lvalue->nosub = 0;
+			lvalue->sub = 0;
+		}
+		else
+		{
+			np = (Namval_t*)lvalue->value;
+			np = scope(np, lvalue, 1);
+		}
 		nv_putval(np, (char*)&n, NV_LDOUBLE);
 		if(lvalue->eflag)
 			lvalue->ptr = (void*)nv_hasdisc(np,&ENUM_disc);
@@ -263,7 +281,7 @@ static Sfdouble_t arith(const char **ptr, struct lval *lvalue, int type, Sfdoubl
 				dot=NV_NOADD;
 				if((c = *++str) !='[')
 					continue;
-				str = nv_endsubscript((Namval_t*)0,cp=str,NV_SUBQUOTE)-1;
+				str = nv_endsubscript((Namval_t*)0,cp=str,0)-1;
 				if(sh_checkid(cp+1,(char*)0))
 					str -=2;
 			}
@@ -384,10 +402,14 @@ static Sfdouble_t arith(const char **ptr, struct lval *lvalue, int type, Sfdoubl
 		else
 		{
 			char	lastbase=0, *val = xp, oerrno = errno;
+			const char radix = GETDECIMAL(0);
 			lvalue->eflag = 0;
 			errno = 0;
 			if(shp->bltindata.bnode==SYSLET && !sh_isoption(SH_LETOCTAL))
-			{
+			{	/*
+				 * Since we're running the "let" builtin, disable octal number processing by
+				 * skipping all initial zeros, unless the 'letoctal' option is on.
+				 */
 				while(*val=='0' && isdigit(val[1]))
 					val++;
 			}
@@ -411,8 +433,12 @@ static Sfdouble_t arith(const char **ptr, struct lval *lvalue, int type, Sfdoubl
 				c='e';
 			else
 				c = *str;
-			if(c==GETDECIMAL(0) || c=='e' || c == 'E' || lastbase ==
- 16 && (c == 'p' || c == 'P'))
+			if(c=='.' && radix!='.')
+			{
+				errormsg(SH_DICT,ERROR_exit(1),"%s: radix point '.' requires LC_NUMERIC=C",val);
+				UNREACHABLE();
+			}
+			if(c==radix || c=='e' || c == 'E' || lastbase == 16 && (c == 'p' || c == 'P'))
 			{
 				lvalue->isfloat=1;
 				r = strtold(val,&str);
@@ -480,17 +506,15 @@ static Sfdouble_t arith(const char **ptr, struct lval *lvalue, int type, Sfdoubl
 		else if(nv_isattr(np,NV_DOUBLE)==NV_DOUBLE)
 			lvalue->isfloat=1;
 		if((lvalue->emode&ARITH_ASSIGNOP) && nv_isarray(np))
-			lvalue->nosub = nv_aindex(np)+1;
+		{
+			lvalue->nosub = nv_aindex(np)+1; /* subscript number of array */
+			lvalue->sub = (char*)np; /* store subscript reference for upcoming iteration of ASSIGN */
+		}
 		return(r);
 	    }
 
 	    case MESSAGE:
 		sfsync(NIL(Sfio_t*));
-#if 0
-		if(warn)
-			errormsg(SH_DICT,ERROR_warn(0),lvalue->value,*ptr);
-		else
-#endif
 		if(lvalue->emode&ARITH_COMP)
 			return(-1);
 			
@@ -513,21 +537,39 @@ Sfdouble_t sh_strnum(register const char *str, char** ptr, int mode)
 	char base=(shp->inarith?0:10), *last;
 	if(*str==0)
 	{
-		if(ptr)
-			*ptr = (char*)str;
-		return(0);
+		d = 0.0;
+		last = (char*)str;
+	} else {
+		errno = 0;
+		d = strtonll(str,&last,&base,-1);
+		if (*last && !shp->inarith && sh_isstate(SH_INIT)) {
+			/* This call is to handle "base#value" literals if we're importing untrusted env vars. */
+			errno = 0;
+			d = strtonll(str, &last, NULL, -1);
+		}
+
+		if(*last || errno)
+		{
+			if (sh_isstate(SH_INIT)) {
+				/*
+				 * Initializing means importing untrusted env vars. The string does not appear to be
+				 * a recognized numeric literal, so give up. We can't safely call strval(), because
+				 * that allows arbitrary expressions, causing security vulnerability CVE-2019-14868.
+				 */
+				d = 0.0;
+			} else {
+				if(!last || *last!='.' || last[1]!='.')
+					d = strval(shp,str,&last,arith,mode);
+				if(!ptr && *last && mode>0)
+				{
+					errormsg(SH_DICT,ERROR_exit(1),e_lexbadchar,*last,str);
+					UNREACHABLE();
+				}
+			}
+		} else if (!d && *str=='-') {
+			d = -0.0;
+		}
 	}
-	errno = 0;
-	d = strtonll(str,&last,&base,-1);
-	if(*last || errno)
-	{
-		if(!last || *last!='.' || last[1]!='.')
-			d = strval(shp,str,&last,arith,mode);
-		if(!ptr && *last && mode>0)
-			errormsg(SH_DICT,ERROR_exit(1),e_lexbadchar,*last,str);
-	}
-	else if (!d && *str=='-')
-		d = -0.0;
 	if(ptr)
 		*ptr = last;
 	return(d);
@@ -544,6 +586,9 @@ void	*sh_arithcomp(Shell_t *shp,register char *str)
 	Arith_t *ep;
 	ep = arith_compile(shp,str,(char**)&ptr,arith,ARITH_COMP|1);
 	if(*ptr)
+	{
 		errormsg(SH_DICT,ERROR_exit(1),e_lexbadchar,*ptr,str);
+		UNREACHABLE();
+	}
 	return((void*)ep);
 }

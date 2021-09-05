@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -38,7 +39,7 @@ memmove(void* to, const void* from, register size_t n)
 	if (n <= 0)	/* works if size_t is signed or not */
 		;
 	else if (in + n <= out || out + n <= in)
-		return(memcpy(to, from, n));	/* hope it's fast*/
+		return(memcpy(to, from, n));	/* hope it's fast */
 	else if (out < in)
 		do *out++ = *in++; while (--n > 0);
 	else

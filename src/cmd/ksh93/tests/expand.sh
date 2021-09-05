@@ -2,6 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2011 AT&T Intellectual Property          #
+#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -17,15 +18,8 @@
 #                  David Korn <dgk@research.att.com>                   #
 #                                                                      #
 ########################################################################
-function err_exit
-{
-	print -u2 -n "\t"
-	print -u2 -r ${Command}[$Line]: "$@"
-	((Errors++))
-}
 
-integer Errors=0
-Command=${0##*/}
+. "${SHTESTS_COMMON:-${0%/*}/_common}"
 
 # {...} expansion tests -- ignore if not supported
 
@@ -111,9 +105,9 @@ done
 set -- ~(N)/dev/null
 [[ $# == 1 && $1 == /dev/null ]] || err_exit "~(N)/dev/null not matching /dev/null"
 set -- ~(N)/dev/non_existant_file
-[[ $# == 0  ]] || err_exit "~(N)/dev/nonexistant not empty"
+[[ $# == 0  ]] || err_exit "~(N)/dev/nonexistent not empty"
 set -- ""~(N)/dev/non_existant_file
-[[ $# == 1  && ! $1 ]] || err_exit '""~(N)/dev/nonexistant not null argument'
+[[ $# == 1  && ! $1 ]] || err_exit '""~(N)/dev/nonexistent not null argument'
 set -- ~(N)/dev/non_existant_file""
 [[ $# == 1  && ! $1 ]] || err_exit '~(N)/dev/nonexistent"" not null argument'
 for i in ~(N)/dev/non_existent_file

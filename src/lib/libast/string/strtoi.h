@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -50,7 +51,7 @@
  * a default base of 1 will determine the base from the input using bb#*
  * a base prefix in the string overrides *b
  * *b will not be set if the string has no base prefix
- * if m>1 and no multipler was specified then the result is multiplied by m
+ * if m>1 and no multiplier was specified then the result is multiplied by m
  * if m<0 then multipliers are not consumed
  * if a base arg or prefix is specified then multiplier is not consumed
  *
@@ -85,15 +86,12 @@
 
 #include <ast.h>
 #include <ctype.h>
+#include <error.h>
 
 #include "sfhdr.h"
 
 #if !__STD_C && !defined(const)
 #define const
-#endif
-
-#ifndef ERANGE
-#define ERANGE		EINVAL
 #endif
 
 #define QL		01
@@ -230,13 +228,13 @@ S2I_function(a, e, base) const char* a; char** e; int base;
 #endif
 	register S2I_unumber	n;
 	register S2I_unumber	x;
-	register int		c;
+	register int		c = 0;
 	register int		shift;
 	register unsigned char*	p;
 	register unsigned char*	cv;
 	unsigned char*		b;
 	unsigned char*		k;
-	S2I_unumber		v;
+	S2I_unumber		v = 0;
 #if S2I_multiplier
 	register int		base;
 #endif

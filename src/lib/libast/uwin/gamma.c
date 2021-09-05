@@ -42,7 +42,7 @@ static char sccsid[] = "@(#)gamma.c	8.1 (Berkeley) 6/4/93";
 /*
  * This code by P. McIlroy, Oct 1992;
  *
- * The financial support of UUNET Communications Services is greatfully
+ * The financial support of UUNET Communications Services is gratefully
  * acknowledged.
  */
 
@@ -201,7 +201,7 @@ large_gam(x)
 	return (u);
 }
 /*
- * Good to < 1 ulp.  (provably .90 ulp; .87 ulp on 1,000,000 runs.)
+ * Good to < 1 ulp.  (Provably .90 ulp; .87 ulp on 1,000,000 runs.)
  * It also has correct monotonicity.
  */
 static double

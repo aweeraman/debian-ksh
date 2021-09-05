@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -41,7 +42,6 @@ typedef struct  _shlex_
 	int		lastline;	/* last line number */
 	int		lasttok;	/* previous token number */
 	int		digits;		/* numerical value with word token */
-	int		nonstandard;	/* nonstandard construct in profile */
 	char		aliasok;	/* on when alias is legal */
 	char		assignok;	/* on when name=value is legal */
 	char		inexec;		/* on when processing exec */
@@ -114,7 +114,6 @@ typedef struct  _shlex_
 #define IORDWRSYM	(SYMGT|'<')
 #define IORDWRSYMT	(SYMSEMI|'<')
 #define IOCLOBSYM	(SYMPIPE|'>')
-#define PIPESYM2	(SYMPIPE|'&')
 #define IPROCSYM	(SYMLPAR|'<')
 #define OPROCSYM	(SYMLPAR|'>')
 #define EOFSYM		04000	/* end-of-file */
@@ -133,17 +132,6 @@ typedef struct  _shlex_
 
 #define SH_COMPASSIGN	010	/* allow compound assignments only */
 
-#if 0
-typedef struct  _shlex_
-{
-	struct shlex_t		_shlex;
-#ifdef  _SHLEX_PRIVATE
-	_SHLEX_PRIVATE
-#endif
-} Lex_t;
-
-#define	shlex			(((Lex_t*)(sh.lex_context))->_shlex)
-#endif
 extern const char		e_unexpected[];
 extern const char		e_unmatched[];
 extern const char		e_endoffile[];
@@ -161,11 +149,10 @@ extern int		sh_lex(Lex_t*);
 extern Shnode_t		*sh_dolparen(Lex_t*);
 extern Lex_t		*sh_lexopen(Lex_t*, Shell_t*, int);
 extern void 		sh_lexskip(Lex_t*,int,int,int);
-extern void 		sh_syntax(Lex_t*);
+extern noreturn void 	sh_syntax(Lex_t*);
 #if SHOPT_KIA
     extern int                  kiaclose(Lex_t *);
     extern unsigned long        kiaentity(Lex_t*, const char*,int,int,int,int,unsigned long,int,int,const char*);
 #endif /* SHOPT_KIA */
-
 
 #endif /* !NOTSYM */

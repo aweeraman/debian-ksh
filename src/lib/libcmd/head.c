@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -28,7 +29,7 @@
 
 static const char usage[] =
 "[-n?\n@(#)$Id: head (AT&T Research) 2012-05-31 $\n]"
-USAGE_LICENSE
+"[--catalog?" ERROR_CATALOG "]"
 "[+NAME?head - output beginning portion of one or more files ]"
 "[+DESCRIPTION?\bhead\b copies one or more input files to standard "
     "output stopping at a designated point for each file or to the end of "
@@ -43,17 +44,17 @@ USAGE_LICENSE
     "other than a single byte:]"
     "{"
         "[+b?512 bytes.]"
-        "[+k?1-killobyte.]"
+        "[+k?1-kilobyte.]"
         "[+m?1-megabyte.]"
     "}"
 "[+?For backwards compatibility, \b-\b\anumber\a is equivalent to \b-n\b "
     "\anumber\a.]"
 "[n:lines?Copy \alines\a lines from each file.]#[lines:=10]"
 "[c:bytes?Copy \achars\a bytes from each file.]#[chars]"
-"[q:quiet|silent?Never ouput filename headers.]"
+"[q:quiet|silent?Never output filename headers.]"
 "[s:skip?Skip \askip\a characters or lines from each file before "
     "copying.]#[skip]"
-"[v:verbose?Always ouput filename headers.]"
+"[v:verbose?Always output filename headers.]"
     "\n\n"
 "[ file ... ]"
     "\n\n"
@@ -87,7 +88,7 @@ b_head(int argc, register char** argv, Shbltin_t* context)
 		{
 		case 'c':
 			delim = -1;
-			/*FALLTHROUGH*/
+			/* FALLTHROUGH */
 		case 'n':
 			if (opt_info.offset && argv[opt_info.index][opt_info.offset] == 'c')
 			{
@@ -108,7 +109,7 @@ b_head(int argc, register char** argv, Shbltin_t* context)
 			continue;
 		case '?':
 			error(ERROR_usage(2), "%s", opt_info.arg);
-			continue;
+			UNREACHABLE();
 		case ':':
 			error(2, "%s", opt_info.arg);
 			continue;
@@ -118,7 +119,10 @@ b_head(int argc, register char** argv, Shbltin_t* context)
 	argv += opt_info.index;
 	argc -= opt_info.index;
 	if (error_info.errors)
+	{
 		error(ERROR_usage(2), "%s", optusage(NiL));
+		UNREACHABLE();
+	}
 	if (cp = *argv)
 		argv++;
 	do

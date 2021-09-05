@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -258,7 +259,7 @@ reg Sfio_t*	f;	/* stream to close */
 #endif
 {
 	Sfproc_t*	p;
-	int		pid, status;
+	int		status;
 
 	if(!(p = f->proc))
 		return -1;
@@ -279,7 +280,7 @@ reg Sfio_t*	f;	/* stream to close */
 		sigcritical(SIG_REG_EXEC|SIG_REG_PROC);
 #endif
 		status = -1;
-		while ((pid = waitpid(p->pid,&status,0)) == -1 && errno == EINTR)
+		while (waitpid(p->pid,&status,0) == -1 && errno == EINTR)
 			;
 #if _PACKAGE_ast
 		status = status == -1 ?
@@ -405,12 +406,16 @@ reg int		local;	/* a local call */
 	if(f->mode&SF_GETR)
 	{	f->mode &= ~SF_GETR;
 #ifdef MAP_TYPE
-		if((f->bits&SF_MMAP) && (f->tiny[0] += 1) >= (4*SF_NMAP) )
-		{	/* turn off mmap to avoid page faulting */
-			sfsetbuf(f,(Void_t*)f->tiny,(size_t)SF_UNBOUND);
-			f->tiny[0] = 0;
+		if(f->bits&SF_MMAP)
+		{
+			if (!++f->ngetr)
+				f->tiny[0]++;
+			if(((f->tiny[0]<<8)|f->ngetr) >= (4*SF_NMAP) )
+			{	/* turn off mmap to avoid page faulting */
+				sfsetbuf(f,(Void_t*)f->tiny,(size_t)SF_UNBOUND);
+				f->ngetr = f->tiny[0] = 0;
+			}
 		}
-		else
 #endif
 		if(f->getr)
 		{	f->next[-1] = f->getr;
@@ -533,7 +538,7 @@ reg int		local;	/* a local call */
 
 			break;
 		}
-		/* fall thru */
+		/* FALLTHROUGH */
 
 	case SF_READ: /* switching to SF_WRITE */
 		if(wanted != SF_WRITE)

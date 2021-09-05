@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -22,7 +23,7 @@
 
 static const char usage[] =
 "[-?\n@(#)$Id: fds (AT&T Research) 2009-09-09 $\n]"
-USAGE_LICENSE
+"[--catalog?" ERROR_CATALOG "]"
 "[+NAME?fds - list open file descriptor status]"
 "[+DESCRIPTION?\bfds\b lists the status for each open file descriptor. "
     "When invoked as a shell builtin it accesses the file descriptors of the "
@@ -199,8 +200,8 @@ b_fds(int argc, char** argv, Shbltin_t* context)
 			unit = opt_info.num;
 			continue;
 		case '?':
-			error(ERROR_USAGE|4, "%s", opt_info.arg);
-			break;
+			error(ERROR_usage(2), "%s", opt_info.arg);
+			UNREACHABLE();
 		case ':':
 			error(2, "%s", opt_info.arg);
 			break;
@@ -209,13 +210,19 @@ b_fds(int argc, char** argv, Shbltin_t* context)
 	}
 	argv += opt_info.index;
 	if (error_info.errors || *argv)
-		error(ERROR_USAGE|4, "%s", optusage(NiL));
+	{
+		error(ERROR_usage(2), "%s", optusage(NiL));
+		UNREACHABLE();
+	}
 	if ((open_max = getconf("OPEN_MAX")) <= 0)
 		open_max = OPEN_MAX;
 	if (unit == 1)
 		sp = sfstdout;
 	else if (fstat(unit, &st) || !(sp = sfnew(NiL, NiL, SF_UNBOUND, unit, SF_WRITE)))
+	{
 		error(ERROR_SYSTEM|3, "%d: cannot write to file descriptor");
+		UNREACHABLE();
+	}
 	for (i = 0; i <= open_max; i++)
 	{
 		if (fstat(i, &st))

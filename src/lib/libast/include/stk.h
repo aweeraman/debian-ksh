@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -65,7 +66,7 @@ extern Sfio_t		_Stk_data;
 extern Stk_t*		stkopen(int);
 extern Stk_t*		stkinstall(Stk_t*, char*(*)(int));
 extern int		stkclose(Stk_t*);
-extern int		stklink(Stk_t*);
+extern unsigned int	stklink(Stk_t*);
 extern char*		stkalloc(Stk_t*, size_t);
 extern char*		stkcopy(Stk_t*, const char*);
 extern char*		stkset(Stk_t*, char*, size_t);

@@ -484,7 +484,7 @@ prior to evaluation.
 A convenient alias,
 .ce
 \f5alias r='hist -s'\fP
-has been pre-defined so that
+has been predefined so that
 the single key-stroke
 \f5r\fP
 can be used to re-execute the previous command
@@ -975,7 +975,7 @@ The value of
 variable
 is the value of the most
 recent assignment plus the elapsed time.
-By default, the time is measured in milli-seconds,
+By default, the time is measured in milliseconds,
 but since
 .B \s-1SECONDS\s+1
 is a floating point variable, the
@@ -1222,7 +1222,7 @@ The third type of parameter is a variable.
 As mentioned earlier,
 \f5ksh\fP uses variables whose names
 consist of one or more
-alpha-numeric strings separated by a \fB\s+2.\s-2\fP.
+alphanumeric strings separated by a \fB\s+2.\s-2\fP.
 There is no need to specify the
 .I type
 of a variable in the shell because, by default,
@@ -1460,7 +1460,7 @@ an associative array with the given arguments as subscripts.
 For example,
 .ce
 \f5bar=( [color]=red [shape]=box )\fP
-creates an associate array named \f5bar\fP whose
+creates an associative array named \f5bar\fP whose
 subscripts are \f5color\fP and \f5shape\fP.
 .P
 The third form for \fIassignment-list\fP is a list of
@@ -1872,7 +1872,7 @@ Similarly, \f5[:\fP\fIclass\fP\f5:]\fP matches
 each of the characters in the given \fIclass\fP
 for all the ANSI-C character classes.
 For example, \f5[[:alnum:]_]\fP
-matches any alpha-numeric character or the character
+matches any alphanumeric character or the character
 .BR _ .
 .P
 \f5ksh\fP
@@ -2706,7 +2706,7 @@ A third reason to have a command built-in is so that
 it will be unaffected by the setting of the
 .B \s-1PATH\s+1
 variable.
-The \f5print\fP  command fits this category.
+The \f5print\fP command fits this category.
 Scripts that use \f5print\fP will be portable
 to all sites that run \f5ksh\fP.
 .P
@@ -2778,7 +2778,7 @@ the pathname for the built-in.  The basename of this path must
 be the name of an existing built-in for this to succeed.
 Specifying the name of the built-in without a pathname causes
 this built-in to be found before a path search.
-A built-in can be deleted  with the \fB\-d\fP option.
+A built-in can be deleted with the \fB\-d\fP option.
 .P
 On systems with run time loading of libraries, built-in commands
 can be added with the \f5builtin\fP command.

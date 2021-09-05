@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -67,10 +68,14 @@ main()
 #define _map_malloc	1
 	printf("\n");
 	printf("#define	_map_libc	1\n");
+#endif
+#if _map_libc || defined(__linux__)
 	printf("#undef	basename\n");
 	printf("#define basename	_ast_basename\n");
 	printf("#undef	dirname\n");
 	printf("#define dirname		_ast_dirname\n");
+#endif
+#if _map_libc
 #if !_lib_eaccess
 	printf("#undef	eaccess\n");
 	printf("#define eaccess		_ast_eaccess\n");
@@ -109,9 +114,12 @@ main()
 #endif
 	printf("#undef	getdate\n");
 	printf("#define getdate		_ast_getdate\n");
-#if _lib_getopt || _lib_getsubopt || _lib_getopt_long || _lib_getopt_long_only
+#endif
+	/* libast always provides its own getopt implementation */
 	printf("#undef	getopt\n");
 	printf("#define getopt		_ast_getopt\n");
+#if _map_libc
+#if _lib_getopt || _lib_getsubopt || _lib_getopt_long || _lib_getopt_long_only
 	printf("#undef	getsubopt\n");
 	printf("#define getsubopt       _ast_getsubopt\n");
 	printf("#undef	getopt_long\n");
@@ -130,10 +138,13 @@ main()
 	printf("#undef	getwd\n");
 	printf("#define getwd		_ast_getwd\n");
 	printf("extern char*		getwd(char*);\n");
+#endif
+	/* use the libast glob functions rather than the native versions */
 	printf("#undef	glob\n");
 	printf("#define glob		_ast_glob\n");
 	printf("#undef	globfree\n");
 	printf("#define globfree	_ast_globfree\n");
+#if _map_libc
 	printf("#undef	memdup\n");
 	printf("#define memdup		_ast_memdup\n");
 	printf("#undef	memfatal\n");
@@ -443,9 +454,6 @@ main()
 	printf("#undef	realloc\n");
 	printf("#define realloc		_ast_realloc\n");
 	printf("extern void*		realloc(void*, size_t);\n");
-	printf("#undef	strdup\n");
-	printf("#define strdup		_ast_strdup\n");
-	printf("extern char*		strdup(const char*);\n");
 #if _lib_valloc
 	printf("#undef	valloc\n");
 	printf("#define valloc		_ast_valloc\n");
@@ -453,6 +461,10 @@ main()
 #endif
 #endif
 #endif
+	/* we always use the libast strdup implementation */
+	printf("#undef	strdup\n");
+	printf("#define strdup		_ast_strdup\n");
+	printf("extern char*		strdup(const char*);\n");
 
 	/*
 	 * overriding <stdlib.h> strto*() is problematic to say the least

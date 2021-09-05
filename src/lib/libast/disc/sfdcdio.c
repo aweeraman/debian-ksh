@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -42,6 +43,8 @@ typedef struct _direct_s
 /* convert a pointer to an int */
 #define P2I(p)	(Sfulong_t)((char*)(p) - (char*)0)
 
+#ifdef F_DIOINFO
+
 #if __STD_C
 static ssize_t diordwr(Sfio_t* f, Void_t* buf, size_t n, Direct_t* di, int type)
 #else
@@ -59,7 +62,6 @@ int		type;
 	done = 0;	/* amount processed by direct IO */
 	rv = 0;
 
-#ifdef F_DIOINFO
 	if((P2I(buf)%di->dio.d_mem) == 0 &&
 	   (f->here%di->dio.d_miniosz) == 0 && n >= di->dio.d_miniosz )
 	{	/* direct IO ok, make sure we're in the right mode */
@@ -88,11 +90,10 @@ int		type;
 	}
 
 	if(done < n && (di->cntl & FDIRECT) )
-	{	/* turn off directIO for remaining IO operation */
+	{	/* turn off direct IO for remaining IO operation */
 		di->cntl &= ~FDIRECT;
 		(void)fcntl(f->file, F_SETFL, di->cntl);
 	}
-#endif /*F_DIOINFO*/
 
 	if((rw = n-done) > 0 &&
 	   (rv = type == SF_READ ? read(f->file,buf,rw) : write(f->file,buf,rw)) > 0 )
@@ -141,17 +142,17 @@ Sfdisc_t*	disc;
 
 	if(type == SF_FINAL || type == SF_DPOP)
 	{
-#ifdef F_DIOINFO
 		if(di->cntl&FDIRECT)
 		{	di->cntl &= ~FDIRECT;
 			(void)fcntl(f->file,F_SETFL,di->cntl);
 		}
-#endif
 		free(disc);
 	}
 
 	return 0;
 }
+
+#endif /* F_DIOINFO */
 
 #if __STD_C
 int sfdcdio(Sfio_t* f, size_t bufsize)

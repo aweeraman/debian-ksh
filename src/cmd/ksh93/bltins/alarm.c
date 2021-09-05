@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -24,6 +25,16 @@
  *   David Korn
  *   AT&T Labs
  *
+ */
+
+/*
+ * TODO: 2014 email from David Korn cited at <https://bugzilla.redhat.com/1176670>:
+ *
+ * > I never documented the alarm builtin because it is problematic.  The
+ * > problem is that traps can't safely be handled asynchronously.  What should
+ * > happen is that the trap is marked for execution (sh_trapnote) and run after
+ * > the current command completes.  The time trap should wake up the shell if
+ * > it is blocked and it should return and then handle the trap.
  */
 
 #include	"defs.h"
@@ -246,25 +257,30 @@ int	b_alarm(int argc,char *argv[],Shbltin_t *context)
 		break;
 	    case '?':
 		errormsg(SH_DICT,ERROR_usage(2), "%s", opt_info.arg);
-		break;
+		UNREACHABLE();
 	}
 	argc -= opt_info.index;
 	argv += opt_info.index;
 	if(error_info.errors)
+	{
 		errormsg(SH_DICT,ERROR_usage(2),optusage((char*)0));
+		UNREACHABLE();
+	}
 	if(argc==0)
 	{
 		print_alarms(shp->st.timetrap);
 		return(0);
 	}
 	if(argc!=2)
+	{
 		errormsg(SH_DICT,ERROR_usage(2),optusage((char*)0));
+		UNREACHABLE();
+	}
 	np = nv_open(argv[0],shp->var_tree,NV_NOARRAY|NV_VARNAME|NV_NOASSIGN);
 	if(!nv_isnull(np))
 		nv_unset(np);
 	nv_setattr(np, NV_DOUBLE);
-	if(!(tp = newof(NIL(struct tevent*),struct tevent,1,0)))
-		errormsg(SH_DICT,ERROR_exit(1),e_nospace);
+	tp = sh_newof(NIL(struct tevent*),struct tevent,1,0);
 	tp->fun.disc = &alarmdisc;
 	tp->flags = rflag;
 	tp->node = np;
@@ -273,4 +289,3 @@ int	b_alarm(int argc,char *argv[],Shbltin_t *context)
 	nv_putval(np, argv[1], 0);
 	return(0);
 }
-

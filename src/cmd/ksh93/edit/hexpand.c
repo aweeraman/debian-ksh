@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -56,8 +57,8 @@ struct subst
  * parse an /old/new/ string, delimiter expected as first char.
  * if "old" not specified, keep sb->str[0]
  * if "new" not specified, set sb->str[1] to empty string
- * read up to third delimeter char, \n or \0, whichever comes first.
- * return adress is one past the last valid char in s:
+ * read up to third delimiter char, \n or \0, whichever comes first.
+ * return address is one past the last valid char in s:
  * - the address containing \n or \0 or
  * - one char beyond the third delimiter
  */
@@ -67,13 +68,13 @@ static char *parse_subst(const char *s, struct subst *sb)
 	char	*cp,del;
 	int	off,n = 0;
 
-	/* build the strings on the stack, mainly for '&' substition in "new" */
+	/* build the strings on the stack, mainly for '&' substitution in "new" */
 	off = staktell();
 
 	/* init "new" with empty string */
 	if(sb->str[1])
 		free(sb->str[1]);
-	sb->str[1] = strdup("");
+	sb->str[1] = sh_strdup("");
 
 	/* get delimiter */
 	del = *s;
@@ -91,7 +92,7 @@ static char *parse_subst(const char *s, struct subst *sb)
 				stakputc('\0');
 				if(sb->str[n])
 					free(sb->str[n]);
-				sb->str[n] = strdup(stakptr(off));
+				sb->str[n] = sh_strdup(stakptr(off));
 				stakseek(off);
 			}
 			n++;
@@ -155,7 +156,7 @@ int hist_expand(const char *ln, char **xp)
 		*tmp2=0;/* temporary line buffer */
 	Histloc_t hl;	/* history location */
 	static Namval_t *np = 0;	/* histchars variable */
-	static struct subst	sb = {0,0};	/* substition strings */
+	static struct subst	sb = {0,0};	/* substitution strings */
 	static Sfio_t	*wm=0;	/* word match from !?string? event designator */
 
 	if(!wm)
@@ -241,7 +242,7 @@ int hist_expand(const char *ln, char **xp)
 			cp++;
 			n = staktell(); /* terminate string and dup */
 			stakputc('\0');
-			cc = strdup(stakptr(0));
+			cc = sh_strdup(stakptr(0));
 			stakseek(n); /* remove null byte again */
 			ref = sfopen(ref, cc, "s"); /* open as file */
 			n = 0; /* skip history file referencing */
@@ -250,6 +251,7 @@ int hist_expand(const char *ln, char **xp)
 			if(!isdigit(*(cp+1)))
 				goto string_event;
 			cp++;
+			/* FALLTHROUGH */
 		case '0': /* reference by number */
 		case '1':
 		case '2':
@@ -273,6 +275,7 @@ int hist_expand(const char *ln, char **xp)
 		case '?':
 			cp++;
 			flag |= HIST_QUESTION;
+			/* FALLTHROUGH */
 		string_event:
 		default:
 			/* read until end of string or word designator/modifier */
@@ -376,6 +379,7 @@ getline:
 					sfseek(wm, 0, SEEK_SET);
 					goto skip;
 				}
+				/* FALLTHROUGH */
 			default:
 			skip2:
 				cp--;
@@ -587,7 +591,7 @@ getsel:
 				{
 					/* preset old with match from !?string? */
 					if(!sb.str[0] && wm)
-						sb.str[0] = strdup(sfsetbuf(wm, (Void_t*)1, 0));
+						sb.str[0] = sh_strdup(sfsetbuf(wm, (Void_t*)1, 0));
 					cp = parse_subst(cp, &sb);
 				}
 
@@ -620,7 +624,7 @@ getsel:
 						str = cc + strlen(sb.str[0]);
 					}
 					else if(!sftell(tmp2))
-					{	/* not successfull */
+					{	/* not successful */
 						c = *cp;
 						*cp = '\0';
 						errormsg(SH_DICT, ERROR_ERROR,
@@ -641,7 +645,7 @@ getsel:
 			}
 
 			if(sftell(tmp2))
-			{ /* if any substitions done, swap buffers */
+			{ /* if any substitutions done, swap buffers */
 				if(wm != tmp)
 					sfclose(tmp);
 				tmp = tmp2;
@@ -713,7 +717,7 @@ done:
 
 	/* error? */
 	if(staktell() && !(flag & HIST_ERROR))
-		*xp = strdup(stakfreeze(1));
+		*xp = sh_strdup(stakfreeze(1));
 
 	/* restore shell stack */
 	if(off)

@@ -71,7 +71,7 @@ extern long int	random();
    then initialized to contain information for random number generation with
    that much state information.  Good sizes for the amount of state
    information are 32, 64, 128, and 256 bytes.  The state can be switched by
-   calling the setstate() function with the same array as was initiallized
+   calling the setstate() function with the same array as was initialized
    with initstate().  By default, the package runs with 128 bytes of state
    information and generates far better random numbers than a linear
    congruential generator.  If the amount of state information is less than
@@ -82,7 +82,7 @@ extern long int	random();
    state information will give 7 longs worth of state information, which will
    allow a degree seven polynomial.  (Note: The zeroeth word of state
    information also has some other information stored in it; see setstate
-   for details).  The random number generation technique is a linear feedback
+   for details.)  The random number generation technique is a linear feedback
    shift register approach, employing trinomials (since there are fewer terms
    to sum up that way).  In this approach, the least significant bit of all
    the numbers in the state table will act as a linear feedback shift register,
@@ -100,7 +100,7 @@ extern long int	random();
 
 
 /* For each of the currently supported random number generators, we have a
-   break value on the amount of state information (you need at least thi
+   break value on the amount of state information (you need at least the
    bytes of state info to support this random number generator), a degree for
    the polynomial (actually a trinomial) that the R.N.G. is based on, and
    separation between the two lower order coefficients of the trinomial.  */
@@ -170,7 +170,7 @@ static long int randtbl[DEG_3 + 1] =
    pointer.  These two pointers are always rand_sep places aparts, as they
    cycle through the state information.  (Yes, this does mean we could get
    away with just one pointer, but the code for random is more efficient
-   this way).  The pointers are left positioned as they would be from the call:
+   this way.)  The pointers are left positioned as they would be from the call:
 	initstate(1, randtbl, 128);
    (The position of the rear pointer, rptr, is really 0 (as explained above
    in the initialization of randtbl) because the state table pointer is set
@@ -340,7 +340,7 @@ extern char *setstate(const char *arg_state)
 
 /* If we are using the trivial TYPE_0 R.N.G., just do the old linear
    congruential bit.  Otherwise, we do our fancy trinomial stuff, which is the
-   same in all ther other cases due to all the global variables that have been
+   same in all the other cases due to all the global variables that have been
    set up.  The basic operation is to add the number at the rear pointer into
    the one at the front pointer.  Then both pointers are advanced to the next
    location cyclically in the table.  The value returned is the sum generated,

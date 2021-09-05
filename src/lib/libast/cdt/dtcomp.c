@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -49,12 +50,6 @@ extern Dtlink_t* dtrestore(Dt_t* d, Void_t* l)
 
 #undef dtsize
 extern ssize_t dtsize(Dt_t* d)
-{
-	return (ssize_t)(*(_DT(d)->searchf))((d),(Void_t*)(0),DT_STAT);
-}
-
-#undef dtstat
-extern ssize_t dtstat(Dt_t* d)
 {
 	return (ssize_t)(*(_DT(d)->searchf))((d),(Void_t*)(0),DT_STAT);
 }

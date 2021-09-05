@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -101,7 +102,7 @@ char*	form;		/* format to use	*/
 va_list	args;		/* arg list if !argf	*/
 #endif
 {
-	int		n, v, w, k, n_s, base, fmt, flags;
+	int		n, v=0, w, k, n_s, base, fmt, flags;
 	Sflong_t	lv;
 	char		*sp, *ssp, *endsp, *ep, *endep;
 	int		dot, width, precis, sign, decpt;
@@ -129,7 +130,7 @@ va_list	args;		/* arg list if !argf	*/
 	int		decimal = 0, thousand = 0;
 
 #if _has_multibyte
-	wchar_t*	wsp;
+	wchar_t*	wsp = 0;
 	SFMBDCL(fmbs)			/* state of format string	*/
 	SFMBDCL(mbs)			/* state of some string		*/
 #ifdef mbwidth
@@ -367,8 +368,9 @@ loop_fmt :
 			}
 			else if(*form != '*')
 				goto loop_flags;
-		do_star:
-			form += 1; /* fall thru for '*' */
+		do_star: /* for '*' */
+			form += 1;
+			/* FALLTHROUGH */
 		case '*' :
 			form = (*_Sffmtintf)(form,&n);
 			if(*form == '$')
@@ -674,6 +676,7 @@ loop_fmt :
 
 		case 'S':
 			flags = (flags & ~(SFFMT_TYPES|SFFMT_LDOUBLE)) | SFFMT_LONG;
+			/* FALLTHROUGH */
 		case 's':
 #if _has_multibyte && defined(mbwidth)
 			wc = (flags & SFFMT_LDOUBLE) && mbwide();
@@ -833,6 +836,7 @@ loop_fmt :
 
 		case 'C':
 			flags = (flags & ~(SFFMT_TYPES|SFFMT_LDOUBLE)) | SFFMT_LONG;
+			/* FALLTHROUGH */
 		case 'c':
 #if _has_multibyte && defined(mbwidth)
 			wc = (flags & SFFMT_LDOUBLE) && mbwide();
@@ -959,6 +963,7 @@ loop_fmt :
 			goto int_arg;
 		case 'X':
 			ssp = "0123456789ABCDEF";
+			/* FALLTHROUGH */
 		case 'x':
 			base = 16; n_s = 15; n = 4;
 			flags &= ~(SFFMT_SIGN|SFFMT_BLANK);
@@ -974,6 +979,7 @@ loop_fmt :
 			goto d_format;
 		case 'u':
 			flags &= ~(SFFMT_SIGN|SFFMT_BLANK);
+			/* FALLTHROUGH */
 		case 'd':
 		d_format:
 #if _PACKAGE_ast

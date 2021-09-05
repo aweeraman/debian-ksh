@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -43,7 +44,7 @@ typedef void*		(*Hash_region_f)(void*, void*, size_t, int);
 typedef struct				/* root local pointers		*/
 {
 	Hash_hash_f	hash;		/* name hash routine		*/
-	Hash_compare_f	compare;	/* name comparision routine	*/
+	Hash_compare_f	compare;	/* name comparison routine	*/
 	Hash_alloc_f	alloc;		/* value allocation routine	*/
 	Hash_free_f	free;		/* value free routine		*/
 	Hash_region_f	region;		/* region alloc/free routine	*/

@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -113,7 +114,11 @@ reg int		rc;	/* record separator */
 
 		/* try reading a block of data */
 		direct = 0;
-		if((r = fr->endb - (next = fr->next)) <= 0)
+		if(fr->rsrv && (r = -fr->rsrv->slen) > 0)
+		{	fr->rsrv->slen = 0;
+			next = fr->rsrv->data;
+		}
+		else if((r = fr->endb - (next = fr->next)) <= 0)
 		{	/* amount of data remained to be read */
 			if((w = n > MAX_SSIZE ? MAX_SSIZE : (ssize_t)n) < 0)
 			{	if(fr->extent < 0)
@@ -190,7 +195,7 @@ reg int		rc;	/* record separator */
 		{	/* move left-over to read stream */
 			if(w > fr->size)
 				w = fr->size;
-			memcpy((Void_t*)fr->data,(Void_t*)cp,w);
+			memmove((Void_t*)fr->data,(Void_t*)cp,w);
 			fr->endb = fr->data+w;
 			if((w = endb - (cp+w)) > 0)
 				(void)SFSK(fr,(Sfoff_t)(-w),SEEK_CUR,fr->disc);
@@ -200,7 +205,7 @@ reg int		rc;	/* record separator */
 		{	if(direct == SF_WRITE)
 				fw->next += r;
 			else if(r <= (fw->endb-fw->next) )
-			{	memcpy((Void_t*)fw->next,(Void_t*)next,r);
+			{	memmove((Void_t*)fw->next,(Void_t*)next,r);
 				fw->next += r;
 			}
 			else if((w = SFWRITE(fw,(Void_t*)next,r)) != r)

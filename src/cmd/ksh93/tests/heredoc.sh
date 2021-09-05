@@ -2,6 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
+#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -17,19 +18,10 @@
 #                  David Korn <dgk@research.att.com>                   #
 #                                                                      #
 ########################################################################
-function err_exit
-{
-	print -u2 -n "\t"
-	print -u2 -r ${Command}[$1]: "${@:2}"
-	let Errors+=1
-}
-alias err_exit='err_exit $LINENO'
 
-Command=${0##*/}
-integer Errors=0
+. "${SHTESTS_COMMON:-${0%/*}/_common}"
 
-tmp=$(mktemp -dt) || { err_exit mktemp -dt failed; exit 1; }
-trap "cd /; rm -rf $tmp" EXIT
+bincat=$(whence -p cat)
 
 f=$tmp/here1
 g=$tmp/here2
@@ -119,7 +111,7 @@ done
 } > $f
 chmod +x "$f"
 $SHELL "$f" > /dev/null  || err_exit "large here-doc with command substitution fails"
-x=$(/bin/cat <<!
+x=$("$bincat" <<!
 $0
 !
 )
@@ -174,13 +166,13 @@ cat  > "$f" <<- '!!!!'
 !!!!
 chmod 755 "$f"
 if	[[ $($SHELL  "$f") != abc ]]
-then	err_exit	'here document descritor was closed'
+then	err_exit	'here document descriptor was closed'
 fi
 cat  > "$f" <<- '!!!!'
 	exec 0<&-
 	foobar()
 	{
-		/bin/cat <<- !
+		"$bincat" <<- !
 		foobar
 		!
 	}
@@ -206,7 +198,7 @@ cat  > "$f" <<- '!!!!'
 	EOF
 	print -r -- "$(foobar)"
 !!!!
-if	[[ $($SHELL  "$f") != foobar ]]
+if	[[ $(export bincat; "$SHELL" "$f") != foobar ]]
 then	err_exit	'here document with stdin closed failed'
 fi
 printf $'cat   <<# \\!!!\n\thello\n\t\tworld\n!!!' > $f
@@ -244,7 +236,7 @@ eval "$(
 EOF
 } > $script
 chmod +x $script
-[[ $($SHELL $script) == hello ]] 2> /dev/null || err_exit 'heredoc embeded in command substitution fails at buffer boundary'
+[[ $($SHELL $script) == hello ]] 2> /dev/null || err_exit 'heredoc embedded in command substitution fails at buffer boundary'
 
 got=$( cat << EOF
 \
@@ -280,7 +272,7 @@ set -- $(wc < $tmpfile2)
 (( $1 == 1000 )) || err_exit "heredoc $1 lines, should be 1000 lines"
 (( $2 == 4000 )) || err_exit "heredoc $2 words, should be 4000 words"
 
-# comment with here document looses line number count
+# comment with here document loses line number count
 integer line=$((LINENO+5))
 function tst
 {
@@ -491,10 +483,43 @@ EOF
      print EOF
 } > $f
 $SHELL $f > $g
-[[ $(grep meep $g | grep -v foobar) != '' ]] && err_exit 'here-doc loosing $var expansions on boundaries in rare cases'
+[[ $(grep meep $g | grep -v foobar) != '' ]] && err_exit 'here-doc losing $var expansions on boundaries in rare cases'
 
 print foo > $tmp/foofile
 x=$( $SHELL 2> /dev/null 'read <<< $(<'"$tmp"'/foofile) 2> /dev/null;print -r "$REPLY"')
 [[ $x == foo ]] || err_exit '<<< $(<file) not working'
 
+# ======
+# A syntax error should not occur if a command substitution is run on the same line
+# as a here document.
+got=$("$SHELL" -c 'true << EOF || true "$(true)"
+EOF' 2>&1) || err_exit 'placing a command substitution and here-doc on the same line causes a syntax error' \
+	"(got $(printf %q "$got"))"
+
+# Another version of this regression from Red Hat bug 1036931
+expect='gamma'
+actual=$("$SHELL" -c 'cat <<EOF | tail -$((5-4))
+alpha
+beta
+gamma
+EOF' 2>&1)
+[[ $actual == "$expect" ]] || err_exit 'Syntax error on arith expansion on same line as here-doc' \
+	"(expected $(printf %q "$expect"), got $(printf %q "$actual"))"
+
+# A here-document in a command substitution should cause a syntax error if it isn't
+# completed inside of the command substitution.
+$SHELL -c '$(true << !)
+!' 2> /dev/null && err_exit "a here-doc that isn't completed before the closing ) in a command substitution doesn't cause an error"
+
+# ======
+# Check that ${p}, where p is a special parameter, does not cause a syntax error in a here-document.
+# Bug for ${!} and ${$} reported at: https://github.com/ksh93/ksh/issues/127
+for p in @ \* \# ! \$ - \? 0; do
+	err=$(eval ': <<EOF
+${'"$p"'}
+EOF
+' 2>&1) || err_exit "special parameter \${$p} throws syntax error in here-document (got \"$err\")"
+done
+
+# ======
 exit $((Errors<125?Errors:125))

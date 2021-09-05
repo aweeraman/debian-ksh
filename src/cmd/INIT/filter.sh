@@ -2,6 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1994-2011 AT&T Intellectual Property          #
+#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -19,9 +20,13 @@
 ########################################################################
 : convert command that operates on file args to pipeline filter
 
+(command set -o posix) 2>/dev/null && set -o posix
+
 command=filter
 
-tmp=/tmp/$command$$
+TMPDIR=${TMPDIR:-/tmp}
+export TMPDIR
+tmp=$TMPDIR/$command$$
 suf=
 
 case `(getopts '[-][123:xyz]' opt --xyz; echo 0$opt) 2>/dev/null` in
@@ -30,7 +35,9 @@ case `(getopts '[-][123:xyz]' opt --xyz; echo 0$opt) 2>/dev/null` in
 [-?
 @(#)$Id: filter (AT&T Labs Research) 2001-05-31 $
 ]
-'$USAGE_LICENSE$'
+[-author?Glenn Fowler <gsf@research.att.com>]
+[-copyright?Copyright (c) 1994-2012 AT&T Intellectual Property]
+[-license?http://www.eclipse.org/org/documents/epl-v10.html]
 [+NAME?filter - run a command in stdin/stdout mode]
 [+DESCRIPTION?\bfilter\b runs \acommand\a in a mode that takes input from
 	the \afile\a operands, or from the standard input if no \afile\a

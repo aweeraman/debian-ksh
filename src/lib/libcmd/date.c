@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -28,11 +29,11 @@
 
 static const char usage[] =
 "[-?\n@(#)$Id: date (AT&T Research) 2011-01-27 $\n]"
-USAGE_LICENSE
+"[--catalog?" ERROR_CATALOG "]"
 "[+NAME?date - set/list/convert dates]"
 "[+DESCRIPTION?\bdate\b sets the current date and time (with appropriate"
-"	privilege), lists the current date or file dates, or converts"
-"	dates.]"
+"	privileges, provided the shell isn't in restricted mode), lists"
+"	the current date or file dates, or converts dates.]"
 "[+?Most common \adate\a forms are recognized, including those for"
 "	\bcrontab\b(1), \bls\b(1), \btouch\b(1), and the default"
 "	output from \bdate\b itself.]"
@@ -42,7 +43,7 @@ USAGE_LICENSE
 "	\ayymmddHHMM.SS\a, or \ammddHHMMccyy.SS\a or \accyymmddHHMM.SS\a."
 "	Conflicting standards and practice allow a leading or trailing"
 "	2 or 4 digit year for the 10 and 12 digit forms; the X/Open trailing"
-"	form is used to disambiguate (\btouch\b(1) uses the leading form.)"
+"	form is used to disambiguate (\btouch\b(1) uses the leading form)."
 "	Avoid the 10 digit form to avoid confusion. The digit fields are:]{"
 "		[+cc?Century - 1, 19-20.]"
 "		[+yy?Year in century, 00-99.]"
@@ -82,7 +83,7 @@ USAGE_LICENSE
 "	are padded with \b0\b and string fields are padded with space."
 "	\afield\a may also be preceded by \bE\b for alternate era"
 "	representation or \bO\b for alternate digit representation (if"
-"	supported by the current locale.) Finally, an integral \awidth\a"
+"	supported by the current locale). Finally, an integral \awidth\a"
 "	preceding \afield\a truncates the field to \awidth\a characters."
 "	The fields are:]:[format]{"
 "		[+%?% character]"
@@ -95,28 +96,29 @@ USAGE_LICENSE
 "		[+d?day of month number]"
 "		[+D?date as \amm/dd/yy\a]"
 "		[+e?blank padded day of month number]"
-"		[+f?locale default override date format]"
-"		[+F?%ISO 8601:2000 standard date format; equivalent to Y-%m-%d]"
+"		[+f?print a date with the format \b%Y.%m.%d-%H:%M:%S\b]"
+"		[+F?ISO 8601:2000 standard date format; equivalent to \b%Y-%m-%d\b]"
 "		[+g?\bls\b(1) \b-l\b recent date with \ahh:mm\a]"
 "		[+G?\bls\b(1) \b-l\b distant date with \ayyyy\a]"
 "		[+h?abbreviated month name]"
-"		[+H?24-hour clock hour]"
+"		[+H?24-hour clock hour, zero-padded]"
 "		[+i?international \bdate\b(1) date with time zone type name]"
-"		[+I?12-hour clock hour]"
+"		[+I?12-hour clock hour, zero-padded]"
 "		[+j?1-offset Julian date]"
 "		[+J?0-offset Julian date]"
-"		[+k?\bdate\b(1) style date]"
+"		[+k?24-hour clock hour, blank-padded]"
 "		[+K?all numeric date; equivalent to \b%Y-%m-%d+%H:%M:%S\b; \b%_[EO]]K\b for space separator, %OK adds \b.%N\b, \b%EK\b adds \b%.N%z\b, \b%_EK\b adds \b.%N %z\b]"
-"		[+l?\bls\b(1) \b-l\b date; equivalent to \b%Q/%g/%G/\b]"
+"		[+l?12-hour clock hour, blank-padded]"
 "		[+L?locale default date format]"
 "		[+m?month number]"
 "		[+M?minutes]"
 "		[+n?newline character]"
 "		[+N?nanoseconds 000000000-999999999]"
 "		[+p?meridian (e.g., \bAM\b or \bPM\b)]"
-"		[+q?time zone type name (nation code)]"
+"		[+P?lowercase meridian (e.g., \bam\b or \bpm\b)]"
+"		[+q?quarter of the year]"
 "		[+Q?\a<del>recent<del>distant<del>\a: \a<del>\a is a unique"
-"			delimter character; \arecent\a format for recent"
+"			delimiter character; \arecent\a format for recent"
 "			dates, \adistant\a format otherwise]"
 "		[+r?12-hour time as \ahh:mm:ss meridian\a]"
 "		[+R?24-hour time as \ahh:mm\a]"
@@ -151,7 +153,7 @@ USAGE_LICENSE
 "			\"%?%l\"; export TM_OPTIONS=\"format='\aoverride\a'\""
 "			to override the default]"
 "}"
-"[i:incremental|adjust?Set the system time in incrementatl adjustments to"
+"[i:incremental|adjust?Set the system time in incremental adjustments to"
 "	avoid complete time shift shock. Negative adjustments still maintain"
 "	monotonic increasing time. Not available on all systems.]"
 "[L:last?List only the last time for multiple \adate\a operands.]"
@@ -206,10 +208,6 @@ typedef struct Fmt
 	char*		format;
 } Fmt_t;
 
-#ifndef ENOSYS
-#define ENOSYS		EINVAL
-#endif
-
 /*
  * set the system clock
  * the standards wimped out here
@@ -218,37 +216,38 @@ typedef struct Fmt
 static int
 settime(Shbltin_t* context, const char* cmd, Time_t now, int adjust, int network)
 {
-	char*		s;
 	char**		argv;
-	char*		args[5];
+	char*		args[7];
 	char		buf[1024];
 
 	if (!adjust && !network)
 		return tmxsettime(now);
 	argv = args;
-	s = "/usr/bin/date";
-	if (!streq(cmd, s) && (!eaccess(s, X_OK) || !eaccess(s+=4, X_OK)))
+	*argv++ = "command";
+	*argv++ = "-px";
+	*argv++ = "date";
+	if (streq(astconf("UNIVERSE", NiL, NiL), "att"))
 	{
-		*argv++ = s;
-		if (streq(astconf("UNIVERSE", NiL, NiL), "att"))
-		{
-			tmxfmt(buf, sizeof(buf), "%m%d%H" "%M%Y.%S", now);
-			if (adjust)
-				*argv++ = "-a";
-		}
-		else
-		{
-			tmxfmt(buf, sizeof(buf), "%Y%m%d%H" "%M.%S", now);
-			if (network)
-				*argv++ = "-n";
-			if (tm_info.flags & TM_UTC)
-				*argv++ = "-u";
-		}
-		*argv++ = buf;
-		*argv = 0;
-		if (!sh_run(context, argv - args, args))
-			return 0;
+		tmxfmt(buf, sizeof(buf), "%m%d%H" "%M%Y.%S", now);
+		if (adjust)
+			*argv++ = "-a";
 	}
+	else
+	{
+#if __FreeBSD__ || __NetBSD__ || __OpenBSD__ || __bsdi__ || __DragonFly__
+		tmxfmt(buf, sizeof(buf), "%Y%m%d%H" "%M.%S", now);
+#else
+		tmxfmt(buf, sizeof(buf), "%m%d%H" "%M%Y.%S", now);
+#endif
+		if (network)
+			*argv++ = "-n";
+		if (tm_info.flags & TM_UTC)
+			*argv++ = "-u";
+	}
+	*argv++ = buf;
+	*argv = 0;
+	if (!sh_run(context, argv - args, args))
+		return 0;
 	return -1;
 }
 
@@ -343,7 +342,10 @@ b_date(int argc, register char** argv, Shbltin_t* context)
 			continue;
 		case 'p':
 			if (!(f = newof(0, Fmt_t, 1, 0)))
-				error(ERROR_SYSTEM|3, "out of space [format]");
+			{
+				error(ERROR_SYSTEM|3, "out of memory [format]");
+				UNREACHABLE();
+			}
 			f->next = fmts;
 			f->format = opt_info.arg;
 			fmts = f;
@@ -378,8 +380,8 @@ b_date(int argc, register char** argv, Shbltin_t* context)
 			listzones = tm_data.zone;
 			continue;
 		case '?':
-			error(ERROR_USAGE|4, "%s", opt_info.arg);
-			continue;
+			error(ERROR_usage(2), "%s", opt_info.arg);
+			UNREACHABLE();
 		case ':':
 			error(2, "%s", opt_info.arg);
 			continue;
@@ -388,7 +390,10 @@ b_date(int argc, register char** argv, Shbltin_t* context)
 	}
 	argv += opt_info.index;
 	if (error_info.errors)
-		error(ERROR_USAGE|4, "%s", optusage(NiL));
+	{
+		error(ERROR_usage(2), "%s", optusage(NiL));
+		UNREACHABLE();
+	}
 	now = tmxgettime();
 	if (listzones)
 	{
@@ -436,7 +441,10 @@ b_date(int argc, register char** argv, Shbltin_t* context)
 	else if (filetime)
 	{
 		if (!*argv)
-			error(ERROR_USAGE|4, "%s", optusage(NiL));
+		{
+			error(ERROR_usage(2), "%s", optusage(NiL));
+			UNREACHABLE();
+		}
 		n = argv[1] != 0;
 		while (s = *argv++)
 		{
@@ -476,7 +484,10 @@ b_date(int argc, register char** argv, Shbltin_t* context)
 		if (s || (s = string))
 		{
 			if (*argv && string)
-				error(ERROR_USAGE|4, "%s", optusage(NiL));
+			{
+				error(ERROR_usage(2), "%s", optusage(NiL));
+				UNREACHABLE();
+			}
 			now = convert(fmts, s, now);
 			if (*argv && (s = *++argv))
 			{
@@ -500,7 +511,10 @@ b_date(int argc, register char** argv, Shbltin_t* context)
 			sfprintf(sfstdout, "%s\n", buf);
 		}
 		else if (settime(context, cmd, now, increment, network))
+		{
 			error(ERROR_SYSTEM|3, "cannot set system time");
+			UNREACHABLE();
+		}
 	}
 	while (fmts != &fmt)
 	{

@@ -107,7 +107,7 @@ cat{
 #   endif /* TCSANOW */
 #endif /* _hdr_termios */
 
-/* set ECHOCTL if driver can echo control charaters as ^c */
+/* set ECHOCTL if driver can echo control characters as ^c */
 #ifdef LCTLECH
 #   ifndef ECHOCTL
 #	define ECHOCTL	LCTLECH

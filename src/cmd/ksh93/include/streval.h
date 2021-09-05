@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -29,9 +30,7 @@
 #include	<ast.h>
 #include	<math.h>
 #include	"defs.h"
-#if _AST_VERSION >= 20030127L
-#   include	<ast_float.h>
-#endif
+#include	<ast_float.h>
 
 #if _ast_fltmax_double
 #define LDBL_LLONG_MAX		DBL_LLONG_MAX
@@ -77,6 +76,7 @@ struct lval
 	const char	*expr;
 	const  void	*ptr;
 	int		nosub;
+	char		*sub;
 	short		flag;
 	short		nargs;
 	short		emode;
@@ -104,7 +104,7 @@ typedef struct _arith_
 	short		elen;
 } Arith_t;
 #define ARITH_COMP	04	/* set when compile separate from execute */
-#define ARITH_ASSIGNOP	010	/* set during assignment operators  */
+#define ARITH_ASSIGNOP	010	/* set during assignment operators */
 
 #define MAXPREC		15	/* maximum precision level */
 #define SEQPOINT	0200	/* sequence point */

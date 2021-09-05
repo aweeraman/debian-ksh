@@ -52,7 +52,7 @@ and its
 .IR value .
 A
 .I key
-is a sequence of 
+is a sequence of
 .L char
 elements and a
 .I value
@@ -116,7 +116,7 @@ The number of lookup collisions.
 .RE
 .TP
 .L "Hash_table_t* scope"
-The table that this scope covers, 
+The table that this scope covers,
 .L NULL
 if the table is not a scope.
 .TP
@@ -215,11 +215,11 @@ if
 is specified and
 .IR strcmp (3)
 otherwise.
-The first argument is the 
+The first argument is the
 .I key
-from the current hash bucket on the 
+from the current hash bucket on the
 .I "collision chain"
-and the second argument is the user supplied 
+and the second argument is the user supplied
 .IR key .
 .TP
 .L "HASH_free, (int(*)()) free"
@@ -230,7 +230,7 @@ If
 was set in
 .L hashalloc
 then the hash bucket pointer is passed, otherwise the bucket
-.L value 
+.L value
 pointer is passed.
 .TP
 .L "HASH_hash, (int(*)()) hash"
@@ -275,7 +275,7 @@ Changes the hash table flags by
 .IR or ing
 in
 .LR flags .
-The flags, which may be 
+The flags, which may be
 .IR or ed
 together, are:
 .RS
@@ -321,7 +321,7 @@ in the hash table
 .L tab
 according to
 .L flags
-and 
+and
 .LR value .
 A
 .L Hash_bucket_t
@@ -360,7 +360,7 @@ The basic operations may be qualified by the following
 the parenthesized list):
 .RS
 .TP
-.L "HASH_BUCKET (HASH_CREATE,HASH_DELETE,HASH_LOOKUP)"
+.L "HASH_BUCKET (HASH_CREATE, HASH_DELETE, HASH_LOOKUP)"
 .L name
 is a pointer to a bucket that has already been entered into the table.
 .TP
@@ -379,7 +379,7 @@ is a pointer to a bucket that has not been entered into the table.
 .L "HASH_NOSCOPE (HASH_LOOKUP)"
 The lookup is restricted to the top level scope.
 .TP
-.L "HASH_OPAQUE (HASH_CREATE,HASH_DELETE)"
+.L "HASH_OPAQUE (HASH_CREATE, HASH_DELETE)"
 Sets
 .L (HASH_CREATE)
 or clears
@@ -389,13 +389,13 @@ the
 property for the bucket.
 An opaque bucket is not visible in lower scopes.
 .TP
-.L "HASH_SCOPE (HASH_CREATE,HASH_DELETE)"
+.L "HASH_SCOPE (HASH_CREATE, HASH_DELETE)"
 All scopes are searched for the bucket.
 If the bucket is not found for
 .L HASH_CREATE
 then a new bucket is created in the lowest scope.
 .TP
-.L "HASH_VALUE (HASH_CREATE,HASH_LOOKUP)"
+.L "HASH_VALUE (HASH_CREATE, HASH_LOOKUP)"
 For
 .L HASH_CREATE
 the bucket
@@ -408,7 +408,7 @@ value is returned.
 For
 .L HASH_LOOKUP
 the bucket
-.L value 
+.L value
 field is returned,
 .L NULL
 if the bucket is not found.
@@ -481,7 +481,7 @@ in the hash table
 .LR tab .
 If
 .L flags
-is 
+is
 .L HASH_NOSCOPE
 then only the top level hash table is used, otherwise the walk includes
 all scope covered tables.
@@ -514,7 +514,7 @@ pointer for a sequential scan on the hash table
 .LR tab .
 If
 .L flags
-is 
+is
 .L HASH_NOSCOPE
 then only the top level hash table is used, otherwise the scan includes
 all scope covered tables.
@@ -525,7 +525,7 @@ must be called to terminate the scan.
 is returned on error.
 .TP
 .L "Hash_bucket_t* hashnext(Hash_position_t* pos)"
-Returnes a pointer to the next bucket in the sequential scan set up by
+Returns a pointer to the next bucket in the sequential scan set up by
 .L hashscan()
 on
 .LR pos .
@@ -534,9 +534,9 @@ If no elements remain then
 is returned.
 .TP
 .L "void hashdone(Hash_position_t* pos)"
-Completes a scan initiated by 
+Completes a scan initiated by
 .L hashscan()
-on 
+on
 .LR pos .
 .TP
 .L "int hashset(Hash_table_t* tab, int flags)"
@@ -567,14 +567,14 @@ may be cleared.
 Dumps hash table accounting info to standard error.
 If
 .L tab
-is 
+is
 .L NULL
 then all allocated hash tables are dumped, otherwise only information on
 .L tab
 is dumped.
 If
 .L flags
-is 
+is
 .L HASH_BUCKET
 then the hash bucket
 .I key-value
@@ -592,7 +592,7 @@ Explicit calls to this routine are not necessary as hash tables
 are automatically resized.
 .TP
 .L "int strhash(char* name)"
-Hashes the null terminated character string
+Hashes the null-terminated character string
 .L name
 using a linear congruent pseudo-random number generator algorithm
 and returns a non-negative

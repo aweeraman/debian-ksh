@@ -2,6 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
+#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -17,22 +18,14 @@
 #                  David Korn <dgk@research.att.com>                   #
 #                                                                      #
 ########################################################################
-function err_exit
-{
-	print -u2 -n "\t"
-	print -u2 -r ${Command}[$1]: "${@:2}"
-	let Errors+=1
-}
-alias err_exit='err_exit $LINENO'
 
-Command=${0##*/}
-integer Errors=0
+. "${SHTESTS_COMMON:-${0%/*}/_common}"
 
-unset LANG ${!LC_*}
+unset LANG LANGUAGE "${!LC_@}"
 
-tmp=$(mktemp -dt) || { err_exit mktemp -dt failed; exit 1; }
-trap "cd /; rm -rf $tmp" EXIT
-cd $tmp || exit
+IFS=$'\n'; set -o noglob
+typeset -a locales=( $(command -p locale -a 2>/dev/null) )
+IFS=$' \t\n'
 
 a=$($SHELL -c '/' 2>&1 | sed -e "s,.*: *,," -e "s, *\[.*,,")
 b=$($SHELL -c '(LC_ALL=debug / 2>/dev/null); /' 2>&1 | sed -e "s,.*: *,," -e "s, *\[.*,,")
@@ -40,12 +33,36 @@ b=$($SHELL -c '(LC_ALL=debug / 2>/dev/null); /' 2>&1 | sed -e "s,.*: *,," -e "s,
 b=$($SHELL -c '(LC_ALL=debug; / 2>/dev/null); /' 2>&1 | sed -e "s,.*: *,," -e "s, *\[.*,,")
 [[ "$b" == "$a" ]] || err_exit "locale not restored after subshell -- expected '$a', got '$b'"
 
+# multibyte locale tests
+if ((SHOPT_MULTIBYTE))
+then	LC_ALL=debug
+	x='a<2b|>c<3d|\>e'
+	typeset -A exp=(
+		['${x:0:1}']=a
+		['${x:1:1}']='<2b|>'
+		['${x:3:1}']='<3d|\>'
+		['${x:4:1}']=e
+		['${x:1}']='<2b|>c<3d|\>e'
+		['${x: -1:1}']=e
+		['${x: -2:1}']='<3d|\>'
+		['${x:1:3}']='<2b|>c<3d|\>'
+		['${x:1:20}']='<2b|>c<3d|\>e'
+		['${x#??}']='c<3d|\>e'
+	)
+	for i in "${!exp[@]}"
+	do	eval "got=$i"
+		test "$got" = "${exp[$i]}" || err_exit "$i: expected '${exp[$i]}', got '$got'"
+	done
+	unset exp LC_ALL
+fi # SHOPT_MULTIBYTE
+
 # test shift-jis \x81\x40 ... \x81\x7E encodings
 # (shift char followed by 7 bit ascii)
 
 typeset -i16 chr
-for locale in $(PATH=/bin:/usr/bin locale -a 2>/dev/null | grep -i jis)
-do	export LC_ALL=$locale
+((SHOPT_MULTIBYTE)) && for locale in "${locales[@]}"
+do	[[ $locale == *[Jj][Ii][Ss] ]] || continue
+	export LC_ALL=$locale
 	for ((chr=0x40; chr<=0x7E; chr++))
 	do	c=${chr#16#}
 		for s in \\x81\\x$c \\x$c
@@ -56,13 +73,46 @@ do	export LC_ALL=$locale
 			q=$(print -- "$b")
 			[[ $u == "$q" ]] || err_exit "LC_ALL=$locale quoted print difference for \"$s\" -- $b => '$u' vs \"$b\" => '$q'"
 		done
+
+		# https://www.mail-archive.com/ast-developers@lists.research.att.com/msg01848.html
+		# In Shift_JIS (unlike in UTF-8), the trailing bytes of a multibyte character may
+		# contain a byte without the high-order bit set. If the final byte happened to
+		# correspond to an ASCII backslash (\x5C), 'read' would incorrectly treat this as a
+		# dangling final backslash (which is invalid) and return a nonzero exit status.
+		# Note that the byte sequence '\x95\x5c' represents a multibyte character U+8868,
+		# whereas '\x5c' is a backslash when interpreted as a single-byte character.
+		printf "\x95\x$c\n" | read x || err_exit "'read' doesn't skip multibyte input correctly ($LC_ALL, \x95\x$c)"
 	done
 done
+unset LC_ALL
+
+# Test the effect of setting a locale, followed by setting a different locale
+# then setting the previous locale. The output from 'printf %T' should use
+# the current locale.
+# https://github.com/ksh93/ksh/issues/261
+((SHOPT_MULTIBYTE)) && for locale in "${locales[@]}"
+do	[[ $locale == *nl_NL*[Uu][Tt][Ff]* ]] && nl_NL=$locale
+	[[ $locale == *ja_JP*[Uu][Tt][Ff]* ]] && ja_JP=$locale
+done
+if [[ -n $nl_NL ]] && [[ -n $ja_JP ]]; then
+	LC_ALL=$nl_NL
+	exp=$(printf '%(%A)T' now)
+	LC_ALL=$ja_JP
+	printf '%T' now > /dev/null
+	LC_ALL=$nl_NL
+	got=$(printf '%(%A)T' now)
+	[[ $exp == $got ]] || err_exit "'printf %T' ignores changes to LC_ALL when locale is set, unset then set (expected $exp, got $got)"
+fi
+unset LC_ALL
 
 # this locale is supported by ast on all platforms
 # EU for { decimal_point="," thousands_sep="." }
 
+if ((SHOPT_MULTIBYTE)); then
 locale=C_EU.UTF-8
+else
+locale=C_EU
+fi
 
 export LC_ALL=C
 
@@ -106,19 +156,11 @@ fi
 
 #$SHELL -c 'export LANG='$locale'; printf "\u[20ac]\u[20ac]" > $tmp/two_euro_chars.txt'
 printf $'\342\202\254\342\202\254' > $tmp/two_euro_chars.txt
+if((SHOPT_MULTIBYTE)); then
 exp="6 2 6"
-set -- $($SHELL -c "
-	unset LC_CTYPE
-	export LANG=$locale
-	export LC_ALL=C
-	command wc -C < $tmp/two_euro_chars.txt
-	unset LC_ALL
-	command wc -C < $tmp/two_euro_chars.txt
-	export LC_ALL=C
-	command wc -C < $tmp/two_euro_chars.txt
-")
-got=$*
-[[ $got == $exp ]] || err_exit "command wc LC_ALL default failed -- expected '$exp', got '$got'"
+else
+exp="6 6 6"
+fi # SHOPT_MULTIBYTE
 set -- $($SHELL -c "
 	if	builtin wc 2>/dev/null || builtin -f cmd wc 2>/dev/null
 	then	unset LC_CTYPE
@@ -195,22 +237,25 @@ printf 'f1\357\274\240f2\n' > input1
 printf 't2\357\274\240f1\n' > input2
 printf '\357\274\240\n' > delim
 print "export LC_ALL=$locale
-join -j1 1 -j2 2 -o 1.1 -t \$(cat delim) input1 input2 > out" > script
+builtin cut || exit
+cut -f 1 -d \$(cat delim) input1 input2 > out" > script
 $SHELL -c 'unset LANG ${!LC_*}; $SHELL ./script' ||
-err_exit "join test script failed -- exit code $?"
-exp="f1"
+err_exit "'cut' builtin failed -- exit code $?"
+exp=$'f1\nt2'
 got="$(<out)"
 [[ $got == "$exp" ]] || err_exit "LC_ALL test script failed -- expected '$exp', got '$got'"
 
 # multibyte identifiers
 
+if((SHOPT_MULTIBYTE)); then
 exp=OK
-got=$(LC_ALL=C.UTF-8 $SHELL -c $'\u[5929]=OK; print ${\u[5929]}' 2>&1)
+got=$(set +x; LC_ALL=C.UTF-8 $SHELL -c $'\u[5929]=OK; print ${\u[5929]}' 2>&1)
 [[ $got == "$exp" ]] || err_exit "multibyte variable definition/expansion failed -- expected '$exp', got '$got'"
-got=$(LC_ALL=C.UTF-8 $SHELL -c $'function \u[5929]\n{\nprint OK;\n}; \u[5929]' 2>&1)
+got=$(set +x; LC_ALL=C.UTF-8 $SHELL -c $'function \u[5929]\n{\nprint OK;\n}; \u[5929]' 2>&1)
 [[ $got == "$exp" ]] || err_exit "multibyte ksh function definition/execution failed -- expected '$exp', got '$got'"
-got=$(LC_ALL=C.UTF-8 $SHELL -c $'\u[5929]()\n{\nprint OK;\n}; \u[5929]' 2>&1)
+got=$(set +x; LC_ALL=C.UTF-8 $SHELL -c $'\u[5929]()\n{\nprint OK;\n}; \u[5929]' 2>&1)
 [[ $got == "$exp" ]] || err_exit "multibyte posix function definition/execution failed -- expected '$exp', got '$got'"
+fi # SHOPT_MULTIBYTE
 
 # this locale is supported by ast on all platforms
 # mainly used to debug multibyte and message translation code
@@ -218,6 +263,7 @@ got=$(LC_ALL=C.UTF-8 $SHELL -c $'\u[5929]()\n{\nprint OK;\n}; \u[5929]' 2>&1)
 
 locale=debug
 
+if((SHOPT_MULTIBYTE)); then
 if	[[ "$(LC_ALL=$locale $SHELL <<- \+EOF+
 		x=a<1z>b<2yx>c
 		print ${#x}
@@ -225,6 +271,7 @@ if	[[ "$(LC_ALL=$locale $SHELL <<- \+EOF+
 	]]
 then	err_exit '${#x} not working with multibyte locales'
 fi
+fi # SHOPT_MULTIBYTE
 
 dir=_not_found_
 exp=2
@@ -256,9 +303,11 @@ do	for cmd in "($lc=$locale;cd $dir)" "$lc=$locale;cd $dir;unset $lc" "function 
 	done
 done
 
+if((SHOPT_MULTIBYTE)); then
 exp=123
 got=$(LC_ALL=debug $SHELL -c "a<2A@>z=$exp; print \$a<2A@>z")
 [[ $got == $exp ]] || err_exit "multibyte debug locale \$a<2A@>z failed -- expected '$exp', got '$got'"
+fi # SHOPT_MULTIBYTE
 
 unset LC_ALL LC_MESSAGES
 export LANG=debug
@@ -291,7 +340,7 @@ LC_ALL=C
 x=$"hello"
 [[ $x == hello ]] || err_exit 'assignment of message strings not working'
 
-# tests for multibyte characteer at buffer boundary
+# tests for multibyte character at buffer boundary
 {
 	print 'cat << \\EOF'
 	for ((i=1; i < 164; i++))
@@ -310,16 +359,21 @@ x=$(  LC_ALL=debug $SHELL ./script$$.1)
 
 
 x=$(LC_ALL=debug $SHELL -c 'x="a<2b|>c";print -r -- ${#x}')
+if((SHOPT_MULTIBYTE)); then
 (( x == 3  )) || err_exit 'character length of multibyte character should be 3'
+else
+(( x == 7  )) || err_exit 'character length of multibyte character should be 7 with SHOPT_MULTIBYTE disabled'
+fi # SHOPT_MULTIBYTE
 x=$(LC_ALL=debug $SHELL -c 'typeset -R10 x="a<2b|>c";print -r -- "${x}"')
 [[ $x == '   a<2b|>c' ]] || err_exit 'typeset -R10 should begin with three spaces'
 x=$(LC_ALL=debug $SHELL -c 'typeset -L10 x="a<2b|>c";print -r -- "${x}"')
 [[ $x == 'a<2b|>c   ' ]] || err_exit 'typeset -L10 should end in three spaces'
 
-if      $SHELL -c "export LC_ALL=en_US.UTF-8; c=$'\342\202\254'; [[ \${#c} == 1 ]]" 2>/dev/null
+if	false &&  # Disable this test because it really tests the OS-provided en_US.UTF-8 locale data, which may be broken.
+	$SHELL -c "export LC_ALL=en_US.UTF-8; c=$'\342\202\254'; [[ \${#c} == 1 ]]" 2>/dev/null
 then	LC_ALL=en_US.UTF-8
 	unset i p1 p2 x
-	for i in 9 b c d 20 1680 2000 2001 2002 2003 2004 2005 2006 2008 2009 200a 2028 2029 3000 # 1803 2007 202f  205f
+	for i in 9 b c d 20 2000 2001 2002 2003 2004 2005 2006 2008 2009 200a 2028 2029 3000 # 1680 1803 2007 202f 205f
 	do	if	! eval "[[ \$'\\u[$i]' == [[:space:]] ]]"
 		then	x+=,$i
 		fi
@@ -335,11 +389,27 @@ then	LC_ALL=en_US.UTF-8
 	x=$(printf "hello\u[20ac]\xee world")
 	[[ $(print -r -- "$x") == $'hello\u[20ac]\xee world' ]] || err_exit '%q with unicode and non-unicode not working'
 	if	[[ $(whence od) ]]
-	then	got='68 65 6c 6c 6f e2 82 ac ee 20 77 6f 72 6c 64 0a'
-		[[ $(print -r -- "$x" | od -An -tx1) == "$got" ]] || err_exit "incorrect string from printf %q"
+	then	got='68656c6c6fe282acee20776f726c640a'
+		[[ $(print -r -- "$x" | od -An -tx1 \
+			| awk 'BEGIN { ORS=""; } { for (i=1; i<=NF; i++) print $i; }') \
+			== "$got" ]] \
+		|| err_exit "incorrect string from printf %q"
 	fi
 	
 fi
 
-exit $((Errors<125?Errors:125))
+# ======
+# The locale should be restored along with locale variables when leaving a virtual subshell.
+# https://github.com/ksh93/ksh/issues/253#issuecomment-815290154
+if	((SHOPT_MULTIBYTE))
+then
+	unset "${!LC_@}"
+	LANG=C.UTF-8
+	exp=$'5\n10\n5'
+	got=$(eval 'var=äëïöü'; echo ${#var}; (LANG=C; echo ${#var}); echo ${#var})
+	[[ $got == "$exp" ]] || err_exit "locale is not restored properly upon leaving virtual subshell" \
+		"(expected $(printf %q "$exp"); got $(printf %q "$got"))"
+fi
 
+# ======
+exit $((Errors<125?Errors:125))

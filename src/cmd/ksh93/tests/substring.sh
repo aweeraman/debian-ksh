@@ -2,6 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
+#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -17,16 +18,12 @@
 #                  David Korn <dgk@research.att.com>                   #
 #                                                                      #
 ########################################################################
-function err_exit
-{
-	print -u2 -n "\t"
-	print -u2 -r ${Command}[$1]: "${@:2}"
-	let Errors+=1
-}
-alias err_exit='err_exit $LINENO'
 
-Command=${0##*/}
-integer Errors=0 j=4
+. "${SHTESTS_COMMON:-${0%/*}/_common}"
+
+tmpPS4='+ [temp_PS4|L$LINENO|e$?] '  # used to avoid interference to ${.sh.match} from $PS4 set by shtests
+
+integer j=4
 base=/home/dgk/foo//bar
 string1=$base/abcabcabc
 if	[[ ${string1:0} != "$string1" ]]
@@ -177,10 +174,10 @@ do      [[ $(eval print -r -- \"\${xx//:/\\${str:i:1}}\") == "a${str:i:1}b" ]] |
         [[ $(eval print -rn -- \"\${xx//:/\'${str:i:1}\'}\") == "a${str:i:1}b" ]] || err_exit "substitution of '${str:i:1}' failed"
         [[ $(eval print -r -- \"\${xx//:/\"${str:i:1}\"}\") == "a${str:i:1}b" ]] || err_exit "substitution of \"${str:i:1}\" failed"
 done
-[[ ${xx//:/\\n} == 'a\nb' ]]  || err_exit "substituion of \\\\n failed"
-[[ ${xx//:/'\n'} == 'a\nb' ]] || err_exit "substituion of '\\n' failed"
-[[ ${xx//:/"\n"} ==  'a\nb' ]] || err_exit "substituion of \"\\n\" failed"
-[[ ${xx//:/$'\n'} ==  $'a\nb' ]] || err_exit "substituion of \$'\\n' failed"
+[[ ${xx//:/\\n} == 'a\nb' ]]  || err_exit "substitution of \\\\n failed"
+[[ ${xx//:/'\n'} == 'a\nb' ]] || err_exit "substitution of '\\n' failed"
+[[ ${xx//:/"\n"} ==  'a\nb' ]] || err_exit "substitution of \"\\n\" failed"
+[[ ${xx//:/$'\n'} ==  $'a\nb' ]] || err_exit "substitution of \$'\\n' failed"
 unset foo
 foo=one/two/three
 if	[[ ${foo//'/'/_} != one_two_three ]]
@@ -254,13 +251,20 @@ fi
 if	[[ ${var//+(\S)/Q} != 'Q Q' ]]
 then	err_exit '${var//+(\S)/Q} not workding'
 fi
+
 var=$($SHELL -c 'v=/vin:/usr/vin r=vin; : ${v//vin/${r//v/b}};typeset -p .sh.match') 2> /dev/null
-[[ $var == 'typeset -a .sh.match=((vin vin) )' ]] || err_exit '.sh.match not correct when replacement pattern contains a substring match'
+((SHOPT_2DMATCH)) && exp='typeset -a .sh.match=((vin vin) )' || exp='typeset -a .sh.match=(vin)'
+[[ $var == "$exp" ]] || err_exit '.sh.match not correct when replacement pattern contains a substring match' \
+	"(expected $(printf %q "$exp"), got $(printf %q "$var"))"
+
 foo='foo+bar+'
 [[ $(print -r -- ${foo//+/'|'}) != 'foo|bar|' ]] && err_exit "\${foobar//+/'|'}"
 [[ $(print -r -- ${foo//+/"|"}) != 'foo|bar|' ]] && err_exit '${foobar//+/"|"}'
 [[ $(print -r -- "${foo//+/'|'}") != 'foo|bar|' ]] && err_exit '"${foobar//+/'"'|'"'}"'
 [[ $(print -r -- "${foo//+/"|"}") != 'foo|bar|' ]] && err_exit '"${foobar//+/"|"}"'
+
+(
+PS4=$tmpPS4
 unset x
 x=abcedfg
 : ${x%@(d)f@(g)}
@@ -270,6 +274,10 @@ x=abcedfg
 x=abcedddfg
 : ${x%%+(d)f@(g)}
 [[ ${.sh.match[1]} == ddd ]] || err_exit '.sh.match[1] not ddd'
+exit $Errors
+)
+Errors=$?
+
 unset a b
 a='\[abc @(*) def\]'
 b='[abc 123 def]'
@@ -296,10 +304,16 @@ integer i
 for((i=0; i < ${#string}; i++))
 do	pattern+='@(?)'
 done
+
+(
+PS4=$tmpPS4
 [[ $(string=$string $SHELL -c  ": \${string/$pattern/}; print \${.sh.match[26]}") == Z ]] || err_exit -u2 'sh.match[26] not Z'
 : ${string/$pattern/}
 (( ${#.sh.match[@]} == 53 )) || err_exit '.sh.match has wrong number of elements'
 [[ ${.sh.match[@]:2:4} == 'B C D E'  ]] || err_exit '${.sh.match[@]:2:4} incorrect'
+exit $Errors
+)
+Errors=$?
 
 D=$';' E=$'\\\\' Q=$'"' S=$'\'' M='nested pattern substitution failed'
 
@@ -495,16 +509,17 @@ x=$'-(-\\"\')\\\'\\"\'-)-'
 
 pattern=00
 var=100
-[[ $( print $(( ${var%%00} )) ) == 1 ]] || err_exit "arithmetic with embeddded patterns fails"
-[[ $( print $(( ${var%%$pattern} )) ) == 1 ]] || err_exit "arithmetic with embeddded pattern variables fails"
-if	[[ ax == @(a)* ]] && [[ ${.sh.match[1]:0:${#.sh.match[1]}}  != a ]]
+[[ $( print $(( ${var%%00} )) ) == 1 ]] || err_exit "arithmetic with embedded patterns fails"
+[[ $( print $(( ${var%%$pattern} )) ) == 1 ]] || err_exit "arithmetic with embedded pattern variables fails"
+if	(PS4=$tmpPS4; [[ ax == @(a)* ]] && [[ ${.sh.match[1]:0:${#.sh.match[1]}}  != a ]])
 then	err_exit '${.sh.match[1]:1:${#.sh.match[1]}} not expanding correctly'
 fi
 
 string='foo(d:\nt\box\something)bar'
 expected='d:\nt\box\something'
 [[ ${string/*\(+([!\)])\)*/\1} == "$expected" ]] || err_exit "substring expansion failed '${string/*\(+([!\)])\)*/\1}' returned -- '$expected' expected"
-if	[[ $($SHELL -c $'export LC_ALL=C.UTF-8; print -r "\342\202\254\342\202\254\342\202\254\342\202\254w\342\202\254\342\202\254\342\202\254\342\202\254" | wc -m' 2>/dev/null) == 10 ]]
+if	((SHOPT_MULTIBYTE)) &&
+	[[ $($SHELL -c $'export LC_ALL=C.UTF-8; print -r "\342\202\254\342\202\254\342\202\254\342\202\254w\342\202\254\342\202\254\342\202\254\342\202\254" | wc -m' 2>/dev/null) == 10 ]]
 then	LC_ALL=C.UTF-8 $SHELL -c b1=$'"\342\202\254\342\202\254\342\202\254\342\202\254w\342\202\254\342\202\254\342\202\254\342\202\254"; [[ ${b1:4:1} == w ]]' || err_exit 'multibyte ${var:offset:len} not working correctly'
 fi
 { $SHELL -c 'unset x;[[ ${SHELL:$x} == $SHELL ]]';} 2> /dev/null || err_exit '${var:$x} fails when x is not set'
@@ -561,18 +576,6 @@ do	i=$1
 	shift 4
 done
 
-#multibyte locale tests
-x='a<2b|>c<3d|\>e' LC_ALL=debug $SHELL -c 'test "${x:0:1}" == a || err_exit ${x:0:1} should be a'
-x='a<2b|>c<3d|\>e' LC_ALL=debug $SHELL -c 'test "${x:1:1}" == "<2b|>" || err_exit ${x:1:1} should be <2b|>'
-x='a<2b|>c<3d|\>e' LC_ALL=debug $SHELL -c 'test "${x:3:1}" == "<3d|\\>" || err_exit ${x:3:1} should be <3d|\>'
-x='a<2b|>c<3d|\>e' LC_ALL=debug $SHELL -c 'test "${x:4:1}" == e || err_exit ${x:4:1} should bee'
-x='a<2b|>c<3d|\>e' LC_ALL=debug $SHELL -c 'test "${x:1}" == "<2b|>c<3d|\\>e" || print -u2   ${x:1}" should be <2b|>c<3d|\>e'
-x='a<2b|>c<3d|\>e' LC_ALL=debug $SHELL -c 'test "${x: -1:1}" == e || err_exit ${x: -1:1} should be e'
-x='a<2b|>c<3d|\>e' LC_ALL=debug $SHELL -c 'test "${x: -2:1}" == "<3d|\\>" || err_exit ${x: -2:1} == <3d|\>'
-x='a<2b|>c<3d|\>e' LC_ALL=debug $SHELL -c 'test "${x:1:3}" == "<2b|>c<3d|\\>" || err_exit ${x:1:3} should be <2b|>c<3d|\>'
-x='a<2b|>c<3d|\>e' LC_ALL=debug $SHELL -c 'test "${x:1:20}" == "<2b|>c<3d|\\>e" || err_exit ${x:1:20} should be <2b|>c<3d|\>e'
-x='a<2b|>c<3d|\>e' LC_ALL=debug $SHELL -c 'test "${x#??}" == "c<3d|\\>e" || err_exit "${x#??} should be c<3d|\>e'
-
 x='a one and a two'
 [[ "${x//~(E)\<.\>/}" == ' one and  two' ]]  || err_exit "\< and \> not working in with ere's"
 
@@ -586,6 +589,9 @@ got=$($SHELL -c 'A=""; B="B"; for I in ${A[@]} ${B[@]}; do echo "\"$I\""; done')
 A='|'
 [[ $A == $A ]] || err_exit 'With A="|",  [[ $A == $A ]] does not match'
 
+(
+PS4=$tmpPS4
+
 x="111 222 333 444 555 666"
 [[ $x == ~(E)(...).(...).(...) ]]
 [[ -v .sh.match[0] ]] ||   err_exit '[[ -v .sh.match[0] ]] should be true'
@@ -596,6 +602,10 @@ x="111 222 333 444 555 666"
 x="foo bar"
 dummy=${x/~(E)(*)/}
 [[ ${ print -v .sh.match;} ]] && err_exit 'print -v should show .sh.match empty when there are no matches'
+
+exit $Errors
+)
+Errors=$?
 
 if	$SHELL -c 'set 1 2 3 4 5 6 7 8 9 10 11 12; : ${##[0-9]}' 2>/dev/null
 then	set 1 2 3 4 5 6 7 8 9 10 11 12
@@ -614,16 +624,21 @@ fi
 
 function foo
 {
-	typeset x="123 456 789 abc"
+	typeset PS4=$tmpPS4 x="123 456 789 abc"
 	typeset dummy="${x/~(E-g)([[:digit:]][[:digit:]])((X)|([[:digit:]]))([[:blank:]])/_}"
 	exp=$'(\n\t[0]=\'123 \'\n\t[1]=12\n\t[2]=3\n\t[4]=3\n\t[5]=\' \'\n)'
 	[[ $(print -v .sh.match) == "$exp" ]] || err_exit '.sh.match not correct with alternations'
 }
 foo
 
+(
+PS4=$tmpPS4
 x="a 1 b"
 d=${x/~(E)(([[:digit:]])[[:space:]]*|([[:alpha:]]))/X}
 [[ $(print -v .sh.match) == $'(\n\t[0]=a\n\t[1]=a\n\t[3]=a\n)' ]] || err_exit '.sh.match not sparse'
+exit $Errors
+)
+Errors=$?
 
 unset v
 typeset -a arr=( 0 1 2 3 4 )
@@ -654,11 +669,16 @@ do	err_exit "\${@:0:-1} should not generate ${v:-empty_string}"
 	break
 done
 
+(
+PS4=$tmpPS4
 unset v d
 v=abbbc
 d="${v/~(E)b{2,4}/dummy}"
 [[ ${.sh.match} == bbb ]] || err_exit '.sh.match wrong after ${s/~(E)b{2,4}/dummy}'
 [[ $d == adummyc ]] || err_exit '${s/~(E)b{2,4}/dummy} not working'
+exit $Errors
+)
+Errors=$?
 
-
+# ======
 exit $((Errors<125?Errors:125))

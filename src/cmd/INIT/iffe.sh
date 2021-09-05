@@ -2,6 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1994-2012 AT&T Intellectual Property          #
+#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -25,12 +26,13 @@
 #
 # NOTE: .exe a.out suffix and [\\/] in path patterns for dos/nt
 
-case $-:$BASH_VERSION in
-*x*:[0123456789]*)	: bash set -x is broken :; set +ex ;;
+(command set -o posix) 2>/dev/null && set -o posix
+case `uname -s` in
+AIX)	unset LIBPATH ;;
 esac
 
 command=iffe
-version=2012-07-17 # update in USAGE too #
+version=2021-02-03 # update in USAGE too #
 
 compile() # $cc ...
 {
@@ -94,11 +96,45 @@ is_hdr() # [ - ] [ file.c ] hdr
 pkg() # package
 {
 	case $1 in
-	'')	pth=`getconf PATH 2>/dev/null`
+	'')	# Determine default system path, store in $pth.
+		pth=`
+			PATH=/run/current-system/sw/bin:/usr/xpg7/bin:/usr/xpg6/bin:/usr/xpg4/bin:/bin:/usr/bin:$PATH
+			exec getconf PATH 2>/dev/null
+		`
 		case $pth in
-		'')	pth="/bin /usr/bin" ;;
+		'' | [!/]* | *:[!/]* | *: )
+			pth="/bin /usr/bin /sbin /usr/sbin" ;;
 		*:*)	pth=`echo "$pth" | sed 's/:/ /g'` ;;
 		esac
+		# Fix for NixOS. Not all POSIX standard utilities come with the default system,
+		# e.g. 'bc', 'file', 'vi'. The command that NixOS recommends to get missing
+		# utilities, e.g. 'nix-env -iA nixos.bc', installs them in a default profile
+		# directory that is not in $(getconf PATH). So add this path to the standard path.
+		# See: https://github.com/NixOS/nixpkgs/issues/65512
+		if	test -e /etc/NIXOS &&
+			nix_profile_dir=/nix/var/nix/profiles/default/bin &&
+			test -d "$nix_profile_dir"
+		then	case " $pth " in
+			*" $nix_profile_dir "* )
+				# nothing to do
+				;;
+			* )	# insert the default profile directory as the second entry
+				pth=`
+					set $pth
+					one=$1
+					shift
+					echo "$one $nix_profile_dir${1+ }$@"
+				` ;;
+			esac
+		fi
+		# Fix for AIX. At least as of version 7.1, the system default 'find', 'diff -u' and 'patch' utilities
+		# are broken and/or non-compliant in ways that make them incompatible with POSIX 2018. However, GNU
+		# utilities are commonly installed in /opt/freeware/bin, and under standard names (no g- prefix).
+		if	test -d /opt/freeware/bin
+		then	case `uname` in
+			AIX )	pth="/opt/freeware/bin $pth" ;;
+			esac
+		fi
 		return
 		;;
 	'<')	shift
@@ -649,15 +685,18 @@ protoflags=
 puthdr=
 putlib=
 pragma=
-case $RANDOM in
-$RANDOM)shell=bsh
+case `eval 'v=NOposixNO; w=$(export "w=$v"; echo "${w%%NO}"); echo "${w##NO}"' 2>/dev/null` in
+posix)	shell=posix		# or at least POSIX-ish
+	case $BASH_VERSION in
+	[1-9]*)	shell=bash ;;
+	esac
+	case `eval 'PATH=/dev/null && let i=93-5 && typeset -u v=ksh$i && print -r - "$v"' 2>/dev/null` in
+	KSH88)	shell=ksh ;;	# also pdksh, mksh, zsh
+	esac
+	;;
+*)	shell=bsh		# ancient pre-POSIX Bourne shell
 	($executable .) 2>/dev/null || executable='test -r'
 	($exists .) 2>/dev/null || exists='test -r'
-	;;
-*)	case $BASH_VERSION in
-	?*)	shell=bash ;;
-	*)	shell=ksh ;;
-	esac
 	;;
 esac
 reallystatic=
@@ -715,9 +754,13 @@ set=
 case `(getopts '[-][123:xyz]' opt --xyz; echo 0$opt) 2>/dev/null` in
 0123)	USAGE=$'
 [-?
-@(#)$Id: iffe (AT&T Research) 2012-07-17 $
+@(#)$Id: iffe (ksh 93u+m) 2021-02-03 $
 ]
-'$USAGE_LICENSE$'
+[-author?Glenn Fowler <gsf@research.att.com>]
+[-author?Phong Vo <kpv@research.att.com>]
+[-copyright?(c) 1994-2012 AT&T Intellectual Property]
+[-copyright?(c) 2020-2021 Contributors to https://github.com/ksh93/ksh]
+[-license?http://www.eclipse.org/org/documents/epl-v10.html]
 [+NAME?iffe - C compilation environment feature probe]
 [+DESCRIPTION?\biffe\b is a command interpreter that probes the C
 	compilation environment for features. A feature is any file, option
@@ -861,7 +904,7 @@ case `(getopts '[-][123:xyz]' opt --xyz; echo 0$opt) 2>/dev/null` in
 	\b#define\b \aarg\a \adefault\a is emitted. \bkey\b accepts multiple
 	\b= \b\adefault\a values; the first valid one is used.]
 [+?Each test statement generates a portion of a C language header that contains
-	macro defintions, comments, and other text corresponding to the feature
+	macro definitions, comments, and other text corresponding to the feature
 	tests. \b#ifndef _def_\b\aname\a\b_\b\adirectory\a ...
 	\b#endif\b guards the generated header from multiple \b#include\bs,
 	where \aname\a is determined by either the \brun\b statement input file
@@ -908,8 +951,8 @@ case `(getopts '[-][123:xyz]' opt --xyz; echo 0$opt) 2>/dev/null` in
 	[+ver \aname\a \aYYYYMMDD\a?\b#define\b \aNAME\a_VERSION \aYYYYMMDD\a
 		(\aNAME\a is \aname\a converted to upper case).]
 	[+cmd \aname\a?Defines \b_cmd_\b\aname\a if \aname\a is an executable
-		in one of the standard system directories (\b/bin, /etc,
-		/usr/bin, /usr/etc, /usr/ucb\b).
+		in one of the standard system directories
+		(as output by \bgetconf PATH\b).
 		\b_\b\adirectory\a\b_\b\aname\a is defined for \adirectory\a
 		in which \aname\a is found (with \b/\b translated to \b_\b).]
 	[+dat \aname\a?Defines \b_dat_\b\aname\a if \aname\a is a data symbol
@@ -917,7 +960,7 @@ case `(getopts '[-][123:xyz]' opt --xyz; echo 0$opt) 2>/dev/null` in
 	[+def \aname\a?Equivalent to \bcmd,dat,hdr,key,lib,mth,sys,typ\b
 		\aname\a.]
 	[+dfn \aname\a?If \aname\a is a macro in the candidate headers then
-		a \b#define\b \aname\a \avalue\a statment is output for the
+		a \b#define\b \aname\a \avalue\a statement is output for the
 		\avalue\a defined in the headers. The definition is \b#ifndef\b
 		guarded.]
 	[+exp \aname\a \aexpression\a?If \aexpression\a is a \"...\" string
@@ -1050,7 +1093,7 @@ case `(getopts '[-][123:xyz]' opt --xyz; echo 0$opt) 2>/dev/null` in
 		\bsh\b(1).]
 	[+preprocess?The block is preprocessed (\bcc -E\b).]
 	[+run?The block is executed as a shell script and the output is
-		copied to the output file. Succesful test macros are also
+		copied to the output file. Successful test macros are also
 		defined as shell variables with value \b1\b and are available
 		within the block. Likewise, failed test macros are defined
 		as shell variables with value \b0\b.]
@@ -1323,7 +1366,6 @@ std='#if defined(__STDC__) || defined(__cplusplus) || defined(c_plusplus)
 #define _NIL_(x)	((x)0)'
 tst=
 ext="#include <stdio.h>"
-noext='*[<"][Ss][Tt][Dd][Ii][Oo].[Hh][">]*|*<ast.h>*|*<sfio.h>*|*/[*]<NOSTDIO>[*]/*'
 
 # loop on op [ arg [ ... ] ] [ : op [ arg [ ... ] ] ]
 
@@ -3100,6 +3142,7 @@ int x;
 									case $verbose in
 									1)	echo "$command: $x: unchanged" >&$stderr ;;
 									esac
+									touch "$x"  # avoid rerunning test on subsequent runs
 								else	case $x in
 									${dir}[\\/]$cur)	test -d $dir || mkdir $dir || exit 1 ;;
 									esac
@@ -3371,7 +3414,9 @@ int x;
 				esac
 				case $src in
 				?*)	case $src in
-					$noext)	EXT= ;;
+					*[\<\"][Ss][Tt][Dd][Ii][Oo].[Hh][\"\>]* | *\<ast.h\>* | *\<sfio.h\>* | */[*]\<NOSTDIO\>[*]/*)
+						EXT=
+						;;
 					*)	EXT="$tst
 $ext"
 						;;
@@ -3398,7 +3443,7 @@ $src
 						(eval "$src") <&$nullin || e=1
 						;;
 					mac*|nomac*)
-						if	compile $cc -E $tmp.c <&$nullin >$tmp.i
+						if	compile $cc -E -P $tmp.c <&$nullin >$tmp.i
 						then	sed -e '/<<[ 	]*".*"[ 	]*>>/!d' -e 's/<<[ 	]*"//g' -e 's/"[ 	]*>>//g' $tmp.i
 						else	e=1
 						fi
@@ -3608,34 +3653,30 @@ int main(){printf("hello");return(0);}
 					esac
 					is $o $a
 					k=1
-					for j in "" usr
-					do	case $j in
-						"")	d= s= ;;
-						*)	d=/$j s=_$j ;;
-						esac
-						for i in bin etc ucb
-						do	if	test -f $d/$i/$a
-							then	case $k in
-								1)	k=0
-									case $M in
-									*-*)	;;
-									*)	usr="$usr$nl#define $m 1"
-										case $define in
-										1)	echo "#define $m	1	/* $a in ?(/usr)/(bin|etc|ucb) */" ;;
-										n)	echo "$m=1" ;;
-										esac
-										;;
+					pkg $pth  # set system default path
+					for d in $pth
+					do	if	test -f "$d/$a"
+						then	s=`echo "$d" | LC_ALL=C sed 's,[^0-9A-Za-z],_,g'`
+							case $k in
+							1)	k=0
+								case $M in
+								*-*)	;;
+								*)	usr="$usr$nl#define $m 1"
+									case $define in
+									1)	echo "#define $m	1	/* $a in $pth */" ;;
+									n)	echo "$m=1" ;;
 									esac
 									;;
 								esac
-								c=${s}_${i}_${v}
-								usr="$usr$nl#define $c 1"
-								case $define in
-								1)	echo "#define $c	1	/* $d/$i/$a found */" ;;
-								n)	echo "$c=1" ;;
-								esac
-							fi
-						done
+								;;
+							esac
+							c=${s}_${v}
+							usr="$usr$nl#define $c 1"
+							case $define in
+							1)	echo "#define $c	1	/* $d/$a found */" ;;
+							n)	echo "$c=1" ;;
+							esac
+						fi
 					done
 					case $k in
 					0)	success ;;
@@ -3689,7 +3730,7 @@ $inc
 <<\"#define $v\">>	$v	<<\"/* native $v */\">>
 <<\"#endif\">>
 #endif" > $tmp.c
-					if	compile $cc -E $tmp.c <&$nullin >$tmp.i
+					if	compile $cc -E -P $tmp.c <&$nullin >$tmp.i
 					then	sed -e '/<<[ 	]*".*"[ 	]*>>/!d' -e 's/<<[ 	]*"//g' -e 's/"[ 	]*>>//g' $tmp.i > $tmp.t
 						if	test -s $tmp.t
 						then	success

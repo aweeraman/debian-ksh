@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -117,7 +118,7 @@ static const char* rexname(Rex_t* rex)
 #define GOOD		1	/* some parse was found			*/
 #define CUT		2	/* no match and no backtrack		*/
 #define BEST		3	/* an unbeatable parse was found	*/
-#define BAD		4	/* error ocurred			*/
+#define BAD		4	/* error occurred			*/
 
 /*
  * REG_SHELL_DOT test
@@ -770,7 +771,7 @@ nestmatch(register unsigned char* s, register unsigned char* e, const unsigned s
 					if (!--n)
 						return s;
 				}
-				/*FALLTHROUGH*/
+				/* FALLTHROUGH */
 			case REX_NEST_open:
 				if (c == co)
 				{
@@ -1444,7 +1445,7 @@ DEBUG_TEST(0x0200,(sfprintf(sfstdout,"AHA#%04d 0x%04x parse %s=>%s `%-.*s'\n", _
 							break;
 						case GOOD:
 							r = GOOD;
-							/*FALLTHROUGH*/
+							/* FALLTHROUGH */
 						default:
 							continue;
 						}

@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,6 +21,14 @@
 *                                                                      *
 ***********************************************************************/
 #include	"sfhdr.h"
+#if _PACKAGE_ast
+# if defined(__linux__) && _lib_statfs
+#  include <sys/statfs.h>
+#  ifndef  TMPFS_MAGIC
+#   define TMPFS_MAGIC	0x01021994
+#  endif
+# endif
+#endif
 
 /*	Create a temporary stream for read/write.
 **	The stream is originally created as a memory-resident stream.
@@ -207,7 +216,24 @@ Sfio_t*	f;
 	int		fd;
 
 #if _PACKAGE_ast
+# if defined(__linux__) && _lib_statfs
+	/*
+	 * Use the area of POSIX shared memory objects for the new temporary file descriptor
+	 * that is do not access the HDD or SSD but only the memory based tmpfs of the POSIX SHM
+	 */
+	static int doshm;
+	static char *shm = "/dev/shm";
+	if (!doshm)
+	{
+		struct statfs fs;
+		if (statfs(shm, &fs) < 0 || fs.f_type != TMPFS_MAGIC || eaccess(shm, W_OK|X_OK))
+			shm = NiL;
+		doshm++;
+	}
+	if(!(file = pathtemp(NiL,PATH_MAX,shm,"sf",&fd)))
+# else
 	if(!(file = pathtemp(NiL,PATH_MAX,NiL,"sf",&fd)))
+# endif
 		return -1;
 	_rmtmp(f, file);
 	free(file);

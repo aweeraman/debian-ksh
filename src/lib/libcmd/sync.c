@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -27,7 +28,7 @@
 
 static const char usage[] =
 "[-?\n@(#)$Id: sync (AT&T Research) 2006-10-04 $\n]"
-USAGE_LICENSE
+"[--catalog?" ERROR_CATALOG "]"
 "[+NAME?sync - schedule file system updates]"
 "[+DESCRIPTION?\bsync\b calls \bsync\b(2), which causes all information "
     "in memory that updates file systems to be scheduled for writing out to "
@@ -63,17 +64,21 @@ b_sync(int argc, char** argv, Shbltin_t* context)
 			break;
 		case '?':
 			error(ERROR_usage(2), "%s", opt_info.arg);
-			break;
+			UNREACHABLE();
 		}
 		break;
 	}
 	argv += opt_info.index;
 	if (error_info.errors || *argv)
+	{
 		error(ERROR_usage(2), "%s", optusage(NiL));
+		UNREACHABLE();
+	}
 #if _lib_sync
 	sync();
+	return 0;
 #else
 	error(ERROR_usage(2), "failed -- the native system does not provide a sync(2) call");
+	UNREACHABLE();
 #endif
-	return 0;
 }

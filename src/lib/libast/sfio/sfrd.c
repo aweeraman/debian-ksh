@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -201,7 +202,7 @@ Sfdisc_t*	disc;
 				if(buf)
 				{	if(n > (size_t)(r-a))
 						n = (ssize_t)(r-a);
-					memcpy(buf,f->next,n);
+					memmove(buf,f->next,n);
 					f->next += n;
 				}
 				else	n = f->endb - f->next;
@@ -303,7 +304,7 @@ Sfdisc_t*	disc;
 		case SF_EDISC :
 			if(!local && !(f->flags&SF_STRING))
 				goto do_continue;
-			/* else fall thru */
+			/* FALLTHROUGH */
 		case SF_ESTACK :
 			SFMTXRETURN(f, -1);
 		}

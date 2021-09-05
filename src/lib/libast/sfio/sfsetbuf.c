@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -254,6 +255,15 @@ size_t	size;	/* buffer size, -1 for default size */
 #endif
 		}
 
+		/* set page size, this is also the desired default buffer size */
+		if(_Sfpage <= 0)
+		{
+#if _lib_getpagesize
+			if((_Sfpage = (size_t)getpagesize()) <= 0)
+#endif
+				_Sfpage = SF_PAGE;
+		}
+
 #if SFSETLINEMODE
 		if(init)
 			f->flags |= sfsetlinemode();
@@ -307,15 +317,6 @@ size_t	size;	/* buffer size, -1 for default size */
 				if(!f->proc && (f->bits&SF_BOTH) )
 					(void)_sfpopen(f,-1,-1,1);
 			}
-		}
-
-		/* set page size, this is also the desired default buffer size */
-		if(_Sfpage <= 0)
-		{
-#if _lib_getpagesize
-			if((_Sfpage = (size_t)getpagesize()) <= 0)
-#endif
-				_Sfpage = SF_PAGE;
 		}
 	}
 
@@ -410,7 +411,7 @@ done:
 	_Sfi = f->val = obuf ? osize : 0;
 
 	/* blksz is used for aligning disk block boundary while reading data to
-	** optimize data transfer from disk (eg, via direct I/O). blksz can be
+	** optimize data transfer from disk (e.g., via direct I/O). blksz can be
 	** at most f->size/2 so that data movement in buffer can be optimized.
 	** blksz should also be a power-of-2 for optimal disk seeks.
 	*/

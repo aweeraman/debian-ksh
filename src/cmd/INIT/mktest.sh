@@ -2,6 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1994-2011 AT&T Intellectual Property          #
+#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -34,7 +35,9 @@ case $(getopts '[-][123:xyz]' opt --xyz 2>/dev/null; echo 0$opt) in
 [-?
 @(#)$Id: mktest (AT&T Labs Research) 2010-08-11 $
 ]
-'$USAGE_LICENSE$'
+[-author?Glenn Fowler <gsf@research.att.com>]
+[-copyright?Copyright (c) 2005-2012 AT&T Intellectual Property]
+[-license?http://www.eclipse.org/org/documents/epl-v10.html]
 [+NAME?mktest - generate a regression test scripts]
 [+DESCRIPTION?\bmktest\b generates regression test scripts from test
     template commands in the \aunit\a.\brt\b file. The generated test
@@ -81,7 +84,7 @@ unit.rt [ unit [ arg ... ] ]
         [+PROG \acommand\a [ \aarg\a ... ]]?Run \acommand\a with
             optional arguments.]
         [+TEST [ \anumber\a ]] [ \adescription\a ... ]]?Define a new
-            test group with optional \anumber\a and \adescripion\a.]
+            test group with optional \anumber\a and \adescription\a.]
         [+TWD [ \adir\a ... ]]?Set the temporary test dir to \adir\a.
             The default is \aunit\a\b.tmp\b, where \aunit\a is the test
             input file sans directory and suffix. If \adir\a matches \b/*\b

@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -151,7 +152,7 @@
 #   endif /* TCSANOW */
 #endif /* _hdr_termios */
 
-/* set ECHOCTL if driver can echo control charaters as ^c */
+/* set ECHOCTL if driver can echo control characters as ^c */
 #ifdef LCTLECH
 #   ifndef ECHOCTL
 #	define ECHOCTL	LCTLECH
@@ -184,6 +185,10 @@
 #	define FIORDCHK	FIONREAD
 #   endif /* !FIORDCHK */
 #endif /* FIONREAD */
+
+#if _sys_ioctl
+#include        <sys/ioctl.h>
+#endif
 
 extern int	tty_alt(int);
 extern void	tty_cooked(int);

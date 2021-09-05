@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -72,7 +73,10 @@ static double setalarm(register double t)
 	tnew.it_interval.tv_sec = 0;
 	tnew.it_interval.tv_usec = 0;
 	if(setitimer(ITIMER_REAL,&tnew,&told) < 0)
+	{
 		errormsg(SH_DICT,ERROR_system(1),e_alarm);
+		UNREACHABLE();
+	}
 	t = told.it_value.tv_sec + 1.e-6*told.it_value.tv_usec;
 #else
 	unsigned seconds = (unsigned)t;
@@ -94,7 +98,7 @@ static void sigalrm(int sig)
 	if(time_state&SIGALRM_CALL)
 		time_state &= ~SIGALRM_CALL;
 	else if(alarm(0))
-		kill(getpid(),SIGALRM|SH_TRAP);
+		kill(shgd->current_pid,SIGALRM|SH_TRAP);
 	if(time_state)
 	{
 		if(time_state&IN_ADDTIMEOUT)
@@ -188,8 +192,8 @@ void *sh_timeradd(unsigned long msec,int flags,void (*action)(void*),void *handl
 		return((void*)0);
 	if(tp=tpfree)
 		tpfree = tp->next;
-	else if(!(tp=(Timer_t*)malloc(sizeof(Timer_t))))
-		return((void*)0);
+	else
+		tp = (Timer_t*)sh_malloc(sizeof(Timer_t));
 	tp->wakeup = getnow() + t;
 	tp->incr = (flags?t:0);
 	tp->action = action;
@@ -203,12 +207,9 @@ void *sh_timeradd(unsigned long msec,int flags,void (*action)(void*),void *handl
 		fn = (Handler_t)signal(SIGALRM,sigalrm);
 		if((t= setalarm(t))>0 && fn  && fn!=(Handler_t)sigalrm)
 		{
-			Handler_t *hp = (Handler_t*)malloc(sizeof(Handler_t));
-			if(hp)
-			{
-				*hp = fn;
-				sh_timeradd((long)(1000*t), 0, oldalrm, (void*)hp);
-			}
+			Handler_t *hp = (Handler_t*)sh_malloc(sizeof(Handler_t));
+			*hp = fn;
+			sh_timeradd((long)(1000*t), 0, oldalrm, (void*)hp);
 		}
 		tp = tptop;
 	}
@@ -245,4 +246,3 @@ void	timerdel(void *handle)
 		signal(SIGALRM,(sh.sigflag[SIGALRM]&SH_SIGFAULT)?sh_fault:SIG_DFL);
 	}
 }
-

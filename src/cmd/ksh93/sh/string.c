@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -40,11 +41,15 @@
 #   define iswprint(c)		(((c)&~0377) || isprint(c))
 #endif
 
+#ifndef isxdigit
+#   define isxdigit(c)		((c)>='0'&&(c)<='9'||(c)>='a'&&(c)<='f'||(c)>='A'&&(c)<='F')
+#endif
+
 
 /*
  *  Table lookup routine
  *  <table> is searched for string <sp> and corresponding value is returned
- *  This is only used for small tables and is used to save non-sharable memory 
+ *  This is only used for small tables and is used to save non-shareable memory
  */
 
 const Shtable_t *sh_locate(register const char *sp,const Shtable_t *table,int size)
@@ -187,9 +192,7 @@ char *sh_substitute(const char *string,const char *oldsp,char *newsp)
 		return((char*)0);
 	if(*(cp=oldsp) == 0)
 		goto found;
-#if SHOPT_MULTIBYTE
 	mbinit();
-#endif /* SHOPT_MULTIBYTE */
 	do
 	{
 	/* skip to first character which matches start of oldsp */
@@ -237,7 +240,7 @@ found:
 void	sh_trim(register char *sp)
 /*@
 	assume sp!=NULL;
-	promise  strlen(in sp) <= in strlen(sp);
+	promise strlen(in sp) <= in strlen(sp);
 @*/
 {
 	register char *dp;
@@ -247,7 +250,6 @@ void	sh_trim(register char *sp)
 		dp = sp;
 		while(c= *sp)
 		{
-#if SHOPT_MULTIBYTE
 			int len;
 			if(mbwide() && (len=mbsize(sp))>1)
 			{
@@ -256,7 +258,6 @@ void	sh_trim(register char *sp)
 				sp += len;
 				continue;
 			}
-#endif /* SHOPT_MULTIBYTE */
 			sp++;
 			if(c == '\\')
 				c = *sp++;
@@ -326,8 +327,34 @@ static char	*sh_fmtcsv(const char *string)
 }
 
 /*
+ * Returns false if c is an invisible Unicode character, excluding ASCII space.
+ * Use iswgraph(3) if possible. In the ksh-specific C.UTF-8 locale, this is
+ * generally not possible as the OS-provided iswgraph(3) doesn't support that
+ * locale. So do a quick test and do our best with a fallback if necessary.
+ */
+static int	sh_isprint(int c)
+{
+	if(!mbwide())					/* not in multibyte locale? */
+		return(isprint(c));			/* use plain isprint(3) */
+	else if(iswgraph(0x5E38) && !iswgraph(0xFEFF))	/* can we use iswgraph(3)? */
+		return(c == ' ' || iswgraph(c));	/* use iswgraph(3) */
+	else						/* fallback: */
+		return(!(c <= 0x001F ||			/* control characters */
+			c >= 0x007F && c <= 0x009F ||	/* control characters */
+			c == 0x00A0 ||			/* non-breaking space */
+			c == 0x061C ||			/* arabic letter mark */
+			c == 0x1680 ||			/* ogham space mark */
+			c == 0x180E ||			/* mongolian vowel separator */
+			c >= 0x2000 && c <= 0x200F ||	/* spaces and format characters */
+			c >= 0x2028 && c <= 0x202F ||	/* separators and format characters */
+			c >= 0x205F && c <= 0x206F ||	/* various format characters */
+			c == 0x3000 ||			/* ideographic space */
+			c == 0xFEFF));			/* zero-width non-breaking space */
+}
+
+/*
  * print <str> quoting chars so that it can be read by the shell
- * puts null terminated result on stack, but doesn't freeze it
+ * puts null-terminated result on stack, but doesn't freeze it
  */
 char	*sh_fmtq(const char *string)
 {
@@ -336,6 +363,7 @@ char	*sh_fmtq(const char *string)
 	int offset;
 	if(!cp)
 		return((char*)0);
+	mbinit();
 	offset = staktell();
 	state = ((c= mbchar(cp))==0);
 	if(isaletter(c))
@@ -359,11 +387,7 @@ char	*sh_fmtq(const char *string)
 		state = 1;
 	for(;c;c= mbchar(cp))
 	{
-#if SHOPT_MULTIBYTE
-		if(c=='\'' || c>=128 || c<0 || !iswprint(c)) 
-#else
-		if(c=='\'' || !isprint(c))
-#endif /* SHOPT_MULTIBYTE */
+		if(c=='\'' || !sh_isprint(c))
 			state = 2;
 		else if(c==']' || c=='=' || (c!=':' && c<=0x7f && (c=sh_lexstates[ST_NORM][c]) && c!=S_EPAT))
 			state |=1;
@@ -379,14 +403,9 @@ char	*sh_fmtq(const char *string)
 	}
 	else
 	{
-		int isbyte=0;
 		stakwrite("$'",2);
 		cp = string;
-#if SHOPT_MULTIBYTE
 		while(op = cp, c= mbchar(cp))
-#else
-		while(op = cp, c= *(unsigned char*)cp++)
-#endif
 		{
 			state=1;
 			switch(c)
@@ -415,25 +434,27 @@ char	*sh_fmtq(const char *string)
 			    case '\\':	case '\'':
 				break;
 			    default:
-#if SHOPT_MULTIBYTE
-				isbyte = 0;
-				if(c<0)
+				if(mbwide())
 				{
-					c = *((unsigned char *)op);
-					cp = op+1;
-					isbyte = 1;
+					/* We're in a multibyte locale */
+					if(c<0 || c<128 && !isprint(c))
+					{
+						/* Invalid multibyte char, or unprintable ASCII char: quote as hex byte */
+						c = *((unsigned char *)op);
+						cp = op+1;
+						goto quote_one_byte;
+					}
+					if(!sh_isprint(c))
+					{
+						/* Unicode hex code */
+						sfprintf(staksp,"\\u[%x]",c);
+						continue;
+					}
 				}
-				if(mbwide() && ((cp-op)>1))
+				else if(!isprint(c))
 				{
-					sfprintf(staksp,"\\u[%x]",c);
-					continue;
-				}
-				else if(!iswprint(c) || isbyte)
-#else
-				if(!isprint(c))
-#endif
-				{
-					sfprintf(staksp,"\\x%.2x",c);
+				quote_one_byte:
+					sfprintf(staksp, isxdigit(*cp) ? "\\x[%.2x]" : "\\x%.2x", c);
 					continue;
 				}
 				state=0;
@@ -455,7 +476,7 @@ char	*sh_fmtq(const char *string)
 
 /*
  * print <str> quoting chars so that it can be read by the shell
- * puts null terminated result on stack, but doesn't freeze it
+ * puts null-terminated result on stack, but doesn't freeze it
  * single!=0 limits quoting to '...'
  * fold>0 prints raw newlines and inserts appropriately
  * escaped newlines every (fold-x) chars
@@ -683,15 +704,7 @@ char	*sh_fmtqf(const char *string, int single, int fold)
 
 const char *_sh_translate(const char *message)
 {
-#if ERROR_VERSION >= 20000317L
 	return(ERROR_translate(0,0,e_dict,message));
-#else
-#if ERROR_VERSION >= 20000101L
-	return(ERROR_translate(e_dict,message));
-#else
-	return(ERROR_translate(message,1));
-#endif
-#endif
 }
 
 /*
@@ -729,10 +742,3 @@ char *sh_checkid(char *str, char *last)
 	}
 	return(last);
 }
-
-#if	_AST_VERSION  <= 20000317L
-char *fmtident(const char *string)
-{
-	return((char*)string);
-}
-#endif

@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -23,7 +24,7 @@
 #include	"ulimit.h"
 
 /*
- * This is the list of resouce limits controlled by ulimit
+ * This is the list of resource limits controlled by ulimit
  * This command requires getrlimit(), vlimit(), or ulimit()
  */
 
@@ -49,7 +50,7 @@ const Limit_t	shtab_limits[] =
 "nproc",	"number of processes",	RLIMIT_NPROC,	"CHILD_MAX",	'u',	LIM_COUNT,
 "pipe",		"pipe buffer size",	RLIMIT_PIPE,	"PIPE_BUF",	'p',	LIM_BYTE,
 "rss",		"max memory size",	RLIMIT_RSS,	0,		'm',	LIM_KBYTE,
-"rtprio",	"max real time priority",RLIMIT_RTPRIO,	0,		'r',	LIM_COUNT,
+"rtprio",	"max real-time priority",RLIMIT_RTPRIO,	0,		'r',	LIM_COUNT,
 "sbsize",	"socket buffer size",	RLIMIT_SBSIZE,	"PIPE_BUF",	'b',	LIM_BYTE,
 "sigpend",	"signal queue size",	RLIMIT_SIGPENDING,"SIGQUEUE_MAX",'i',	LIM_COUNT,
 "stack",	"stack size",		RLIMIT_STACK,	0,		's',	LIM_KBYTE,

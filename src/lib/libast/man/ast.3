@@ -52,10 +52,10 @@ int            astquery(int \fIfd\fP, const char* \fIformat\fP , ...);
 .SH DESCRIPTION
 .L astconf
 is a string interface to the
-.IR confstr (2),
+.IR confstr (3),
 .IR pathconf (2),
 and
-.IR sysconf (2)
+.IR sysconf (3)
 calls.
 If
 .I value
@@ -74,9 +74,9 @@ In this case if
 is
 .L 0
 then
-\f5"/"\fP
+\f3"/"\fP
 is used.
-Otherwise if 
+Otherwise if
 .I path
 is not
 .L 0
@@ -92,7 +92,7 @@ If
 is
 .L 0
 then a valid string is always returned;
-\f5""\fP
+\f3""\fP
 is returned if
 .I name
 has no configuration value.
@@ -119,17 +119,6 @@ astconf("UNIVERSE", 0, universe);
 .EE
 The settable configuration names are:
 .TP
-.L FS_3D
-.L 1
-if
-.IR 3d (1)
-viewpathing is enabled,
-.L 0
-otherwise.
-This is an alternative to the
-.IR fs3d (3)
-interface.
-.TP
 .L PATH_RESOLVE
 .L logical
 if symbolic links are followed during file tree traversal,
@@ -147,7 +136,7 @@ command options.
 .TP
 .L UNIVERSE
 .L ucb
-for 
+for
 .I Berkeley
 style and
 .L att
@@ -179,7 +168,7 @@ relative to
 .IR path .
 If
 .I notify
-returns 
+returns
 .L 0
 then the configuration parameter value is not changed.
 .PP
@@ -190,7 +179,7 @@ If
 .I path
 is
 .L 0
-then \f5"/"\fP is used where appropriate.
+then \f3"/"\fP is used where appropriate.
 If
 .I flags
 is
@@ -199,7 +188,7 @@ or
 .L R_OK|W_OK
 then all configuration parameters are listed.
 .L R_OK
-lists the readonly configuration parameters and 
+lists the readonly configuration parameters and
 .L W_OK
 lists the settable configuration parameters.
 .L X_OK
@@ -237,7 +226,7 @@ outputs an
 prompt specified by
 .I "format, .\|.\|."
 to the controlling terminal and reads a response from the controlling terminal.
-Offirmative response returns
+Affirmative response returns
 .LR 0 ,
 .L EOF
 or quit response returns
@@ -280,4 +269,4 @@ and the environment variable
 is used to set
 .IR *cols .
 .SH "SEE ALSO"
-getconf(1), confstr(2), mmap(2), pathconf(2), read(2), sysconf(2), write(2)
+getconf(1), confstr(3), mmap(2), pathconf(2), read(2), sysconf(3), write(2)

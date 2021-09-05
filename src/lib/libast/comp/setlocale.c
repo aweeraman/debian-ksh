@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -36,6 +37,7 @@
 #include <ctype.h>
 #include <mc.h>
 #include <namval.h>
+#include <error.h>
 
 #if ( _lib_wcwidth || _lib_wctomb ) && _hdr_wctype
 #include <wctype.h>
@@ -198,7 +200,7 @@ native_setlocale(int category, const char* locale)
 /*
  * LC_COLLATE and LC_CTYPE debug support
  *
- * mutibyte debug encoding
+ * multibyte debug encoding
  *
  *	DL0 [ '0' .. '4' ] c1 ... c4 DR0
  *	DL1 [ '0' .. '4' ] c1 ... c4 DR1
@@ -600,6 +602,8 @@ utf8_mbtowc(wchar_t* wp, const char* str, size_t n)
 	register int		c;
 	register wchar_t	w = 0;
 
+	if (!wp && !sp)
+		ast.mb_sync = 0;  /* assume call from mbinit() macro: reset global multibyte sync state */
 	if (!sp || !n)
 		return 0;
 	if ((m = utf8tab[*sp]) > 0)
@@ -630,9 +634,7 @@ utf8_mbtowc(wchar_t* wp, const char* str, size_t n)
 	if (!*sp)
 		return 0;
  invalid:
-#ifdef EILSEQ
 	errno = EILSEQ;
-#endif
 	ast.mb_sync = (const char*)sp - str;
 	return -1;
 }
@@ -2215,6 +2217,23 @@ iswalpha(wchar_t c)
 
 typedef int (*Isw_f)(wchar_t);
 
+static int
+wide_wctomb(char* u, wchar_t w)
+{
+	int size = 0;
+
+	if (u)
+	{
+		size = wctomb(u, w);
+		if (size < 0)
+		{
+			*u = (char)(w & 0xff);
+			size = 1;
+		}
+	}
+	return size;
+}
+
 /*
  * called when LC_CTYPE initialized or changes
  */
@@ -2259,7 +2278,7 @@ set_ctype(Lc_category_t* cp)
 	{
 		if (!(ast.mb_width = wcwidth))
 			ast.mb_width = default_wcwidth;
-		ast.mb_conv = wctomb;
+		ast.mb_conv = wide_wctomb;
 #ifdef mb_state
 		{
 			/*

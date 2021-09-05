@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -45,7 +46,7 @@ static int	cursig = -1;
 #if !_std_malloc
 #   include	<vmalloc.h>
 #endif
-#if  defined(VMFL) && (VMALLOC_VERSION>=20031205L)
+#if  defined(VMFL)
     /*
      * This exception handler is called after vmalloc() unlocks the region
      */
@@ -154,7 +155,7 @@ void	sh_fault(register int sig)
 			shp->trapnote |= SH_SIGSET;
 			if(sig <= shp->gd->sigmax)
 				shp->sigflag[sig] |= SH_SIGSET;
-#if  defined(VMFL) && (VMALLOC_VERSION>=20031205L)
+#if  defined(VMFL)
 			if(abortsig(sig))
 			{
 				/* abort inside malloc, process when malloc returns */
@@ -173,7 +174,7 @@ void	sh_fault(register int sig)
 	if(trap)
 	{
 		/*
-		 * propogate signal to foreground group
+		 * propagate signal to foreground group
 		 */
 		if(sig==SIGHUP && job.curpgid)
 			killpg(job.curpgid,SIGHUP);
@@ -250,9 +251,9 @@ void sh_siginit(void *ptr)
 		tp++;
 	}
 	shp->gd->sigmax = n++;
-	shp->st.trapcom = (char**)calloc(n,sizeof(char*));
-	shp->sigflag = (unsigned char*)calloc(n,1);
-	shp->gd->sigmsg = (char**)calloc(n,sizeof(char*));
+	shp->st.trapcom = (char**)sh_calloc(n,sizeof(char*));
+	shp->sigflag = (unsigned char*)sh_calloc(n,1);
+	shp->gd->sigmsg = (char**)sh_calloc(n,sizeof(char*));
 	for(tp=shtab_signals; sig=tp->sh_number; tp++)
 	{
 		n = (sig>>SH_SIGBITS);
@@ -344,7 +345,7 @@ void	sh_sigreset(register int mode)
 			sh.sigflag[sig] = flag;
 		}
 	}
-	for(sig=SH_DEBUGTRAP-1;sig>=0;sig--)
+	for(sig=SH_DEBUGTRAP; sig>=0; sig--)
 	{
 		if(trap=sh.st.trap[sig])
 		{
@@ -413,7 +414,7 @@ void	sh_chktrap(Shell_t* shp)
 	}
 	if(shp->sigflag[SIGALRM]&SH_SIGALRM)
 		sh_timetraps(shp);
-#ifdef SHOPT_BGX
+#if SHOPT_BGX
 	if((shp->sigflag[SIGCHLD]&SH_SIGTRAP) && shp->st.trapcom[SIGCHLD])
 		job_chldtrap(shp,shp->st.trapcom[SIGCHLD],1);
 #endif /* SHOPT_BGX */
@@ -421,7 +422,7 @@ void	sh_chktrap(Shell_t* shp)
 	{
 		if(sig==cursig)
 			continue;
-#ifdef SHOPT_BGX
+#if SHOPT_BGX
 		if(sig==SIGCHLD)
 			continue;
 #endif /* SHOPT_BGX */
@@ -442,20 +443,19 @@ void	sh_chktrap(Shell_t* shp)
 /*
  * parse and execute the given trap string, stream or tree depending on mode
  * mode==0 for string, mode==1 for stream, mode==2 for parse tree
+ * The return value is the exit status of the trap action.
  */
 int sh_trap(const char *trap, int mode)
 {
 	Shell_t	*shp = sh_getinterp();
-	int	jmpval, savxit = shp->exitval;
+	int	jmpval, savxit = shp->exitval, savxit_return;
 	int	was_history = sh_isstate(SH_HISTORY);
 	int	was_verbose = sh_isstate(SH_VERBOSE);
 	int	staktop = staktell();
 	char	*savptr = stakfreeze(0);
-	char	ifstable[256];
 	struct	checkpt buff;
 	Fcin_t	savefc;
 	fcsave(&savefc);
-	memcpy(ifstable,shp->ifstable,sizeof(ifstable));
 	sh_offstate(SH_HISTORY);
 	sh_offstate(SH_VERBOSE);
 	shp->intrap++;
@@ -489,11 +489,11 @@ int sh_trap(const char *trap, int mode)
 	sh_popcontext(shp,&buff);
 	shp->intrap--;
 	sfsync(shp->outpool);
-	if(!shp->indebug && jmpval!=SH_JMPEXIT && jmpval!=SH_JMPFUN)
+	savxit_return = shp->exitval;
+	if(jmpval!=SH_JMPEXIT && jmpval!=SH_JMPFUN)
 		shp->exitval=savxit;
 	stakset(savptr,staktop);
 	fcrestore(&savefc);
-	memcpy(shp->ifstable,ifstable,sizeof(ifstable));
 	if(was_history)
 		sh_onstate(SH_HISTORY);
 	if(was_verbose)
@@ -501,7 +501,7 @@ int sh_trap(const char *trap, int mode)
 	exitset();
 	if(jmpval>SH_JMPTRAP && (((struct checkpt*)shp->jmpbuffer)->prev || ((struct checkpt*)shp->jmpbuffer)->mode==SH_JMPSCRIPT))
 		siglongjmp(*shp->jmplist,jmpval);
-	return(shp->exitval);
+	return(savxit_return);
 }
 
 /*
@@ -519,7 +519,7 @@ void sh_exit(register int xno)
 	if(pp && pp->mode>1)
 		cursig = -1;
 #ifdef SIGTSTP
-	if(shp->trapnote&SH_SIGTSTP)
+	if((shp->trapnote&SH_SIGTSTP) && job.jobcontrol)
 	{
 		/* ^Z detected by the shell */
 		shp->trapnote = 0;
@@ -579,7 +579,7 @@ void sh_exit(register int xno)
 	shp->prefix = 0;
 #if SHOPT_TYPEDEF
 	shp->mktype = 0;
-#endif /* SHOPT_TYPEDEF*/
+#endif /* SHOPT_TYPEDEF */
 	if(job.in_critical)
 		job_unlock();
 	if(pp->mode == SH_JMPSCRIPT && !pp->prev) 
@@ -600,7 +600,7 @@ static void array_notify(Namval_t *np, void *data)
  * This is the exit routine for the shell
  */
 
-void sh_done(void *ptr, register int sig)
+noreturn void sh_done(void *ptr, register int sig)
 {
 	Shell_t	*shp = (Shell_t*)ptr;
 	register char *t;
@@ -613,8 +613,7 @@ void sh_done(void *ptr, register int sig)
 		(*shp->userinit)(shp, -1);
 	if(t=shp->st.trapcom[0])
 	{
-		shp->st.trapcom[0]=0; /*should free but not long */
-		shp->oldexit = savxit;
+		shp->st.trapcom[0]=0; /* should free but not long */
 		sh_trap(t,0);
 		savxit = shp->exitval;
 	}
@@ -630,12 +629,20 @@ void sh_done(void *ptr, register int sig)
 	sh_accend();
 #endif	/* SHOPT_ACCT */
 #if SHOPT_VSH || SHOPT_ESH
-	if(mbwide()||sh_isoption(SH_EMACS)||sh_isoption(SH_VI)||sh_isoption(SH_GMACS))
-		tty_cooked(-1);
+	if(mbwide()
+#if SHOPT_ESH
+	|| sh_isoption(SH_EMACS)
+	|| sh_isoption(SH_GMACS)
 #endif
+#if SHOPT_VSH
+	|| sh_isoption(SH_VI)
+#endif
+	)
+		tty_cooked(-1);
+#endif /* SHOPT_VSH || SHOPT_ESH */
 #ifdef JOBS
 	if((sh_isoption(SH_INTERACTIVE) && shp->login_sh) || (!sh_isoption(SH_INTERACTIVE) && (sig==SIGHUP)))
-		job_walk(sfstderr,job_terminate,SIGHUP,NIL(char**));
+		job_walk(sfstderr, job_hup, SIGHUP, NIL(char**));
 #endif	/* JOBS */
 	job_close(shp);
 	if(nv_search("VMTRACE", shp->var_tree,0))
@@ -643,7 +650,7 @@ void sh_done(void *ptr, register int sig)
 	sfsync((Sfio_t*)sfstdin);
 	sfsync((Sfio_t*)shp->outpool);
 	sfsync((Sfio_t*)sfstdout);
-	if(savxit&SH_EXITSIG)
+	if(savxit&SH_EXITSIG && (savxit&SH_EXITMASK) == shp->lastsig)
 		sig = savxit&SH_EXITMASK;
 	if(sig)
 	{
@@ -661,13 +668,17 @@ void sh_done(void *ptr, register int sig)
 		}
 		signal(sig,SIG_DFL);
 		sigrelease(sig);
-		kill(getpid(),sig);
+		kill(shgd->current_pid,sig);
 		pause();
 	}
 #if SHOPT_KIA
 	if(sh_isoption(SH_NOEXEC))
 		kiaclose((Lex_t*)shp->lex_context);
 #endif /* SHOPT_KIA */
+
+	/* Exit with portable 8-bit status (128 + signum) if last child process exits due to signal */
+	if (savxit & SH_EXITSIG)
+		savxit = savxit & ~SH_EXITSIG | 0200;
+
 	exit(savxit&SH_EXITMASK);
 }
-

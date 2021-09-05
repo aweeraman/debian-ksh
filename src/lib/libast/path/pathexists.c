@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -24,7 +25,7 @@
  * Glenn Fowler
  * AT&T Research
  *
- * return 1 if path exisis
+ * return 1 if path exists
  * maintains a cache to minimize stat(2) calls
  * path is modified in-place but restored on return
  * path components checked in pairs to cut stat()'s
@@ -63,7 +64,7 @@ pathexists(char* path, int mode)
 
 	t = &tree;
 	e = (c = *path) == '/' ? path + 1 : path;
-	cmp = strchr(astconf("PATH_ATTRIBUTES", path, NiL), 'c') ? strcasecmp : strcmp;
+	cmp = pathicase(path) > 0 ? strcasecmp : strcmp;
 	if ((ast.locale.set & (AST_LC_debug|AST_LC_find)) == (AST_LC_debug|AST_LC_find))
 		sfprintf(sfstderr, "locale test %s\n", path);
 	while (c)

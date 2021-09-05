@@ -6,7 +6,7 @@
 .ta .75i 1.5i 2.25i 3i 3.75i 4.5i 5.25i 6i
 .PP
 .nf
-\f5
+\f3
 #include <ftwalk.h>
 
 int ftwalk(char* path, int (*userf)(struct FTW* ftw), int options,
@@ -69,7 +69,7 @@ That is, \fIuserf\fP is called on a directory only after its descendants have
 been processed.
 The absence of this bit indicates that calls to the user functions
 are issued in preorder. That is, \fIuserf\fP is
-called on a directory before its descendants  are processed.
+called on a directory before its descendants are processed.
 .IP
 FTW_PHYSICAL: Use \fIlstat\fR(2) instead of \fIstat\fR(2) to get
 file status and allow detection of symbolic links.
@@ -114,7 +114,7 @@ The \fIuserf\fP prototype is:
     char*          path;    /* full pathname */
     short          pathlen; /* strlen(path) */
     unsigned short info;    /* type of object */
-    unsigned short status;  /* status of object */ 
+    unsigned short status;  /* status of object */
     short          level;   /* depth of object on the search path */
     short          namelen; /* strlen(name) */
     char           name[];  /* file name of object */
@@ -206,7 +206,7 @@ The \fIcomparf\fP prototype is:
 \fIFtwalk\fR normally returns 0.
 On hard errors such as running out of memory, it returns -1.
 \fIFtwalk\fR may also return other values as discussed with respect
-to \fIuserf\fR. 
+to \fIuserf\fR.
 .PP
 \fIFtwflags\fR returns a combination of \fB0, FTW_META, FTW_PHYSICAL\fR
 according to the
@@ -226,7 +226,7 @@ preferences specified by
 the routine \fIftw\fR provided in System V.
 However, it is more general than \fIftw\fR
 and suitable for use as a base in implementing
-popular tools such as \fIls, find, tar, du,\fR and \fIrm\fR.
+popular tools such as \fIls\fR, \fIfind\fR, \fItar\fR, \fIdu\fR, and \fIrm\fR.
 \fIFtwalk\fR also handles symbolic links and hard links gracefully.
 .SH AUTHORS
 Phong Vo, Glenn Fowler, Dave Korn

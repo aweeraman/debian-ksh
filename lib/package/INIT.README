@@ -93,7 +93,7 @@ All recorded changes follow.
 
 :::::::: INIT ::::::::
 
-12-07-17 iffe.sh: add C code NOTE("...") to ammend --verbose output
+12-07-17 iffe.sh: add C code NOTE("...") to amend --verbose output
 12-06-26 iffe.sh: fix "npt foo" to handle function-like macro foo()
 12-06-20 package.sh: use $KSH for rt in "results test"
 12-06-15 Makefile: add PLUGIN_LIB to $INSTALLROOT/bin/.paths and BUILTIN_LIB => PLUGIN_LIB
@@ -140,7 +140,7 @@ All recorded changes follow.
 11-03-21 package.sh: fix vpath probes
 11-03-17 iffe.sh: fix cleanup to rm $tmp* instead of $tmp*.*
 11-02-24 package.sh: change curl usage to "curl -L ..."
-11-02-11 package.sh,C+probe,make.probe,mamprobe.sh: add ###.*archiac.*###
+11-02-11 package.sh,C+probe,make.probe,mamprobe.sh: add ###.*archaic.*###
 11-02-02 Makefile: add :MAPLIB: check for ancient -lw
 11-02-02 make.probe: handle -print-multi-directory => 64 => /usr/lib64 /lib64
 11-02-02 package.sh: HOSTTYPE=*,*cc*[,-*,...] sets CC [ and CCFLAGS ]
@@ -150,7 +150,7 @@ All recorded changes follow.
 10-11-22 ditto.sh: fix timing problem between |& and exec &p
 10-11-10 package.sh: fix cc cross compile check to use checkcc absolute path
 10-10-10 package.sh: list main env vars at start of make action
-10-10-10 ratz.c: tweak widnows delays
+10-10-10 ratz.c: tweak windows delays
 10-09-10 ratz.c: add _SEAR_ARGS for _SEAR_EXEC
 10-09-01 package.sh: fix ratz from source logic
 10-08-25 package.mk: consolidate license file search in .package.licenses.
@@ -165,7 +165,7 @@ All recorded changes follow.
 10-06-25 package.sh: "force admin ditto" => no ditto --update option
 10-06-22 C+probe: handle cc that require .[ci] input for version info
 10-06-21 ditto.sh: change default remote access to ssh (about time)
-10-06-12 regress.sh: DISGNOSTICS [ 1 | 0 | pattern ] and fix EXIT for all
+10-06-12 regress.sh: DIAGNOSTICS [ 1 | 0 | pattern ] and fix EXIT for all
 10-06-09 package.sh: add AT&T to usable nmake check
 10-06-06 iffe.sh,iffe.tst: add { api ver } ops
 10-04-22 package.sh: update "html binary|source" NAME/PASSWORD info
@@ -378,7 +378,7 @@ All recorded changes follow.
 05-02-20 probe.win32: handle /platformsdk mount
 05-02-19 package.sh,package.mk: add write tst for tgz in tst subdir
 05-02-18 package.sh: accept cc -dumpmachine with 0 or 1 -
-05-02-14 package.sh: handle mutiple architectures per host in admin.db
+05-02-14 package.sh: handle multiple architectures per host in admin.db
 	 Makefile,package.sh: honor $INSTALLROOT/bin/.paths overrides
 	 package.sh: normalize trailing [-_]bits in host type
 	 iffe.sh: some ksh-compatible shells don't do *(pattern)
@@ -424,7 +424,7 @@ All recorded changes follow.
 	 package.mk: add the runtime package type (no *.[ah])
 	 iffe.sh: fix key test reports
 04-08-26 Makefile: { add m2.c m3.c } -lm tests for { frexp[l] ldexp[l] }
-04-08-11 package.mk: handle HOSTTYPE for solaris > 9 
+04-08-11 package.mk: handle HOSTTYPE for solaris > 9
 	 package.sh: add `checkaout proto' for { make view }
 	 package.sh: check for { md5sum md5 }
 	 iffe.sh: add {if|elif|else|endif} test ...
@@ -450,7 +450,7 @@ All recorded changes follow.
 	 regress.sh: INPUT and OUTPUT handle -f for printf instead of print
 04-06-11 package.sh: make sure $INSTALLROOT/bin is in front of $PATH
 	 package.sh: skip nmake if older than 2000-10-31
-04-05-20 package.sh: fix arg vs. package parse with - or '' to disambuguate
+04-05-20 package.sh: fix arg vs. package parse with - or '' to disambiguate
 04-05-11 package.sh: package verbose update lists closure for package setup
 	 package.sh: add src/lib/libardir to nmake proto bootstrap
 	 regress.sh: probe for rm -u vs. chmod -R u+rwx
@@ -518,14 +518,14 @@ All recorded changes follow.
 03-09-23 ratz.c: fix tar header number parse bug that skipped to next number
 	 regress.sh: rm cleanup now handles files matching -*
 03-09-11 iffe.sh: add unnamed { ... } blocks
-	 regress.sh: add COPY from to, like MOVE but comprison still done
+	 regress.sh: add COPY from to, like MOVE but comparison still done
 	 regress.sh: rm -rfu to handle test dirs w/o u+rwx
-03-08-14 Makfile: add hello.c to the manifest
+03-08-14 Makefile: add hello.c to the manifest
 03-08-11 package.sh: fix `html binary' generation
 03-06-21 package.sh: fix INITROOT initialization bug
 	 package.sh: make sure admin logs exists before tail'ing
 03-06-11 probe.win32: fix $(BINDIR) typo that expanded in sh instead of make
-	 cc.mvs.390: return code 4 yields exit code 3 but its *really* ok
+	 cc.mvs.390: return code 4 yields exit code 3 but it's *really* ok
 	 package.sh: fix onpath function global var conflict
 	 make.probe: add CC.DIALECT { GNU -dD }
 	 package.mk: add Mamfile to lcl manifest
@@ -545,7 +545,7 @@ All recorded changes follow.
 03-05-05 package.mk: fix cygwin tarball names
 03-04-30 package.sh: move (cc|ld|ldd).$HOSTTYPE updates from Makefile
 03-04-27 make.probe: fix mvs CC.PREFIX.SHARED "lib" => ""
-	 make.probe: add CC.DLL.DIR = $(BINDIR) or $(LIBDIR) 
+	 make.probe: add CC.DLL.DIR = $(BINDIR) or $(LIBDIR)
 	 make.probe: add { CC.LD.LAZY CC.LD.NOLAZY CC.LD.RECORD CC.LD.NORECORD }
 	 probe.win32: sync with latest CC.*
 03-04-25 mamprobe.sh: add args to `. $makeprobe' for ancient sh
@@ -553,7 +553,7 @@ All recorded changes follow.
 03-04-22 probe.win32: CC.DIALECT += "LIBPP -I-" for all cc's
 	 package.sh: fix admin write binary tarball snarf
 03-04-21 package.mk: package covered *.@(pkg|lic) too
-03-04-15 package.mk: don't generate incremental archives for lcl 
+03-04-15 package.mk: don't generate incremental archives for lcl
 	 package.mk: add incremental=[source:1 binary:0] archive control
 	 package.sh: generate $INSTALLROOT/bin/cc wrapper for CC != cc
 	 package.sh: admin must ditto lib/package/*.@(pkg|lic) too
@@ -617,7 +617,7 @@ All recorded changes follow.
 	 make.probe: add CC.LD.STRIP for link time a.out strip
 	 package.sh: fix package_use vs. PACKAGE_USE check
 02-10-24 WWW.mk: fix bug that required a :WWWBIN: assertion to post
-02-10-23 mamake.c: fix unuinitialized time in make()
+02-10-23 mamake.c: fix uninitialized time in make()
 	 ratz.c: fix meter buffer overflow
 02-10-20 package.sh: fix lib/probe/C/make/probe update test
 02-10-18 probe.win32: update for mingw
@@ -644,7 +644,7 @@ All recorded changes follow.
 02-09-11 make.probe: move from nmake src to be part of mamprobe.sh
 	 mamprobe: generate from mamprobe.beg C.probe make.probe mamprobe.end
 	 mamake.c: pass cc absolute path to mamprobe
-	 package.sh: generate mamprobe -- yuk (at least its confined to INIT)
+	 package.sh: generate mamprobe -- yuk (at least it's confined to INIT)
 	 iffe.sh: lcl,nxt: drop default sys/ check
 	 ditto.sh: tw --logical by default; add --physical
 02-09-10 package.sh: SHELLMAGIC creeps into package too -- duh and fooey
@@ -699,7 +699,7 @@ All recorded changes follow.
 	 package.sh: add check for { cc ar nm yacc/bison } before make
 	 ratz.c: fix "rb" vs. "r" macro tests
 	 iffe.sh: add nxt, similar to lcl but defines _nxt_foo for #include
-	 iffe.sh,package.sh: remove vaibale from sccs,cvs ident strings -- duh
+	 iffe.sh,package.sh: remove variable from sccs,cvs ident strings -- duh
 02-01-24 C+probe: check CC.DYNAMIC to handle cc that accept but ignore -B*
 	 iffe.sh: handle 'mem struct.a.b'
 02-01-22 iffe.sh: cache (internal) `foo vs. struct foo' test results
@@ -735,7 +735,7 @@ All recorded changes follow.
 	 package.mk: tarball package.notice replaces `license accepted' prompt
 	 package.sh: eliminate `license accepted' prompt
 	 package.sh: add update to download latest from a url
-	 package.sh: use builtin arithmetic when we know its ksh
+	 package.sh: use builtin arithmetic when we know it's ksh
 	 iffe.sh: unkown -> unknown
 01-10-18 package.sh: convert to YYYY-MM-DD delta releases instead of NNNN
 	 package.mk: convert to YYYY-MM-DD delta releases instead of NNNN
@@ -758,7 +758,7 @@ All recorded changes follow.
 01-08-11 package.mk: handle single gz executable packages (e.g., for ksh)
 	 package.sh: fix package install to require nmake only if no *.sum
 	 iffe.sh: drop ancient menu and prompt actions; check ./hdr.h clash
-01-07-17 package: fix use cross compile test to generate files in /tmp 
+01-07-17 package: fix use cross compile test to generate files in /tmp
 01-06-27 ratz: handle hard and soft links if possible
 01-06-07 Makefile: fix :MAPLIB: for sco
 01-05-31 crossexec.sh: add
@@ -789,7 +789,7 @@ All recorded changes follow.
 01-02-26 iffe.sh: fix bug that omitted runtime #define for `mac' op
 01-02-22 cc.ibm.risc: handle SF_CLOSE clash in <sfio.h>
 01-02-14 cc.sgi.mips3,cc.sgi.mips4: handle -mips2 -mips3 -mips4 for cross cc
-	 C+probe: quote "$cc" when its an argument!
+	 C+probe: quote "$cc" when it's an argument!
 	 mamake: execute actions with $SHELL, ignored signals back to default
 	 package.sh: nmake check error output to /dev/null
 	 package.sh: fix INIT a.out updates for knr cc
@@ -802,7 +802,7 @@ All recorded changes follow.
 	 package.sh: $CC ^HOSTTYPE=[A-Za-z_0-9.]*$ overrides HOSTTYPE
 	 iffe.sh: fix dat code that used previous $tmp.exe
 	 iffe.sh: fix dat code for _DLL imports
-01-02-09 iffe.sh: add copy() for shells with the dissappearing here doc bug
+01-02-09 iffe.sh: add copy() for shells with the disappearing here doc bug
 01-02-08 Makefile: guard against null $(CC.HOSTTYPE)
 01-02-06 Makefile: separate out cc,ld,ldd workarounds (so they will be packaged)
 01-02-02 package.sh: fix package use for $INSTALLROOT != */$HOSTTYPE
@@ -810,7 +810,7 @@ All recorded changes follow.
 	 package.sh: add $SECONDS to the DEBUG trace prompt
 01-01-01 ratz.c: #ifdef for uwin ncc
 	 iffe.sh,package.sh: check PACKAGE_PATH for local installations
-	 package.sh: add psrinfo for osf.alpha host cpu 
+	 package.sh: add psrinfo for osf.alpha host cpu
 	 package.sh: change pax --meter probe; some hang on /dev/tty
 	 package.sh: fix `install flat ARCH'
 	 mamake: eliminate loops from scan order
@@ -855,7 +855,7 @@ All recorded changes follow.
 00-09-21 mamake: add libxxx and xxx to makefile ordered prereqs
 00-09-19 C+probe: add probe_longlong
 00-09-11 package: drop manmake and $PACKAGEROOT/bin/nmake
-00-09-08 iffe: verfiy that $cc is a C compiler
+00-09-08 iffe: verify that $cc is a C compiler
 00-06-14 mamprobe: fix win32.* probe
 	 mamake: fix bug that used lower view path for generation
 	 package: don't clobber $PACKAGEROOT/bin/nmake
@@ -863,7 +863,7 @@ All recorded changes follow.
 	 package: fix write delta source to use default pax format
 	 package: add disambiguating bias for sgi.mips3 over sgi.mips4
 	 package.mk: fix for directory content packages lib ast-locale
-00-05-01 iffe: fix invalid _LIB_ macro identifier 
+00-05-01 iffe: fix invalid _LIB_ macro identifier
 00-04-11 C+probe: uniq stdinclude and stdlib, fix usrinclude
 00-04-01 regress: fix explicit OUTPUT bug that didn't compare with expected
 00-03-17 package: all archives are .tgz for binary download
@@ -944,13 +944,13 @@ All recorded changes follow.
 98-11-11 regress: fix UNIT PATH lookup
 98-11-01 regress: add PROG
 98-10-01 hostinfo: add unixware.*
-	 use: export PACKAGE_* 
+	 use: export PACKAGE_*
 98-08-11 C.probe: add /usr/include check (for sco CC)
 	 hostinfo: handle uwin uname update
 98-05-01 regress: fix bug sometimes didn't list last test
 98-04-01 hostinfo: add cc path arg
 	 hostinfo: now works with /bin/sh
-	 Makefile: strengthed -lm probe
+	 Makefile: strengthen -lm probe
 98-01-23 Makefile: check for -ldl -lm
 	 C.probe: handle gcc -v -E phony include dirs
 	 iffe: fix lcl by dropping sort -u -- we need the real first

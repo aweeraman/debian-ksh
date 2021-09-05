@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -53,7 +54,7 @@ int		type;	/* >0: scanf, =0: printf, -1: internal	*/
 #endif
 {
 	int		base, fmt, flags, dot, width, precis;
-	ssize_t		n_str, size;
+	ssize_t		n_str, size = 0;
 	char		*t_str, *sp;
 	int		v, n, skip, dollar, decimal, thousand;
 	Sffmt_t		savft;
@@ -178,7 +179,8 @@ int		type;	/* >0: scanf, =0: printf, -1: internal	*/
 			}
 			else if(*form != '*')
 				goto loop_flags;
-			else	form += 1; /* drop thru below */
+			else	form += 1;
+			/* FALLTHROUGH */
 
 		case '*' :
 			form = sffmtint(form,&n);

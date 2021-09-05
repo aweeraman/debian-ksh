@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -883,7 +884,8 @@ int		local;
 				CLRBITS(s);
 			}
 			else if(ISJUNK(s) )
-			{	if(!bestreclaim(vd,np,(int)C_INDEX(s)) )
+			{
+				if(!bestreclaim(vd,np,(int)C_INDEX(s)) )
 					/**/ASSERT(0); /* oops: did not see np! */
 				s = SIZE(np); /**/ASSERT(s%ALIGN == 0);
 			}
@@ -1265,10 +1267,13 @@ static Void_t* mmapmem(Void_t* caddr, size_t csize, size_t nsize, Mmdisc_t* mmdc
 		}
 	}
 	else if(nsize == 0)
-	{	Vmuchar_t	*addr = (Vmuchar_t*)sbrk(0);
+	{
+#if _mem_sbrk
+		Vmuchar_t	*addr = (Vmuchar_t*)sbrk(0);
 		if(addr < (Vmuchar_t*)caddr ) /* in sbrk space */
 			return NIL(Void_t*);
 		else
+#endif
 		{	(void)munmap(caddr, csize);
 			return caddr;
 		}
@@ -1385,7 +1390,9 @@ __DEFINE__(Vmalloc_t*, Vmheap, &_Vmheap);
 __DEFINE__(Vmalloc_t*, Vmregion, &_Vmheap);
 __DEFINE__(Vmethod_t*, Vmbest, &_Vmbest);
 __DEFINE__(Vmdisc_t*,  Vmdcsystem, (Vmdisc_t*)(&_Vmdcsystem) );
+#if _mem_sbrk
 __DEFINE__(Vmdisc_t*,  Vmdcsbrk, (Vmdisc_t*)(&_Vmdcsystem) );
+#endif
 
 #ifdef NoF
 NoF(vmbest)

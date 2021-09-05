@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -19,7 +20,7 @@
 ***********************************************************************/
 #pragma prototyped
 /*
- * read [-ACprs] [-d delim] [-u filenum] [-t timeout] [-n n] [-N n] [name...]
+ * read [-ACprsSv] [-d delim] [-u fd] [-t timeout] [-n count] [-N count] [var?prompt] [var ...]
  *
  *   David Korn
  *   AT&T Labs
@@ -103,13 +104,16 @@ int	b_read(int argc,char *argv[], Shbltin_t *context)
 		if(opt_info.arg && *opt_info.arg!='\n')
 		{
 			char *cp = opt_info.arg;
-			flags &= ~((1<<D_FLAG)-1);
-			flags |= (mbchar(cp)<< D_FLAG);
+			flags &= ((1<<D_FLAG+1)-1);
+			flags |= (mbchar(cp)<<D_FLAG+1) | (1<<D_FLAG);
 		}
 		break;
 	    case 'p':
 		if((fd = shp->cpipe[0])<=0)
+		{
 			errormsg(SH_DICT,ERROR_exit(1),e_query);
+			UNREACHABLE();
+		}
 		break;
 	    case 'n': case 'N':
 		flags &= ((1<<D_FLAG)-1);
@@ -128,6 +132,11 @@ int	b_read(int argc,char *argv[], Shbltin_t *context)
 		break;
 	    case 'u':
 		fd = (int)opt_info.num;
+		if(opt_info.num<0 || opt_info.num>INT_MAX || (fd>=shp->gd->lim.open_max && !sh_iovalidfd(shp,fd)))
+		{
+			errormsg(SH_DICT,ERROR_exit(1),e_file,opt_info.arg); /* reject invalid file descriptors */
+			UNREACHABLE();
+		}
 		if(sh_inuse(shp,fd))
 			fd = -1;
 		break;
@@ -139,22 +148,29 @@ int	b_read(int argc,char *argv[], Shbltin_t *context)
 		break;
 	    case '?':
 		errormsg(SH_DICT,ERROR_usage(2), "%s", opt_info.arg);
-		break;
+		UNREACHABLE();
 	}
 	argv += opt_info.index;
 	if(error_info.errors)
+	{
 		errormsg(SH_DICT,ERROR_usage(2), "%s", optusage((char*)0));
+		UNREACHABLE();
+	}
 	if(!((r=shp->fdstatus[fd])&IOREAD)  || !(r&(IOSEEK|IONOSEEK)))
 		r = sh_iocheckfd(shp,fd);
 	if(fd<0 || !(r&IOREAD))
+	{
 		errormsg(SH_DICT,ERROR_system(1),e_file+4);
+		UNREACHABLE();
+	}
 	/* look for prompt */
 	if((name = *argv) && (name=strchr(name,'?')) && (r&IOTTY))
 		r = strlen(name++);
 	else
 		r = 0;
-	if(argc==fixargs && (rp=newof(NIL(struct read_save*),struct read_save,1,0)))
+	if(argc==fixargs)
 	{
+		rp = sh_newof(NIL(struct read_save*),struct read_save,1,0);
 		context->data = (void*)rp;
 		rp->fd = fd;
 		rp->flags = flags;
@@ -198,7 +214,7 @@ static void timedout(void *handle)
  *  <names> is an array of variable names
  *  <fd> is the file descriptor
  *  <flags> is union of -A, -r, -s, and contains delimiter if not '\n'
- *  <timeout> is number of milli-seconds until timeout
+ *  <timeout> is the number of milliseconds until timeout
  */
 
 int sh_readline(register Shell_t *shp,char **names, volatile int fd, int flags,ssize_t size,long timeout)
@@ -283,7 +299,7 @@ int sh_readline(register Shell_t *shp,char **names, volatile int fd, int flags,s
 			tty_raw(fd,1);
 		if(!(flags&(N_FLAG|NN_FLAG)))
 		{
-			delim = ((unsigned)flags)>>D_FLAG;
+			delim = ((unsigned)flags)>>(D_FLAG+1);
 			ep->e_nttyparm.c_cc[VEOL] = delim;
 			ep->e_nttyparm.c_lflag |= ISIG;
 			tty_set(fd,TCSADRAIN,&ep->e_nttyparm);
@@ -346,8 +362,7 @@ int sh_readline(register Shell_t *shp,char **names, volatile int fd, int flags,s
 		/* reserved buffer */
 		if((c=size)>=sizeof(buf))
 		{
-			if(!(var = (char*)malloc(c+1)))
-				sh_exit(1);
+			var = (char*)sh_malloc(c+1);
 			end = var + c;
 		}
 		else
@@ -409,11 +424,11 @@ int sh_readline(register Shell_t *shp,char **names, volatile int fd, int flags,s
 						m = (end - var) + (c - (end - cur));
 						if (var == buf)
 						{
-							v = (char*)malloc(m+1);
+							v = (char*)sh_malloc(m+1);
 							var = memcpy(v, var, cur - var);
 						}
 						else
-							var = newof(var, char, m, 1);
+							var = sh_newof(var, char, m, 1);
 						end = var + m;
 						cur = var + cx;
 						up = var + ux;
@@ -423,8 +438,7 @@ int sh_readline(register Shell_t *shp,char **names, volatile int fd, int flags,s
 					if(f)
 						sfread(iop,cp,c);
 					cur += c;
-#if SHOPT_MULTIBYTE
-					if(!binary && mbwide())
+					if(mbwide() && !binary)
 					{
 						int	x;
 						int	z;
@@ -440,12 +454,9 @@ int sh_readline(register Shell_t *shp,char **names, volatile int fd, int flags,s
 						if((size -= x) > 0 && (up >= cur || z < 0) && ((flags & NN_FLAG) || z < 0 || m > c))
 							continue;
 					}
-#endif
 				}
-#if SHOPT_MULTIBYTE
-				if(!binary && mbwide() && (up == var || (flags & NN_FLAG) && size))
+				if(mbwide() && !binary && (up == var || (flags & NN_FLAG) && size))
 					cur = var;
-#endif
 				*cur = 0;
 				if(c>=size || (flags&N_FLAG) || m==0)
 				{
@@ -466,7 +477,7 @@ int sh_readline(register Shell_t *shp,char **names, volatile int fd, int flags,s
 			{
 				Namval_t *mp;
 				if(var==buf)
-					var = memdup(var,c+1);
+					var = sh_memdup(var,c+1);
 				nv_putval(np,var,NV_RAW);
 				nv_setsize(np,c);
 				if(!nv_isattr(np,NV_IMPORT|NV_EXPORT)  && (mp=(Namval_t*)np->nvenv))
@@ -487,7 +498,10 @@ int sh_readline(register Shell_t *shp,char **names, volatile int fd, int flags,s
 	{
 		c = sfvalue(iop)+1;
 		if(!sferror(iop) && sfgetc(iop) >=0)
+		{
 			errormsg(SH_DICT,ERROR_exit(1),e_overlimit,"line length");
+			UNREACHABLE();
+		}
 	}
 	if(timeslot)
 		timerdel(timeslot);
@@ -540,11 +554,13 @@ int sh_readline(register Shell_t *shp,char **names, volatile int fd, int flags,s
 		c = S_NL;
 	shp->nextprompt = 2;
 	rel= staktell();
+	mbinit();
 	/* val==0 at the start of a field */
 	val = 0;
 	del = 0;
 	while(1)
 	{
+		ssize_t mbsz;
 		switch(c)
 		{
 #if SHOPT_MULTIBYTE
@@ -563,15 +579,23 @@ int sh_readline(register Shell_t *shp,char **names, volatile int fd, int flags,s
 			else
 				c = 0;
 			continue;
-#endif /*SHOPT_MULTIBYTE */
+#endif /* SHOPT_MULTIBYTE */
 		    case S_QUOTE:
 			c = shp->ifstable[*cp++];
-			inquote = !inquote;
+			if(inquote && c==S_QUOTE)
+				c = -1;
+			else
+				inquote = !inquote;
 			if(val)
 			{
 				stakputs(val);
 				use_stak = 1;
 				*val = 0;
+			}
+			if(c==-1)
+			{
+				stakputc('"');
+				c = shp->ifstable[*cp++];
 			}
 			continue;
 		    case S_ESC:
@@ -591,6 +615,7 @@ int sh_readline(register Shell_t *shp,char **names, volatile int fd, int flags,s
 
 		    case S_ERR:
 			cp++;
+			/* FALLTHROUGH */
 		    case S_EOF:
 			/* check for end of buffer */
 			if(val && *val)
@@ -652,7 +677,7 @@ int sh_readline(register Shell_t *shp,char **names, volatile int fd, int flags,s
 #endif /* SHOPT_MULTIBYTE */
 			if(c!=S_DELIM)
 				break;
-			/* FALL THRU */
+			/* FALLTHROUGH */
 
 		    case S_DELIM:
 			if(!del)
@@ -663,7 +688,7 @@ int sh_readline(register Shell_t *shp,char **names, volatile int fd, int flags,s
 				while((c=shp->ifstable[*cp++])==S_SPACE);
 				break;
 			}
-			/* FALL THRU */
+			/* FALLTHROUGH */
 
 		    case 0:
 			if(val==0 || was_escape)
@@ -673,11 +698,18 @@ int sh_readline(register Shell_t *shp,char **names, volatile int fd, int flags,s
 			}
 			/* skip over word characters */
 			wrd = -1;
+			/* skip a preceding multibyte character, if any */
+			if(c == 0 && (mbsz = mbsize(cp-1)) > 1)
+				cp += mbsz - 1;
 			while(1)
 			{
-				while((c=shp->ifstable[*cp++])==0)
+				while((c = shp->ifstable[*cp]) == 0)
+				{
+					cp += (mbsz = mbsize(cp)) > 1 ? mbsz : 1;	/* treat invalid char as 1 byte */
 					if(!wrd)
 						wrd = 1;
+				}
+				cp++;
 				if(inquote)
 				{
 					if(c==S_QUOTE)
@@ -813,4 +845,3 @@ done:
 		siglongjmp(*shp->jmplist,jmpval);
 	return(jmpval);
 }
-

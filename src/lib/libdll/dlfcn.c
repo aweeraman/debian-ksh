@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1997-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -201,9 +202,9 @@ static const char id[] = "\n@(#)$Id: dll library (AT&T Research) 2010-10-20 $\0\
 		 * its virtual origin and where it was
 		 * actually placed
 		 */
-		/*N.B. o_sndata etc. are one based */
+		/* N.B. o_sndata etc. are one based */
 		datareloc = (ulong)data - hdr->s[hdr->a.o_sndata-1].s_vaddr;
-		/*hdr is address of header, not text, so add text s_scnptr */
+		/* hdr is address of header, not text, so add text s_scnptr */
 		textreloc = (ulong)hdr + hdr->s[hdr->a.o_sntext-1].s_scnptr
 			- hdr->s[hdr->a.o_sntext-1].s_vaddr;
 		ldhdr = (void*)((char*)hdr+ hdr->s[hdr->a.o_snloader-1].s_scnptr);
@@ -215,7 +216,7 @@ static const char id[] = "\n@(#)$Id: dll library (AT&T Research) 2010-10-20 $\0\
 			char *loc;
 			/* the symbol name representation is a nuisance since
 			 * 8 character names appear in l_name but may
-			 * not be null terminated. This code works around
+			 * not be null-terminated. This code works around
 			 * that by brute force
 			 */
 			if (ldsym->l_zeroes)
@@ -335,7 +336,7 @@ static const char id[] = "\n@(#)$Id: dll library (AT&T Research) 2010-10-20 $\0\
 
 	static const char	e_cover[] = T("cannot access covered library");
 	static const char	e_handle[] = T("invalid handle");
-	static const char	e_space[] = T("out of space");
+	static const char	e_nomemory[] = T("out of memory");
 	static const char	e_static[] = T("image statically linked");
 	static const char	e_undefined[] = T("undefined symbol");
 
@@ -382,7 +383,7 @@ static const char id[] = "\n@(#)$Id: dll library (AT&T Research) 2010-10-20 $\0\
 			dll = &global;
 		else if (!(dll = newof(0, Dll_t, 1, strlen(path))))
 		{
-			dlmessage = e_space;
+			dlmessage = e_nomemory;
 			return 0;
 		}
 		else

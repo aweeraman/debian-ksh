@@ -2,6 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2011 AT&T Intellectual Property          #
+#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -17,16 +18,8 @@
 #                  David Korn <dgk@research.att.com>                   #
 #                                                                      #
 ########################################################################
-function err_exit
-{
-	print -u2 -n "\t"
-	print -u2 -r ${Command}[$1]: "${@:2}"
-	(( Errors+=1 ))
-}
-alias err_exit='err_exit $LINENO'
 
-Command=${0##*/}
-integer Errors=0
+. "${SHTESTS_COMMON:-${0%/*}/_common}"
 
 typeset -T Time_t=(
 	integer .=-1

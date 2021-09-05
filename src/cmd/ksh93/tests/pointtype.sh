@@ -2,6 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2011 AT&T Intellectual Property          #
+#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -17,16 +18,8 @@
 #                  David Korn <dgk@research.att.com>                   #
 #                                                                      #
 ########################################################################
-function err_exit
-{
-	print -u2 -n "\t"
-	print -u2 -r ${Command}[$1]: "${@:2}"
-	(( Errors+=1 ))
-}
-alias err_exit='err_exit $LINENO'
 
-Command=${0##*/}
-integer Errors=0
+. "${SHTESTS_COMMON:-${0%/*}/_common}"
 
 typeset -T Pt_t=(
 	float x=1
@@ -123,7 +116,7 @@ A_t r
 r.b[1]=(y=2)
 r.b[2]=(y=5)
 eval s="$r"
-[[ $r == "$s" ]] || err_exit 'expansion of type containing index array of types is incorrect'
+[[ $r == "$s" ]] || err_exit 'expansion of type containing indexed array of types is incorrect'
 eval "$(typeset -p s)"
 [[ $y == "$z" ]] || err_exit 'typeset -p z for type containing index of types is incorrect'
 unset r s
@@ -131,7 +124,7 @@ B_t r
 r.b[1]=(y=2)
 r.b[2]=(y=5)
 eval s="$r"
-[[ $r == "$s" ]] || err_exit 'expansion of type containing index array of types is incorrect'
+[[ $r == "$s" ]] || err_exit 'expansion of type containing indexed array of types is incorrect'
 eval "$(typeset -p s)"
 [[ $y == "$z" ]] || err_exit 'typeset -p z for type containing index of types is incorrect'
 

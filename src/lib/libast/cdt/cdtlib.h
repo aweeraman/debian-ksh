@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -58,9 +59,9 @@
 /* This struct holds private method data created on DT_OPEN */
 struct _dtdata_s
 {	unsigned int	lock;	/* general dictionary lock	*/
-	Dtuser_t	user;	/* application's data		*/
 	unsigned int	type;	/* method type, control flags	*/
 	ssize_t		size;	/* number of objects		*/
+	Dtuser_t	user;	/* application's data		*/
 	Dt_t		dict;	/* when DT_INDATA is requested	*/
 };
 
@@ -123,7 +124,7 @@ typedef struct _dtlib_s
 #endif /* _BLD_cdt */
 
 /* these macros lock/unlock dictionaries. DTRETURN substitutes for "return" */
-#define DTSETLOCK(dt)		(((dt)->data->type&DT_SHARE) ? asolock(&(dt)->data->lock,1,ASO_SPINLOCK) : 0 )
+#define DTSETLOCK(dt)		(((dt)->data->type&DT_SHARE) ? asolock(&(dt)->data->lock,1,ASO_LOCK) : 0 )
 #define DTCLRLOCK(dt)		(((dt)->data->type&DT_SHARE) ? asolock(&(dt)->data->lock,1,ASO_UNLOCK) : 0 )
 #define DTRETURN(ob,rv)		do { (ob) = (rv); goto dt_return; } while(0)
 #define DTERROR(dt, mesg) 	(!((dt)->disc && (dt)->disc->eventf) ? 0 : \
@@ -134,7 +135,7 @@ typedef struct _dtlib_s
 				   (dt)->disc && (dt)->disc->eventf ) ? \
 					(*(dt)->disc->eventf)((dt), DT_ANNOUNCE|(ty), (ob), (dt)->disc) : 0 )
 
-/* map bits for upward compabitibility */
+/* map bits for upward compatibility */
 #define DTTYPE(dt,ty)		((dt)->typef ? (*(dt)->typef)((dt), (ty)) : (ty) )
 
 /* short-hands for fields in Dtlink_t.

@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -28,10 +29,10 @@
 
 static const char usage[] =
 "[-?\n@(#)$Id: cut (AT&T Research) 2010-08-11 $\n]"
-USAGE_LICENSE
+"[--catalog?" ERROR_CATALOG "]"
 "[+NAME?cut - cut out selected columns or fields of each line of a file]"
 "[+DESCRIPTION?\bcut\b bytes, characters, or character-delimited fields "
-	"from one or more files, contatenating them on standard output.]"
+	"from one or more files, concatenating them on standard output.]"
 "[+?The option argument \alist\a is a comma-separated or blank-separated "
 	"list of positive numbers and ranges.  Ranges can be of three "
 	"forms.  The first is two positive integers separated by a hyphen "
@@ -52,15 +53,15 @@ USAGE_LICENSE
 "[d:delimiter]:[delim?The field character for the \b-f\b option is set "
 	"to \adelim\a.  The default is the \btab\b character.]"
 "[f:fields]:[list?\bcut\b based on fields separated by the delimiter "
-	"character specified with the \b-d\b optiion.]"
+	"character specified with the \b-d\b option.]"
 "[n!:split?Split multibyte characters selected by the \b-b\b option.]"
 "[R|r:reclen]#[reclen?If \areclen\a > 0, the input will be read as fixed length "
 	"records of length \areclen\a when used with the \b-b\b or \b-c\b "
 	"option.]"
 "[s:suppress|only-delimited?Suppress lines with no delimiter characters, "
 	"when used with the \b-f\b option.  By default, lines with no "
-	"delimiters will be passsed in untouched.]"
-"[D:line-delimeter|output-delimiter]:[ldelim?The line delimiter character for "
+	"delimiters will be passed in untouched.]"
+"[D:line-delimiter|output-delimiter]:[ldelim?The line delimiter character for "
 	"the \b-f\b option is set to \aldelim\a.  The default is the "
 	"\bnewline\b character.]"
 "[N!:newline?Output new-lines at end of each record when used "
@@ -138,7 +139,10 @@ cutinit(int mode, char* str, Delim_t* wdelim, Delim_t* ldelim, size_t reclen)
 	Cut_t*		cut;
 
 	if (!(cut = (Cut_t*)stakalloc(sizeof(Cut_t) + strlen(cp) * sizeof(int))))
-		error(ERROR_exit(1), "out of space");
+	{
+		error(ERROR_exit(1), "out of memory");
+		UNREACHABLE();
+	}
 	if (cut->mb = mbwide())
 	{
 		memset(cut->space, 0, sizeof(cut->space) / 2);
@@ -165,14 +169,17 @@ cutinit(int mode, char* str, Delim_t* wdelim, Delim_t* ldelim, size_t reclen)
 		case '\t':
 			while(*cp==' ' || *cp=='\t')
 				cp++;
-			/*FALLTHROUGH*/
+			/* FALLTHROUGH */
 		case 0:
 		case ',':
 			if(range)
 			{
 				--range;
 				if((n = (n ? (n-range) : (HUGE-1))) < 0)
+				{
 					error(ERROR_exit(1),"invalid range for c/f option");
+					UNREACHABLE();
+				}
 				*lp++ = range;
 				*lp++ = n;
 			}
@@ -230,18 +237,24 @@ cutinit(int mode, char* str, Delim_t* wdelim, Delim_t* ldelim, size_t reclen)
 
 		case '-':
 			if(range)
+			{
 				error(ERROR_exit(1),"bad list for c/f option");
+				UNREACHABLE();
+			}
 			range = n?n:1;
 			n = 0;
 			break;
 
 		default:
 			if(!isdigit(c))
+			{
 				error(ERROR_exit(1),"bad list for c/f option");
+				UNREACHABLE();
+			}
 			n = 10*n + (c-'0');
 			break;
 		}
-	/* NOTREACHED */
+	UNREACHABLE();
 }
 
 /*
@@ -659,17 +672,21 @@ b_cut(int argc, char** argv, Shbltin_t* context)
 			break;
 		case '?':
 			error(ERROR_usage(2), "%s", opt_info.arg);
-			break;
+			UNREACHABLE();
 		}
 		break;
 	}
 	argv += opt_info.index;
 	if (error_info.errors)
+	{
 		error(ERROR_usage(2), "%s",optusage(NiL));
+		UNREACHABLE();
+	}
 	if(!cp)
 	{
 		error(2, "b, c or f option must be specified");
 		error(ERROR_usage(2), "%s", optusage(NiL));
+		UNREACHABLE();
 	}
 	if(!*cp)
 		error(3, "non-empty b, c or f option must be specified");

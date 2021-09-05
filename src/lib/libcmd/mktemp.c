@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -22,7 +23,7 @@
 
 static const char usage[] =
 "[-?\n@(#)$Id: mktemp (AT&T Research) 2010-03-05 $\n]"
-USAGE_LICENSE
+"[--catalog?" ERROR_CATALOG "]"
 "[+NAME?mktemp - make temporary file or directory]"
 "[+DESCRIPTION?\bmktemp\b creates a temporary file with optional base "
     "name prefix \aprefix\a. If \aprefix\a is omitted then \btmp_\b is used "
@@ -35,7 +36,7 @@ USAGE_LICENSE
         "[+*?Lower case to avoid clashes on case ignorant filesystems.]"
         "[+*?Pseudo-random part to deter denial of service attacks.]"
         "[+*?Default pseudo-random part (no specific \bX...\b template) "
-            "formatted to accomodate 8.3 filesystems.]"
+            "formatted to accommodate 8.3 filesystems.]"
     "}"
 "[+?A consecutive trailing sequence of \bX\b's in \aprefix\a is replaced "
     "by the pseudo-random part. If there are no \bX\b's then the "
@@ -109,20 +110,23 @@ b_mktemp(int argc, char** argv, Shbltin_t* context)
 			continue;
 		case 'R':
 			if (!pathtemp(NiL, 0, opt_info.arg, "/seed", NiL))
-				error(2, "%s: regression test initializtion failed", opt_info.arg);
+				error(2, "%s: regression test initialization failed", opt_info.arg);
 			continue;
 		case ':':
 			error(2, "%s", opt_info.arg);
 			break;
 		case '?':
 			error(ERROR_usage(2), "%s", opt_info.arg);
-			break;
+			UNREACHABLE();
 		}
 		break;
 	}
 	argv += opt_info.index;
 	if (error_info.errors || (pfx = *argv++) && *argv)
+	{
 		error(ERROR_usage(2), "%s", optusage(NiL));
+		UNREACHABLE();
+	}
 	mask = umask(0);
 	if (!mode)
 		mode = (fdp ? (S_IRUSR|S_IWUSR) : S_IRWXU) & ~mask;

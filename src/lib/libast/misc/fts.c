@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -31,7 +32,6 @@
 #include <ast.h>
 #include <ast_dir.h>
 #include <error.h>
-#include <fs3d.h>
 #include <ls.h>
 
 struct Ftsent;
@@ -65,7 +65,6 @@ typedef int (*Stat_f)(const char*, struct stat*);
 	int		flags;			/* fts_open() flags	*/ \
 	int		nd;						   \
 	unsigned char	children;					   \
-	unsigned char	fs3d;						   \
 	unsigned char	nostat;					   	   \
 	unsigned char	state;			/* fts_read() state	*/ \
 	char*		base;			/* basename in path	*/ \
@@ -93,11 +92,6 @@ typedef int (*Stat_f)(const char*, struct stat*);
 	char		name[sizeof(int)];	/* fts_name data	*/
 
 #include <fts.h>
-
-#ifndef ENOSYS
-#define ENOSYS		EINVAL
-#endif
-
 
 #if MAXNAMLEN > 16
 #define MINNAME		32
@@ -521,7 +515,7 @@ info(FTS* fts, register FTSENT* f, const char* path, struct stat* sp, int flags)
 #endif
 	if (S_ISDIR(sp->st_mode))
 	{
-		if ((flags & FTS_NOSTAT) && !fts->fs3d)
+		if ((flags & FTS_NOSTAT))
 		{
 			f->fts_parent->nlink--;
 #ifdef D_TYPE
@@ -752,7 +746,6 @@ fts_open(char* const* pathnames, int flags, int (*comparf)(FTSENT* const*, FTSEN
 	fts->flags = flags;
 	fts->cd = (flags & FTS_NOCHDIR) ? 1 : -1;
 	fts->comparf = comparf;
-	fts->fs3d = fs3d(FS3D_TEST);
 
 	/*
 	 * set up the path work buffer
@@ -864,7 +857,7 @@ fts_read(register FTS* fts)
 					t = f;
 					f = f->fts_link;
 				}
-			/*FALLTHROUGH*/
+			/* FALLTHROUGH */
 
 		case 0:
 
@@ -872,7 +865,7 @@ fts_read(register FTS* fts)
 				order(fts);
 			if (!(f = fts->todo))
 				return 0;
-			/*FALLTHROUGH*/
+			/* FALLTHROUGH */
 
 		case FTS_todo:
 
@@ -922,7 +915,7 @@ fts_read(register FTS* fts)
 				return 0;
 			memcpy(fts->base, f->name, fts->baselen + 1);
 			fts->name = fts->cd ? fts->path : fts->base;
-			/*FALLTHROUGH*/
+			/* FALLTHROUGH */
 
 		case FTS_preorder:
 
@@ -964,7 +957,7 @@ fts_read(register FTS* fts)
 				fts->state = FTS_preorder_return;
 				goto note;
 			}
-			/*FALLTHROUGH*/
+			/* FALLTHROUGH */
 
 		case FTS_preorder_resume:
 
@@ -1005,7 +998,7 @@ fts_read(register FTS* fts)
 			if (fts->endbase[-1] != '/')
 				*fts->endbase++ = '/';
 			fts->current = f;
-			/*FALLTHROUGH*/
+			/* FALLTHROUGH */
 
 		case FTS_readdir:
 
@@ -1155,7 +1148,7 @@ fts_read(register FTS* fts)
 				fts->state = FTS_children_return;
 				goto note;
 			}
-			/*FALLTHROUGH*/
+			/* FALLTHROUGH */
 
 		case FTS_children_resume:
 
@@ -1166,7 +1159,7 @@ fts_read(register FTS* fts)
 				fts->todo = fts->top;
 				fts->top = 0;
 			}
-			/*FALLTHROUGH*/
+			/* FALLTHROUGH */
 
 		case FTS_popstack:
 
@@ -1176,7 +1169,7 @@ fts_read(register FTS* fts)
 
 			fts->nd = 0;
 			f = fts->current;
-			/*FALLTHROUGH*/
+			/* FALLTHROUGH */
 
 		case FTS_popstack_resume:
 

@@ -1,0 +1,18 @@
+: solaris.i386-64 cc wrapper for reasonable ansi C defaults and 64 bit : 2021-01-17 :
+
+HOSTTYPE=sol11.i386-64
+
+case " $* " in
+*" -dumpmachine "*) echo $HOSTTYPE; exit ;;
+esac
+
+# Solaris build scripts set $CC_EXPLICIT. If not set, function without it.
+case ${CC_EXPLICIT:=$CC} in
+'' | cc)
+	PATH=`/usr/bin/getconf PATH`  # avoid infinite recursion executing 'cc'
+	CC_EXPLICIT=cc
+esac
+
+# Note: the _XPG6 macro is now defined in src/lib/libast/features/common
+
+$CC_EXPLICIT -m64 -xc99 "$@"

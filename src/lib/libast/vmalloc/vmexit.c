@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -93,7 +94,7 @@ int	type;
 	return type;
 }
 
-#endif	/* _lib_onexit || _lib_on_exit */
+#endif	/* _lib_onexit */
 
 #endif /*!PACKAGE_ast*/
 

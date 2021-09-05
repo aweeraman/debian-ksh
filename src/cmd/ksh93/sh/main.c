@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -43,21 +44,21 @@
 #include	"timeout.h"
 #include	"FEATURE/time"
 #include	"FEATURE/pstat"
+#include	"FEATURE/setproctitle"
 #include	"FEATURE/execargs"
 #include	"FEATURE/externs"
 #ifdef	_hdr_nc
 #   include	<nc.h>
 #endif	/* _hdr_nc */
 
-#define CMD_LENGTH	64
-
 /* These routines are referenced by this module */
 static void	exfile(Shell_t*, Sfio_t*,int);
 static void	chkmail(Shell_t *shp, char*);
-#if defined(_lib_fork) && !defined(_NEXT_SOURCE)
+#if !defined(_NEXT_SOURCE) && !defined(__sun)
     static void	fixargs(char**,int);
 #else
 #   define fixargs(a,b)
+#   define fixargs_disabled	1
 #endif
 
 #ifndef environ
@@ -103,7 +104,7 @@ int sh_source(Shell_t *shp, Sfio_t *iop, const char *file)
 		return 0;
 	}
 	oid = error_info.id;
-	nid = error_info.id = strdup(file);
+	nid = error_info.id = sh_strdup(file);
 	shp->st.filename = path_fullname(shp,stakptr(PATH_OFFSET));
 	REGRESS(source, "sh_source", ("%s", file));
 	exfile(shp, iop, fd);
@@ -127,7 +128,6 @@ int sh_main(int ac, char *av[], Shinit_f userinit)
 	struct stat	statb;
 	int i, rshflag;		/* set for restricted shell */
 	char *command;
-	free(malloc(64*1024));
 #ifdef _lib_sigvec
 	/* This is to clear mask that may be left on by rlogin */
 	clearsigmask(SIGALRM);
@@ -146,24 +146,22 @@ int sh_main(int ac, char *av[], Shinit_f userinit)
 	{
 		/* begin script execution here */
 		sh_reinit((char**)0);
-		shp->gd->pid = getpid();
-		shp->gd->ppid = getppid();
 	}
 	shp->fn_depth = shp->dot_depth = 0;
 	command = error_info.id;
-	/* set pidname '$$' */
-	srand(shp->gd->pid&0x7fff);
 	if(nv_isnull(PS4NOD))
 		nv_putval(PS4NOD,e_traceprompt,NV_RDONLY);
 	path_pwd(shp,1);
 	iop = (Sfio_t*)0;
+	if(sh_isoption(SH_POSIX))
+		sh_onoption(SH_LETOCTAL);
 #if SHOPT_BRACEPAT
-	sh_onoption(SH_BRACEEXPAND);
+	else
+		sh_onoption(SH_BRACEEXPAND);
 #endif
 	if((beenhere++)==0)
 	{
 		sh_onstate(SH_PROFILE);
-		((Lex_t*)shp->lex_context)->nonstandard = 0;
 		if(shp->gd->ppid==1)
 			shp->login_sh++;
 		if(shp->login_sh >= 2)
@@ -176,13 +174,22 @@ int sh_main(int ac, char *av[], Shinit_f userinit)
 		{
 			sh_onoption(SH_BGNICE);
 			sh_onoption(SH_RC);
+			if(!sh_isoption(SH_POSIX))
+			{
+				/* preset aliases for interactive non-POSIX ksh */
+				dtclose(shp->alias_tree);
+				shp->alias_tree = sh_inittree(shp,shtab_aliases);
+				dtuserdata(shp->alias_tree,shp,1);
+			}
 		}
-		if(!sh_isoption(SH_RC) && (sh_isoption(SH_BASH) && !sh_isoption(SH_POSIX)
 #if SHOPT_REMOTE
-		   || !fstat(0, &statb) && REMOTE(statb.st_mode)
-#endif
-		  ))
+		/*
+		 * Building ksh with SHOPT_REMOTE=1 causes ksh to set --rc if stdin is
+		 * a socket (presumably part of a remote shell invocation).
+		 */
+		if(!sh_isoption(SH_RC) && !fstat(0, &statb) && REMOTE(statb.st_mode))
 			sh_onoption(SH_RC);
+#endif
 		for(i=0; i<elementsof(shp->offoptions.v); i++)
 			shp->options.v[i] &= ~shp->offoptions.v[i];
 		if(sh_isoption(SH_INTERACTIVE))
@@ -212,28 +219,16 @@ int sh_main(int ac, char *av[], Shinit_f userinit)
 		{
 			if(!sh_isoption(SH_NOUSRPROFILE) && !sh_isoption(SH_PRIVILEGED) && sh_isoption(SH_RC))
 			{
-#if SHOPT_BASH
-				if(sh_isoption(SH_BASH) && !sh_isoption(SH_POSIX))
-				{
+				if(name = sh_mactry(shp,nv_getval(ENVNOD)))
+					name = *name ? sh_strdup(name) : (char*)0;
 #if SHOPT_SYSRC
-					sh_source(shp, iop, e_bash_sysrc);
+				if(!strmatch(name, "?(.)/./*"))
+					sh_source(shp, iop, e_sysrc);
 #endif
-					sh_source(shp, iop, shp->gd->rcfile ? shp->gd->rcfile : sh_mactry(shp,(char*)e_bash_rc));
-				}
-				else
-#endif
+				if(name)
 				{
-					if(name = sh_mactry(shp,nv_getval(ENVNOD)))
-						name = *name ? strdup(name) : (char*)0;
-#if SHOPT_SYSRC
-					if(!strmatch(name, "?(.)/./*"))
-						sh_source(shp, iop, e_sysrc);
-#endif
-					if(name)
-					{
-						sh_source(shp, iop, name);
-						free(name);
-					}
+					sh_source(shp, iop, name);
+					free(name);
 				}
 			}
 			else if(sh_isoption(SH_INTERACTIVE) && sh_isoption(SH_PRIVILEGED))
@@ -267,16 +262,21 @@ int sh_main(int ac, char *av[], Shinit_f userinit)
 #endif
 					fdin = (int)strtol(name+8, (char**)0, 10);
 					if(fstat(fdin,&statb)<0)
+					{
 						errormsg(SH_DICT,ERROR_system(1),e_open,name);
+						UNREACHABLE();
+					}
 #if !_WINIX
 					/*
 					 * try to undo effect of solaris 2.5+
 					 * change for argv for setuid scripts
 					 */
-					if(((type = sh_type(cp = av[0])) & SH_TYPE_SH) && (!(name = nv_getval(L_ARGNOD)) || !((type = sh_type(cp = name)) & SH_TYPE_SH)))
+					if(shp->st.repl_index > 0)
+						av[shp->st.repl_index] = shp->st.repl_arg;
+					if(((type = sh_type(cp = av[0])) & SH_TYPE_SH) && (name = nv_getval(L_ARGNOD)) && (!((type = sh_type(cp = name)) & SH_TYPE_SH)))
 					{
 						av[0] = (type & SH_TYPE_LOGIN) ? cp : path_basename(cp);
-						/*  exec to change $0 for ps */
+						/* exec to change $0 for ps */
 						execv(pathshell(),av);
 						/* exec fails */
 						shp->st.dolv[0] = av[0];
@@ -302,7 +302,7 @@ int sh_main(int ac, char *av[], Shinit_f userinit)
 					if(fdin < 0 && !strchr(name,'/'))
 					{
 #ifdef PATH_BFPATH
-						if(path_absolute(shp,name,NIL(Pathcomp_t*)))
+						if(path_absolute(shp,name,NIL(Pathcomp_t*),0))
 							sp = stakptr(PATH_OFFSET);
 #else
 							sp = path_absolute(shp,name,NIL(char*));
@@ -319,10 +319,13 @@ int sh_main(int ac, char *av[], Shinit_f userinit)
 							errno = EISDIR;
 						 error_info.id = av[0];
 						if(sp || errno!=ENOENT)
+						{
 							errormsg(SH_DICT,ERROR_system(ERROR_NOEXEC),e_open,name);
+							UNREACHABLE();
+						}
 						/* try sh -c 'name "$@"' */
 						sh_onoption(SH_CFLAG);
-						shp->comdiv = (char*)malloc(strlen(name)+7);
+						shp->comdiv = (char*)sh_malloc(strlen(name)+7);
 						name = strcopy(shp->comdiv,name);
 						if(shp->st.dolc)
 							strcopy(name," \"$@\"");
@@ -334,7 +337,6 @@ int sh_main(int ac, char *av[], Shinit_f userinit)
 				shp->readscript = shp->shname;
 			}
 			error_info.id = name;
-			shp->comdiv--;
 #if SHOPT_ACCT
 			sh_accinit();
 			if(fdin != 0)
@@ -344,6 +346,7 @@ int sh_main(int ac, char *av[], Shinit_f userinit)
 	}
 	else
 	{
+		/* beenhere > 0: We're in a forked child, about to execute a script without a hashbang path. */
 		fdin = shp->infd;
 		fixargs(shp->st.dolv,1);
 	}
@@ -352,8 +355,6 @@ int sh_main(int ac, char *av[], Shinit_f userinit)
 	nv_putval(IFSNOD,(char*)e_sptbnl,NV_RDONLY);
 	exfile(shp,iop,fdin);
 	sh_done(shp,0);
-	/* NOTREACHED */
-	return(0);
 }
 
 /*
@@ -406,10 +407,9 @@ static void	exfile(register Shell_t *shp, register Sfio_t *iop,register int fno)
 		{
 			buff.mode = SH_JMPEXIT;
 			sh_onoption(SH_TRACKALL);
-			sh_offoption(SH_MONITOR);
 		}
-		sh_offstate(SH_INTERACTIVE);
-		sh_offstate(SH_MONITOR);
+		if(sh_isoption(SH_MONITOR))
+			sh_onstate(SH_MONITOR);
 		sh_offstate(SH_HISTORY);
 		sh_offoption(SH_HISTORY);
 	}
@@ -459,6 +459,9 @@ static void	exfile(register Shell_t *shp, register Sfio_t *iop,register int fno)
 	error_info.line = 1;
 	shp->inlineno = 1;
 	shp->binscript = 0;
+	shp->exittrap = 0;
+	shp->errtrap = 0;
+	shp->end_fn = 0;
 	if(sfeof(iop))
 		goto eof_or_error;
 	/* command loop */
@@ -476,7 +479,7 @@ static void	exfile(register Shell_t *shp, register Sfio_t *iop,register int fno)
 		if(sh_isoption(SH_VERBOSE))
 			sh_onstate(SH_VERBOSE);
 		sh_onstate(SH_ERREXIT);
-		/* -eim  flags don't apply to profiles */
+		/* -eim flags don't apply to profiles */
 		if(sh_isstate(SH_PROFILE))
 		{
 			sh_offstate(SH_INTERACTIVE);
@@ -520,7 +523,7 @@ static void	exfile(register Shell_t *shp, register Sfio_t *iop,register int fno)
 			{
 				buff.mode = SH_JMPERREXIT;
 #ifdef DEBUG
-				errormsg(SH_DICT,ERROR_warn(0),"%d: mode changed to JMP_EXIT",getpid());
+				errormsg(SH_DICT,ERROR_warn(0),"%d: mode changed to JMP_EXIT",shgd->current_pid);
 #endif
 			}
 		}
@@ -571,7 +574,7 @@ static void	exfile(register Shell_t *shp, register Sfio_t *iop,register int fno)
 		{
 			execflags = sh_state(SH_ERREXIT)|sh_state(SH_INTERACTIVE);
 			/* The last command may not have to fork */
-			if(!sh_isstate(SH_PROFILE) && sh_isoption(SH_CFLAG) &&
+			if(!sh_isstate(SH_PROFILE) && !sh_isstate(SH_INTERACTIVE) &&
 				(fno<0 || !(shp->fdstatus[fno]&(IOTTY|IONOSEEK)))
 				&& !sfreserve(iop,0,0))
 			{
@@ -593,7 +596,8 @@ done:
 	sh_popcontext(shp,&buff);
 	if(sh_isstate(SH_INTERACTIVE))
 	{
-		sfputc(sfstderr,'\n');
+		if(isatty(0) && !sh_isoption(SH_CFLAG))
+			sfputc(sfstderr,'\n');
 		job_close(shp);
 	}
 	if(jmpval == SH_JMPSCRIPT)
@@ -697,9 +701,16 @@ static void chkmail(Shell_t *shp, char *files)
 #   define PSTAT	1
 #endif
 
-#if defined(_lib_fork) && !defined(_NEXT_SOURCE)
+#if !defined(fixargs_disabled)
 /*
  * fix up command line for ps command
+ *
+ * This function is invoked when ksh needs to run a script without a
+ * #!/hashbang/path. Instead of letting the kernel invoke a shell, ksh
+ * exfile()s the script itself from sh_main(). In the forked child, it calls
+ * fixargs() to set the argument list in the environment to the args of the
+ * new script, so that 'ps' and /proc/PID/cmdline show the expected output.
+ *
  * mode is 0 for initialization
  */
 static void fixargs(char **argv, int mode)
@@ -707,11 +718,11 @@ static void fixargs(char **argv, int mode)
 #if EXECARGS
 	*execargs=(char *)argv;
 #else
-	static char *buff;
-	static int command_len;
 	register char *cp;
 	int offset=0,size;
 #   ifdef PSTAT
+	static int command_len;
+	char *buff;
 	union pstun un;
 	if(mode==0)
 	{
@@ -724,26 +735,18 @@ static void fixargs(char **argv, int mode)
 	}
 	stakseek(command_len+2);
 	buff = stakseek(0);
+#   elif _lib_setproctitle
+#	define command_len 255
+	char buff[command_len + 1];
+	if(mode==0)
+		return;
 #   else
+	static int command_len;
+	static char *buff;
 	if(mode==0)
 	{
 		buff = argv[0];
-		while(cp = *argv++)
-			command_len += strlen(cp)+1;
-		if(environ && *environ==buff+command_len)
-		{
-			for(argv=environ; cp = *argv; cp++)
-			{
-				if(command_len > CMD_LENGTH)
-				{
-					command_len = CMD_LENGTH;
-					break;
-				}
-				*argv++ = strdup(cp);
-				command_len += strlen(cp)+1;
-			}
-		}
-		command_len -= 1;
+		command_len = environ[0] - buff - 1;
 		return;
 	}
 #   endif /* PSTAT */
@@ -757,11 +760,14 @@ static void fixargs(char **argv, int mode)
 		offset += size;
 		buff[offset++] = ' ';
 	}
-	buff[offset-1] = 0;
+	offset--;
+	memset(&buff[offset], 0, command_len - offset + 1);
 #   ifdef PSTAT
 	un.pst_command = stakptr(0);
 	pstat(PSTAT_SETCMD,un,0,0,0);
+#   elif _lib_setproctitle
+	setproctitle("%s",buff);
 #   endif /* PSTAT */
 #endif /* EXECARGS */
 }
-#endif /* _lib_fork */
+#endif /* !fixargs_disabled */

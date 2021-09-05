@@ -2,6 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
+#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -17,16 +18,9 @@
 #                  David Korn <dgk@research.att.com>                   #
 #                                                                      #
 ########################################################################
-function err_exit
-{
-	print -u2 -n "\t"
-	print -u2 -r ${Command}[$1]: "${@:2}"
-	let Errors+=1
-}
-alias err_exit='err_exit $LINENO'
 
-Command=${0##*/}
-integer Errors=0
+. "${SHTESTS_COMMON:-${0%/*}/_common}"
+
 for	((i=0; i < 4; i++ ))
 do	for	((j=0; j < 5; j++ ))
 	do	a[i][j]=$i$j
@@ -127,10 +121,10 @@ typeset x=(
 	( (d D) (e E) (f F) )
 	( (a A) (b B) (c C) )
 )
-[[ ${x[0][0][0]} == g ]] || err_exit '${x[0][0][0]} == G'
-[[ ${x[1][1][0]} == e ]] || err_exit '${x[1][1][0]} == e'
-[[ ${x[1][1][1]} == E ]] || err_exit '${x[2][2][1]} == C'
-[[ ${x[0][2][1]} == I ]] || err_exit '${x[0][2][1]} == I'
+[[ ${x[0][0][0]} == g ]] || exit 1
+[[ ${x[1][1][0]} == e ]] || exit 1
+[[ ${x[1][1][1]} == E ]] || exit 1
+[[ ${x[0][2][1]} == I ]] || exit 1
 +++
 
 typeset -a -si x=( [0]=(1 2 3) [1]=(4 5 6) [2]=(7 8 9) )
@@ -163,7 +157,7 @@ done
 [[ ${#ar[*]} == 9 ]] || err_exit  "\${#ar[*]} is '${#ar[*]}', should be 9"
 [[ ${ar[4][4]} == 40 ]] || err_exit "ar[4][4] is '${ar[4][4]}', should be 40"
 
-$SHELL 2> /dev/null -c 'compound c;float -a c.ar;(( c.ar[2][3][3] = 5))' || 'multi-dimensional arrays in arithemtic expressions not working'
+$SHELL 2> /dev/null -c 'compound c;float -a c.ar;(( c.ar[2][3][3] = 5))' || 'multidimensional arrays in arithmetic expressions not working'
 
 expected='typeset -a -l -E c.ar=([2]=([3]=([3]=5) ) )'
 unset c
@@ -219,6 +213,54 @@ compound cx
 typeset -a cx.ar[4][4]
 print -v cx > /dev/null
 print -v cx | read -C l 2> /dev/null || err_exit 'read -C fails from output of print -v'
-[[ ${cx%cx=} ==  "${l%l=}" ]] || err_exit 'print -v for compound variable with fixed 2d array not working'
+((SHOPT_FIXEDARRAY)) && [[ ${cx%cx=} != "${l%l=}" ]] && err_exit 'print -v for compound variable with fixed 2d array not working'
 
+unset foo
+typeset -A foo
+typeset -A foo[bar]
+foo[bar][x]=2
+(( foo[bar][x]++ ))
+exp=3
+[[ ${foo[bar][x]} == $exp ]] || err_exit "subscript gets added incorrectly to an associative array when ++ operator is called" \
+	"(expected '$exp', got '${foo[bar][x]}')"
+
+# ======
+# Multidimensional arrays with an unset method shouldn't cause a crash.
+# The test itself must be run inside of a function.
+multiarray_unset="$tmp/multiarray_unset.sh"
+cat >| "$multiarray_unset" << EOF
+function foo {
+	typeset -a a
+	a.unset() {
+		print unset
+	}
+	a[3][6][11][20]=7
+}
+foo
+EOF
+$SHELL "$multiarray_unset" > /dev/null || err_exit 'Multidimensional arrays with an unset method crash ksh'
+
+# ======
+# Multidimensional indexed array arithmetic assignment operation tests
+ini() { unset arr; typeset -a arr=((10 20) 6 8); }
+[[ $( ini; ((arr[0][0]+=1)); typeset -p arr) == 'typeset -a arr=((11 20) 6 8)' ]] || err_exit 'ASSIGNOP: arr[0][0]+=1 failed.'
+[[ $( ini; ((arr[0][1]+=1)); typeset -p arr) == 'typeset -a arr=((10 21) 6 8)' ]] || err_exit 'ASSIGNOP: arr[0][1]+=1 failed.'
+[[ $( ini; ((arr[0][2]+=1)); typeset -p arr) == 'typeset -a arr=((10 20 1) 6 8)' ]] || err_exit 'ASSIGNOP: arr[0][2]+=1 failed.'
+[[ $( ini; ((arr[0][1]+=arr[1])); typeset -p arr) == 'typeset -a arr=((10 26) 6 8)' ]] || err_exit 'ASSIGNOP: arr[0][1]+=arr[1] failed.'
+[[ $( ini; ((arr[0][2]+=arr[1])); typeset -p arr) == 'typeset -a arr=((10 20 6) 6 8)' ]] || err_exit 'ASSIGNOP: arr[0][2]+=arr[1] failed.'
+[[ $( ini; ((arr[1]+=1)); typeset -p arr) == 'typeset -a arr=((10 20) 7 8)' ]] || err_exit 'ASSIGNOP: arr[1]+=1 failed.'
+[[ $( ini; ((arr[2]+=1)); typeset -p arr) == 'typeset -a arr=((10 20) 6 9)' ]] || err_exit 'ASSIGNOP: arr[2]+=1 failed.'
+[[ $( ini; ((arr[3]+=1)); typeset -p arr) == 'typeset -a arr=((10 20) 6 8 1)' ]] || err_exit 'ASSIGNOP: arr[3]+=1 failed.'
+[[ $( ini; ((arr[1]+=arr[0][0])); typeset -p arr) == 'typeset -a arr=((10 20) 16 8)' ]] || err_exit 'ASSIGNOP: arr[1]+=arr[0][0] failed.'
+[[ $( ini; ((arr[1]+=arr[0][1])); typeset -p arr) == 'typeset -a arr=((10 20) 26 8)' ]] || err_exit 'ASSIGNOP: arr[1]+=arr[0][1] failed.'
+[[ $( ini; ((arr[2]+=arr[0][0])); typeset -p arr) == 'typeset -a arr=((10 20) 6 18)' ]] || err_exit 'ASSIGNOP: arr[2]+=arr[0][0] failed.'
+[[ $( ini; ((arr[2]+=arr[0][1])); typeset -p arr) == 'typeset -a arr=((10 20) 6 28)' ]] || err_exit 'ASSIGNOP: arr[2]+=arr[0][1] failed.'
+[[ $( ini; ((arr[3]+=arr[0][1])); typeset -p arr) == 'typeset -a arr=((10 20) 6 8 20)' ]] || err_exit 'ASSIGNOP: arr[2]+=arr[0][1] failed.'
+[[ $( ini; ((arr[0][1]+=arr[1]+13, arr[2]=42)); typeset -p arr) == 'typeset -a arr=((10 39) 6 42)' ]] || err_exit 'ASSIGNOPs: (_+=,_=_) failed.'
+[[ $( ini; (( (arr[0][1]*=arr[2]) ? arr[0][1]+=arr[1] : arr[1]=7)); typeset -p arr) == 'typeset -a arr=((10 166) 6 8)' ]] || err_exit 'ASSIGNOPs: (_*=_)?_:_ true failed.'
+[[ $( ini; (( (arr[0][2]*=arr[2]) ? arr[0][1]+=arr[1] : arr[1]=7)); typeset -p arr) == 'typeset -a arr=((10 20 0) 7 8)' ]] || err_exit 'ASSIGNOPs: (_*=_)?_:_ false failed.'
+unset arr
+unset -f ini
+
+# ======
 exit $((Errors<125?Errors:125))

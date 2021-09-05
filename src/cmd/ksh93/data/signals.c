@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,6 +19,7 @@
 *                                                                      *
 ***********************************************************************/
 #include	"defs.h"
+#include	"jobs.h"
 
 #if defined(SIGCLD) && !defined(SIGCHLD)
 #   define SIGCHLD	SIGCLD
@@ -107,6 +109,9 @@ const struct shtable2 shtab_signals[] =
 #else
 	"INT",		VAL(SIGINT,SH_SIGINTERACTIVE),			"",
 #endif /* JOBS */
+#ifdef SIGINFO
+	"INFO",		VAL(SIGINFO,SH_SIGIGNORE),			S("Information request"),
+#endif	/* SIGINFO */
 #ifdef SIGIO
 	"IO",		VAL(SIGIO,SH_SIGDONE),				S("IO signal"),
 #endif	/* SIGIO */

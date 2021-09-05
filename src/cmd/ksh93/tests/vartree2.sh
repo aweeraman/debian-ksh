@@ -2,6 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2011 AT&T Intellectual Property          #
+#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -19,19 +20,12 @@
 ########################################################################
 #
 # variable tree test #002
-# Propose of this test is whether ksh93 handles global variable trees
+# Purpose of this test is whether ksh93 handles global variable trees
 # and function-local variable trees the same way, including "nameref"
 # and "unset" handling.
 #
 
-function err_exit
-{
-	print -u2 -n "\t"
-	print -u2 -r ${Command}[$1]: "${@:2}"
-	(( Errors+=1 ))
-}
-
-alias err_exit='err_exit $LINENO'
+. "${SHTESTS_COMMON:-${0%/*}/_common}"
 
 # "built_tree1" and "built_tree2" are identical except the way how they test
 # whether a variable exists:

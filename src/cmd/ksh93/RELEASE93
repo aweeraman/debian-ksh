@@ -1,5 +1,9 @@
+This file is of historic interest. For recent changes in both ksh 93u+m and
+the accompanying libraries, see the file NEWS in the top-level directory.
+____
+
 This is a list of changes that have been made since the 12/28/93 version
-of ksh. 
+of ksh.
 
 1.	New features in 12/28/93b
 	a.  If IFS contains two consecutive identical characters belonging
@@ -65,7 +69,7 @@ of ksh.
 	f.  If foo is a function, and not a program, then command foo
 	    now reports that foo isn't found rather than invoking foo.
 	g.  The previous version incorrectly listed -A as an
-	    invocation option.  The -A option is only for set. 
+	    invocation option.  The -A option is only for set.
 	h.  A bug was fixed which caused ksh to loop when execution trace
 	    was enabled and the PS4 prompt required command substitution.
 	i.  A bug which could cause the job control switch character
@@ -131,7 +135,7 @@ of ksh.
 	    the job list as required by the POSIX standard.
 	l.  The value of OPTARG when an option that required
 	    an argument but didn't have one was incorrect in the
-	    case the the option string began with a :.
+	    case the option string began with a :.
 	m.  A bug which caused the terminal to get into a bad
 	    state with some KEYBD traps in vi-mode has been fixed.
 	n.  A bug which caused an invalid trap to cause a script
@@ -179,7 +183,7 @@ of ksh.
 	n.  Variables that were unset but had attributes such as readonly
 	    and export were not listed with readonly, export and typeset.
 	o.  Several problems with signals have been fixed.
-	p.  A bug which prevented ulimit -t from working has been fixed. 
+	p.  A bug which prevented ulimit -t from working has been fixed.
 	    Also, a bug in which failed ulimits could cause a core dump
 	    has also been fixed.
 	q.  A bug in expansion of the form ${name/#pattern/string} and
@@ -200,7 +204,7 @@ of ksh.
 	    positioned for the last command of a script has been fixed.
 	y.  A bug in the edit modes which allowed walking back in
 	    the history file for more than HISTSIZE commands has
-	    beed fixed.
+	    been fixed.
 	z.  A bug which could cause a core dump if variable TMPDIR was
 	    changed between two command substitutions has been fixed.
 	aa. A bug which prevented a trap on EXIT from being cleared
@@ -225,11 +229,11 @@ of ksh.
 11.	Bugs fixed in 12/28/93e for default OPTIONS
 	a.  Empty command substitutions of the form $() now work.
 	b.  whence -v foo now gives the correct result after calling
-	    builtin -d foo. 
+	    builtin -d foo.
 	c.  A bug in right to left arithmetic assignment for which
 	    the arithmetic expression (( y = x = 1.5 )) did not
 	    yield 1 for y when x was declared typeset -i was fixed.
-	d.  printf has been fixed to handle format  containing \0
+	d.  printf has been fixed to handle format containing \0
 	    and/or \0145 correctly.  In addition, characters following
 	    %b in the format string are no longer displayed when
 	    the operand contains \c.
@@ -247,7 +251,7 @@ of ksh.
 	j.  A bug that caused side effects in subscript evaluation
 	    when tracing was enabled for subscripts using ++ or --
 	    has been fixed.
-	k.  To conform to the Posix standard getopts has been changed
+	k.  To conform to the POSIX standard getopts has been changed
 	    so that the option char is set to ? when it returns with
 	    a non-zero exit status.
 	l.  The handling of \} inside ${name...} has been fixed so
@@ -265,7 +269,7 @@ of ksh.
 	r.  The error message for ksh -o unknown was incorrect.
 	s.  Functions invoked as name=value name, did not use
 	    values from the calling scope when evaluating value.
-	t.  A bug in which the shell would reexecute previously
+	t.  A bug in which the shell would re-execute previously
 	    executed code when a shell script or coprocess was
 	    run in the background has been fixed.
 	u.  A bug in which an empty here-document would leave
@@ -313,7 +317,7 @@ of ksh.
 	    the value of a name reference contained a positional
 	    parameter and the name reference was not defined inside
 	    a function has been fixed.
-	o.  Arithmetic expressions now correctly handle hexidecimal
+	o.  Arithmetic expressions now correctly handle hexadecimal
 	    constants.
 	p.  A bug in which integer variables could be expanded
 	    with a leading 10# when declared with typeset -i
@@ -333,7 +337,7 @@ of ksh.
 	    evaluation has been fixed.
 	d.  A bug when a name reference with a shorter name than
             the variable it references was the subject of a compound
-	    assignment has been fixed. 
+	    assignment has been fixed.
 	e.  A bug which in which assignment to array variables in
 	    a subshell could effect the parent shell has been
 	    fixed.
@@ -348,7 +352,7 @@ of ksh.
 	    fixed.
 	m.  The default base when not specified with typeset -i is
 	    10 in accordance with the documentation.  Previously,
-	    the value was determined by the first assignment.   
+	    the value was determined by the first assignment.
 	n.  A parsing bug in which a # preceded alphanumeric
 	    characters inside a command substitution caused
 	    a syntax error to be reported has been fixed.
@@ -359,10 +363,10 @@ of ksh.
 	    were split across buffer boundaries has been fixed.
 
 14.	Bugs fixed in 12/28/93h for default OPTIONS
-	a.  I bug in shcomp for compilation of unary operators with [[...]]
+	a.  I bug in shcomp for compilation of unary operators with [[ ... ]]
 	    has been fixed.
 	b.  A bug in which the value of $? was changed when executing
-	    a keyboard trap has been fixed. 
+	    a keyboard trap has been fixed.
 	c.  The handling of SIGCHLD has been changed so that the
 	    trap is not triggered while executing trap commands
 	    to avoid recursive trap calls.
@@ -449,7 +453,6 @@ of ksh.
 	    or built-in.
 	k.  A callback function can be installed which will give
 	    notification of file duplications and file closes.
-	    
+
 18.	Incompatibilities with 12/28/93 version.
 	None intentional.
-

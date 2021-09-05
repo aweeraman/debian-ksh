@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -28,7 +29,7 @@
 
 static const char usage[] =
 "[-?\n@(#)$Id: fold (AT&T Research) 2004-11-18 $\n]"
-USAGE_LICENSE
+"[--catalog?" ERROR_CATALOG "]"
 "[+NAME?fold - fold lines]"
 "[+DESCRIPTION?\bfold\b is a filter that folds lines from its input, "
 	"breaking the lines to have a maximum of \awidth\a column "
@@ -43,7 +44,7 @@ USAGE_LICENSE
 		"to zero.  \bfold\b will not insert a newline immediately "
 		"before or after a carriage-return.]"
 	"[+backspace?If positive, the current count of line width will be "
-		"decremented by  one.  \bfold\b will not insert a newline "
+		"decremented by one.  \bfold\b will not insert a newline "
 		"immediately before or after a backspace.]"
 	"[+tab?Each tab character encountered will advance the column "
 		"position to the next tab stop.  Tab stops are at each "
@@ -211,14 +212,17 @@ b_fold(int argc, char** argv, Shbltin_t* context)
 			continue;
 		case '?':
 			error(ERROR_usage(2), "%s", opt_info.arg);
-			continue;
+			UNREACHABLE();
 		}
 		break;
 	}
 	argv += opt_info.index;
 	argc -= opt_info.index;
 	if(error_info.errors)
+	{
 		error(ERROR_usage(2),"%s", optusage(NiL));
+		UNREACHABLE();
+	}
 	if(cp = *argv)
 		argv++;
 	do

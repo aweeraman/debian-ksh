@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -150,7 +151,10 @@ struct _sffmt_s
 #define SF_IOINTR	0040000	/* return on interrupts			*/
 #define SF_WCWIDTH	0100000	/* wcwidth display stream		*/
 
-#define SF_FLAGS	0177177	/* PUBLIC FLAGS PASSABLE TO SFNEW()	*/
+#define SFIO_FLAGS	0177177	/* PUBLIC FLAGS PASSABLE TO SFNEW()	*/
+#ifdef _typ_struct_sf_hdtr
+#define _SF_HIDESFFLAGS 1
+#endif
 #define SF_SETS		0177163	/* flags passable to sfset()		*/
 
 #ifndef _SF_NO_OBSOLETE
@@ -454,4 +458,8 @@ __INLINE__ ssize_t sfmaxr(ssize_t n, int s)	{ return __sf_maxr(n,s); }
 
 #endif /* _SFSTR_H */
 
+#ifdef _SF_HIDESFFLAGS
+#undef SFIO_FLAGS
+#define SFIO_FLAGS	0177177	/* PUBLIC FLAGS PASSABLE TO SFNEW()	*/
+#endif
 #endif /* _SFIO_H */

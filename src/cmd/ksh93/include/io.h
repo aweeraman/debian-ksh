@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -31,13 +32,6 @@
 #   define  IOBSIZE	(SF_BUFSIZE*sizeof(char*))
 #endif /* IOBSIZE */
 #define IOMAXTRY	20
-
-#ifndef SF_CLOSING
-#define SF_CLOSING	SF_CLOSE
-#endif
-#ifndef SF_APPENDWR
-#define SF_APPENDWR	SF_APPEND
-#endif
 
 /* used for output of shell errors */
 #define ERRIO		2
@@ -79,8 +73,10 @@ extern Sfio_t 	*sh_iostream(Shell_t*,int);
 extern int	sh_redirect(Shell_t*,struct ionod*,int);
 extern void 	sh_iosave(Shell_t *, int,int,char*);
 extern int 	sh_iovalidfd(Shell_t*, int);
+extern int	sh_iosafefd(Shell_t*, int);
 extern int 	sh_inuse(Shell_t*, int);
 extern void 	sh_iounsave(Shell_t*);
+extern void	sh_iounpipe(Shell_t*);
 extern int	sh_chkopen(const char*);
 extern int	sh_ioaccess(int,int);
 extern int	sh_devtofd(const char*);
@@ -113,15 +109,6 @@ extern const char	e_profile[];
 extern const char	e_sysprofile[];
 #if SHOPT_SYSRC
 extern const char	e_sysrc[];
-#endif
-#if SHOPT_BASH
-#if SHOPT_SYSRC
-extern const char	e_bash_sysrc[];
-#endif
-extern const char	e_bash_rc[];
-extern const char	e_bash_login[];
-extern const char	e_bash_logout[];
-extern const char	e_bash_profile[];
 #endif
 extern const char	e_stdprompt[];
 extern const char	e_supprompt[];

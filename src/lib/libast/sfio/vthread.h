@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -32,7 +33,7 @@
 */
 
 #include	<ast_common.h>
-#include	<errno.h>
+#include	<error.h>
 
 /* ast doesn't do threads yet */
 #if _PACKAGE_ast && !defined(vt_threaded)
@@ -89,19 +90,6 @@ typedef SECURITY_ATTRIBUTES	_vtattr_t;
 typedef struct _vtmutex_s	Vtmutex_t;
 typedef struct _vtonce_s	Vtonce_t;
 typedef struct _vthread_s	Vthread_t;
-
-#ifndef EINVAL
-#define EINVAL			22
-#endif
-#ifndef EBUSY
-#define EBUSY			16
-#endif
-#ifndef EDEADLK
-#define EDEADLK			45
-#endif
-#ifndef EPERM
-#define EPERM			1
-#endif
 
 _BEGIN_EXTERNS_
 

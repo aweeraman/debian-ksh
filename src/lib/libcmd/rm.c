@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -28,7 +29,7 @@
 
 static const char usage[] =
 "[-?\n@(#)$Id: rm (AT&T Research) 2012-02-14 $\n]"
-USAGE_LICENSE
+"[--catalog?" ERROR_CATALOG "]"
 "[+NAME?rm - remove files]"
 "[+DESCRIPTION?\brm\b removes the named \afile\a arguments. By default it"
 "	does not remove directories. If a file is unwritable, the"
@@ -70,7 +71,6 @@ USAGE_LICENSE
 #include <cmd.h>
 #include <ls.h>
 #include <fts_fix.h>
-#include <fs3d.h>
 
 #define RM_ENTRY	1
 
@@ -86,7 +86,6 @@ typedef struct State_s			/* program state		*/
 	int		clobber;	/* clear out file data first	*/
 	int		directory;	/* remove(dir) not rmdir(dir)	*/
 	int		force;		/* force actions		*/
-	int		fs3d;		/* 3d enabled			*/
 	int		interactive;	/* prompt for approval		*/
 	int		recursive;	/* remove subtrees too		*/
 	int		terminal;	/* attached to terminal		*/
@@ -115,8 +114,6 @@ rm(State_t* state, register FTSENT* ent)
 		if (!state->force)
 			error(2, "%s: not found", ent->fts_path);
 	}
-	else if (state->fs3d && iview(ent->fts_statp))
-		fts_set(NiL, ent, FTS_SKIP);
 	else switch (ent->fts_info)
 	{
 	case FTS_DNR:
@@ -202,7 +199,7 @@ rm(State_t* state, register FTSENT* ent)
 		}
 		else if (ent->fts_info == FTS_D)
 			break;
-		/*FALLTHROUGH*/
+		/* FALLTHROUGH */
 	case FTS_DP:
 		if (isempty(ent) || state->directory)
 		{
@@ -227,7 +224,7 @@ rm(State_t* state, register FTSENT* ent)
 							fts_set(NiL, ent, FTS_AGAIN);
 							break;
 						}
-						/*FALLTHROUGH*/
+						/* FALLTHROUGH */
 					default:
 						nonempty(ent);
 						if (!state->force)
@@ -332,12 +329,10 @@ b_rm(int argc, register char** argv, Shbltin_t* context)
 	State_t		state;
 	FTS*		fts;
 	FTSENT*		ent;
-	int		set3d;
 
 	cmdinit(argc, argv, context, ERROR_CATALOG, ERROR_NOTIFY);
 	memset(&state, 0, sizeof(state));
 	state.context = context;
-	state.fs3d = fs3d(FS3D_TEST);
 	state.terminal = isatty(0);
 	for (;;)
 	{
@@ -372,8 +367,8 @@ b_rm(int argc, register char** argv, Shbltin_t* context)
 			state.verbose = 1;
 			continue;
 		case '?':
-			error(ERROR_USAGE|4, "%s", opt_info.arg);
-			break;
+			error(ERROR_usage(2), "%s", opt_info.arg);
+			UNREACHABLE();
 		case ':':
 			error(2, "%s", opt_info.arg);
 			break;
@@ -384,7 +379,10 @@ b_rm(int argc, register char** argv, Shbltin_t* context)
 	if (*argv && streq(*argv, "-") && !streq(*(argv - 1), "--"))
 		argv++;
 	if (error_info.errors || !*argv && !state.force)
-		error(ERROR_USAGE|4, "%s", optusage(NiL));
+	{
+		error(ERROR_usage(2), "%s", optusage(NiL));
+		UNREACHABLE();
+	}
 	if (!*argv)
 		return 0;
 
@@ -396,14 +394,6 @@ b_rm(int argc, register char** argv, Shbltin_t* context)
 		state.verbose = 0;
 	state.uid = geteuid();
 	state.unconditional = state.unconditional && state.recursive && state.force;
-	if (state.recursive && state.fs3d)
-	{
-		set3d = state.fs3d;
-		state.fs3d = 0;
-		fs3d(0);
-	}
-	else
-		set3d = 0;
 	if (fts = fts_open(argv, FTS_PHYSICAL, NiL))
 	{
 		while (!sh_checksig(context) && (ent = fts_read(fts)) && !rm(&state, ent));
@@ -411,7 +401,5 @@ b_rm(int argc, register char** argv, Shbltin_t* context)
 	}
 	else if (!state.force)
 		error(ERROR_SYSTEM|2, "%s: cannot remove", argv[0]);
-	if (set3d)
-		fs3d(set3d);
 	return error_info.errors != 0;
 }

@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -66,6 +67,7 @@ extern const char	test_opchars[];
 extern const char	e_argument[];
 extern const char	e_missing[];
 extern const char	e_badop[];
+extern const char	e_unsupported_op[];
 extern const char	e_tstbegin[];
 extern const char	e_tstend[];
 

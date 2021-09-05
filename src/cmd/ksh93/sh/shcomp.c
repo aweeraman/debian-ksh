@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -26,9 +27,15 @@
  *
  */
 
+#include "version.h"
+
 static const char usage[] =
-"[-?\n@(#)$Id: shcomp (AT&T Research) 2003-03-02 $\n]"
-USAGE_LICENSE
+"[-?\n@(#)$Id: shcomp (AT&T Research) " SH_RELEASE " $\n]"
+"[-author?David Korn <dgk@research.att.com>]"
+"[-copyright?(c) 1982-2012 AT&T Intellectual Property]"
+"[-copyright?" SH_RELEASE_CPYR "]"
+"[-license?http://www.eclipse.org/org/documents/epl-v10.html]"
+"[--catalog?" SH_DICT "]"
 "[+NAME?shcomp - compile a shell script]"
 "[+DESCRIPTION?Unless \b-D\b is specified, \bshcomp\b takes a shell script, "
 	"\ainfile\a, and creates a binary format file, \aoutfile\a, that "
@@ -64,8 +71,7 @@ USAGE_LICENSE
 #include	"sys/stat.h"
 
 #define CNTL(x)	((x)&037)
-#define VERSION	3
-static const char header[6] = { CNTL('k'),CNTL('s'),CNTL('h'),0,VERSION,0 };
+static const char header[6] = { CNTL('k'),CNTL('s'),CNTL('h'),0,SHCOMP_HDR_VERSION,0 };
 
 int main(int argc, char *argv[])
 {
@@ -92,14 +98,17 @@ int main(int argc, char *argv[])
 		break;
 	    case '?':
 		errormsg(SH_DICT,ERROR_usage(2),"%s",opt_info.arg);
-		break;
+		UNREACHABLE();
 	}
 	shp = sh_init(argc,argv,(Shinit_f)0);
 	shp->shcomp = 1;
 	argv += opt_info.index;
 	argc -= opt_info.index;
 	if(error_info.errors || argc>2)
+	{
 		errormsg(SH_DICT,ERROR_usage(2),"%s",optusage((char*)0));
+		UNREACHABLE();
+	}
 	if(cp= *argv)
 	{
 		argv++;
@@ -111,7 +120,10 @@ int main(int argc, char *argv[])
 	{
 		struct stat statb;
 		if(!(out = sfopen((Sfio_t*)0,cp,"w")))
+		{
 			errormsg(SH_DICT,ERROR_system(1),"%s: cannot create",cp);
+			UNREACHABLE();
+		}
 		if(fstat(sffileno(out),&statb) >=0)
 			chmod(cp,(statb.st_mode&~S_IFMT)|S_IXUSR|S_IXGRP|S_IXOTH);
 	}
@@ -140,12 +152,18 @@ int main(int argc, char *argv[])
 			if((t->tre.tretyp&(COMMSK|COMSCAN))==0 && t->com.comnamp && strcmp(nv_name((Namval_t*)t->com.comnamp),"alias")==0)
 				sh_exec(t,0);
 			if(!dflag && sh_tdump(out,t) < 0)
+			{
 				errormsg(SH_DICT,ERROR_exit(1),"dump failed");
+				UNREACHABLE();
+			}
 		}
 		else if(sfeof(in))
 			break;
 		if(sferror(in))
+		{
 			errormsg(SH_DICT,ERROR_system(1),"I/O error");
+			UNREACHABLE();
+		}
 		if(t && ((t->tre.tretyp&COMMSK)==TCOM) && (np=t->com.comnamp) && (cp=nv_name(np)))
 		{
 			if(strcmp(cp,"exit")==0)

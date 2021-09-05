@@ -1,4 +1,4 @@
-: unix wrapper for mac osx cc : 2012-01-20 :
+: unix wrapper for macOS cc : 2020-07-17 :
 
 HOSTTYPE=darwin.generic
 
@@ -27,8 +27,6 @@ do	case $op in
 		;;
 	-lm)	continue
 		;;
-	-O)	continue
-		;;
 	esac
 	set "$@" "$arg"
 done
@@ -45,29 +43,10 @@ init)	echo "cc: arguments expected" >&2
 	;;
 cpp)	$CC -E "$@"
 	;;
-cc)	$CC -DCLK_TCK=100 "$@"
+cc)	$CC -D_ast_int8_t=int64_t -D_lib_memccpy "$@"
 	;;
-dll)	# what a compatibility mess -- surely they can get the apis to play nice
-	tmp=/tmp/cc.${USER:-$LOGNAME}.$$.err
-	trap "rm -f $tmp" EXIT
-	case `MACOSX_DEPLOYMENT_TARGET=10.3 ld -undefined dynamic_lookup 2>&1` in
-	*undefined*dynamic_lookup*)
-		ld -m -flat_namespace -undefined suppress -dylib -dynamic \
-			-ldylib1.o "$@" -lcc_dynamic -framework System >$tmp 2>&1
-		status=$?
-		;;
-	*)	MACOSX_DEPLOYMENT_TARGET=10.3 $CC -Wl,-flat_namespace -dynamiclib -undefined dynamic_lookup "$@" >$tmp 2>&1
-		status=$?
-		;;
-	esac
-	egrep -v ' (warning .*multiple definitions|definition) of ' $tmp >&2
-	exit $status
+dll)	$CC -Wl,-flat_namespace -dynamiclib -undefined dynamic_lookup "$@"
 	;;
-ld)	tmp=/tmp/cc.${USER:-$LOGNAME}.$$.err
-	trap "rm -f $tmp" EXIT
-	$CC -Wl,-m -DCLK_TCK=100 "$@" >$tmp 2>&1
-	status=$?
-	egrep -v ' (warning .*multiple definitions of|definition of|as lazy binding|not from earlier dynamic) ' $tmp >&2
-	exit $status
+ld)	$CC -Wl,-search_paths_first "$@"
 	;;
 esac

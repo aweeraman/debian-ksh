@@ -18,7 +18,7 @@ probe_ccs="strip size nm ld ar" # longest to shortest
 probe_debug="-g"
 probe_dll="'-G 0' -Wc,dll,exportall,longname,rent -Wc,exportall -dynamic $cc_dll_def"
 probe_export_dynamic="-rdynamic -export-dynamic -Wl,-export-dynamic -Wl,-E -bexpall -force_flat_namespace"
-probe_gcc_optimize="-O2"
+probe_gcc_optimize="-Os"
 probe_gcc_version="*[Gg][Cc][Cc]*"
 probe_include_local="'-ignore-source-dir -iquote' -iquote -I-"
 probe_ldlazy='-zlazyload -znolazyload -Wl,-zlazyload -Wl,-znolazyload'
@@ -34,13 +34,17 @@ probe_lib_all_undef="-all -notall -all -none -Bwhole-archive -Bno-whole-archive 
 probe_lib_multiple="-Wl,-zmuldefs"
 probe_libdir="shlib lib"
 probe_nmflags="'' -p -B"
-probe_optimize="-O"
+probe_optimize="-Os -O"
 probe_pic="-Kpic -KPIC -fpic -fPIC -pic -PIC +z +Z"
 probe_no_protect="'-fno-stack-protector -fno-stack-protector-all' -GS-"
 probe_readonly="-R -Krodata -xMerge -Wa,-r"
 probe_shared="'' -G -b -c -shared -Wl,dll"
 probe_shared_name="-Wl,-soname= -h"
 probe_shared_nostart="-nostartfiles"
+case `gcc -v 2>&1 | egrep gcc.version` in
+*version' '[0123456].*) ;;
+*) probe_shared_nostart= ;;  # gcc 7+
+esac
 probe_shared_registry='"-update_registry $probe_shared_registry_file"'
 probe_shared_registry_file='registry.ld'
 probe_shared_registry_path="\$(LIBDIR)/$probe_shared_registry_file"
@@ -1549,16 +1553,11 @@ then	e=`wc -c < e`
 	case $version_string in
 	$probe_gcc_version)	probe_optimize="$probe_gcc_optimize $probe_optimize" ;;
 	esac
-	eval set x $probe_optimize
-	while	:
-	do	shift
-		case $# in
-		0)	break ;;
-		esac
-		rm -f warn.$obj
-		$cc $1 -c warn.$src 2>e && test -f warn.$obj || continue
+	for i in $probe_optimize
+	do	rm -f warn.$obj
+		$cc $i -c warn.$src 2>e && test -f warn.$obj || continue
 		case `wc -c < e` in
-		$e)	optimize=$1; break ;;
+		$e)	optimize=$i; break ;;
 		esac
 	done
 

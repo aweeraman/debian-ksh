@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -32,7 +33,6 @@ static const char id[] = "\n@(#)$Id: getconf (AT&T Research) 2012-05-01 $\0\n";
 
 #include <ast.h>
 #include <error.h>
-#include <fs3d.h>
 #include <ctype.h>
 #include <regex.h>
 #include <proc.h>
@@ -142,19 +142,7 @@ static Feature_t	dynamic[] =
 		0,
 		OP_conformance
 	},
-#define OP_fs_3d	2
-	{
-		&dynamic[OP_fs_3d+1],
-		"FS_3D",
-		&null[0],
-		"0",
-		0,
-		5,
-		CONF_AST,
-		0,
-		OP_fs_3d
-	},
-#define OP_getconf	3
+#define OP_getconf	2
 	{
 		&dynamic[OP_getconf+1],
 		"GETCONF",
@@ -170,7 +158,7 @@ static Feature_t	dynamic[] =
 		CONF_READONLY,
 		OP_getconf
 	},
-#define OP_hosttype	4
+#define OP_hosttype	3
 	{
 		&dynamic[OP_hosttype+1],
 		"HOSTTYPE",
@@ -182,7 +170,7 @@ static Feature_t	dynamic[] =
 		CONF_READONLY,
 		OP_hosttype
 	},
-#define OP_libpath	5
+#define OP_libpath	4
 	{
 		&dynamic[OP_libpath+1],
 		"LIBPATH",
@@ -198,7 +186,7 @@ static Feature_t	dynamic[] =
 		0,
 		OP_libpath
 	},
-#define OP_libprefix	6
+#define OP_libprefix	5
 	{
 		&dynamic[OP_libprefix+1],
 		"LIBPREFIX",
@@ -214,7 +202,7 @@ static Feature_t	dynamic[] =
 		0,
 		OP_libprefix
 	},
-#define OP_libsuffix	7
+#define OP_libsuffix	6
 	{
 		&dynamic[OP_libsuffix+1],
 		"LIBSUFFIX",
@@ -230,15 +218,11 @@ static Feature_t	dynamic[] =
 		0,
 		OP_libsuffix
 	},
-#define OP_path_attributes	8
+#define OP_path_attributes	7
 	{
 		&dynamic[OP_path_attributes+1],
 		"PATH_ATTRIBUTES",
-#if _WINIX
-		"c",
-#else
 		&null[0],
-#endif
 		&null[0],
 		0,
 		15,
@@ -246,7 +230,7 @@ static Feature_t	dynamic[] =
 		CONF_READONLY,
 		OP_path_attributes
 	},
-#define OP_path_resolve	9
+#define OP_path_resolve	8
 	{
 		&dynamic[OP_path_resolve+1],
 		"PATH_RESOLVE",
@@ -258,7 +242,7 @@ static Feature_t	dynamic[] =
 		0,
 		OP_path_resolve
 	},
-#define OP_universe	10
+#define OP_universe	9
 	{
 		0,
 		"UNIVERSE",
@@ -522,7 +506,7 @@ initialize(register Feature_t* fp, const char* path, const char* command, const 
 		ok = 1;
 		break;
 	case OP_path_resolve:
-		ok = fs3d(FS3D_TEST);
+		ok = 0;
 		break;
 	case OP_universe:
 		ok = streq(_UNIV_DEFAULT, DEFAULT(OP_universe));
@@ -582,7 +566,7 @@ initialize(register Feature_t* fp, const char* path, const char* command, const 
 						}
 						if (fp->op == OP_universe)
 						{
-							if (strneq(p, "xpg", 3) || strneq(p, "5bin", 4))
+							if (strneq(p, "xpg", 3))
 							{
 								ok = 1;
 								break;
@@ -692,10 +676,6 @@ format(register Feature_t* fp, const char* path, const char* value, unsigned int
 #endif
 		break;
 
-	case OP_fs_3d:
-		fp->value = fs3d(value ? value[0] ? FS3D_ON : FS3D_OFF : FS3D_TEST) ? "1" : null;
-		break;
-
 	case OP_hosttype:
 		break;
 
@@ -723,6 +703,8 @@ format(register Feature_t* fp, const char* path, const char* value, unsigned int
 				}
 			*s = 0;
 		}
+#else
+		fp->value = pathicase(path) > 0 ? "c" : null;
 #endif
 		break;
 
@@ -830,7 +812,7 @@ feature(register Feature_t* fp, const char* name, const char* path, const char* 
 		if (!(fp = newof(0, Feature_t, 1, n + 1)))
 		{
 			if (conferror)
-				(*conferror)(&state, &state, 2, "%s: out of space", name);
+				(*conferror)(&state, &state, 2, "%s: out of memory", name);
 			return 0;
 		}
 		fp->op = -1;
@@ -1270,14 +1252,14 @@ print(Sfio_t* sp, register Lookup_t* look, const char* name, const char* path, i
 		if (p->flags & CONF_LIMIT_DEF)
 		{
 			if (p->limit.string)
-				sfprintf(sp, "L[%s] ", (listflags & ASTCONF_quote) ? fmtquote(p->limit.string, "\"", "\"", strlen(p->limit.string), FMT_SHELL) : p->limit.string);
+				sfprintf(sp, "L[%s] ", (listflags & ASTCONF_quote) ? fmtquote(p->limit.string, "\"", "\"", strlen(p->limit.string), FMT_SHELL|FMT_ALWAYS) : p->limit.string);
 			else
 				sfprintf(sp, "L[%I*d] ", sizeof(p->limit.number), p->limit.number);
 		}
 		if (p->flags & CONF_MINMAX_DEF)
 		{
 			if (p->minmax.string)
-				sfprintf(sp, "M[%s] ", (listflags & ASTCONF_quote) ? fmtquote(p->minmax.string, "\"", "\"", strlen(p->minmax.string), FMT_SHELL) : p->minmax.string);
+				sfprintf(sp, "M[%s] ", (listflags & ASTCONF_quote) ? fmtquote(p->minmax.string, "\"", "\"", strlen(p->minmax.string), FMT_SHELL|FMT_ALWAYS) : p->minmax.string);
 			else
 				sfprintf(sp, "M[%I*d] ", sizeof(p->minmax.number), p->minmax.number);
 		}
@@ -1286,7 +1268,7 @@ print(Sfio_t* sp, register Lookup_t* look, const char* name, const char* path, i
 		else if (defined)
 		{
 			if (s)
-				sfprintf(sp, "%s", (listflags & ASTCONF_quote) ? fmtquote(s, "\"", "\"", strlen(s), FMT_SHELL) : s);
+				sfprintf(sp, "%s", (listflags & ASTCONF_quote) ? fmtquote(s, "\"", "\"", strlen(s), FMT_SHELL|FMT_ALWAYS) : s);
 			else if (v != -1)
 				sfprintf(sp, "%I*d", sizeof(v), v);
 			else
@@ -1316,7 +1298,7 @@ print(Sfio_t* sp, register Lookup_t* look, const char* name, const char* path, i
 			else if (defined)
 			{
 				if (s)
-					sfprintf(sp, "%s", (listflags & ASTCONF_quote) ? fmtquote(s, "\"", "\"", strlen(s), FMT_SHELL) : s);
+					sfprintf(sp, "%s", (listflags & ASTCONF_quote) ? fmtquote(s, "\"", "\"", strlen(s), FMT_SHELL|FMT_ALWAYS) : s);
 				else if (v != -1)
 					sfprintf(sp, "%I*d", sizeof(v), v);
 				else
@@ -1655,6 +1637,25 @@ astconflist(Sfio_t* sp, const char* path, int flags, const char* pattern)
 					for (*s++ = 0; isspace(*s); s++);
 				if (!lookup(&look, f, flags))
 				{
+					if(pattern)
+					{
+
+						if (flags & ASTCONF_matchcall)
+						{
+							if (regexec(&re, prefix[look.conf->call + CONF_call].name, 0, NiL, 0))
+								continue;
+						}
+						else if (flags & ASTCONF_matchname)
+						{
+							if (regexec(&re, f, 0, NiL, 0))
+								continue;
+						}
+						else if (flags & ASTCONF_matchstandard)
+						{
+							if (regexec(&re, prefix[look.standard].name, 0, NiL, 0))
+								continue;
+						}
+					}
 					if (flags & ASTCONF_table)
 					{
 						if (look.standard < 0)
@@ -1664,9 +1665,9 @@ astconflist(Sfio_t* sp, const char* path, int flags, const char* pattern)
 						sfprintf(sp, "%*s %*s %d %2s %4d %5s %s\n", sizeof(conf[0].name), f, sizeof(prefix[look.standard].name), prefix[look.standard].name, look.section, call, 0, "N", s);
 					}
 					else if (flags & ASTCONF_parse)
-						sfprintf(sp, "%s %s - %s\n", state.id, f, s); 
+						sfprintf(sp, "%s %s - %s\n", state.id, (flags & ASTCONF_lower) ? fmtlower(f) : f, fmtquote(s, "\"", "\"", strlen(s), FMT_SHELL|FMT_ALWAYS));
 					else
-						sfprintf(sp, "%s=%s\n", f, (flags & ASTCONF_quote) ? fmtquote(s, "\"", "\"", strlen(s), FMT_SHELL) : s);
+						sfprintf(sp, "%s=%s\n", (flags & ASTCONF_lower) ? fmtlower(f) : f, (flags & ASTCONF_quote) ? fmtquote(s, "\"", "\"", strlen(s), FMT_SHELL|FMT_ALWAYS) : s);
 				}
 			}
 			sfclose(pp);
@@ -1712,9 +1713,9 @@ astconflist(Sfio_t* sp, const char* path, int flags, const char* pattern)
 				sfprintf(sp, "%*s %*s %d %2s %4d %5s %s\n", sizeof(conf[0].name), fp->name, sizeof(prefix[fp->standard].name), prefix[fp->standard].name, 1, call, 0, flg, s);
 			}
 			else if (flags & ASTCONF_parse)
-				sfprintf(sp, "%s %s - %s\n", state.id, (flags & ASTCONF_lower) ? fmtlower(fp->name) : fp->name, fmtquote(s, "\"", "\"", strlen(s), FMT_SHELL)); 
+				sfprintf(sp, "%s %s - %s\n", state.id, (flags & ASTCONF_lower) ? fmtlower(fp->name) : fp->name, fmtquote(s, "\"", "\"", strlen(s), FMT_SHELL|FMT_ALWAYS));
 			else
-				sfprintf(sp, "%s=%s\n", (flags & ASTCONF_lower) ? fmtlower(fp->name) : fp->name, (flags & ASTCONF_quote) ? fmtquote(s, "\"", "\"", strlen(s), FMT_SHELL) : s);
+				sfprintf(sp, "%s=%s\n", (flags & ASTCONF_lower) ? fmtlower(fp->name) : fp->name, (flags & ASTCONF_quote) ? fmtquote(s, "\"", "\"", strlen(s), FMT_SHELL|FMT_ALWAYS) : s);
 		}
 	}
 	if (pattern)

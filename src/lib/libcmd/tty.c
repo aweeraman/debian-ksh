@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -28,7 +29,7 @@
 
 static const char usage[] =
 "[-?\n@(#)$Id: tty (AT&T Research) 2008-03-13 $\n]"
-USAGE_LICENSE
+"[--catalog?" ERROR_CATALOG "]"
 "[+NAME?tty - write the name of the terminal to standard output]"
 "[+DESCRIPTION?\btty\b writes the name of the terminal that is connected "
 	"to standard input onto standard output.  If the standard input is not "
@@ -79,12 +80,15 @@ b_tty(int argc, char** argv, Shbltin_t* context)
 			break;
 		case '?':
 			error(ERROR_usage(2), "%s", opt_info.arg);
-			break;
+			UNREACHABLE();
 		}
 		break;
 	}
 	if(error_info.errors)
+	{
 		error(ERROR_usage(2), "%s", optusage(NiL));
+		UNREACHABLE();
+	}
 	if(!(tty=ttyname(0)))
 	{
 		tty = ERROR_translate(0, 0, 0, "not a tty");

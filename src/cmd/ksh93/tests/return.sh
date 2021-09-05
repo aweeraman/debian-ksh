@@ -2,6 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2011 AT&T Intellectual Property          #
+#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -19,19 +20,7 @@
 ########################################################################
 # test the behavior of return and exit with functions
 
-function err_exit
-{
-	print -u2 -n "\t"
-	print -u2 -r ${Command}[$1]: "${@:2}"
-	let Errors+=1
-}
-alias err_exit='err_exit $LINENO'
-
-Command=${0##*/}
-integer Errors=0
-
-tmp=$(mktemp -dt) || { err_exit mktemp -dt failed; exit 1; }
-trap "cd /; rm -rf $tmp" EXIT
+. "${SHTESTS_COMMON:-${0%/*}/_common}"
 
 unset HISTFILE
 
@@ -180,4 +169,77 @@ if	(( $? != 8 ))
 then	err_exit "exit 8 in trap should set exit value to 8"
 fi
 
+# ======
+# Tests for 'return' and 'exit' without argument: they should pass down the previous exit status
+
+foo() { return; }
+false
+foo && err_exit "'return' within function does not preserve exit status"
+false
+foo & wait "$!" && err_exit "'return' within function does not preserve exit status (bg job)"
+
+foo() { false; return || :; }
+foo && err_exit "'return ||' does not preserve exit status"
+
+foo() { false; return && :; }
+foo && err_exit "'return &&' does not preserve exit status"
+
+foo() { false; while return; do true; done; }
+foo && err_exit "'while return' does not preserve exit status"
+
+foo() { false; while return; do true; done 2>&1; }
+foo && err_exit "'while return' with redirection does not preserve exit status"
+
+foo() { false; until return; do true; done; }
+foo && err_exit "'until return' does not preserve exit status"
+
+foo() { false; until return; do true; done 2>&1; }
+foo && err_exit "'until return' with redirection does not preserve exit status"
+
+foo() { false; for i in 1; do return; done; }
+foo && err_exit "'return' within 'for' does not preserve exit status"
+
+foo() { false; for i in 1; do return; done 2>&1; }
+foo && err_exit "'return' within 'for' with redirection does not preserve exit status"
+
+foo() { false; { return; } 2>&1; }
+foo && err_exit "'return' within { block; } with redirection does not preserve exit status"
+
+foo() ( exit )
+false
+foo && err_exit "'exit' within function does not preserve exit status"
+false
+foo & wait "$!" && err_exit "'exit' within function does not preserve exit status (bg job)"
+
+foo() ( false; exit || : )
+foo && err_exit "'exit ||' does not preserve exit status"
+
+foo() ( false; exit && : )
+foo && err_exit "'exit &&' does not preserve exit status"
+
+foo() ( false; while exit; do true; done )
+foo && err_exit "'while exit' does not preserve exit status"
+
+foo() ( false; while exit; do true; done 2>&1 )
+foo && err_exit "'while exit' with redirection does not preserve exit status"
+
+foo() ( false; until exit; do true; done )
+foo && err_exit "'until exit' does not preserve exit status"
+
+foo() ( false; until exit; do true; done 2>&1 )
+foo && err_exit "'until exit' with redirection does not preserve exit status"
+
+foo() ( false; for i in 1; do exit; done )
+foo && err_exit "'exit' within 'for' does not preserve exit status"
+
+foo() ( false; for i in 1; do exit; done 2>&1 )
+foo && err_exit "'exit' within 'for' with redirection does not preserve exit status"
+
+foo() ( false; { exit; } 2>&1 )
+foo && err_exit "'exit' within { block; } with redirection does not preserve exit status"
+
+foo() { false; (exit); }
+foo && err_exit "'exit' within subshell does not preserve exit status"
+
+# ======
 exit $((Errors<125?Errors:125))

@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -142,9 +143,9 @@ int		type;
 }
 
 #if __STD_C
-static Void_t* liststat(Dt_t* dt, Dtstat_t* st)
+static Void_t* listat(Dt_t* dt, Dtstat_t* st)
 #else
-static Void_t* liststat(dt, st)
+static Void_t* listat(dt, st)
 Dt_t*		dt;
 Dtstat_t*	st;
 #endif
@@ -186,7 +187,7 @@ int	type;
 	else if(type&DT_CLEAR)
 		DTRETURN(obj, lclear(dt));
 	else if(type&DT_STAT )
-		DTRETURN(obj, liststat(dt, (Dtstat_t*)obj));
+		DTRETURN(obj, listat(dt, (Dtstat_t*)obj));
 
 	h = list->here; /* save finger to last search object */
 	list->here = NIL(Dtlink_t*);
@@ -202,8 +203,9 @@ int	type;
 	{	r = (Dtlink_t*)obj;
 		goto do_insert;
 	}
-	else if(type&(DT_INSERT|DT_APPEND|DT_ATTACH))
-	{	if(!(r = _dtmake(dt, obj, type)) )
+	else if(type&(DT_INSERT|DT_INSTALL|DT_APPEND|DT_ATTACH))
+	{
+		if(!(r = _dtmake(dt, obj, type)) )
 			DTRETURN(obj, NIL(Void_t*));
 		dt->data->size += 1;
 
@@ -290,7 +292,7 @@ int	type;
 		}
 		r = h ? h : r;
 	}
-	if(!r)
+	if(!r) /* not found */
 		DTRETURN(obj, NIL(Void_t*));
 
 	if(type&(DT_DELETE|DT_DETACH|DT_REMOVE))

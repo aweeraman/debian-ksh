@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -152,6 +153,9 @@ extern void		_vmmessage _ARG_((const char*, long, const char*, long));
 #endif /*DEBUG*/
 
 #define VMPAGESIZE	8192
+#if defined(__linux__) && !defined(_lib_getpagesize)
+#define _lib_getpagesize	1
+#endif
 #if _lib_getpagesize
 #define GETPAGESIZE(x)	((x) ? (x) : ((x)=getpagesize()) )
 #else
@@ -427,7 +431,7 @@ struct _seg_s
 #define DB2BEST(d)	((Vmuchar_t*)(d) - 2*sizeof(Head_t))
 #define DB2DEBUG(b)	((Vmuchar_t*)(b) + 2*sizeof(Head_t))
 
-/* set file and line number, note that DBLN > 0 so that DBISBAD will work  */
+/* set file and line number, note that DBLN > 0 so that DBISBAD will work */
 #define DBSETFL(d,f,l)	(DBFILE(d) = (f), DBLN(d) = (f) ? (l) : 1)
 
 /* set and test the state of known to be corrupted */

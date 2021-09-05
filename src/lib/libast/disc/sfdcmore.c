@@ -2,6 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -190,11 +191,11 @@ Sfdisc_t*	dp;
 		{
 		case '\t':
 			more->col = ((more->col + 8) & ~7) - 1;
-			/*FALLTHROUGH*/
+			/* FALLTHROUGH */
 		default:
 			if (++more->col <= more->cols || s < e && *s == '\n')
 				continue;
-			/*FALLTHROUGH*/
+			/* FALLTHROUGH */
 		case '\n':
 			more->col = 1;
 			if (++more->row < more->rows)
@@ -295,7 +296,7 @@ Sfdisc_t*	dp;
 /*
  * push the more discipline on f
  * if prompt==0 then a default ansi prompt is used
- * if rows==0 or cols==0 then they are deterimined from the tty
+ * if rows==0 or cols==0 then they are determined from the tty
  * if f==sfstdout then input on sfstdin also resets the state
  */
 
