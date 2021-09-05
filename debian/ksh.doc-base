@@ -1,9 +1,12 @@
 Document: ksh93
-Title: ksh
+Title: AT&T KornShell - ksh93
 Author: Nicholas Bamber
-Abstract: ksh93 is the original AT&T Korn shell
- For example ksh93 -c 'echo hello world'
+Abstract: AT&T KornShell
+ is a command and scripting language
+ that is a superset of the System V UNIX shell,
+ aka, BourneShell (or 'sh').
 Section: Shells
 
-Format: Text
-Files: /usr/share/doc/ksh/*.gz /usr/share/doc/ksh/OBSOLETE
+Format: HTML
+Index: /usr/share/doc/ksh/index.html
+Files: /usr/share/doc/ksh/ksh/*.html

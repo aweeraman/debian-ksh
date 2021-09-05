@@ -1,9 +1,9 @@
 src/cmd/ksh93/COMPATIBILITY
-src/cmd/ksh93/DESIGN
-src/cmd/ksh93/OBSOLETE
 src/cmd/ksh93/RELEASE88
 src/cmd/ksh93/RELEASE93
 src/cmd/ksh93/TYPES
-src/cmd/ksh93/PROMO.mm
-src/cmd/ksh93/builtins.mm
-src/cmd/ksh93/sh.memo
+docs/index.html
+docs/ksh
+NEWS
+ANNOUNCE
+TODO
