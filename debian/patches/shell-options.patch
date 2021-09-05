@@ -1,15 +1,17 @@
-# DP: disable suid, enable system-wide ksh
+Description: Disable suid shell scripts and enable system-wide ksh
+Author: Nicholas Bamber
+Forwarded: not-needed
 
---- a/src/cmd/ksh93/Makefile
-+++ b/src/cmd/ksh93/Makefile
-@@ -48,8 +48,8 @@ SHOPT_REMOTE ==			/* enable --rc if runn
- SHOPT_SEVENBIT ==		/* strip the eigth bit from characters */
- SHOPT_SPAWN ==			/* use spawnveg for fork/exec */
- SHOPT_STATS ==	1		/* add .sh.stats variable */
--SHOPT_SUID_EXEC == 1		/* allow (safe) suid/sgid shell scripts */
--SHOPT_SYSRC ==			/* attempt . /etc/ksh.kshrc if interactive */
-+SHOPT_SUID_EXEC == 0		/* allow (safe) suid/sgid shell scripts */
-+SHOPT_SYSRC == 1		/* attempt . /etc/ksh.kshrc if interactive */
- SHOPT_TIMEOUT ==		/* number of seconds for shell timeout */
- SHOPT_TYPEDEF == 1		/* enable typeset type definitions */
- SHOPT_VSH == 1			/* vi edit mode */
+--- a/src/cmd/ksh93/SHOPT.sh
++++ b/src/cmd/ksh93/SHOPT.sh
+@@ -37,8 +37,8 @@ SHOPT REGRESS=				# enable __regress__ builtin and instrumented intercepts for t
+ SHOPT REMOTE=				# enable --rc if running as a remote shell
+ SHOPT SPAWN=				# use spawnveg for fork/exec
+ SHOPT STATS=1				# add .sh.stats variable
+-SHOPT SUID_EXEC=1			# allow (safe) suid/sgid shell scripts
+-SHOPT SYSRC=				# attempt . /etc/ksh.kshrc if interactive
++SHOPT SUID_EXEC=0			# allow (safe) suid/sgid shell scripts
++SHOPT SYSRC=1				# attempt . /etc/ksh.kshrc if interactive
+ SHOPT TEST_L=				# add 'test -l' as an alias for 'test -L'
+ SHOPT TIMEOUT=				# number of seconds for shell timeout
+ SHOPT TYPEDEF=1				# enable typeset type definitions
