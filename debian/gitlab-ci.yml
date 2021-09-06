@@ -4,4 +4,4 @@ include:
   - https://salsa.debian.org/salsa-ci-team/pipeline/raw/master/pipeline-jobs.yml
 
 variables:
-  SALSA_CI_REPROTEST_ARGS: --variations=-build_path
+  SALSA_CI_REPROTEST_ARGS: --variations=-build_path,domain_host.use_sudo=1
