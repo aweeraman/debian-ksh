@@ -1,5 +1,5 @@
 {
-  "Name": "Korn Shell",
+  "Name": "AT&T KornShell (ksh93)",
   "Documentation": "http://www.kornshell.com/doc/",
   "Archive": "GitHub",
   "Bug-Database": "https://github.com/ksh93/ksh/issues",
