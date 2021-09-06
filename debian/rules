@@ -31,9 +31,8 @@ override_dh_auto_install:
 	cp arch/$(ARCH)/fun/* debian/ksh/usr/share/ksh/functions
 
 override_dh_installchangelogs:
-	dh_installchangelogs src/cmd/ksh93/RELEASE
+	dh_installchangelogs NEWS
 
 clean:
 	dh_testdir
-	dh_clean -d
-	rm -rf arch bin/*.old
+	dh_clean
