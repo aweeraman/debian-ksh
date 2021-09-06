@@ -3,7 +3,7 @@ Section: shells
 Priority: optional
 Maintainer: Anuradha Weeraman <anuradha@debian.org>
 Homepage: http://www.kornshell.com/
-Build-Depends: debhelper-compat (= 12), dh-exec
+Build-Depends: debhelper-compat (= 13), dh-exec
 Standards-Version: 4.6.0
 Rules-Requires-Root: no
 Vcs-Git: https://salsa.debian.org/debian/ksh.git
@@ -15,14 +15,14 @@ Conflicts: ksh93
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Suggests: binfmt-support
 Description: AT&T KornShell
- The KornShell is an interactive UNIX command interpreter as well as
- a POSIX compliant scripting language which is a superset of sh(1),
- the System V UNIX shell.
+ KornShell is an interactive UNIX command interpreter as well as a POSIX
+ compliant scripting language which is a superset of sh(1), the System
+ V UNIX shell.
  .
- The ksh93 version of ksh has the functionality of other scripting
- languages such as AWK, Icon, Perl, Rexx, and Tcl. For this and many
- other reasons, ksh is a much better scripting language than most of
- the other popular shells.
+ The ksh93 version of KornShell has the functionality of other scripting
+ languages such as AWK, Icon, Perl, Rexx, Tcl and is a full-featured,
+ expressive scripting language which complies with POSIX.2 Shell and
+ Utilities (IEEE Std 1003.2-1992).
  .
  The KornShell language was designed and developed by David G. Korn at
  AT&T Bell Laboratories and AT&T Research.

@@ -2,11 +2,11 @@ ksh (20210510-93u+m-1.0.0~beta.1-1) experimental; urgency=medium
 
   * Imported upstream updates from 93u+m that this package will be
     tracking moving forward. 93u+m is a community maintained distribution
-    of ksh93u+ that has consolidated fixes and updates from multiple
-    distributions and has been working towards maintaining ksh and fixing
-    long standing issues.
+    of ksh93u+ that has consolidated many fixes and updates from multiple
+    distributions to provide a stable release of ksh93.
   * Pruned patches that are available upstream.
   * Updates to documentation and doc-base.
+  * Added CI testing via autopkgtest.
 
  -- Anuradha Weeraman <anuradha@debian.org>  Sun, 05 Sep 2021 18:44:36 +0530
 
