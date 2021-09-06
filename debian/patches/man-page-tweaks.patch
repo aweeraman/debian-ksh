@@ -1,0 +1,21 @@
+Description: Remove pfexec and a.out reference in the man page
+Author: Anuradha Weeraman <anuradha@debian.org>
+
+--- a/src/cmd/ksh93/sh.1
++++ b/src/cmd/ksh93/sh.1
+@@ -8572,7 +8572,6 @@ env(1),
+ fgrep(1),
+ gmacs(1),
+ grep(1),
+-pfexec(1),
+ stty(1),
+ test(1),
+ umask(1),
+@@ -8593,7 +8592,6 @@ wait(2),
+ strftime(3),
+ wctrans(3),
+ rand(3),
+-a.out(5),
+ profile(5),
+ environ(7).
+ .PP
