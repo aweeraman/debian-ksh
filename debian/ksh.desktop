@@ -1,12 +1,12 @@
 [Desktop Entry]
 Version=1.0
-Name=AT&T Korn Shell
+Name=AT&T KornShell
 Type=Application
-Comment=Korn Shell
+Comment=Interactive UNIX command interpreter and POSIX compliant scripting language
 Icon=utilities-terminal
 Terminal=true
 Exec=ksh93
 Categories=ConsoleOnly;System;
-GenericName=Korn Shell
-Keywords=system;shell;ksh;scripts
+GenericName=Shell
+Keywords=system;shell;ksh;ksh93;korn;language;command;terminal;console;scripts
 X-AppStream-Ignore=true
