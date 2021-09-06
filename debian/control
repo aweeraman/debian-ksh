@@ -20,7 +20,7 @@ Description: AT&T KornShell
  the System V UNIX shell.
  .
  The ksh93 version of ksh has the functionality of other scripting
- languages such as awk, icon, perl, rexx, and tcl. For this and many
+ languages such as AWK, Icon, Perl, Rexx, and Tcl. For this and many
  other reasons, ksh is a much better scripting language than most of
  the other popular shells.
  .
