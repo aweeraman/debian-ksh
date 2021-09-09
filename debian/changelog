@@ -7,6 +7,7 @@ ksh (20210510-93u+m-1.0.0~beta.1-1) unstable; urgency=medium
   * Pruned patches that are available upstream
   * Updates to documentation and doc-base
   * Added CI testing via autopkgtest
+  * Copyright updates
 
  -- Anuradha Weeraman <anuradha@debian.org>  Sun, 05 Sep 2021 18:44:36 +0530
 

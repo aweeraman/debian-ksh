@@ -1,5 +1,7 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Contact: David Korn <dgk@research.att.com>
+Upstream-Contact:
+ David Korn <dgk@research.att.com>
+ Martijn Dekker <martijn@inlv.org>
 
 Files: *
 Copyright: 1982-2012, AT&T Intellectual Property
@@ -34,6 +36,7 @@ Files:
  src/lib/libast/uwin/lgamma.c
  src/lib/libast/uwin/support.c
  src/lib/libast/misc/fastfind.c
+ src/lib/libast/uwin/erf.c
 Copyright: 1983, 1985, 1988-1989, 1992-1993, 1999, The Regents of the University of California.
 License: BSD-3-clause
 
@@ -57,6 +60,24 @@ License: RSA
  .
  These notices must be retained in any copies of any part of this
  documentation and/or software.
+
+Files: src/cmd/ksh93/tests/treemove.sh
+Copyright: 2008 Sun Microsystems Inc.
+License: CDDL
+ The contents of this file are subject to the terms of the
+ Common Development and Distribution License (the "License").
+ You may not use this file except in compliance with the License.
+ .
+ You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
+ or http://www.opensolaris.org/os/licensing.
+ See the License for the specific language governing permissions
+ and limitations under the License.
+ .
+ When distributing Covered Code, include this CDDL HEADER in each
+ file and include the License file at usr/src/OPENSOLARIS.LICENSE.
+ If applicable, add the following below this CDDL HEADER, with the
+ fields enclosed by brackets "[]" replaced with your own identifying
+ information: Portions Copyright [yyyy] [name of copyright owner]
 
 License: BSD-3-clause
  Redistribution and use in source and binary forms, with or without
