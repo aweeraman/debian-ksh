@@ -1,4 +1,4 @@
-ksh (20210510-93u+m-1.0.0~beta.1-1) unstable; urgency=medium
+ksh (20210510-93u+m-1.0.0~beta.1-1) experimental; urgency=high
 
   * Imported upstream updates from 93u+m that this package will be
     tracking moving forward. 93u+m is a community maintained distribution
