@@ -11,7 +11,8 @@ Vcs-Browser: https://salsa.debian.org/debian/ksh
 
 Package: ksh93u+m
 Architecture: any
-Conflicts: ksh93
+Conflicts: ksh (<= 2020.0.0+really93u+20120801-10)
+Replaces: ksh (<= 2020.0.0+really93u+20120801-10)
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Suggests: binfmt-support
 Description: AT&T KornShell
