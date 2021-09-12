@@ -11,8 +11,8 @@ Vcs-Browser: https://salsa.debian.org/debian/ksh
 
 Package: ksh93u+m
 Architecture: any
-Conflicts: ksh (<= 2020.0.0+really93u+20120801-10)
 Replaces: ksh (<= 2020.0.0+really93u+20120801-10)
+Breaks: ksh (<= 2020.0.0+really93u+20120801-10)
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Suggests: binfmt-support
 Description: AT&T KornShell
@@ -27,3 +27,10 @@ Description: AT&T KornShell
  .
  The KornShell language was designed and developed by David G. Korn at
  AT&T Bell Laboratories and AT&T Research.
+
+Package: ksh
+Section: oldlibs
+Architecture: all
+Depends: ksh93u+m (>= ${source:Version}), ${misc:Depends}
+Description: transitional dummy package
+ This is a transitional dummy package for ksh, it can be safely removed.
