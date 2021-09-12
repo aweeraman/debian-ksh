@@ -1,2 +1,2 @@
 Tests: run.sh
-Depends: ksh
+Depends: ksh93u+m
