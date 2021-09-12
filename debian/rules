@@ -28,7 +28,7 @@ override_dh_auto_install:
 	cp arch/$(ARCH)/bin/ksh debian/ksh93u+m/bin/ksh93
 	cp arch/$(ARCH)/bin/shcomp debian/ksh93u+m/usr/bin/shcomp93
 	cp arch/$(ARCH)/man/man1/sh.1 debian/ksh93u+m/usr/share/man/man1/ksh93.1
-	cp arch/$(ARCH)/fun/* debian/ksh93u+m/usr/share/ksh/functions
+	cp arch/$(ARCH)/fun/* debian/ksh93u+m/usr/share/ksh93u+m/functions
 
 override_dh_installchangelogs:
 	dh_installchangelogs NEWS
