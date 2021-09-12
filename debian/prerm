@@ -12,7 +12,7 @@ case "$1" in
 
 	if command -v update-binfmts >/dev/null; then
 		test -e /var/lib/binfmts/ksh && \
-		    update-binfmts --package ksh93 --remove ksh \
+		    update-binfmts --package ksh93u+m --remove ksh \
 		    /bin/ksh || true
 	fi
     ;;

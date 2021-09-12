@@ -35,7 +35,7 @@ update-alternatives --install /usr/bin/shcomp shcomp /usr/bin/shcomp93 20 \
 
 if command -v update-binfmts >/dev/null && test -r /usr/share/binfmts/ksh; then
 	# ignore error, it probably was registered by ksh
-	update-binfmts --package ksh93 --import ksh || true
+	update-binfmts --package ksh93u+m --import ksh || true
 fi
 
 # create compatibility symlink if necessary
