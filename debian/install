@@ -1,4 +1,4 @@
 #!/usr/bin/dh-exec
-debian/ksh.desktop usr/share/applications/
+debian/ksh93.desktop usr/share/applications/
 debian/binfmt_spec => usr/share/ksh/ksh93.binfmt
 debian/example.kshrc => etc/skel/.kshrc

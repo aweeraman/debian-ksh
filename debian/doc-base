@@ -1,5 +1,5 @@
 Document: ksh93
-Title: AT&T KornShell (ksh93)
+Title: AT&T KornShell (ksh93u+m)
 Author: Nicholas Bamber
 Abstract: AT&T KornShell
  is a command and scripting language
@@ -8,5 +8,5 @@ Abstract: AT&T KornShell
 Section: Shells
 
 Format: HTML
-Index: /usr/share/doc/ksh/index.html
-Files: /usr/share/doc/ksh/ksh/*.html
+Index: /usr/share/doc/ksh93u+m/index.html
+Files: /usr/share/doc/ksh93u+m/ksh/*.html

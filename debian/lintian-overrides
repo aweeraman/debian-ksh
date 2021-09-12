@@ -1,0 +1,8 @@
+# needed for update-alternatives
+ksh93u+m: package-contains-empty-directory usr/share/binfmts/
+
+# autoloaded functions from .kshrc, doesn't need to be executable
+# or require a #!
+ksh93u+m: executable-not-elf-or-script usr/share/ksh/functions/dirs
+ksh93u+m: executable-not-elf-or-script usr/share/ksh/functions/popd
+ksh93u+m: executable-not-elf-or-script usr/share/ksh/functions/pushd
