@@ -30,7 +30,6 @@ Description: AT&T KornShell
 
 Package: ksh
 Architecture: all
-Priority: optional
 Section: oldlibs
 Depends: ksh93u+m, ${misc:Depends}
 Description: transitional package
