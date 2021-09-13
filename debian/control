@@ -29,8 +29,9 @@ Description: AT&T KornShell
  AT&T Bell Laboratories and AT&T Research.
 
 Package: ksh
-Section: oldlibs
 Architecture: all
-Depends: ksh93u+m (>= ${source:Version}), ${misc:Depends}
-Description: transitional dummy package
- This is a transitional dummy package for ksh, it can be safely removed.
+Priority: optional
+Section: oldlibs
+Depends: ksh93u+m, ${misc:Depends}
+Description: transitional package
+ This is a transitional package for ksh, it can be safely removed.
