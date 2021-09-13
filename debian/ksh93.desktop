@@ -8,5 +8,5 @@ Terminal=true
 Exec=ksh93
 Categories=ConsoleOnly;System;
 GenericName=Shell
-Keywords=system;shell;ksh;ksh93;korn;language;command;terminal;console;scripts
+Keywords=system;shell;ksh;ksh93;ksh93u+m;korn;language;command;terminal;console;scripts
 X-AppStream-Ignore=true

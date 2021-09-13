@@ -1,10 +1,11 @@
 ksh93u+m (1.0.0~beta.1-1) unstable; urgency=high
 
-  * Imported upstream updates from 93u+m that this package will be
-    tracking moving forward. 93u+m is a community maintained distribution
+  * Imported upstream updates from ksh93u+m that this package will be
+    tracking moving forward. ksh93u+m is a community maintained distribution
     of ksh93u+ that has consolidated many fixes and updates from multiple
-    distributions to provide a stable release of ksh93
-  * Pruned patches that are available upstream
+    distributions to provide a stable release of ksh93 (Closes: #994100)
+  * Introducing transitional binary package for "ksh"
+  * Pruned already merged patches
   * Updates to documentation and doc-base
   * Added CI testing via autopkgtest
   * Copyright updates
