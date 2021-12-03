@@ -1,3 +1,9 @@
+ksh93u+m (1.0.0~beta.1-2) unstable; urgency=medium
+
+  * Provides ksh
+
+ -- Anuradha Weeraman <anuradha@debian.org>  Fri, 03 Dec 2021 21:34:37 +0530
+
 ksh93u+m (1.0.0~beta.1-1) unstable; urgency=high
 
   * Imported upstream updates from ksh93u+m that this package will be

@@ -13,6 +13,7 @@ Package: ksh93u+m
 Architecture: any
 Replaces: ksh (<= 2020.0.0+really93u+20120801-10)
 Breaks: ksh (<= 2020.0.0+really93u+20120801-10)
+Provides: ksh
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Suggests: binfmt-support
 Description: AT&T KornShell
