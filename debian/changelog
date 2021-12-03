@@ -1,6 +1,6 @@
 ksh93u+m (1.0.0~beta.1-2) unstable; urgency=medium
 
-  * Provides ksh
+  * Specified "Provides" relationship to ksh
 
  -- Anuradha Weeraman <anuradha@debian.org>  Fri, 03 Dec 2021 21:34:37 +0530
 
