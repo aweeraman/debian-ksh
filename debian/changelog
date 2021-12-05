@@ -1,3 +1,9 @@
+ksh93u+m (1.0.0~beta.1-3) unstable; urgency=high
+
+  * Bump up transitional package version (Closes: #1001097)
+
+ -- Anuradha Weeraman <anuradha@debian.org>  Sun, 05 Dec 2021 08:20:33 +0530
+
 ksh93u+m (1.0.0~beta.1-2) unstable; urgency=medium
 
   * Specified "Provides" relationship to ksh
