@@ -1,3 +1,10 @@
+ksh93u+m (1.0.0~beta.1-4) UNRELEASED; urgency=medium
+
+  * Debian-specific patch by Simon McVittie to hardcode location of tput
+    to address reproducibility issue.
+
+ -- Anuradha Weeraman <anuradha@debian.org>  Mon, 06 Dec 2021 20:27:30 +0530
+
 ksh93u+m (1.0.0~beta.1-3) unstable; urgency=high
 
   * Bump up transitional package version (Closes: #1001097)

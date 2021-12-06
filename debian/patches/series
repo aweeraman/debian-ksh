@@ -2,3 +2,4 @@ locking.patch
 shell-options.patch
 man-page-tweaks.patch
 no-rpath.patch
+hardcoded-tput.patch
