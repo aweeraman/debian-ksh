@@ -114,7 +114,7 @@ static const char usage[] =
 #include <sum.h>
 #include <ls.h>
 #include <modex.h>
-#include <fts_fix.h>
+#include <fts.h>
 #include <error.h>
 
 typedef struct State_s			/* program state		*/
@@ -126,7 +126,7 @@ typedef struct State_s			/* program state		*/
 	int		header;		/* list method on output	*/
 	int		list;		/* list file name too		*/
 	Sum_t*		oldsum;		/* previous sum method		*/
-	int		permissions;	/* include mode,uer,group	*/
+	int		permissions;	/* include mode,user,group	*/
 	int		haveperm;	/* permissions in the input	*/
 	int		recursive;	/* recursively descend dirs	*/
 	size_t		scale;		/* scale override		*/

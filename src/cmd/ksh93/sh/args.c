@@ -642,7 +642,7 @@ void sh_printopts(Shopt_t oflags,register int mode, Shopt_t *mask)
  */
 char **sh_argbuild(Shell_t *shp,int *nargs, const struct comnod *comptr,int flag)
 {
-	register struct argnod	*argp;
+	register struct argnod	*argp=0;
 	struct argnod *arghead=0;
 	shp->xargmin = 0;
 	{
@@ -664,8 +664,6 @@ char **sh_argbuild(Shell_t *shp,int *nargs, const struct comnod *comptr,int flag
 		*nargs = 0;
 		if(ac)
 		{
-			if(ac->comnamp == SYSLET)
-				flag |= ARG_LET;
 			argp = ac->comarg;
 			while(argp)
 			{
@@ -735,7 +733,7 @@ struct argnod *sh_argprocsub(Shell_t *shp,struct argnod *argp)
 	ap->argflag &= ~ARG_RAW;
 	fd = argp->argflag&ARG_RAW;
 	if(fd==0 && shp->subshell)
-		sh_subtmpfile(shp->comsub);
+		sh_subtmpfile(shp);
 #if SHOPT_DEVFD
 	sfwrite(shp->stk,e_devfdNN,8);
 	pv[2] = 0;

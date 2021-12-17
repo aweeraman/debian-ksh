@@ -23,21 +23,23 @@
 
 # Determine method for running tests.
 # The 'vmstate' builtin can be used if ksh was compiled with vmalloc.
+# (Pass -D_AST_vmalloc in CCFLAGS; for testing only as it's deprecated)
 if	builtin vmstate 2>/dev/null &&
 	n=$(vmstate --format='%(busy_size)u') &&
 	let "($n) == ($n) && n > 0"	# non-zero number?
 then	N=512			# number of iterations for each test
 	unit=bytes
 	tolerance=$((4*N))	# tolerate 4 bytes per iteration to account for vmalloc artefacts
+	vmalloc=enabled
 	function getmem
 	{
 		vmstate --format='%(busy_size)u'
 	}
 # On Linux, we can use /proc to get byte granularity for vsize (field 23).
 elif	[[ -f /proc/$$/stat && $(uname) == Linux ]]
-then	N=2048			# number of iterations for each test
+then	N=4096			# number of iterations for each test
 	unit=bytes
-	tolerance=$((4*N))	# tolerate 4 bytes per iteration to account for malloc artefacts
+	tolerance=$((16*N))	# tolerate 16 bytes per iteration to account for malloc artefacts
 	function getmem
 	{
 		cut -f 23 -d ' ' </proc/$$/stat
@@ -59,7 +61,7 @@ elif	n=$(ps -o rss= -p "$$" 2>/dev/null) &&
 	let "($n) == ($n) && n > 0"
 then	N=16384
 	unit=KiB
-	tolerance=$((8*N/1024))	# tolerate 8 bytes per iteration to account for malloc/ps artefacts
+	tolerance=$((12*N/1024)) # tolerate 12 bytes per iteration to account for malloc/ps artefacts
 	function getmem
 	{
 		ps -o rss= -p "$$"
@@ -84,7 +86,7 @@ before=0 after=0 i=0 u=0
 
 
 # Check results.
-# The function has 'err_exit' in the name so that shtests counts each call as at test.
+# The function has 'err_exit' in the name so that shtests counts each call as a test.
 function err_exit_if_leak
 {
 	if	((after > before + tolerance))
@@ -253,8 +255,9 @@ err_exit_if_leak 'script sourced in virtual subshell'
 # Multiple leaks when using arrays in functions (Red Hat #921455)
 # Fix based on: https://src.fedoraproject.org/rpms/ksh/blob/642af4d6/f/ksh-20120801-memlik.patch
 
-# TODO: both of these tests still leak (although much less after the patch) when run in a non-C locale.
-saveLANG=$LANG; LANG=C	# comment out to test remaining leak (1/2)
+# TODO: When ksh is compiled with vmalloc, both of these tests still leak (although much less
+# after the patch) when run in a non-C locale.
+[[ $vmalloc == enabled ]] && saveLANG=$LANG && LANG=C	# comment out to test remaining leak (1/2)
 
 function _hash
 {
@@ -282,7 +285,7 @@ done
 after=$(getmem)
 err_exit_if_leak 'indexed array in function'
 
-LANG=$saveLANG		# comment out to test remaining leak (2/2)
+[[ $vmalloc == enabled ]] && LANG=$saveLANG	# comment out to test remaining leak (2/2)
 
 # ======
 # Memory leak in typeset (Red Hat #1036470)

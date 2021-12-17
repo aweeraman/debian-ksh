@@ -241,7 +241,12 @@ then	[[ $(3<#) -eq 0 ]] || err_exit "not at position 0"
 	read -u3 && err_exit "not found pattern not positioning at eof"
 	cat $tmp/seek | read -r <# *WWW*
 	[[ $REPLY == *WWWWW* ]] || err_exit '<# not working for pipes'
-	{ < $tmp/seek <# ((2358336120)) ;} 2> /dev/null || err_exit 'long seek not working'
+	# The next test seeks past a 2 GiB boundary, which may fail on 32-bit systems. To prevent
+	# a test failure, the long seek test is only run on 64-bit systems.
+	# https://github.com/att/ast/commit/a5c692e1bd0d800e3f19be249d3170e69cbe001d
+	if [[ $(builtin getconf 2> /dev/null; getconf LONG_BIT 2>&1) == 64 ]]; then
+		{ < $tmp/seek <# ((2358336120)) ;} 2> /dev/null || err_exit 'long seek not working'
+	fi
 else	err_exit "$tmp/seek: cannot open for reading"
 fi
 redirect 3<&- || 'cannot close 3'
@@ -877,6 +882,27 @@ print $exp >; s1/s2/x
 got=$(< dir1/dir2/x)
 [[ $got == "$exp" ]] || err_exit "symlink in conditional redirect wrong" \
 	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
+# ksh misbehaved when stdout is closed
+# https://github.com/ksh93/ksh/issues/314
+"$SHELL" -c 'pwd; echo "$?" >&2; echo test; echo "$?" > file' >&- 2>stderr
+exp='1'
+[[ $(<file) == "$exp" ]] || err_exit "ksh misbehaves when stdout is closed (1)" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$(<file)"))"
+exp='0'
+[[ $(<stderr) == "$exp" ]] || err_exit "ksh misbehaves when stdout is closed (2)" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$(<stderr)"))"
+for cmd in echo print printf
+do	"$cmd" hi >&- && err_exit "'$cmd' does not detect closed stdout (simple redirection)"
+	"$SHELL" -c "$cmd hi" >&- && err_exit "'$cmd' does not detect closed stdout (inherited FD)"
+done
+if	[[ -c /dev/full ]]
+then	for cmd in echo print printf
+	do	"$cmd" hi >/dev/full && err_exit "'$cmd' does not detect disk full (simple redirection)"
+		"$SHELL" -c "$cmd hi" >/dev/full && err_exit "'$cmd' does not detect disk full (inherited FD)"
+	done
+fi
 
 # ======
 exit $((Errors<125?Errors:125))

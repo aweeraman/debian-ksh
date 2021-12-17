@@ -32,19 +32,12 @@
 #include	<fcin.h>
 #include	<nval.h>
 #include	"FEATURE/options"
-
-#if KSHELL
-#   include	"defs.h"
-#else
-#   include	<shell.h>
-#   define	nv_getval(np)	((np)->nvalue)
-    Shell_t sh  =  {1};
-#endif /* KSHELL */
-
+#include	"defs.h"
 #include	"argnod.h"
 #include	"test.h"
 #include	"lexstates.h"
 #include	"io.h"
+#include	"shlex.h"
 
 #define TEST_RE		3
 #define SYNBAD		3	/* exit value for syntax errors */
@@ -67,53 +60,6 @@ local_iswblank(wchar_t wc)
 }
 
 #endif
-
-/*
- * This structure allows for arbitrary depth nesting of (...), {...}, [...]
- */
-struct lexstate
-{
-	char		incase;		/* 1 for case pattern, 2 after case */
-	char		intest;		/* 1 inside [[ ... ]] */
-	char		testop1;	/* 1 when unary test op legal */
-	char		testop2;	/* 1 when binary test op legal */
-	char		reservok;	/* >0 for reserved word legal */
-	char		skipword;	/* next word can't be reserved */
-	char		last_quote;	/* last multi-line quote character */
-	char		nestedbrace;	/* ${var op {...}} */
-};
-
-struct lexdata
-{
-	char		nocopy;
-	char		paren;
-	char		dolparen;
-	char		nest;
-	char		docword;
-	char		nested_tilde;
-	char 		*docend;
-	char		noarg;
-	char		warn;
-	char		message;
-	char		arith;
-	char 		*first;
-	int		level;
-	int		lastc;
-	int		lex_max;
-	int		*lex_match;
-	int		lex_state;
-	int		docextra;
-#if SHOPT_KIA
-	off_t		kiaoff;
-#endif
-};
-
-#define _SHLEX_PRIVATE \
-	struct lexdata  lexd; \
-	struct lexstate  lex;
-
-#include	"shlex.h"
-
 
 #define	pushlevel(lp,c,s)	((lp->lexd.level>=lp->lexd.lex_max?stack_grow(lp):1) &&\
 				((lp->lexd.lex_match[lp->lexd.level++]=lp->lexd.lastc),\
@@ -182,7 +128,6 @@ static void lex_advance(Sfio_t *iop, const char *buff, register int size, void *
 	register Shell_t	*shp = lp->sh;
 	register Sfio_t		*log= shp->funlog;
 	Stk_t			*stkp = shp->stk;
-#if KSHELL
 	/* write to history file and to stderr if necessary */
 	if(iop && !sfstacked(iop))
 	{
@@ -192,7 +137,6 @@ static void lex_advance(Sfio_t *iop, const char *buff, register int size, void *
 		if(sh_isstate(SH_VERBOSE))
 			sfwrite(sfstderr, buff, size);
 	}
-#endif
 	if(lp->lexd.nocopy)
 		return;
 	if(lp->lexd.dolparen && lp->lexd.docword && lp->lexd.docend)
@@ -1320,7 +1264,7 @@ breakloop:
 	{
 		/* check for numbered redirection */
 		n = state[0];
-		if((c=='<' || c=='>') && isadigit(n))
+		if(!lp->lex.intest && (c=='<' || c=='>') && isadigit(n))
 		{
 			c = sh_lex(lp);
 			lp->digits = (n-'0'); 
@@ -1383,7 +1327,16 @@ breakloop:
 	state = lp->arg->argval;
 	lp->comp_assign = assignment;
 	if(assignment)
+	{
 		lp->arg->argflag |= ARG_ASSIGN;
+		if(sh_isoption(SH_NOEXEC))
+		{
+			char *cp = strchr(state, '=');
+			if(cp && strncmp(++cp, "$((", 3) == 0)
+				errormsg(SH_DICT, ERROR_warn(0), e_lexarithwarn, shp->inlineno,
+					state, cp - state, state, cp + 3);
+		}
+	}
 	else if(!lp->lex.skipword)
 		lp->assignok = 0;
 	lp->arg->argchn.cp = 0;
@@ -1416,15 +1369,17 @@ breakloop:
 			return(lp->token);
 		}
 		lp->lex.incase = 0;
-		c = sh_lookup(state,shtab_testops);
-		switch(c)
+		if(state[0]==']' && state[1]==']' && !state[2])
 		{
-		case TEST_END:
+			/* end of [[ ... ]] */
 			lp->lex.testop2 = lp->lex.intest = 0;
 			lp->lex.reservok = 1;
 			lp->token = ETESTSYM;
 			return(lp->token);
-
+		}
+		c = sh_lookup(state,shtab_testops);
+		switch(c)
+		{
 		case TEST_SEQ:
 			if(lp->lexd.warn && state[1]==0)
 				errormsg(SH_DICT,ERROR_warn(0),e_lexobsolete3,shp->inlineno);
@@ -1433,8 +1388,40 @@ breakloop:
 			if(lp->lex.testop2)
 			{
 				if(lp->lexd.warn && (c&TEST_ARITH))
-					errormsg(SH_DICT,ERROR_warn(0),e_lexobsolete4,shp->inlineno,state);
-				if(c&TEST_PATTERN)
+				{
+					char *alt;
+					switch(c)
+					{
+					    case TEST_EQ:
+						alt = "==";  /* '-eq' --> '==' */
+						break;
+					    case TEST_NE:
+						alt = "!=";  /* '-ne' --> '!=' */
+						break;
+					    case TEST_LT:
+						alt = "<";   /* '-lt' --> '<' */
+						break;
+					    case TEST_GT:
+						alt = ">";   /* '-gt' --> '>' */
+						break;
+					    case TEST_LE:
+						alt = "<=";  /* '-le' --> '<=' */
+						break;
+					    case TEST_GE:
+						alt = ">=";  /* '-ge' --> '>=' */
+						break;
+					    default:
+#if _AST_ksh_release
+						alt = NIL(char*);	/* output '(null)' (should never happen) */
+#else
+						abort();
+#endif
+						break;
+					}
+					errormsg(SH_DICT, ERROR_warn(0), e_lexobsolete4,
+							shp->inlineno, state, alt);
+				}
+				if(c&TEST_STRCMP)
 					lp->lex.incase = 1;
 				else if(c==TEST_REP)
 					lp->lex.incase = TEST_RE;
@@ -1510,10 +1497,8 @@ breakloop:
 			if(!lp->lex.incase && !assignment && fcpeek(0)!=LPAREN &&
 				(np=nv_search(state,shp->alias_tree,HASH_SCOPE))
 				&& !nv_isattr(np,NV_NOEXPAND)
-#if KSHELL
 				&& (lp->aliasok!=2 || nv_isattr(np,BLT_DCL))
 				&& (!sh_isstate(SH_NOALIAS) || nv_isattr(np,NV_NOFREE))
-#endif /* KSHELL */
 				&& (state=nv_getval(np)))
 			{
 				setupalias(lp,state,np);
@@ -1540,7 +1525,7 @@ static int comsub(register Lex_t *lp, int endtok)
 	struct ionod	*inheredoc = lp->heredoc;
 	char *first,*cp=fcseek(0),word[5];
 	int off, messages=0, assignok=lp->assignok, csub;
-	struct lexstate	save;
+	struct _shlex_pvt_lexstate_ save;
 	save = lp->lex;
 	csub = lp->comsub;
 	sh_lexopen(lp,lp->sh,1);
@@ -1674,6 +1659,7 @@ done:
 	lp->assignok = (endchar(lp)==RBRACT?assignok:0);
 	if(lp->heredoc && !inheredoc)
 	{
+		/* here-document isn't fully contained in command substitution */
 		errormsg(SH_DICT,ERROR_exit(SYNBAD),e_lexsyntax5,lp->sh->inlineno,lp->heredoc->ioname);
 		UNREACHABLE();
 	}
@@ -2129,11 +2115,9 @@ noreturn void sh_syntax(Lex_t *lp)
 		fcclose();
 	shp->inlineno = lp->inlineno;
 	shp->st.firstline = lp->firstline;
-#if KSHELL
+	/* reset lexer state */
+	sh_lexopen(lp, &sh, 0);
 	if(!sh_isstate(SH_INTERACTIVE) && !sh_isstate(SH_PROFILE))
-#else
-	if(shp->inlineno!=1)
-#endif
 		errormsg(SH_DICT,ERROR_exit(SYNBAD),e_lexsyntax1,lp->lastline,tokstr,cp);
 	else
 		errormsg(SH_DICT,ERROR_exit(SYNBAD),e_lexsyntax2,tokstr,cp);
@@ -2442,7 +2426,7 @@ static int alias_exceptf(Sfio_t *iop,int type,void *data, Sfdisc_t *handle)
 	}
 	if(ap->nextc)
 	{
-		/* if last character is a blank, then next word can be alias */
+		/* if last character is a blank, then next word can be an alias */
 		register int c = fcpeek(-1);
 		if(isblank(c))
 			lp->aliasok = 1;

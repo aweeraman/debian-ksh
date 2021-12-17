@@ -45,7 +45,7 @@ esac
 # To avoid false regressions, we have to set 'erase' and 'kill' on the real terminal.
 if	test -t 0 2>/dev/null </dev/tty && stty_restore=$(stty -g </dev/tty)
 then	trap 'stty "$stty_restore" </dev/tty' EXIT  # note: on ksh, the EXIT trap is also triggered for termination due to a signal
-	stty erase ^H kill ^X
+	stty erase ^H kill ^X </dev/tty >/dev/tty 2>&1
 else	warning "cannot set tty state -- tests skipped"
 	exit 0
 fi
@@ -75,7 +75,7 @@ function tst
 	integer lineno=$1 offset
 	typeset text
 
-	pty $debug --dialogue --messages='/dev/fd/1' $SHELL |
+	pty $debug --dialogue --messages='/dev/fd/1' 2>/dev/tty $SHELL |
 	while	read -r text
 	do	if	[[ $text == *debug* ]]
 		then	print -u2 -r -- "$text"
@@ -581,6 +581,7 @@ actual=$(echo begin; exec >/dev/tty; [ -n X -a -t ] && test -n X -a -t) \
 # [ -t 1 ] to fail in non-comsub virtual subshells.
 ( test -t 1 ) && echo OK9 || echo 'test -t 1 in virtual subshell fails'
 ( test -t ) && echo OK10 || echo 'test -t in virtual subshell fails'
+got=$(test -t 1 >/dev/tty && echo ok) && [[ $got == ok ]] && echo OK11 || echo 'test -t 1 in comsub fails'
 EOF
 tst $LINENO <<"!"
 L test -t 1 inside command substitution
@@ -599,6 +600,7 @@ r ^OK7\r\n$
 r ^OK8\r\n$
 r ^OK9\r\n$
 r ^OK10\r\n$
+r ^OK11\r\n$
 r ^:test-2:
 !
 
@@ -626,6 +628,7 @@ r ^:test-2:
 L nobackslashctrl in emacs
 
 d 15
+p :test-1:
 w set -o emacs --nobackslashctrl
 
 # --nobackslashctrl shouldn't be ignored by reverse search
@@ -639,6 +642,7 @@ r ^:test-2: \r\n$
 L emacs backslash escaping
 
 d 15
+p :test-1:
 w set -o emacs
 
 # Test for too many backslash deletions in reverse-search mode
@@ -890,6 +894,100 @@ r ^:test-3: : t_string\r\n$
 p :test-4:
 w : test_string\1\E6\E[C\4
 r ^:test-4: : teststring\r\n$
+!
+
+# err_exit #
+tst $LINENO <<"!"
+L crash with KEYBD trap after entering multi-line command substitution
+# https://www.mail-archive.com/ast-users@lists.research.att.com/msg00313.html
+
+w trap : KEYBD
+w : $(
+w true); echo "Exit status is $?"
+u Exit status is 0
+!
+
+# err_exit #
+tst $LINENO <<"!"
+L interrupted PS2 discipline function
+# https://github.com/ksh93/ksh/issues/347
+
+d 15
+p :test-1:
+w PS2.get() { trap --bad-option 2>/dev/null; .sh.value="NOT REACHED"; }
+p :test-2:
+w echo \$\(
+r :test-2: echo \$\(
+w echo one \\
+r > echo one \\
+w two three
+r > two three
+w echo end
+r > echo end
+w \)
+r > \)
+r one two three end
+!
+
+# err_exit #
+((SHOPT_VSH || SHOPT_ESH)) && tst $LINENO <<"!"
+L tab completion of '.' and '..'
+# https://github.com/ksh93/ksh/issues/372
+
+d 15
+
+# typing '.' followed by two tabs should show a menu that includes "number) ../"
+p :test-1:
+w : .\t\t
+u ) \.\./\r\n$
+
+# typing '..' followed by a tab should complete to '../' (as it is
+# known that there are no files starting with '..' in the test PWD)
+p :test-2:
+w : ..\t
+r : \.\./\r\n$
+!
+
+# err_exit #
+tst $LINENO <<"!"
+L Ctrl+C with SIGINT ignored
+# https://github.com/ksh93/ksh/issues/343
+
+d 15
+
+# SIGINT ignored by child
+p :test-1:
+w PS1=':child-!: ' "$SHELL"
+p :child-1:
+w trap '' INT
+p :child-2:
+c \\\cC
+r :child-2:
+w echo "OK $PS1"
+u ^OK :child-!: \r\n$
+w exit
+
+# SIGINT ignored by parent
+p :test-2:
+w (trap '' INT; ENV=/./dev/null PS1=':child-!: ' "$SHELL")
+p :child-1:
+c \\\cC
+r :child-1:
+w echo "OK $PS1"
+u ^OK :child-!: \r\n$
+w exit
+
+# SIGINT ignored by parent, trapped in child
+p :test-3:
+w (trap '' INT; ENV=/./dev/null PS1=':child-!: ' "$SHELL")
+p :child-1:
+w trap 'echo test' INT
+p :child-2:
+c \\\cC
+r :child-2:
+w echo "OK $PS1"
+u ^OK :child-!: \r\n$
+w exit
 !
 
 # ======

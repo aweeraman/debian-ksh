@@ -76,6 +76,16 @@ static wctrans_t wctrans(const char *name)
 #define towctrans	sh_towctrans
 static int towctrans(int c, wctrans_t t)
 {
+#if _lib_towupper && _lib_towlower
+	if(mbwide())
+	{
+		if(t==1 && iswupper((wint_t)c))
+			c = (int)towlower((wint_t)c);
+		else if(t==2 && iswlower((wint_t)c))
+			c = (int)towupper((wint_t)c);
+	}
+	else
+#endif
 	if(t==1 && isupper(c))
 		c = tolower(c);
 	else if(t==2 && islower(c))
@@ -133,9 +143,6 @@ char e_version[]	= "\n@(#)$Id: Version "
 #ifndef environ
     extern char	**environ;
 #endif
-
-#undef	getconf
-#define getconf(x)	strtol(astconf(x,NiL,NiL),NiL,0)
 
 struct seconds
 {
@@ -259,6 +266,14 @@ void *sh_memdup(const void *s, size_t n)
 	if(!dup)
 		nomemory(0);
 	return(dup);
+}
+
+char *sh_getcwd(void)
+{
+	char *cwd = getcwd(NIL(char*), 0);
+	if(!cwd && errno==ENOMEM)
+		nomemory(0);
+	return(cwd);
 }
 
 #if SHOPT_VSH || SHOPT_ESH
@@ -635,12 +650,13 @@ static Sfdouble_t nget_seconds(register Namval_t* np, Namfun_t *fp)
 }
 
 /*
- * These three functions are used to get and set the RANDOM variable
+ * These four functions are used to get and set the RANDOM variable
  */
 static void put_rand(register Namval_t* np,const char *val,int flags,Namfun_t *fp)
 {
 	struct rand *rp = (struct rand*)fp;
 	register long n;
+	sh_save_rand_seed(rp, 0);
 	if(!val)
 	{
 		fp = nv_stack(np, NIL(Namfun_t*));
@@ -667,7 +683,7 @@ static Sfdouble_t nget_rand(register Namval_t* np, Namfun_t *fp)
 {
 	struct rand *rp = (struct rand*)fp;
 	register long cur, last= *np->nvalue.lp;
-	NOT_USED(fp);
+	sh_save_rand_seed(rp, 1);
 	do
 		cur = (rand_r(&rp->rand_seed)>>rand_shift)&RANDMASK;
 	while(cur==last);
@@ -773,6 +789,9 @@ void sh_setmatch(Shell_t *shp,const char *v, int vsize, int nmatch, regoff_t mat
 	unsigned int	savesub = shp->subshell;
 	Namarr_t	*ap = nv_arrayptr(SH_MATCHNOD);
 	Namarr_t	*ap_save = ap;
+	/* do not crash if .sh.match is unset */
+	if(!ap)
+		return;
 	shp->subshell = 0;
 #if !SHOPT_2DMATCH
 	index = 0;
@@ -1041,16 +1060,6 @@ static char *setdisc_any(Namval_t *np, const char *event, Namval_t *action, Namf
 
 static const Namdisc_t SH_MATH_disc  = { 0, 0, get_math, 0, setdisc_any, create_math, };
 
-#if SHOPT_NAMESPACE
-    static char* get_nspace(Namval_t* np, Namfun_t *fp)
-    {
-	if(sh.namespace)
-		return(nv_name(sh.namespace));
-	return((char*)np->nvalue.cp);
-    }
-    static const Namdisc_t NSPACE_disc	= {  0, 0, get_nspace };
-#endif /* SHOPT_NAMESPACE */
-
 #ifdef _hdr_locale
     static const Namdisc_t LC_disc	= {  sizeof(Namfun_t), put_lang };
 #endif /* _hdr_locale */
@@ -1154,16 +1163,16 @@ int sh_type(register const char *path)
 		}
 		break;
 	}
+#if _WINIX
+	if (!(t & SH_TYPE_KSH) && *s == 's' && *(s+1) == 'h' && (!*(s+2) || *(s+2) == '.'))
+#else
+	if (!(t & SH_TYPE_KSH) && *s == 's' && *(s+1) == 'h' && !*(s+2))
+#endif
+		t |= SH_TYPE_POSIX;
 	if (*s++ == 's' && (*s == 'h' || *s == 'u'))
 	{
 		s++;
 		t |= SH_TYPE_SH;
-#if _WINIX
-		if (!(t & SH_TYPE_KSH) && (!*s || *s == '.'))
-#else
-		if (!(t & SH_TYPE_KSH) && !*s)
-#endif
-			t |= SH_TYPE_POSIX;
 		if ((t & SH_TYPE_KSH) && *s == '9' && *(s+1) == '3')
 			s += 2;
 #if _WINIX
@@ -1211,12 +1220,9 @@ Shell_t *sh_init(register int argc,register char *argv[], Shinit_f userinit)
 		shgd->euserid=geteuid();
 		shgd->groupid=getgid();
 		shgd->egroupid=getegid();
-		shgd->lim.clk_tck = getconf("CLK_TCK");
-		shgd->lim.arg_max = getconf("ARG_MAX");
-		shgd->lim.child_max = getconf("CHILD_MAX");
-		shgd->lim.ngroups_max = getconf("NGROUPS_MAX");
-		shgd->lim.posix_version = getconf("VERSION");
-		shgd->lim.posix_jobcontrol = getconf("JOB_CONTROL");
+		shgd->lim.arg_max = astconf_long(CONF_ARG_MAX);
+		shgd->lim.child_max = (int)astconf_long(CONF_CHILD_MAX);
+		shgd->lim.clk_tck = (int)astconf_long(CONF_CLK_TCK);
 		if(shgd->lim.arg_max <=0)
 			shgd->lim.arg_max = ARG_MAX;
 		if(shgd->lim.child_max <=0)
@@ -1288,7 +1294,7 @@ Shell_t *sh_init(register int argc,register char *argv[], Shinit_f userinit)
 	sh_siginit(shp);
 	stakinstall(NIL(Stak_t*),nomemory);
 	/* set up memory for name-value pairs */
-	shp->init_context =  nv_init(shp);
+	shp->init_context = nv_init(shp);
 	/* initialize shell type */
 	if(argc>0)
 	{
@@ -1861,10 +1867,7 @@ Dt_t *sh_inittree(Shell_t *shp,const struct shtable2 *name_vals)
 		n++;
 	np = (Namval_t*)sh_calloc(n,sizeof(Namval_t));
 	if(!shgd->bltin_nodes)
-	{
 		shgd->bltin_nodes = np;
-		shgd->bltin_nnodes = n;
-	}
 	else if(name_vals==(const struct shtable2*)shtab_builtins)
 	{
 		shgd->bltin_cmds = np;

@@ -1,18 +1,23 @@
-Announcing: KornShell 93u+m 1.0.0-beta.1
+Announcing: KornShell 93u+m 1.0.0-beta.2
 https://github.com/ksh93/ksh
 
 In May 2020, when every KornShell (ksh93) development project was
 abandoned, development was rebooted in a new fork based on the last
-stable AT&T version: ksh 93u+. Now, one year and hundreds of bug fixes
-later, the first beta version is ready, and KornShell lives again. This
-new fork is called ksh 93u+m as a permanent nod to its origin; a standard
-semantic version number is added starting at 1.0.0-beta.1. Please test
-the beta and report any bugs you find, or help us fix known bugs.
+stable AT&T version: ksh 93u+. This new fork is called ksh 93u+m as a
+permanent nod to its origin. We're restarting it at version 1.0. Seven
+months after the first beta, the second one is ready. Please test this
+second beta and report any bugs you find, or help us fix known bugs.
+
+We're now the default ksh93 in some OS distributions, at least Debian
+and Slackware! Even though we don't think it's stable release quality
+yet, the consensus seems to be that 93u+m is already much better than
+the last AT&T release.
 
 Main developers: Martijn Dekker, Johnothan King, hyenias
 
 Contributors: Andy Fiddaman, Anuradha Weeraman, Chase, Gordon Woodhull,
-Govind Kamat, Harald van Dijk, Lev Kujawski, Marc Wilson, Sterling Jensen
+Govind Kamat, Harald van Dijk, Lev Kujawski, Marc Wilson, Ryan Schmidt,
+Sterling Jensen
 
 HOW TO GET IT
 
@@ -21,9 +26,6 @@ Please download the source code tarball from our GitHub releases page:
 	https://github.com/ksh93/ksh/releases
 
 To build, follow the instructions in README.md or src/cmd/ksh93/README.
-Hopefully, OS/distro packagers will make ksh 93u+m packages available soon.
-If you would like to have a binary for your OS from us, ask and we'll try
-to build one and add it to the releases page.
 
 HOW TO GET INVOLVED
 
@@ -33,7 +35,98 @@ To get involved in development, read the brief policy information in
 README.md and then jump right in with a pull request or email a patch.
 See the TODO file in the top-level directory for a to-do list.
 
-MAIN CHANGES SINCE KSH 93U+ 2012-08-01
+### MAIN CHANGES between 1.0.0-beta.1 and 1.0.0-beta.2 ###
+
+New features in built-in commands:
+
+- 'cd' now supports an -e option that, when combined with -P, verifies
+  that $PWD is correct after changing directories; this helps detect
+  access permission problems. See:
+  https://www.austingroupbugs.net/view.php?id=253
+
+- 'printf' now supports a -v option as in bash. This assigns formatted
+  output directly to variables, which is very fast and will not strip
+  final newline (\n) characters.
+
+- The 'return' command, when used to return from a function, can now
+  return any status value in the 32-bit signed integer range, like on
+  zsh. However, due to a traditional Unix kernel limitation, $? is
+  still trimmed to its least significant 8 bits whenever leaving a
+  (sub)shell environment.
+
+- 'test'/'[' now supports all the same operators as [[ (including =~,
+  \<, \>) except for the different 'and'/'or' operators. Note that
+  'test'/'[' remains deprecated due to its unfixable pitfalls;
+  [[ ... ]] is recommended instead.
+
+Shell language changes:
+
+- Several improvements were made to the --noexec shell code linter.
+
+- Arithmetic expressions in native ksh mode no longer interpret a
+  number with a leading zero as octal in any context. Use 8#octalnumber
+  instead (e.g. 8#400 == 256). Arithmetic expressions now also behave
+  identically within and outside ((...)) and $((...)).
+
+- POSIX compatibility mode fixes (only applicable with the --posix shell
+  option on):
+  - A leading zero is now consistently recognised as introducing an octal
+    number in all arithmetic contexts.
+  - $((inf)) and $((nan)) are now interpreted as regular variables.
+  - The '.' built-in no longer runs ksh functions and now only runs
+    files.
+
+Bugs fixed:
+
+- '.' and '..' are now once again completed by tab completion.
+
+- If SIGINT is set to ignore, the interactive shell no longer exits on
+  Ctrl+C.
+
+- ksh now builds and runs on Apple's new M1 hardware.
+
+- The 'return' and 'exit' commands no longer risk triggering actual
+  signals by returning or exiting with a status > 256.
+
+- Ksh no longer behaves badly when parsing a type definition command
+  ('typeset -T' or 'enum') without executing it or when executing it in
+  a subshell. Types can now safely be defined in subshells and defined
+  conditionally as in 'if condition; then enum ...; fi'.
+
+- Discipline functions, especially those applied to PS2 or .sh.tilde,
+  will no longer crash your shell upon being interrupted or throwing an
+  error.
+
+- Fixed a bug that could corrupt output if standard output is closed
+  upon initialising the shell.
+
+- Fixed a bug in the [[ ... ]] compound command: the '!' logical
+  negation operator now correctly negates another '!', e.g.,
+  [[ ! ! 1 -eq 1 ]] now returns 0/true. Note that this has always been
+  the case for 'test'/'['.
+
+- Fixed SHLVL so that replacing ksh by itself (exec ksh) will not
+  increase it.
+
+- Arithmetic expressions are no longer allowed to assign out-of-range
+  values to variables of types declared with enum.
+
+- The 'time' keyword no longer makes the --errexit shell option
+  ineffective.
+
+- Various bugs in libcmd built-in commands (those bound to the
+  /opt/ast/bin path by default) have been fixed.
+
+- Various other crashing bugs have been fixed.
+
+Fixes for the shcomp byte code compiler:
+
+- shcomp is now able to compile scripts that define types using enum.
+
+- shcomp now refuses to mess up your terminal by writing bytecode
+  to it.
+
+### MAIN CHANGES between ksh 93u+ 2012-08-01 and 93u+m 1.0.0-beta.1 ###
 
 Hundreds of bugs have been fixed, including many serious/critical bugs.
 This includes upstreamed patches from OpenSUSE, Red Hat, and Solaris, fixes

@@ -56,6 +56,7 @@ static void	exfile(Shell_t*, Sfio_t*,int);
 static void	chkmail(Shell_t *shp, char*);
 #if !defined(_NEXT_SOURCE) && !defined(__sun)
     static void	fixargs(char**,int);
+#   undef fixargs_disabled
 #else
 #   define fixargs(a,b)
 #   define fixargs_disabled	1
@@ -268,7 +269,7 @@ int sh_main(int ac, char *av[], Shinit_f userinit)
 					}
 #if !_WINIX
 					/*
-					 * try to undo effect of solaris 2.5+
+					 * try to undo effect of Solaris 2.5+
 					 * change for argv for setuid scripts
 					 */
 					if(shp->st.repl_index > 0)
@@ -343,6 +344,10 @@ int sh_main(int ac, char *av[], Shinit_f userinit)
 				sh_accbegin(error_info.id);
 #endif	/* SHOPT_ACCT */
 		}
+		/* If the shell is initialised with std{in,out,err} closed, make the shell's FD state reflect that. */
+		for(i=0; i<=2; i++)
+			if(fcntl(i,F_GETFD,NiL)==-1 && errno==EBADF)	/* closed at OS level? */
+				sh_close(i); 				/* update shell FD state */
 	}
 	else
 	{
@@ -530,20 +535,31 @@ static void	exfile(register Shell_t *shp, register Sfio_t *iop,register int fno)
 		errno = 0;
 		if(tdone || !sfreserve(iop,0,0))
 		{
+			int	sferr;
 		eof_or_error:
-			if(sh_isstate(SH_INTERACTIVE) && !sferror(iop)) 
+			sferr = sferror(iop);
+			if(sh_isstate(SH_INTERACTIVE))
 			{
-				if(--maxtry>0 && sh_isoption(SH_IGNOREEOF) &&
-					 !sferror(sfstderr) && (shp->fdstatus[fno]&IOTTY))
+				if(!sferr)
 				{
-					sfclrerr(iop);
-					errormsg(SH_DICT,0,e_logout);
+					if(--maxtry>0 && sh_isoption(SH_IGNOREEOF)
+					&& !sferror(sfstderr) && (shp->fdstatus[fno]&IOTTY))
+					{
+						sfclrerr(iop);
+						errormsg(SH_DICT,0,e_logout);
+						continue;
+					}
+					else if(job_close(shp)<0)
+						continue;
+				}
+				else if(sferr==SH_EXITSIG)
+				{
+					/* Ctrl+C with SIGINT ignored */
+					sfputc(sfstderr,'\n');
 					continue;
 				}
-				else if(job_close(shp)<0)
-					continue;
 			}
-			if(errno==0 && sferror(iop) && --maxtry>0)
+			if(errno==0 && sferr && --maxtry>0)
 			{
 				sfclrlock(iop);
 				sfclrerr(iop);
@@ -715,12 +731,13 @@ static void chkmail(Shell_t *shp, char *files)
  */
 static void fixargs(char **argv, int mode)
 {
-#if EXECARGS
+#   if EXECARGS
+	if(mode==0)
+		return;
 	*execargs=(char *)argv;
-#else
-	register char *cp;
+#   elif PSTAT
+	char *cp;
 	int offset=0,size;
-#   ifdef PSTAT
 	static int command_len;
 	char *buff;
 	union pstun un;
@@ -735,21 +752,6 @@ static void fixargs(char **argv, int mode)
 	}
 	stakseek(command_len+2);
 	buff = stakseek(0);
-#   elif _lib_setproctitle
-#	define command_len 255
-	char buff[command_len + 1];
-	if(mode==0)
-		return;
-#   else
-	static int command_len;
-	static char *buff;
-	if(mode==0)
-	{
-		buff = argv[0];
-		command_len = environ[0] - buff - 1;
-		return;
-	}
-#   endif /* PSTAT */
 	if(command_len==0)
 		return;
 	while((cp = *argv++) && offset < command_len)
@@ -762,12 +764,59 @@ static void fixargs(char **argv, int mode)
 	}
 	offset--;
 	memset(&buff[offset], 0, command_len - offset + 1);
-#   ifdef PSTAT
 	un.pst_command = stakptr(0);
 	pstat(PSTAT_SETCMD,un,0,0,0);
 #   elif _lib_setproctitle
+#	define CMDMAXLEN 255
+	char *cp;
+	int offset=0,size;
+	char buff[CMDMAXLEN + 1];
+	if(mode==0)
+		return;
+	while((cp = *argv++) && offset < CMDMAXLEN)
+	{
+		if(offset + (size=strlen(cp)) >= CMDMAXLEN)
+			size = CMDMAXLEN - offset;
+		memcpy(buff+offset,cp,size);
+		offset += size;
+		buff[offset++] = ' ';
+	}
+	buff[--offset] = '\0';
 	setproctitle("%s",buff);
-#   endif /* PSTAT */
-#endif /* EXECARGS */
+#	undef CMDMAXLEN
+#   else
+	/* Generic version, works on at least Linux and macOS */
+	char *cp;
+	int offset=0,size;
+	static int buffsize;
+	static char *buff;
+	if(mode==0)
+	{
+		int i;
+		buff = argv[0];
+		for(i=0; argv[i]; i++)
+			buffsize += strlen(argv[i]) + 1;
+		if(buffsize < 128 && buff + buffsize == *environ)
+		{
+			/* Move the environment to make space for a larger command line buffer */
+			for(i=0; environ[i]; i++)
+			{
+				buffsize += strlen(environ[i]) + 1;;
+				environ[i] = sh_strdup(environ[i]);
+			}
+		}
+		return;
+	}
+	while((cp = *argv++) && offset < buffsize)
+	{
+		if(offset + (size=strlen(cp)) >= buffsize)
+			size = buffsize - offset;
+		memcpy(buff+offset,cp,size);
+		offset += size;
+		buff[offset++] = ' ';
+	}
+	offset--;
+	memset(&buff[offset], 0, buffsize - offset + 1);
+#   endif
 }
 #endif /* !fixargs_disabled */

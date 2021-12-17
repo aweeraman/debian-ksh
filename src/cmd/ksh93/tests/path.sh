@@ -452,7 +452,7 @@ PATH=$PATH_orig
 # ======
 # Check that 'command -p' searches the default OS utility PATH.
 expect=/dev/null
-actual=$(PATH=/dev/null "$SHELL" -c 'command -p ls /dev/null' 2>&1)
+actual=$(set +x; PATH=/dev/null "$SHELL" -c 'command -p ls /dev/null' 2>&1)
 [[ $actual == "$expect" ]] || err_exit 'command -p fails to find standard utility' \
 	"(expected $(printf %q "$expect"), got $(printf %q "$actual"))"
 
@@ -577,11 +577,11 @@ fi
 
 # wrong path to tracked aliases after loading builtin: https://github.com/ksh93/ksh/pull/25
 actual=$("$SHELL" -c '
-	hash chmod
-	builtin chmod
-	whence -a chmod
+	hash cat
+	builtin cat
+	whence -a cat
 ')
-expect=$'chmod is a shell builtin\n'$(all_paths chmod | sed '1 s/^/chmod is a tracked alias for /; 2,$ s/^/chmod is /')
+expect=$'cat is a shell builtin\n'$(all_paths cat | sed '1 s/^/cat is a tracked alias for /; 2,$ s/^/cat is /')
 [[ $actual == "$expect" ]] || err_exit "'whence -a' does not work correctly with tracked aliases" \
 	"(expected $(printf %q "$expect"), got $(printf %q "$actual"))"
 
@@ -879,7 +879,8 @@ got=$?
 	"(expected $exp, got $got)"
 
 # Tests for attempting to use a command name that's too long.
-long_cmd=$(awk -v ORS= 'BEGIN { for(i=0;i<500;i++) print "xxxxxxxxxx"; }')
+name_max=$(builtin getconf 2>/dev/null; getconf NAME_MAX . 2>/dev/null || echo 255)
+long_cmd="$(awk -v ORS= 'BEGIN { for(i=0;i<'$name_max';i++) print "xx"; }')"
 exp=127
 PATH=$PWD $SHELL -c "$long_cmd" > /dev/null 2>&1
 got=$?
@@ -901,6 +902,23 @@ PATH=$PWD $SHELL -c "exec $long_cmd" > /dev/null 2>&1
 got=$?
 [[ $exp == $got ]] || err_exit "Test 7E: exit status or error message for exec'd command with long name wrong" \
 	"(expected $exp, got $got)"
+
+# ======
+
+if	[[ -o ?posix ]]
+then	(
+		PATH=/dev/null
+		command set --posix
+		function dottest { :; }
+		. dottest
+	) 2>/dev/null && err_exit "'.' in POSIX mode finds ksh function"
+	(
+		PATH=/dev/null
+		command set --posix
+		function dottest { :; }
+		source dottest
+	) 2>/dev/null || err_exit "'source' in POSIX mode does not find ksh function"
+fi
 
 # ======
 exit $((Errors<125?Errors:125))
