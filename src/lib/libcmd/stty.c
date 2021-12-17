@@ -27,7 +27,7 @@
  */
 
 static const char usage[] =
-"[-?@(#)$Id: stty (AT&T Research) 2010-04-01 $\n]"
+"[-?@(#)$Id: stty (ksh 93u+m) 2021-11-23 $\n]"
 "[--catalog?" ERROR_CATALOG "]"
 "[+NAME?stty - set or get terminal modes]"
 "[+DESCRIPTION?\bstty\b sets certain terminal I/O modes for the device "
@@ -55,7 +55,7 @@ static const char usage[] =
 "[+EXIT STATUS?]"
     "{"
         "[+0?All modes reported or set successfully.]"
-        "[+>0?Standard input not a terminaol or one or more modes "
+        "[+>0?Standard input not a terminal or one or more modes "
             "failed.]"
     "}"
 "[+SEE ALSO?\btegetattr\b(2), \btcsetattr\b(2), \bioctl\b(2)]"
@@ -110,6 +110,7 @@ static const char usage[] =
 #define CASE	10
 #define TABS	11
 #define WIND	12
+#define WINDSZ	13
 
 #undef	SS			/* who co-opted this namespace?	*/
 
@@ -157,6 +158,7 @@ static const Tty_t Ttable[] =
 { "rows",	WIND,	W_SIZE,	IG,	0, 24, C("\an\a is the number of lines for display") },
 { "cols",	WIND,	W_SIZE,	IG,	1, 80, C("\an\a is the number of columns for display") },
 { "columns",	WIND,	W_SIZE,	IG,	1, 80, C("Same as \bcols\b") },
+{ "size",	WINDSZ,	W_SIZE,	IG,	2, 0, C("Current terminal window size") },
 #endif
 { "intr",	CHAR,	T_CHAR,	SS,	VINTR, 'C', C("Send an interrupt signal") },
 { "quit",	CHAR,	T_CHAR,	SS,	VQUIT, '|', C("Send a quit signal") },
@@ -198,7 +200,7 @@ static const Tty_t Ttable[] =
 #if _mem_c_line_termios
 { "line",	NUM,	C_LINE,	0,	0, 0, C("Line discipline number") },
 #endif
-{ "min",	NUM,	T_CHAR,	0,	VMIN, 0, C("Mininmum number of characters to read in raw mode") },
+{ "min",	NUM,	T_CHAR,	0,	VMIN, 0, C("Minimum number of characters to read in raw mode") },
 { "time",	NUM,	T_CHAR,	0,	VTIME, 0, C("Number of .1 second intervals with raw mode") },
 
 { "parenb",	BIT,	C_FLAG,	0,	PARENB,	PARENB, C("Enable (disable) parity generation and detection") },
@@ -230,7 +232,7 @@ static const Tty_t Ttable[] =
 { "inlcr",	BIT,	I_FLAG,	US,	INLCR, INLCR, C("Translate (do not translate) carriage return to newline") },
 { "igncr",	BIT,	I_FLAG,	US,	IGNCR, IGNCR, C("Ignore (do not ignore) carriage return") },
 #ifdef IUCLC
-{ "iuclc",	BIT,	I_FLAG,	US,	IUCLC, IUCLC, C("Map (do not map) upper-case to lower case") },
+{ "iuclc",	BIT,	I_FLAG,	US,	IUCLC, IUCLC, C("Map (do not map) uppercase to lowercase") },
 #endif /* IUCLC */
 { "ixon",	BIT,	I_FLAG,	0,	IXON, IXON, C("Enable (disable) XON/XOFF flow control. \bstop\b character stops output") },
 #ifdef IXANY
@@ -703,6 +705,7 @@ static void set(char *argv[], struct termios *sp)
 			break;
 #ifdef TIOCSWINSZ
 		    case WIND:
+		    case WINDSZ:
 		    {
 			struct winsize win;
 			int n;
@@ -711,10 +714,27 @@ static void set(char *argv[], struct termios *sp)
 				error(ERROR_system(1),"cannot set %s",tp->name);
 				UNREACHABLE();
 			}
-			if(!(cp= *argv))
+			if(!(cp = *argv))
 			{
-				sfprintf(sfstdout,"%d\n",tp->mask?win.ws_col:win.ws_row);
+				switch(tp->mask)
+				{
+				    case 0: /* stty rows */
+					sfprintf(sfstdout,"%d\n",win.ws_row);
+					break;
+				    case 1: /* stty cols/stty columns */
+					sfprintf(sfstdout,"%d\n",win.ws_col);
+					break;
+				    case 2: /* stty size */
+					sfprintf(sfstdout,"%d %d\n",win.ws_row,win.ws_col);
+					break;
+				}
 				break;
+			}
+			if(tp->mask==2)
+			{
+				/* 'stty size' doesn't set the terminal window size */
+				error(ERROR_system(1),"%s: invalid argument",argv[0]);
+				UNREACHABLE();
 			}
 			argv++;
 			n=strtol(cp,&cp,10);
@@ -898,6 +918,7 @@ static int infof(Opt_t* op, Sfio_t* sp, const char* s, Optdisc_t* dp)
 	sfprintf(sp,"}[+Control Assignments.?If \ac\a is \bundef\b or an empty "
 		"string then the control assignment is disabled.]{");
 	listchars(sp,WIND);
+	listmode(sp,"size");
 	listchars(sp,CHAR);
 	sfprintf(sp,"}[+Combination Modes.]{");
 	listmode(sp,"ek");

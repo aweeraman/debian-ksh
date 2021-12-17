@@ -29,7 +29,7 @@
 #include        "variables.h"
 
 static const char sh_opttype[] =
-"[-1c?\n@(#)$Id: type (AT&T Labs Research) 2008-07-01 $\n]"
+"[-1c?\n@(#)$Id: type (ksh 93u+m) 2021-12-17 $\n]"
 "[--catalog?" SH_DICT "]"
 "[+NAME?\f?\f - set the type of variables to \b\f?\f\b]"
 "[+DESCRIPTION?\b\f?\f\b sets the type on each of the variables specified "
@@ -1580,13 +1580,16 @@ int	sh_outtype(Shell_t *shp,Sfio_t *out)
 	if(indent==0)
 	for(tp = (Namval_t*)dtfirst(dp); tp; tp = (Namval_t*)dtnext(dp,tp))
 	{
+		/* skip over enums */
+		if(tp->nvfun && !nv_isvtree(tp))
+			continue;
 		if(!nv_search(tp->nvname,shp->bltin_tree,0))
 			continue;
 		sfprintf(out,"typeset -T %s\n",tp->nvname);
 	}
 	for(tp = (Namval_t*)dtfirst(dp); tp; tp = (Namval_t*)dtnext(dp,tp))
 	{
-		if(nv_isnull(tp))
+		if(nv_isnull(tp) || !nv_isvtree(tp))
 			continue;
 		if(indent && (memcmp(tp->nvname,shp->prefix,n-1) || tp->nvname[n-1]!='.' || strchr(tp->nvname+n,'.')))
 			continue;

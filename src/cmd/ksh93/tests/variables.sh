@@ -34,46 +34,60 @@ fi
 # When the $RANDOM variable is used in a forked subshell, it shouldn't
 # use the same pseudorandom seed as the main shell.
 # https://github.com/ksh93/ksh/issues/285
+# These tests sometimes fail as duplicate numbers can occur randomly, so try up to $N times.
+integer N=3 i rand1 rand2
 RANDOM=123
 function rand_print {
 	ulimit -t unlimited 2> /dev/null
 	print $RANDOM
 }
-integer rand1=$(rand_print)
-integer rand2=$(rand_print)
+for((i=0; i<N; i++))
+do	rand1=$(rand_print)
+	rand2=$(rand_print)
+	((rand1 != rand2)) && break
+done
 (( rand1 == rand2 )) && err_exit "Test 1: \$RANDOM seed in subshell doesn't change" \
 	"(both results are $rand1)"
 # Make sure we're actually using a different pseudorandom seed
-integer rand1=$(
-	ulimit -t unlimited 2> /dev/null
-	test $RANDOM
-	print $RANDOM
-)
-integer rand2=${ print $RANDOM ;}
+for((i=0; i<N; i++))
+do	rand1=$(
+		ulimit -t unlimited 2> /dev/null
+		test $RANDOM
+		print $RANDOM
+	)
+	rand2=${ print $RANDOM ;}
+	((rand1 != rand2)) && break
+done
 (( rand1 == rand2 )) && err_exit "Test 2: \$RANDOM seed in subshell doesn't change" \
 	"(both results are $rand1)"
 # $RANDOM should be reseeded when the final command is inside of a subshell
-rand1=$($SHELL -c 'RANDOM=1; (echo $RANDOM)')
-rand2=$($SHELL -c 'RANDOM=1; (echo $RANDOM)')
+for((i=0; i<N; i++))
+do	rand1=$("$SHELL" -c 'RANDOM=1; (echo $RANDOM)')
+	rand2=$("$SHELL" -c 'RANDOM=1; (echo $RANDOM)')
+	((rand1 != rand2)) && break
+done
 (( rand1 == rand2 )) && err_exit "Test 3: \$RANDOM seed in subshell doesn't change" \
 	"(both results are $rand1)"
 # $RANDOM should be reseeded for the ( simple_command & ) optimization
-( echo $RANDOM & ) >r1
-( echo $RANDOM & ) >r2
-integer giveup=0
-trap '((giveup++))' USR1
-(sleep 2; kill -s USR1 $$) &
-while	[[ ! -s r1 || ! -s r2 ]]
-do	((giveup)) && break
+for((i=0; i<N; i++))
+do	( echo $RANDOM & ) >|r1
+	( echo $RANDOM & ) >|r2
+	integer giveup=0
+	trap '((giveup++))' USR1
+	(sleep 2; kill -s USR1 $$) &
+	while	[[ ! -s r1 || ! -s r2 ]]
+	do	((giveup)) && break
+	done
+	if	((giveup))
+	then	err_exit "Test 4: ( echo $RANDOM & ) does not write output"
+	fi
+	kill $! 2>/dev/null
+	trap - USR1
+	unset giveup
+	[[ $(<r1) != "$(<r2)" ]] && break
 done
-if	((giveup))
-then	err_exit "Test 4: ( echo $RANDOM & ) does not write output"
-else	[[ $(<r1) == "$(<r2)" ]] && err_exit "Test 4: \$RANDOM seed in ( simple_command & ) doesn't change" \
-		"(both results are $(printf %q "$(<r1)"))"
-fi
-kill $! 2>/dev/null
-trap - USR1
-unset giveup
+[[ $(<r1) == "$(<r2)" ]] && err_exit "Test 4: \$RANDOM seed in ( simple_command & ) doesn't change" \
+	"(both results are $(printf %q "$(<r1)"))"
 # Virtual subshells should not influence the parent shell's RANDOM sequence
 RANDOM=456
 exp="$RANDOM $RANDOM $RANDOM $RANDOM $RANDOM"
@@ -85,6 +99,20 @@ do	: $( : $RANDOM $RANDOM $RANDOM )
 done
 [[ $got == "$exp" ]] || err_exit 'Using $RANDOM in subshell influences reproducible sequence in parent environment' \
 	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+# Forking a subshell shouldn't throw away the $RANDOM seed in the main shell
+exp=$(ulimit -t unlimited; RANDOM=123; echo $RANDOM)
+RANDOM=123
+(ulimit -t unlimited; true)
+got=${ echo $RANDOM ;}
+[[ $got == "$exp" ]] || err_exit "Forking a subshell resets the parent shell's \$RANDOM seed" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+# Similarly, forking a subshell shouldn't throw away a seed
+# previously set inside of the subshell
+exp=$(ulimit -t unlimited; RANDOM=789; echo $RANDOM)
+got=$(RANDOM=789; ulimit -t unlimited; echo $RANDOM)
+[[ $got == "$exp" ]] || err_exit "Forking a subshell resets the subshell's \$RANDOM seed" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+unset N i rand1 rand2
 
 # SECONDS
 float secElapsed=0.0 secSleep=0.001
@@ -578,14 +606,14 @@ chmod +x $tmp/script
 . $tmp/script  1
 [[ $file == $tmp/script ]] || err_exit ".sh.file not working for dot scripts"
 [[ $($SHELL $tmp/script) == $tmp/script ]] || err_exit ".sh.file not working for scripts"
-[[ $(posixfun .sh.file) == $tmp/script ]] || err_exit ".sh.file not working for posix functions"
+[[ $(posixfun .sh.file) == $tmp/script ]] || err_exit ".sh.file not working for POSIX functions"
 [[ $(fun .sh.file) == $tmp/script ]] || err_exit ".sh.file not working for functions"
-[[ $(posixfun .sh.fun) == posixfun ]] || err_exit ".sh.fun not working for posix functions"
+[[ $(posixfun .sh.fun) == posixfun ]] || err_exit ".sh.fun not working for POSIX functions"
 [[ $(fun .sh.fun) == fun ]] || err_exit ".sh.fun not working for functions"
-[[ $(posixfun .sh.subshell) == 1 ]] || err_exit ".sh.subshell not working for posix functions"
+[[ $(posixfun .sh.subshell) == 1 ]] || err_exit ".sh.subshell not working for POSIX functions"
 [[ $(fun .sh.subshell) == 1 ]] || err_exit ".sh.subshell not working for functions"
 (
-    [[ $(posixfun .sh.subshell) == 2 ]]  || err_exit ".sh.subshell not working for posix functions in subshells"
+    [[ $(posixfun .sh.subshell) == 2 ]]  || err_exit ".sh.subshell not working for POSIX functions in subshells"
     [[ $(fun .sh.subshell) == 2 ]]  || err_exit ".sh.subshell not working for functions in subshells"
     (( .sh.subshell == 1 )) || err_exit ".sh.subshell not working in a subshell"
 )
@@ -676,6 +704,8 @@ set -- $x
 ( : & )
 [[ $pid == $! ]] || err_exit '$! value not preserved across subshells'
 
+# ======
+# BUG_KBGPID: $! was not updated under certain conditions
 pid=$!
 { : & } >&2
 [[ $pid == $! ]] && err_exit '$! value not updated after bg job in braces+redir'
@@ -684,6 +714,7 @@ pid=$!
 { : |& } >&2
 [[ $pid == $! ]] && err_exit '$! value not updated after co-process in braces+redir'
 
+# ======
 unset foo
 typeset -A foo
 function foo.set
@@ -1363,6 +1394,13 @@ echo "foo"
 EOF
 . $tmp/foo.sh > /dev/null
 [[ ${.sh.file} == $0 ]] || err_exit "\${.sh.file} is not set to the correct value after sourcing a file"
+
+# ======
+# SHLVL should be decreased before exec'ing a program
+exp=$((SHLVL+1))$'\n'$((SHLVL+2))$'\n'$((SHLVL+1))
+got=$("$SHELL" -c 'echo $SHLVL; "$SHELL" -c "echo \$SHLVL"; exec "$SHELL" -c "echo \$SHLVL"')
+[[ $got == "$exp" ]] || err_exit "SHLVL not increased correctly" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
 
 # ======
 exit $((Errors<125?Errors:125))

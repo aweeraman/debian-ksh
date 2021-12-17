@@ -82,7 +82,7 @@ convenient way to keep them consistent between build and test commands.
 **Note that this system uses `CCFLAGS` instead of the usual `CFLAGS`.**
 An example that makes Solaris Studio cc produce a 64-bit binary:
 ```sh
-export CCFLAGS="-xc99 -m64 -O" LDFLAGS="-m64"
+export CCFLAGS="-m64 -O" LDFLAGS="-m64"
 bin/package make
 ```
 Alternatively you can append these to the command, and they will only be
@@ -138,7 +138,7 @@ modification.
 
 The code should conform to the
 [IEEE POSIX 1003.1 standard](http://www.opengroup.org/austin/papers/posix_faq.html)
-and to the proposed ANSI-C standard so that it should be portable to all
+and to the proposed ANSI C standard so that it should be portable to all
 such systems. Like the previous version, KSH-88, it is designed to accept
 eight bit character sets transparently, thereby making it internationally
 compatible. It can support multi-byte characters sets with some

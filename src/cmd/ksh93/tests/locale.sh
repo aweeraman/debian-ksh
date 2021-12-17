@@ -56,8 +56,8 @@ then	LC_ALL=debug
 	unset exp LC_ALL
 fi # SHOPT_MULTIBYTE
 
-# test shift-jis \x81\x40 ... \x81\x7E encodings
-# (shift char followed by 7 bit ascii)
+# test Shift JIS \x81\x40 ... \x81\x7E encodings
+# (shift char followed by 7 bit ASCII)
 
 typeset -i16 chr
 ((SHOPT_MULTIBYTE)) && for locale in "${locales[@]}"
@@ -81,10 +81,11 @@ do	[[ $locale == *[Jj][Ii][Ss] ]] || continue
 		# dangling final backslash (which is invalid) and return a nonzero exit status.
 		# Note that the byte sequence '\x95\x5c' represents a multibyte character U+8868,
 		# whereas '\x5c' is a backslash when interpreted as a single-byte character.
+		[[ $locale == *.[Ss][Jj][Ii][Ss] ]] || continue
 		printf "\x95\x$c\n" | read x || err_exit "'read' doesn't skip multibyte input correctly ($LC_ALL, \x95\x$c)"
 	done
 done
-unset LC_ALL
+unset LC_ALL chr
 
 # Test the effect of setting a locale, followed by setting a different locale
 # then setting the previous locale. The output from 'printf %T' should use
@@ -105,7 +106,7 @@ if [[ -n $nl_NL ]] && [[ -n $ja_JP ]]; then
 fi
 unset LC_ALL
 
-# this locale is supported by ast on all platforms
+# this locale is supported by AST on all platforms
 # EU for { decimal_point="," thousands_sep="." }
 
 if ((SHOPT_MULTIBYTE)); then
@@ -156,25 +157,27 @@ fi
 
 #$SHELL -c 'export LANG='$locale'; printf "\u[20ac]\u[20ac]" > $tmp/two_euro_chars.txt'
 printf $'\342\202\254\342\202\254' > $tmp/two_euro_chars.txt
-if((SHOPT_MULTIBYTE)); then
-exp="6 2 6"
-else
-exp="6 6 6"
-fi # SHOPT_MULTIBYTE
-set -- $($SHELL -c "
-	if	builtin wc 2>/dev/null || builtin -f cmd wc 2>/dev/null
-	then	unset LC_CTYPE
-		export LANG=$locale
-		export LC_ALL=C
-		wc -C < $tmp/two_euro_chars.txt
-		unset LC_ALL
-		wc -C < $tmp/two_euro_chars.txt
-		export LC_ALL=C
-		wc -C < $tmp/two_euro_chars.txt
-	fi
-")
-got=$*
-[[ $got == $exp ]] || err_exit "builtin wc LC_ALL default failed -- expected '$exp', got '$got'"
+if	(builtin wc) 2>/dev/null
+then	if((SHOPT_MULTIBYTE)); then
+	exp="6 2 6"
+	else
+	exp="6 6 6"
+	fi # SHOPT_MULTIBYTE
+	set -- $($SHELL -c "
+		if	builtin wc 2>/dev/null || builtin -f cmd wc 2>/dev/null
+		then	unset LC_CTYPE
+			export LANG=$locale
+			export LC_ALL=C
+			wc -C < $tmp/two_euro_chars.txt
+			unset LC_ALL
+			wc -C < $tmp/two_euro_chars.txt
+			export LC_ALL=C
+			wc -C < $tmp/two_euro_chars.txt
+		fi
+	")
+	got=$*
+	[[ $got == $exp ]] || err_exit "builtin wc LC_ALL default failed -- expected '$exp', got '$got'"
+fi
 
 # multibyte char straddling buffer boundary
 
@@ -254,10 +257,10 @@ got=$(set +x; LC_ALL=C.UTF-8 $SHELL -c $'\u[5929]=OK; print ${\u[5929]}' 2>&1)
 got=$(set +x; LC_ALL=C.UTF-8 $SHELL -c $'function \u[5929]\n{\nprint OK;\n}; \u[5929]' 2>&1)
 [[ $got == "$exp" ]] || err_exit "multibyte ksh function definition/execution failed -- expected '$exp', got '$got'"
 got=$(set +x; LC_ALL=C.UTF-8 $SHELL -c $'\u[5929]()\n{\nprint OK;\n}; \u[5929]' 2>&1)
-[[ $got == "$exp" ]] || err_exit "multibyte posix function definition/execution failed -- expected '$exp', got '$got'"
+[[ $got == "$exp" ]] || err_exit "multibyte POSIX function definition/execution failed -- expected '$exp', got '$got'"
 fi # SHOPT_MULTIBYTE
 
-# this locale is supported by ast on all platforms
+# this locale is supported by AST on all platforms
 # mainly used to debug multibyte and message translation code
 # however wctype is not supported but that's ok for these tests
 

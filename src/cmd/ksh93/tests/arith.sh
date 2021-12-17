@@ -21,6 +21,9 @@
 
 . "${SHTESTS_COMMON:-${0%/*}/_common}"
 
+integer hasposix=0
+(set -o posix) 2>/dev/null && ((hasposix++))	# not using [[ -o ?posix ]] as it's broken on 93v-
+
 trap '' FPE # NOTE: osf.alpha requires this (no ieee math)
 
 integer x=1 y=2 z=3
@@ -346,8 +349,14 @@ do	(( ipx = ip % 256 ))
 done
 unset x
 x=010
-(( x == 10 )) || err_exit 'leading zeros in x treated as octal arithmetic with $((x))'
-(( $x == 8 )) || err_exit 'leading zeros not treated as octal arithmetic with $x'
+(( x == 10 )) || err_exit 'leading zeros in x treated as octal arithmetic with ((x))'
+(( $x == 10 )) || err_exit 'leading zeros in x treated as octal arithmetic with (($x))'
+if	((hasposix))
+then	set --posix
+	((x == 8)) || err_exit 'posix: leading zeros in x not treated as octal arithmetic with ((x))'
+	(($x == 8)) || err_exit 'posix: leading zeros in x not treated as octal arithmetic with (($x))'
+	set --noposix
+fi
 unset x
 typeset -Z x=010
 (( x == 10 )) || err_exit 'leading zeros not ignored for arithmetic'
@@ -728,15 +737,26 @@ unset A
 unset r x
 integer x
 r=020
-(($r == 16)) || err_exit 'leading 0 not treated as octal inside ((...))'
+(($r == 20)) || err_exit 'leading 0 treated as octal inside ((...))'
 x=$(($r))
-(( x == 16 )) || err_exit 'leading 0 not treated as octal inside $((...))'
+((x == 20)) || err_exit 'leading 0 treated as octal inside $((...))'
 x=$r
-((x == 20 )) || err_exit 'leading 0 should not be treated as octal outside ((...))'
+((x == 20)) || err_exit 'leading 0 treated as octal outside ((...))'
 print -- -020 | read x
-((x == -20)) || err_exit 'numbers with leading -0 should not be treated as octal outside ((...))'
+((x == -20)) || err_exit 'numbers with leading -0 treated as octal outside ((...))'
 print -- -8#20 | read x
 ((x == -16)) || err_exit 'numbers with leading -8# should be treated as octal'
+if	((hasposix))
+then	set --posix
+	(($r == 16)) || err_exit 'posix: leading 0 not treated as octal inside ((...))'
+	x=$(($r))
+	(( x == 16 )) || err_exit 'posix: leading 0 not treated as octal inside $((...))'
+	x=$r
+	((x == 16)) || err_exit 'posix: leading 0 not as octal outside ((...))'
+	print -- -020 | read x
+	((x == -16)) || err_exit 'posix: numbers with leading -0 should be treated as octal outside ((...))'
+	set --noposix
+fi
 
 unset x
 x=0x1
@@ -750,8 +770,13 @@ let "$x==10" || err_exit 'arithmetic with $x where $x is 010 should be decimal i
 (( 9.$x == 9.01 )) || err_exit 'arithmetic with 9.$x where x=010 should be 9.01' 
 (( 9$x == 9010 )) || err_exit 'arithmetic with 9$x where x=010 should be 9010' 
 x010=99
-((x$x == 99 )) || err_exit 'arithtmetic with x$x where x=010 should be $x010'
-(( 3+$x == 11 )) || err_exit '3+$x where x=010 should be 11 in ((...))'
+((x$x == 99 )) || err_exit 'arithmetic with x$x where x=010 should be $x010'
+(( 3+$x == 13 )) || err_exit '3+$x where x=010 should be 13 in ((...))'
+if	((hasposix))
+then	set --posix
+	(( 3+$x == 11 )) || err_exit 'posix: 3+$x where x=010 should be 11 in ((...))'
+	set --noposix
+fi
 let "(3+$x)==13" || err_exit 'let should not recognize leading 0 as octal'
 unset x
 typeset -RZ3 x=10 
@@ -772,9 +797,9 @@ v=$(printf $'%.28a\n' 64)
 # https://github.com/ksh93/ksh/issues/152
 
 exp='array_test_1: 1$(echo INJECTION >&2): arithmetic syntax error'
-got=$(var='1$(echo INJECTION >&2)' "$SHELL" -c 'typeset -a a; ((a[$var]++)); typeset -p a' array_test_1 2>&1)
+got=$(set +x; var='1$(echo INJECTION >&2)' "$SHELL" -c 'typeset -a a; ((a[$var]++)); typeset -p a' array_test_1 2>&1)
 [[ $got == "$exp" ]] || err_exit "Array subscript quoting test 1A: expected $(printf %q "$exp"), got $(printf %q "$got")"
-got=$(var='1$(echo INJECTION >&2)' "$SHELL" -c 'typeset -a a; ((a["$var"]++)); typeset -p a' array_test_1 2>&1)
+got=$(set +x; var='1$(echo INJECTION >&2)' "$SHELL" -c 'typeset -a a; ((a["$var"]++)); typeset -p a' array_test_1 2>&1)
 [[ $got == "$exp" ]] || err_exit "Array subscript quoting test 1B: expected $(printf %q "$exp"), got $(printf %q "$got")"
 
 exp='typeset -A a=(['\''1$(echo INJECTION >&2)'\'']=1)'
@@ -836,6 +861,7 @@ fi
 integer loopcount=maxlevel+10
 got=$(
 	typeset -r -A -i ro_arr=([a]=10 [b]=20 [c]=30)
+	set +x
 	for ((i=0; i<loopcount; i++)); do
 		let "ro_arr[i+1] += 5"
 	done 2>&1
@@ -843,6 +869,7 @@ got=$(
 [[ $got == *recursion* ]] && err_exit "recursion level not reset on readonly error (main shell)"
 got=$(
 	typeset -r -A -i ro_arr=([a]=10 [b]=20 [c]=30)
+	set +x
 	for ((i=0; i<loopcount; i++)); do
 		( ((ro_arr[i+1] += 5)) )
 	done 2>&1
@@ -873,6 +900,52 @@ then
 	(( (got=float(2./3)) == 2./3 )) ||  err_exit "float(2./3) != 2./3, got '$got'"
 fi
 unset got
+
+# ======
+# https://github.com/ksh93/ksh/issues/326
+((hasposix)) && for m in u d i o x X
+do
+	set --posix
+	case $m in
+	o)	exp="10;21;32;" ;;
+	x)	exp="8;11;1a;" ;;
+	X)	exp="8;11;1A;" ;;
+	*)	exp="8;17;26;" ;;
+	esac
+	got=${ printf "%$m;" 010 021 032; }
+	[[ $got == "$exp" ]] || err_exit "posix: printf %$m does not recognize octal arguments" \
+		"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+	set --noposix
+done
+
+# ======
+# BUG_ARITHNAN: In ksh <= 93u+m 2021-11-15 and zsh 5.6 - 5.8, the case-insensitive
+# floating point constants Inf and NaN are recognised in arithmetic evaluation,
+# overriding any variables with the names Inf, NaN, INF, nan, etc.
+if	((hasposix))
+then	set --posix
+	Inf=42 NaN=13
+	inf=421 nan=137
+	INF=429 NAN=937
+	typeset -l v=$((Inf)),$((NaN)),$((inf)),$((nan)),$((INF)),$((NAN))
+	case $v in
+	( inf,nan,inf,nan,inf,nan )
+		err_exit "posix: arith: inf/nan override variables" ;;
+	( "$Inf,$NaN,$inf,$nan,$INF,$NAN" )
+		: mustNotHave BUG_ARITHNAN ;;
+	( * )
+		err_exit "posix: arith: weird inf/nan problem: $(printf %q "$v")" ;;
+	esac
+	unset -v Inf NaN inf nan INF NAN v
+	set --noposix
+fi
+
+# ======
+# https://github.com/ksh93/ksh/issues/334#issuecomment-968603087
+exp=21
+got=$(typeset -Z x=0x15; { echo $((x)); } 2>&1)
+[[ $got == "$exp" ]] || err_exit "typeset -Z corrupts hexadecimal number in arithmetic context" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
 
 # ======
 exit $((Errors<125?Errors:125))

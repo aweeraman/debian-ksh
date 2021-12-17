@@ -49,18 +49,21 @@ done
 			done
 		EOF
 	} | head > /dev/null
-	(( $? == 0)) ||   err_exit "SIGPIPE with wrong error code $?"
-	# The below is kind of bogus as the err_exit from a bg job is never counted. But see extra check below.
-	[[ $(<out2) == $'PIPED\nPIPED' ]] || err_exit 'SIGPIPE output on standard error is not correct'
 ) &
 cop=$!
 { sleep .4; kill $cop; } 2>/dev/null &
 spy=$!
 if	wait $cop 2>/dev/null
 then	kill $spy 2>/dev/null
-else	err_exit "pipe with --pipefail PIPE trap hangs or produced an error"
+else	# 'wait $cop' will have passed on the nonzero exit status from the background job into $?
+	e=$?
+	err_exit "pipe with --pipefail PIPE trap hangs or produced an error" \
+		"(got status $e$( ((e>128)) && print -n /SIG && kill -l "$e"))"
 fi
 wait
+exp=$'PIPED\nPIPED'
+[[ $(<out2) == "$exp" ]] || err_exit 'SIGPIPE output on standard error is not correct' \
+	"(expected $(printf %q "$exp"), got $(printf %q "$(<out2)"))"
 rm -f out2
 
 actual=$( trap 'print -n got_child' SIGCHLD
@@ -454,7 +457,7 @@ echo begin
 # this extra comment disables an exec optimization
 EOF
 expect=$'^begin\n/.*/sigtest.sh: line 2: [1-9][0-9]*: Killed\n[1-9][0-9]{1,2}$'
-actual=$(LANG=C "$SHELL" -c '"$1" "$2" "$1"; echo "$?"' x "$SHELL" "$tmp/sigtest.sh" 2>&1)
+actual=$(export LANG=C; "$SHELL" -c '"$1" "$2" "$1"; echo "$?"' x "$SHELL" "$tmp/sigtest.sh" 2>&1)
 if	! [[ $actual =~ $expect ]]
 then	[[ $actual == *Killed*Killed* ]] && msg='ksh killed itself' || msg='unexpected output'
 	err_exit "$msg after child process signal (expected match to $(printf %q "$expect"); got $(printf %q "$actual"))"
@@ -463,17 +466,22 @@ let "${actual##*$'\n'} > 128" || err_exit "child process signal did not cause ex
 	"(got ${actual##*$'\n'})"
 
 # ======
-# Killing a non-existent job shouldn't cause a segfault. Note that `2> /dev/null` has no effect when
-# there is a segfault.
-$SHELL -c 'kill %% 2> /dev/null'; [[ $? == 1 ]] || err_exit $'`kill` doesn\'t handle a non-existent job correctly when passed \'%%\''
-$SHELL -c 'kill %+ 2> /dev/null'; [[ $? == 1 ]] || err_exit $'`kill` doesn\'t handle a non-existent job correctly when passed \'%+\''
-$SHELL -c 'kill %- 2> /dev/null'; [[ $? == 1 ]] || err_exit $'`kill` doesn\'t handle a non-existent job correctly when passed \'%-\''
+# Killing a non-existent job shouldn't cause a segfault.
+# https://github.com/ksh93/ksh/issues/34
+for c in % + -
+do	got=$( { "$SHELL" -c "kill %$c"; } 2>&1 )
+	[[ $? == 1 ]] || err_exit "'kill' doesn't handle a non-existent job correctly when passed '%$c'" \
+		"(got $(printf %q "$got"))"
+done
 
 # ======
 # SIGINFO should be supported by the kill builtin on platforms that have it.
 if "$(whence -p kill)" -INFO $$ 2> /dev/null
 then
-	kill -INFO $$ || err_exit '`kill` cannot send SIGINFO to processes when passed `-INFO`'
+	got=$(kill -INFO $$ 2>&1) || err_exit "kill builtin cannot send SIGINFO to processes when passed '-INFO'" \
+		"(got $(printf %q "$got"))"
+	got=$(kill -s INFO $$ 2>&1) || err_exit "kill builtin cannot send SIGINFO to processes when passed '-s INFO'" \
+		"(got $(printf %q "$got"))"
 fi
 
 # ======
@@ -519,6 +527,31 @@ got=$(export exp; "$SHELL" -c '
 got=${got% }	# rm final space
 ((!(e = $?))) && [[ $got == "$exp" ]] || err_exit "ksh function ignores global signal traps" \
 	"(got status $e$( ((e>128)) && print -n / && kill -l "$e"), $(printf %q "$got"))"
+
+# ======
+# Signal incorrectly issued when function returns with status > 256 and EXIT trap is active
+# https://github.com/ksh93/ksh/issues/364
+signum=${ kill -l SEGV; }
+cat > exit267 <<-EOF  # unquoted delimiter; expansion active
+	trap 'echo OK \$?' EXIT  # This trap triggers the crash
+	function foo { return $((signum+256)); }
+	foo
+EOF
+exp="OK $((signum+256))"
+got=$( { "$SHELL" exit267; } 2>&1 )
+(( (e=$?)==signum+128 )) && [[ $got == "$exp" ]] || err_exit "'return' with status > 256:" \
+	"(expected status $((signum+128)) and $(printf %q "$exp"), got status $e and $(printf %q "$got"))"
+
+cat > bar <<-'EOF'
+	trap : EXIT
+	function foo { "$SHELL" -c 'kill -s SEGV $$'; }
+	foo 2> /dev/null
+	echo OK
+EOF
+exp="OK"
+got=$( { "$SHELL" bar; } 2>&1 )
+(( (e=$?)==0 )) && [[ $got == "$exp" ]] || err_exit "segfaulting child process:" \
+	"(expected status 0 and $(printf %q "$exp"), got status $e and $(printf %q "$got"))"
 
 # ======
 exit $((Errors<125?Errors:125))

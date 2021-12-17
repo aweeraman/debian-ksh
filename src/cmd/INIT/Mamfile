@@ -17,46 +17,7 @@ setv CCFLAGS ${-debug-symbols?1?${mam_cc_DEBUG} -D_BLD_DEBUG?${mam_cc_OPTIMIZE}?
 setv CCLDFLAGS ${-strip-symbols?1?${mam_cc_LD_STRIP}??}
 setv COTEMP $$
 setv LDFLAGS
-make ${PACKAGEROOT}/lib/package/ast.lic
-done ${PACKAGEROOT}/lib/package/ast.lic
 make install
-	make hurl
-		make hurl.sh
-		done hurl.sh
-		meta hurl %.sh>% hurl.sh hurl
-		prev hurl.sh
-		exec - case static,port:$OPTIND:$RANDOM in
-		exec - ?*:*:*|*::*|*:*:$RANDOM)
-		exec - ;;
-		exec - *) if ENV= LC_ALL=C x= $SHELL -nc '[[ a || b ]] && : ${list[level]}  !(pattern)' 2>/dev/null
-		exec - then if grep '### .*archaic.* ###' >/dev/null
-		exec - then : hurl contains archaic constructs :
-		exec - else ENV= LC_ALL=C $SHELL -n hurl.sh
-		exec - fi
-		exec - fi
-		exec - ;;
-		exec - esac
-		exec - case '${mam_cc_SHELLMAGIC}' in
-		exec - "") case 184 in
-		exec - 0) cp hurl.sh hurl
-		exec - ;;
-		exec - *) {
-		exec - i=`(read x; echo $x) < hurl.sh`
-		exec - case $i in
-		exec - '#!'*|*'||'*|':'*|'":"'*|"':'"*) echo "$i" ;;
-		exec - esac
-		exec - cat hurl.sh
-		exec - } > hurl
-		exec - ;;
-		exec - esac
-		exec - ;;
-		exec - *) cat - hurl.sh > hurl <<'!'
-		exec - ${mam_cc_SHELLMAGIC}
-		exec - !
-		exec - ;;
-		exec - esac
-		exec - test -w hurl -a -x hurl || chmod u+w,+x hurl
-	done hurl generated
 	make iffe
 		make iffe.sh
 		done iffe.sh
@@ -279,43 +240,6 @@ make install
 		exec - esac
 		exec - test -w crossexec -a -x crossexec || chmod u+w,+x crossexec
 	done crossexec generated
-	make ditto
-		make ditto.sh
-		done ditto.sh
-		meta ditto %.sh>% ditto.sh ditto
-		prev ditto.sh
-		exec - case static,port:$OPTIND:$RANDOM in
-		exec - ?*:*:*|*::*|*:*:$RANDOM)
-		exec - ;;
-		exec - *) if ENV= LC_ALL=C x= $SHELL -nc '[[ a || b ]] && : ${list[level]}  !(pattern)' 2>/dev/null
-		exec - then if grep '### .*archaic.* ###' >/dev/null
-		exec - then : ditto contains archaic constructs :
-		exec - else ENV= LC_ALL=C $SHELL -n ditto.sh
-		exec - fi
-		exec - fi
-		exec - ;;
-		exec - esac
-		exec - case '${mam_cc_SHELLMAGIC}' in
-		exec - "") case 232 in
-		exec - 0) cp ditto.sh ditto
-		exec - ;;
-		exec - *) {
-		exec - i=`(read x; echo $x) < ditto.sh`
-		exec - case $i in
-		exec - '#!'*|*'||'*|':'*|'":"'*|"':'"*) echo "$i" ;;
-		exec - esac
-		exec - cat ditto.sh
-		exec - } > ditto
-		exec - ;;
-		exec - esac
-		exec - ;;
-		exec - *) cat - ditto.sh > ditto <<'!'
-		exec - ${mam_cc_SHELLMAGIC}
-		exec - !
-		exec - ;;
-		exec - esac
-		exec - test -w ditto -a -x ditto || chmod u+w,+x ditto
-	done ditto generated
 	make execrate
 		make execrate.sh
 		done execrate.sh
@@ -519,17 +443,6 @@ make install
 		done ratz.o generated
 		exec - ${CC} ${CCLDFLAGS} ${mam_cc_FLAGS} ${KSH_RELFLAGS} ${CCFLAGS} ${LDFLAGS} -o ratz ratz.o
 	done ratz generated
-	make release
-		make release.o
-			make release.c
-				prev ast.h implicit
-			done release.c
-			meta release.o %.c>%.o release.c release
-			prev release.c
-			exec - ${CC} ${mam_cc_FLAGS} ${KSH_RELFLAGS} ${CCFLAGS} -c release.c
-		done release.o generated
-		exec - ${CC} ${CCLDFLAGS} ${mam_cc_FLAGS} ${KSH_RELFLAGS} ${CCFLAGS} ${LDFLAGS} -o release release.o
-	done release generated
 	make mprobe
 		make mprobe.sh
 		done mprobe.sh
@@ -620,11 +533,6 @@ make install
 		exec - then mkdir -p ${INSTALLROOT}/bin
 		exec - fi
 	done ${INSTALLROOT}/bin generated
-	make ${INSTALLROOT}/bin/hurl
-		prev ${INSTALLROOT}/bin
-		prev hurl
-		exec - test '' = 'hurl' || ${STDCMP} 2>/dev/null -s hurl ${INSTALLROOT}/bin/hurl || { ${STDMV} ${INSTALLROOT}/bin/hurl ${INSTALLROOT}/bin/hurl.old 2>/dev/null || true; ${STDCP} hurl ${INSTALLROOT}/bin/hurl ;}
-	done ${INSTALLROOT}/bin/hurl generated
 	make ${INSTALLROOT}/bin/iffe
 		prev iffe
 		exec - test '' = 'iffe' || ${STDCMP} 2>/dev/null -s iffe ${INSTALLROOT}/bin/iffe || { ${STDMV} ${INSTALLROOT}/bin/iffe ${INSTALLROOT}/bin/iffe.old 2>/dev/null || true; ${STDCP} iffe ${INSTALLROOT}/bin/iffe ;}
@@ -713,10 +621,6 @@ make install
 		prev crossexec
 		exec - test '' = 'crossexec' || ${STDCMP} 2>/dev/null -s crossexec ${INSTALLROOT}/bin/crossexec || { ${STDMV} ${INSTALLROOT}/bin/crossexec ${INSTALLROOT}/bin/crossexec.old 2>/dev/null || true; ${STDCP} crossexec ${INSTALLROOT}/bin/crossexec ;}
 	done ${INSTALLROOT}/bin/crossexec generated
-	make ${INSTALLROOT}/bin/ditto
-		prev ditto
-		exec - test '' = 'ditto' || ${STDCMP} 2>/dev/null -s ditto ${INSTALLROOT}/bin/ditto || { ${STDMV} ${INSTALLROOT}/bin/ditto ${INSTALLROOT}/bin/ditto.old 2>/dev/null || true; ${STDCP} ditto ${INSTALLROOT}/bin/ditto ;}
-	done ${INSTALLROOT}/bin/ditto generated
 	make ${INSTALLROOT}/bin/filter
 		prev filter
 		exec - test '' = 'filter' || ${STDCMP} 2>/dev/null -s filter ${INSTALLROOT}/bin/filter || { ${STDMV} ${INSTALLROOT}/bin/filter ${INSTALLROOT}/bin/filter.old 2>/dev/null || true; ${STDCP} filter ${INSTALLROOT}/bin/filter ;}
@@ -726,57 +630,6 @@ make install
 		exec - then mkdir -p ${PACKAGEROOT}/lib/package
 		exec - fi
 	done ${PACKAGEROOT}/lib/package generated
-	make ${PACKAGEROOT}/lib/package/package.mk
-		prev ${PACKAGEROOT}/lib/package
-		make package.mk
-		done package.mk
-		exec - test '' = 'package.mk' || ${STDCMP} 2>/dev/null -s package.mk ${PACKAGEROOT}/lib/package/package.mk || { ${STDMV} ${PACKAGEROOT}/lib/package/package.mk ${PACKAGEROOT}/lib/package/package.mk.old 2>/dev/null || true; ${STDCP} package.mk ${PACKAGEROOT}/lib/package/package.mk ;}
-	done ${PACKAGEROOT}/lib/package/package.mk generated
-	make ${PACKAGEROOT}/lib/package/CONVERT.mk
-		make CONVERT.mk
-		done CONVERT.mk
-		exec - test '' = 'CONVERT.mk' || ${STDCMP} 2>/dev/null -s CONVERT.mk ${PACKAGEROOT}/lib/package/CONVERT.mk || { ${STDMV} ${PACKAGEROOT}/lib/package/CONVERT.mk ${PACKAGEROOT}/lib/package/CONVERT.mk.old 2>/dev/null || true; ${STDCP} CONVERT.mk ${PACKAGEROOT}/lib/package/CONVERT.mk ;}
-	done ${PACKAGEROOT}/lib/package/CONVERT.mk generated
-	make ${INSTALLROOT}/lib/make
-		exec - if test ! -d ${INSTALLROOT}/lib/make
-		exec - then mkdir -p ${INSTALLROOT}/lib/make
-		exec - fi
-	done ${INSTALLROOT}/lib/make generated
-	make ${INSTALLROOT}/lib/make/package.mk
-		prev ${INSTALLROOT}/lib/make
-		prev package.mk
-		exec - test '' = 'package.mk' || ${STDCMP} 2>/dev/null -s package.mk ${INSTALLROOT}/lib/make/package.mk || { ${STDMV} ${INSTALLROOT}/lib/make/package.mk ${INSTALLROOT}/lib/make/package.mk.old 2>/dev/null || true; ${STDCP} package.mk ${INSTALLROOT}/lib/make/package.mk ;}
-	done ${INSTALLROOT}/lib/make/package.mk generated
-	make ${INSTALLROOT}/lib/make/PROBE.mk
-		make PROBE.mk
-		done PROBE.mk
-		exec - test '' = 'PROBE.mk' || ${STDCMP} 2>/dev/null -s PROBE.mk ${INSTALLROOT}/lib/make/PROBE.mk || { ${STDMV} ${INSTALLROOT}/lib/make/PROBE.mk ${INSTALLROOT}/lib/make/PROBE.mk.old 2>/dev/null || true; ${STDCP} PROBE.mk ${INSTALLROOT}/lib/make/PROBE.mk ;}
-	done ${INSTALLROOT}/lib/make/PROBE.mk generated
-	make ${INSTALLROOT}/lib/make/TEST.mk
-		make TEST.mk
-		done TEST.mk
-		exec - test '' = 'TEST.mk' || ${STDCMP} 2>/dev/null -s TEST.mk ${INSTALLROOT}/lib/make/TEST.mk || { ${STDMV} ${INSTALLROOT}/lib/make/TEST.mk ${INSTALLROOT}/lib/make/TEST.mk.old 2>/dev/null || true; ${STDCP} TEST.mk ${INSTALLROOT}/lib/make/TEST.mk ;}
-	done ${INSTALLROOT}/lib/make/TEST.mk generated
-	make ${INSTALLROOT}/lib/make/WWW.mk
-		make WWW.mk
-		done WWW.mk
-		exec - test '' = 'WWW.mk' || ${STDCMP} 2>/dev/null -s WWW.mk ${INSTALLROOT}/lib/make/WWW.mk || { ${STDMV} ${INSTALLROOT}/lib/make/WWW.mk ${INSTALLROOT}/lib/make/WWW.mk.old 2>/dev/null || true; ${STDCP} WWW.mk ${INSTALLROOT}/lib/make/WWW.mk ;}
-	done ${INSTALLROOT}/lib/make/WWW.mk generated
-	make ${INSTALLROOT}/lib/make/MSGFUN.mk
-		make MSGFUN.mk
-		done MSGFUN.mk
-		exec - test '' = 'MSGFUN.mk' || ${STDCMP} 2>/dev/null -s MSGFUN.mk ${INSTALLROOT}/lib/make/MSGFUN.mk || { ${STDMV} ${INSTALLROOT}/lib/make/MSGFUN.mk ${INSTALLROOT}/lib/make/MSGFUN.mk.old 2>/dev/null || true; ${STDCP} MSGFUN.mk ${INSTALLROOT}/lib/make/MSGFUN.mk ;}
-	done ${INSTALLROOT}/lib/make/MSGFUN.mk generated
-	make ${INSTALLROOT}/lib/make/MSGKEY.mk
-		make MSGKEY.mk
-		done MSGKEY.mk
-		exec - test '' = 'MSGKEY.mk' || ${STDCMP} 2>/dev/null -s MSGKEY.mk ${INSTALLROOT}/lib/make/MSGKEY.mk || { ${STDMV} ${INSTALLROOT}/lib/make/MSGKEY.mk ${INSTALLROOT}/lib/make/MSGKEY.mk.old 2>/dev/null || true; ${STDCP} MSGKEY.mk ${INSTALLROOT}/lib/make/MSGKEY.mk ;}
-	done ${INSTALLROOT}/lib/make/MSGKEY.mk generated
-	make ${INSTALLROOT}/lib/make/MAPLIB.mk
-		make MAPLIB.mk
-		done MAPLIB.mk
-		exec - test '' = 'MAPLIB.mk' || ${STDCMP} 2>/dev/null -s MAPLIB.mk ${INSTALLROOT}/lib/make/MAPLIB.mk || { ${STDMV} ${INSTALLROOT}/lib/make/MAPLIB.mk ${INSTALLROOT}/lib/make/MAPLIB.mk.old 2>/dev/null || true; ${STDCP} MAPLIB.mk ${INSTALLROOT}/lib/make/MAPLIB.mk ;}
-	done ${INSTALLROOT}/lib/make/MAPLIB.mk generated
 	make ${INSTALLROOT}/bin/mamake
 		prev mamake
 		exec - test '' = 'mamake' || ${STDCMP} 2>/dev/null -s mamake ${INSTALLROOT}/bin/mamake || { ${STDMV} ${INSTALLROOT}/bin/mamake ${INSTALLROOT}/bin/mamake.old 2>/dev/null || true; ${STDCP} mamake ${INSTALLROOT}/bin/mamake ;}
@@ -789,10 +642,6 @@ make install
 		prev ratz
 		exec - test '' = 'ratz' || ${STDCMP} 2>/dev/null -s ratz ${INSTALLROOT}/bin/ratz || { ${STDMV} ${INSTALLROOT}/bin/ratz ${INSTALLROOT}/bin/ratz.old 2>/dev/null || true; ${STDCP} ratz ${INSTALLROOT}/bin/ratz ;}
 	done ${INSTALLROOT}/bin/ratz generated
-	make ${INSTALLROOT}/bin/release
-		prev release
-		exec - test '' = 'release' || ${STDCMP} 2>/dev/null -s release ${INSTALLROOT}/bin/release || { ${STDMV} ${INSTALLROOT}/bin/release ${INSTALLROOT}/bin/release.old 2>/dev/null || true; ${STDCP} release ${INSTALLROOT}/bin/release ;}
-	done ${INSTALLROOT}/bin/release generated
 	make ${INSTALLROOT}/bin/mkdir
 		make mkdir.sh
 		done mkdir.sh

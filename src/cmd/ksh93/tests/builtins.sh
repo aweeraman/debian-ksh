@@ -240,8 +240,7 @@ fi
 if	[[ $(LC_MESSAGES=C type test) != 'test is a shell builtin' ]]
 then	err_exit 'whence -v test not a builtin'
 fi
-builtin -d test
-if	[[ $(type test) == *builtin* ]]
+if	[[ $(builtin -d test; type test) == *builtin* ]]
 then	err_exit 'whence -v test after builtin -d incorrect'
 fi
 typeset -Z3 percent=$(printf '%o\n' "'%'")
@@ -722,6 +721,7 @@ read baz <<< 'foo\\\\bar'
 # ======
 # Check that I/O errors are detected <https://github.com/att/ast/issues/1093>
 actual=$(
+    set +x
     {
         (
             trap "" PIPE
@@ -918,7 +918,7 @@ unset foo
 [[ $(printf '%(%q)T') == $(printf '%(%Qz)T') ]] && err_exit 'date format %q is the same as %Qz'
 [[ $(printf '%(%Z)T') == $(date '+%Z') ]] || err_exit "date format %Z is incorrect (expected $(date '+%Z'), got $(printf '%(%Z)T'))"
 
-# Test manually specified blank and zero padding with 'printf  %T'
+# Test manually specified blank and zero padding with 'printf %T'
 (
 	IFS=$'\n\t' # Preserve spaces in output
 	for i in d e H I j J k l m M N S U V W y; do
@@ -1031,20 +1031,25 @@ EOF
 
 # ======
 # Builtins should handle unrecognized options correctly
-while IFS= read -r bltin <&3
-do	case $bltin in
-	echo | test | true | false | \[ | : | getconf | */getconf | uname | */uname | catclose | catgets | catopen | Dt* | _Dt* | X* | login | newgrp )
-		continue ;;
-	/*/*)	expect="Usage: ${bltin##*/} "
-		actual=$({ PATH=${bltin%/*}; "${bltin##*/}" --this-option-does-not-exist; } 2>&1) ;;
-	*/*)	err_exit "strange path name in 'builtin' output: $(printf %q "$bltin")"
-		continue ;;
-	*)	expect="Usage: $bltin "
-		actual=$({ "${bltin}" --this-option-does-not-exist; } 2>&1) ;;
-	esac
-	[[ $actual == *"$expect"* ]] || err_exit "$bltin should show usage info on unrecognized options" \
-			"(expected string containing $(printf %q "$expect"), got $(printf %q "$actual"))"
-done 3< <(builtin)
+function test_usage
+{
+	while IFS= read -r bltin <&3
+	do	case $bltin in
+		echo | test | true | false | \[ | : | expr | */expr | getconf | */getconf | uname | */uname | catclose | catgets | catopen | Dt* | _Dt* | X* | login | newgrp )
+			continue ;;
+		/*/*)	expect="Usage: ${bltin##*/} "
+			actual=$({ PATH=${bltin%/*}; "${bltin##*/}" --this-option-does-not-exist; } 2>&1) ;;
+		*/*)	err_exit "strange path name in 'builtin' output: $(printf %q "$bltin")"
+			continue ;;
+		autoload | compound | float | functions | integer | nameref)
+			bltin=typeset ;&
+		*)	expect="Usage: $bltin "
+			actual=$({ "${bltin}" --this-option-does-not-exist; } 2>&1) ;;
+		esac
+		[[ $actual == *"$expect"* ]] || err_exit "$bltin should show usage info on unrecognized options" \
+				"(expected string containing $(printf %q "$expect"), got $(printf %q "$actual"))"
+	done 3< <(builtin)
+}; test_usage
 
 # ======
 # The 'alarm' builtin could make 'read' crash due to IFS table corruption caused by unsafe asynchronous execution.
@@ -1068,22 +1073,11 @@ then	got=$( { "$SHELL" -c '
 		"(got status $e$( ((e>128)) && print -n / && kill -l "$e"), $(printf %q "$got"))"
 fi
 
-# ==========
-# Verify that the POSIX 'test' builtin complains loudly when the '=~' operator is used rather than
-# failing silently. See https://github.com/att/ast/issues/1152.
-actual=$($SHELL -c 'test foo =~ foo' 2>&1)
-actual_status=$?
-actual=${actual#*: }
-expect='test: =~: operator not supported; use [[ ... ]]'
-expect_status=2
-[[ "$actual" = "$expect" ]] || err_exit "test =~ failed (expected $expect, got $actual)"
-[[ "$actual_status" = "$expect_status" ]] ||
-    err_exit "test =~ failed with the wrong exit status (expected $expect_status, got $actual_status)"
-
-# Invalid operators 'test' and '[[ ... ]]' both reject should also cause an error with exit status 2.
+# ======
+# Verify that the POSIX 'test' builtin exits with status 2 when given an invalid binary operator.
 for operator in '===' ']]'
 do
-	actual="$($SHELL -c "test foo $operator foo" 2>&1)"
+	actual=$(test foo "$operator" foo 2>&1)
 	actual_status=$?
 	actual=${actual#*: }
 	expect="test: $operator: unknown operator"
@@ -1106,14 +1100,16 @@ got=$($SHELL -c 't=good; t=bad command -@; print $t' 2>/dev/null)
 
 # ======
 # Regression test for https://github.com/att/ast/issues/949
-foo_script='#!/bin/sh
-exit 0'
-echo "$foo_script" > "$tmp/foo1.sh"
-echo "$foo_script" > "$tmp/foo2.sh"
-builtin chmod
-chmod +x "$tmp/foo1.sh" "$tmp/foo2.sh"
-$SHELL "$tmp/foo1.sh" || err_exit "builtin 'chmod +x' doesn't work on first script"
-$SHELL "$tmp/foo2.sh" || err_exit "builtin 'chmod +x' doesn't work on second script"
+if	(builtin chmod) 2>/dev/null
+then	foo_script='#!/bin/sh
+	exit 0'
+	echo "$foo_script" > "$tmp/foo1.sh"
+	echo "$foo_script" > "$tmp/foo2.sh"
+	builtin chmod
+	chmod +x "$tmp/foo1.sh" "$tmp/foo2.sh"
+	$SHELL "$tmp/foo1.sh" || err_exit "builtin 'chmod +x' doesn't work on first script"
+	$SHELL "$tmp/foo2.sh" || err_exit "builtin 'chmod +x' doesn't work on second script"
+fi
 
 # ======
 # In ksh93v- 2013-10-10 alpha cd doesn't fail on directories without execute permission.
@@ -1214,19 +1210,21 @@ got=$(
 # ======
 # Test for bugs related to 'uname -d'
 # https://github.com/att/ast/pull/1187
-builtin uname
-exp=$(uname -o)
+if	(builtin uname) 2>/dev/null
+then	builtin uname
+	exp=$(uname -o)
 
-# Test for a possible crash (to avoid crashing the script, fork the subshell)
-(
-	ulimit -t unlimited 2> /dev/null
-	uname -d > /dev/null
-) || err_exit "'uname -d' crashes"
+	# Test for a possible crash (to avoid crashing the script, fork the subshell)
+	(
+		ulimit -t unlimited 2> /dev/null
+		uname -d > /dev/null
+	) || err_exit "'uname -d' crashes"
 
-# 'uname -d' shouldn't change the output of 'uname -o'
-got=$(ulimit -t unlimited 2> /dev/null; uname -d > /dev/null; uname -o)
-[[ $exp == $got ]] || err_exit "'uname -d' changes the output of 'uname -o'" \
-	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+	# 'uname -d' shouldn't change the output of 'uname -o'
+	got=$(ulimit -t unlimited 2> /dev/null; uname -d > /dev/null; uname -o)
+	[[ $exp == $got ]] || err_exit "'uname -d' changes the output of 'uname -o'" \
+		"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+fi
 
 # ======
 # https://github.com/ksh93/ksh/issues/138
@@ -1239,10 +1237,10 @@ then	exp='  version         cat (*) ????-??-??'
 	got=$(PATH=/opt/ast/bin:$PATH; "${ whence -p cat; }" --version 2>&1)
 	[[ $got == $exp ]] || err_exit "path-bound builtin not executable by canonical path resulting from expansion" \
 		"(expected match of $(printf %q "$exp"), got $(printf %q "$got"))"
-	got=$(PATH=/opt/ast/bin:$PATH "$SHELL" -o restricted -c 'cat --version' 2>&1)
+	got=$(PATH=/opt/ast/bin:$PATH; "$SHELL" -o restricted -c 'cat --version' 2>&1)
 	[[ $got == $exp ]] || err_exit "restricted shells do not recognize path-bound builtins" \
 		"(expected match of $(printf %q "$exp"), got $(printf %q "$got"))"
-	got=$(PATH=/opt/ast/bin cat --version 2>&1)
+	got=$(set +x; PATH=/opt/ast/bin cat --version 2>&1)
 	[[ $got == $exp ]] || err_exit "path-bound builtin not found on PATH in preceding assignment" \
 		"(expected match of $(printf %q "$exp"), got $(printf %q "$got"))"
 else	warning 'skipping path-bound builtin tests: builtin /opt/ast/bin/cat not found'
@@ -1283,6 +1281,144 @@ got=$(	readonly v=foo
 	print end)
 [[ $got == "$exp" ]] || err_exit "prefixing special builtin with 'command' does not stop it from exiting the shell on error" \
 	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
+# https://github.com/att/ast/issues/872
+hist_leak=$tmp/hist_leak.sh
+print 'ulimit -n 15' > "$hist_leak"
+for ((i=0; i!=11; i++)) do
+	print 'true foo\nhist -s foo=bar 2> /dev/null' >> "$hist_leak"
+done
+print 'print OK' >> "$hist_leak"
+exp="OK"
+got="$($SHELL -i "$hist_leak" 2>&1)"
+[[ $exp == "$got" ]] || err_exit "file descriptor leak in hist builtin" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# File descriptor leak after hist builtin substitution error
+hist_error_leak=$tmp/hist_error_leak.sh
+print 'ulimit -n 15' > "$hist_error_leak"
+for ((i=0; i!=11; i++)) do
+	print 'hist -s no=yes 2> /dev/null' >> "$hist_error_leak"
+done
+print 'print OK' >> "$hist_error_leak"
+exp="OK"
+got="$($SHELL -i "$hist_error_leak" 2>&1)"
+[[ $exp == "$got" ]] || err_exit "file descriptor leak after substitution error in hist builtin" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
+# printf -v works as of 2021-11-18
+integer ver=.sh.version
+exp=ok$'\f'0000$ver$'\n'
+printf -v got 'ok\f%012d\n' $ver 2>/dev/null
+[[ $got == "$exp" ]] || err_exit "printf -v not working" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+unset got
+printf -v 'got[1][two][3]' 'ok\f%012d\n' $ver 2>/dev/null
+[[ ${got[1]["two"][3]} == "$exp" ]] || err_exit "printf -v not working with array subscripts" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+unset got ver
+
+# ======
+# The rm builtin's -d option should remove files and empty directories without
+# removing non-empty directories (unless the -r option is also passed).
+# https://www.austingroupbugs.net/view.php?id=802
+if builtin rm 2> /dev/null; then
+	echo foo > "$tmp/bar"
+	mkdir "$tmp/emptydir"
+	mkdir -p "$tmp/nonemptydir1/subfolder"
+	mkdir "$tmp/nonemptydir2"
+	echo dummyfile > "$tmp/nonemptydir2/shouldexist"
+
+	# Tests for lone -d option
+	got=$(rm -d "$tmp/emptydir" 2>&1)
+	[[ $? == 0 ]] || err_exit 'rm builtin fails to remove empty directory with -d option' \
+		"(got $(printf %q "$got"))"
+	[[ -d $tmp/emptydir ]] && err_exit 'rm builtin fails to remove empty directory with -d option'
+	got=$(rm -d $tmp/bar 2>&1)
+	[[ $? == 0 ]] || err_exit 'rm builtin fails to remove files with -d option' \
+		"(got $(printf %q "$got"))"
+	[[ -f $tmp/bar ]] && err_exit 'rm builtin fails to remove files with -d option'
+	rm -d "$tmp/nonemptydir1" 2> /dev/null
+	[[ ! -d $tmp/nonemptydir1/subfolder ]] && err_exit 'rm builtin has unwanted recursion with -d option on folder containing folder'
+	rm -d "$tmp/nonemptydir2" 2> /dev/null
+	[[ ! -f $tmp/nonemptydir2/shouldexist ]] && err_exit 'rm builtin has unwanted recursion with -d option on folder containing file'
+
+	# Recreate non-empty directories in case the above tests failed
+	mkdir -p "$tmp/nonemptydir1/subfolder"
+	mkdir -p "$tmp/nonemptydir2"
+	echo dummyfile > "$tmp/nonemptydir2/shouldexist"
+
+	# Tests combining -d with -r
+	got=$(rm -rd "$tmp/nonemptydir1" 2>&1)
+	[[ $? == 0 ]] || err_exit 'rm builtin fails to remove non-empty directory and subdirectory with -rd options' \
+		"(got $(printf %q "$got"))"
+	[[ -d $tmp/nonemptydir1/subfolder || -d $tmp/nonemptydir1 ]] && err_exit 'rm builtin fails to remove all folders with -rd options'
+	got=$(rm -rd "$tmp/nonemptydir2" 2>&1)
+	[[ $? == 0 ]] || err_exit 'rm builtin fails to remove non-empty directory and file with -rd options' \
+		"(got $(printf %q "$got"))"
+	[[ -f $tmp/nonemptydir2/shouldexist || -d $tmp/nonemptydir2 ]] && err_exit 'rm builtin fails to remove all folders and files with -rd options'
+fi
+
+# ======
+# These are regression tests for the cd command's -e and -P flags
+mkdir -p "$tmp/failpwd1"
+cd "$tmp/failpwd1"
+rmdir ../failpwd1
+cd -P .
+got=$?; exp=0
+(( got == exp )) || err_exit "cd -P without -e exits with error status if \$PWD doesn't exist (expected $exp, got $got)"
+cd -eP .
+got=$?; exp=1
+(( got == exp )) || err_exit "cd -eP doesn't fail if \$PWD doesn't exist (expected $exp, got $got)"
+cd "$tmp"
+cd -P "$tmp/notadir" >/dev/null 2>&1
+got=$?; exp=1
+(( got == exp )) || err_exit "cd -P without -e fails with wrong exit status on nonexistent dir (expected $exp, got $got)"
+cd -eP "$tmp/notadir" >/dev/null 2>&1
+got=$?; exp=2
+(( got == exp )) || err_exit "cd -eP fails with wrong exit status on nonexistent dir (expected $exp, got $got)"
+OLDPWD="$tmp/baddir"
+cd -P - >/dev/null 2>&1
+got=$?; exp=1
+(( got == exp )) || err_exit "cd -P without -e fails with wrong exit status on \$OLDPWD (expected $exp, got $got)"
+cd -eP - >/dev/null 2>&1
+got=$?; exp=2
+(( got == exp )) || err_exit "cd -eP fails with wrong exit status on \$OLDPWD (expected $exp, got $got)"
+cd "$tmp" || err_exit "couldn't change directory from nonexistent dir"
+(set -o restricted; cd -P /) >/dev/null 2>&1
+got=$?; exp=1
+(( got == exp )) || err_exit "cd -P in restricted shell has wrong exit status (expected $exp, got $got)"
+(set -o restricted; cd -eP /) >/dev/null 2>&1
+got=$?; exp=2
+(( got == exp )) || err_exit "cd -eP in restricted shell has wrong exit status (expected $exp, got $got)"
+(set -o restricted; cd -?) >/dev/null 2>&1
+got=$?; exp=1
+(( got == exp )) || err_exit "cd -? shows usage info in restricted shell and has wrong exit status (expected $exp, got $got)"
+(cd -P '') >/dev/null 2>&1
+got=$?; exp=1
+(( got == exp )) || err_exit "cd -P to empty string has wrong exit status (expected $exp, got $got)"
+(cd -eP '') >/dev/null 2>&1
+got=$?; exp=2
+(( got == exp )) || err_exit "cd -eP to empty string has wrong exit status (expected $exp, got $got)"
+
+# ======
+# The head and tail builtins should work on files without newlines
+if builtin head 2> /dev/null; then
+	print -n nonewline > "$tmp/nonewline"
+	exp=nonewline
+	got=$(head -1 "$tmp/nonewline")
+	[[ $got == $exp ]] || err_exit "head builtin fails to correctly handle files without an ending newline" \
+		"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+fi
+if builtin tail 2> /dev/null; then
+	print -n 'newline\nnonewline' > "$tmp/nonewline"
+	exp=nonewline
+	got=$(tail -1 "$tmp/nonewline")
+	[[ $got == $exp ]] || err_exit "tail builtin fails to correctly handle files without an ending newline" \
+		"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+fi
 
 # ======
 exit $((Errors<125?Errors:125))

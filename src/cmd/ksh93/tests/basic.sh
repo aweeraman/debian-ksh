@@ -601,6 +601,20 @@ eu=$(
 )
 [[ ${us:1:1} == ${eu:1:1} ]] && err_exit "The time keyword ignores the locale's radix point (both are ${eu:1:1})"
 
+# The time keyword should obey the errexit option
+# https://www.illumos.org/issues/7694
+time_errexit="$tmp/time_errexit.sh"
+cat > "$time_errexit" << 'EOF'
+time false
+echo FAILURE
+true
+EOF
+got=$($SHELL -e "$time_errexit" 2>&1)
+(( $? == 0 )) && err_exit "The time keyword ignores the errexit option" \
+	"(got $(printf %q "$got"))"
+[[ -z $got ]] || err_exit "The time keyword produces output when a timed command fails and the errexit option is on" \
+	"(got $(printf %q "$got"))"
+
 # ======
 # Expansion of multibyte characters after expansion of single-character names $1..$9, $?, $!, $-, etc.
 case ${LC_ALL:-${LC_CTYPE:-${LANG:-}}} in
@@ -667,7 +681,7 @@ got=$(eval 'x=`for i in test; do case $i in test) true;; esac; done`' 2>&1) \
 
 # Redirecting disabled the DEBUG trap
 exp=$'LINENO: 4\nfoo\nLINENO: 5\nLINENO: 6\nbar\nLINENO: 7\nbaz'
-got=$({ "$SHELL" -c '
+got=$(set +x; { "$SHELL" -c '
 	PATH=/dev/null
 	trap "echo LINENO: \$LINENO >&1" DEBUG	# 3
 	echo foo				# 4
@@ -680,7 +694,7 @@ got=$({ "$SHELL" -c '
 
 # The DEBUG trap crashed when re-trapping inside a subshell
 exp=$'trap -- \': main\' EXIT\ntrap -- \': main\' ERR\ntrap -- \': main\' KEYBD\ntrap -- \': main\' DEBUG'
-got=$({ "$SHELL" -c '
+got=$(set +x; { "$SHELL" -c '
 	PATH=/dev/null
 	for sig in EXIT ERR KEYBD DEBUG
 	do	trap ": main" $sig
@@ -694,7 +708,7 @@ got=$({ "$SHELL" -c '
 
 # Field splitting broke upon evaluating an unquoted expansion in a DEBUG trap
 exp=$'a\nb\nc'
-got=$({ "$SHELL" -c '
+got=$(set +x; { "$SHELL" -c '
 	PATH=/dev/null
 	v=""
 	trap ": \$v" DEBUG
@@ -818,7 +832,7 @@ actual=$($SHELL --verson 2>&1)
 actual_status=$?
 expect='ksh: verson: bad option(s)'
 expect_status=2
-[[ "$actual" == ${expect}* ]] || err_exit "failed to get version string" \
+[[ "$actual" == *${expect}* ]] || err_exit "failed to handle invalid flag" \
 	"(expected $(printf %q ${expect}*), got $(printf %q "$actual"))"
 [[ $actual_status == $expect_status ]] ||
 	err_exit "wrong exit status (expected '$expect_status', got '$actual_status')"
@@ -826,11 +840,14 @@ expect_status=2
 # ======
 # Test for illegal seek error (ksh93v- regression)
 # https://www.mail-archive.com/ast-users@lists.research.att.com/msg00816.html
+if [[ $(uname -s) != SunOS ]]  # Solaris 11.4 join(1) hangs on this test -- not ksh's fault
+then
 exp='1
 2'
 got="$(join <(printf '%d\n' 1 2) <(printf '%d\n' 1 2))"
 [[ $exp == $got ]] || err_exit "pipeline fails with illegal seek error" \
 	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+fi  # $(uname -s) != SunOS
 
 # ======
 exit $((Errors<125?Errors:125))
