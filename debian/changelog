@@ -1,4 +1,4 @@
-ksh93u+m (1.0.0~beta.2-1) UNRELEASED; urgency=high
+ksh93u+m (1.0.0~beta.2-1) unstable; urgency=high
 
   * New upstream release.
   * Debian-specific patch by Simon McVittie to hardcode location of tput
