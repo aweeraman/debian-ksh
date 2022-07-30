@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,7 +18,6 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 #ifndef SEQPOINT
 /*
  * D. G. Korn
@@ -69,7 +68,6 @@
 
 struct lval
 {
-	Shell_t		*shp;
 	char		*value;
 	char		*ovalue;
 	Sfdouble_t	(*fun)(Sfdouble_t,...);
@@ -94,7 +92,6 @@ struct mathtab
 
 typedef struct _arith_
 {
-	Shell_t		*shp;
 	unsigned char	*code;
 	const char	*expr;
 	Sfdouble_t	(*fun)(const char**,struct lval*,int,Sfdouble_t);
@@ -200,7 +197,7 @@ extern const struct 		mathtab shtab_math[];
 #define VALUE	2
 #define MESSAGE	3
 
-extern Sfdouble_t strval(Shell_t*,const char*,char**,Sfdouble_t(*)(const char**,struct lval*,int,Sfdouble_t),int);
-extern Arith_t *arith_compile(Shell_t *,const char*,char**,Sfdouble_t(*)(const char**,struct lval*,int,Sfdouble_t),int);
+extern Sfdouble_t arith_strval(const char*,char**,Sfdouble_t(*)(const char**,struct lval*,int,Sfdouble_t),int);
+extern Arith_t *arith_compile(const char*,char**,Sfdouble_t(*)(const char**,struct lval*,int,Sfdouble_t),int);
 extern Sfdouble_t arith_exec(Arith_t*);
 #endif /* !SEQPOINT */

@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -26,15 +26,7 @@
 **
 **	Written by Kiem-Phong Vo.
 */
-#if __STD_C
-static int _uexcept(Sfio_t* f, int type, Void_t* val, Sfdisc_t* disc)
-#else
-static int _uexcept(f,type,val,disc)
-Sfio_t		*f;
-int		type;
-Void_t*		val;
-Sfdisc_t	*disc;
-#endif
+static int _uexcept(Sfio_t* f, int type, void* val, Sfdisc_t* disc)
 {	
 	NOTUSED(val);
 
@@ -49,21 +41,13 @@ Sfdisc_t	*disc;
 	return 1;
 }
 
-#if __STD_C
-int sfungetc(Sfio_t* f, int c)
-#else
-int sfungetc(f,c)
-Sfio_t*		f;	/* push back one byte to this stream */
-int		c;	/* the value to be pushed back */
-#endif
+int sfungetc(Sfio_t*	f,	/* push back one byte to this stream */
+	     int	c)	/* the value to be pushed back */
 {
 	reg Sfio_t*	uf;
-	SFMTXDECL(f);
 
-	SFMTXENTER(f, -1);
-
-	if(c < 0 || (f->mode != SF_READ && _sfmode(f,SF_READ,0) < 0))
-		SFMTXRETURN(f, -1);
+	if(!f || c < 0 || (f->mode != SF_READ && _sfmode(f,SF_READ,0) < 0))
+		return -1;
 	SFLOCK(f,0);
 
 	/* fast handling of the typical unget */
@@ -105,5 +89,5 @@ int		c;	/* the value to be pushed back */
 	*--f->next = (uchar)c;
 done:
 	SFOPEN(f,0);
-	SFMTXRETURN(f, c);
+	return c;
 }

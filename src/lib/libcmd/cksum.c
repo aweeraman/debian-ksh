@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -19,7 +19,6 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * Glenn Fowler
  * AT&T Research
@@ -122,7 +121,7 @@ typedef struct State_s			/* program state		*/
 	int		all;		/* list all items		*/
 	Sfio_t*		check;		/* check previous output	*/
 	int		flags;		/* sumprint() SUM_* flags	*/
-	gid_t		gid;		/* caller gid			*/
+	gid_t		gid;		/* caller GID			*/
 	int		header;		/* list method on output	*/
 	int		list;		/* list file name too		*/
 	Sum_t*		oldsum;		/* previous sum method		*/
@@ -136,7 +135,7 @@ typedef struct State_s			/* program state		*/
 	Sum_t*		sum;		/* sum method			*/
 	int		text;		/* \r\n == \n			*/
 	int		total;		/* list totals only		*/
-	uid_t		uid;		/* caller uid			*/
+	uid_t		uid;		/* caller UID			*/
 	int		warn;		/* invalid check line warnings	*/
 } State_t;
 
@@ -337,7 +336,7 @@ verify(State_t* state, register char* s, char* check, Sfio_t* rp)
 						if (state->silent)
 							error_info.errors++;
 						else
-							error(2, "%s: uid should be %s", file, fmtuid(uid));
+							error(2, "%s: UID should be %s", file, fmtuid(uid));
 					}
 					if (gid < 0 || gid == st.st_gid)
 						gid = -1;
@@ -346,7 +345,7 @@ verify(State_t* state, register char* s, char* check, Sfio_t* rp)
 						if (state->silent)
 							error_info.errors++;
 						else
-							error(2, "%s: gid should be %s", file, fmtgid(gid));
+							error(2, "%s: GID should be %s", file, fmtgid(gid));
 					}
 					if (state->permissions && (uid >= 0 || gid >= 0))
 					{

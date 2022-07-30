@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,7 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * POSIX syslog interface definitions
  */
@@ -84,7 +83,7 @@
 
 /* openlog flags */
 
-#define	LOG_PID		0x01	/* log the pid with each message	*/
+#define	LOG_PID		0x01	/* log the PID with each message	*/
 #define	LOG_CONS	0x02	/* log to console if errors in sending	*/
 #define LOG_NDELAY	0x08	/* open right now			*/
 #define	LOG_ODELAY	0x04	/* delay open until syslog() is called	*/
@@ -104,22 +103,9 @@
 #define LOG_FACILITY(p)	LOG_FAC(p)	/* get facility index from pri	*/
 #define LOG_SEVERITY(p)	LOG_PRI(p)	/* get severity from pri	*/
 
-#if _BLD_ast && defined(__EXPORT__)
-#define extern		__EXPORT__
-#endif
-#if !_BLD_ast && defined(__IMPORT__)
-#define extern		extern __IMPORT__
-#endif
-
 extern const Namval_t	log_facility[];
 extern const Namval_t	log_severity[];
 
-#undef	extern
-
-#endif
-
-#if _BLD_ast && defined(__EXPORT__)
-#define extern		__EXPORT__
 #endif
 
 extern void	closelog(void);
@@ -127,7 +113,5 @@ extern void	openlog(const char*, int, int);
 extern int	setlogmask(int);
 extern void	syslog(int, const char*, ...);
 extern void	vsyslog(int, const char*, va_list);
-
-#undef	extern
 
 #endif

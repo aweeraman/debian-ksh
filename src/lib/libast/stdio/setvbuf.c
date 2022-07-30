@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,15 +20,12 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 
 #include "stdhdr.h"
 
 int
 setvbuf(Sfio_t* f, char* buf, int type, size_t size)
 {
-	STDIO_INT(f, "setvbuf", int, (Sfio_t*, char*, int, size_t), (f, buf, type, size))
-
 	if (type == _IOLBF)
 		sfset(f, SF_LINE, 1);
 	else if (f->flags & SF_STRING)
@@ -43,7 +40,7 @@ setvbuf(Sfio_t* f, char* buf, int type, size_t size)
 		if (size == 0)
 			size = SF_BUFSIZE;
 		sfsync(f);
-		sfsetbuf(f, (Void_t*)buf, size);
+		sfsetbuf(f, (void*)buf, size);
 	}
 	return 0;
 }

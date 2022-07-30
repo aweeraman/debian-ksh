@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -31,14 +31,7 @@
 */
 
 /* hole preserving writes */
-#if __STD_C
 static ssize_t sfoutput(Sfio_t* f, char* buf, size_t n)
-#else
-static ssize_t sfoutput(f,buf,n)
-Sfio_t*		f;
-char*		buf;
-size_t		n;
-#endif
 {	reg char	*sp, *wbuf, *endbuf;
 	reg ssize_t	s, w, wr;
 
@@ -94,7 +87,7 @@ size_t		n;
 			{	buf = endbuf;
 				n = s = 0;
 			}
-			if((wr = syswritef(f->file,wbuf,buf-wbuf)) > 0)
+			if((wr = write(f->file,wbuf,buf-wbuf)) > 0)
 			{	w += wr;
 				f->bits &= ~SF_HOLE;
 			}
@@ -125,35 +118,27 @@ size_t		n;
 	return w > 0 ? w : -1;
 }
 
-#if __STD_C
-ssize_t sfwr(Sfio_t* f, const Void_t* buf, size_t n, Sfdisc_t* disc)
-#else
-ssize_t sfwr(f,buf,n,disc)
-Sfio_t*		f;
-Void_t*		buf;
-size_t		n;
-Sfdisc_t*	disc;
-#endif
+ssize_t sfwr(Sfio_t* f, const void* buf, size_t n, Sfdisc_t* disc)
 {
 	reg ssize_t	w;
 	reg Sfdisc_t*	dc;
 	reg int		local, oerrno;
-	SFMTXDECL(f);
 
-	SFMTXENTER(f,(ssize_t)(-1));
+	if(!f)
+		return (ssize_t)(-1);
 
 	GETLOCAL(f,local);
 	if(!local && !(f->bits&SF_DCDOWN)) /* an external user's call */
 	{	if(f->mode != SF_WRITE && _sfmode(f,SF_WRITE,0) < 0 )
-			SFMTXRETURN(f, (ssize_t)(-1));
+			return (ssize_t)(-1);
 		if(f->next > f->data && SFSYNC(f) < 0 )
-			SFMTXRETURN(f, (ssize_t)(-1));
+			return (ssize_t)(-1);
 	}
 
 	for(;;)
 	{	/* stream locked by sfsetfd() */
 		if(!(f->flags&SF_STRING) && f->file < 0)
-			SFMTXRETURN(f,(ssize_t)0);
+			return (ssize_t)0;
 
 		/* clear current error states */
 		f->flags &= ~(SF_EOF|SF_ERROR);
@@ -172,7 +157,7 @@ Sfdisc_t*	disc;
 					n = rv;
 				else if(rv < 0)
 				{	f->flags |= SF_ERROR;
-					SFMTXRETURN(f, rv);
+					return rv;
 				}
 			}
 
@@ -207,7 +192,7 @@ Sfdisc_t*	disc;
 			else
 			{
 			do_write:
-				if((w = syswritef(f->file,buf,n)) > 0)
+				if((w = write(f->file,buf,n)) > 0)
 					f->bits &= ~SF_HOLE;
 			}
 
@@ -223,7 +208,7 @@ Sfdisc_t*	disc;
 						f->extent = f->here;
 				}
 
-				SFMTXRETURN(f, (ssize_t)w);
+				return (ssize_t)w;
 			}
 		}
 
@@ -235,13 +220,13 @@ Sfdisc_t*	disc;
 			goto do_continue;
 		case SF_EDONE :
 			w = local ? 0 : w;
-			SFMTXRETURN(f, (ssize_t)w);
+			return (ssize_t)w;
 		case SF_EDISC :
 			if(!local && !(f->flags&SF_STRING))
 				goto do_continue;
 			/* FALLTHROUGH */
 		case SF_ESTACK :
-			SFMTXRETURN(f, (ssize_t)(-1));
+			return (ssize_t)(-1);
 		}
 
 	do_continue:

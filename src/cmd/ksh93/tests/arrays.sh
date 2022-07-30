@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -598,7 +598,7 @@ x=$(
 	foo[1]=(66)
 	typeset -p foo
 ) 2> /dev/null
-[[ $x == "$exp" ]] || err_exit 'setting element 1 to index fooay failed'
+[[ $x == "$exp" ]] || err_exit 'setting element 1 of indexed array foo failed'
 unset foo
 exp='typeset -a foo=((11 22) (x=3))'
 x=$(
@@ -606,7 +606,8 @@ x=$(
 	foo[1]=(x=3)
 	typeset -p foo
 ) 2> /dev/null
-[[ $x == "$exp" ]] || err_exit 'setting element 1 of array to compound variable failed'
+[[ $x == "$exp" ]] || err_exit 'setting element 1 of array to compound variable failed' \
+	"(expected $(printf %q "$exp"), got $(printf %q "$x"))"
 
 # test for cloning a very large indexed array - can core dump
 (	
@@ -737,6 +738,108 @@ unset foo bar
 typeset -a foo=([1]=w [2]=x) bar=(a b c)
 foo+=("${bar[@]}")
 [[ $(typeset -p foo) == 'typeset -a foo=([1]=w [2]=x [3]=a [4]=b [5]=c)' ]] || err_exit 'Appending does not work if array contains empty indexes'
+
+# ======
+# Array expansion should work without crashing or
+# causing spurious syntax errors.
+exp='b c'
+got=$("$SHELL" -c '
+       typeset -a ar=([0]=a [1]=b [2]=c)
+       integer a=1 b=2
+       print ${ar[${a}..${b}]}
+' 2>&1)
+[[ $exp == $got ]] || err_exit $'Substituting array elements with ${ar[${a}..${b}]} doesn\'t work' \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+got=$("$SHELL" -c 'test -z ${foo[${bar}..${baz}]}' 2>&1)
+[[ -z $got ]] || err_exit $'Using ${foo[${bar}..${baz}]} when the variable ${foo} isn\'t set fails in error' \
+	"(got $(printf %q "$got"))"
+
+# ======
+# Spurious '[0]=' element in 'typeset -p' output for indexed array variable that is set but empty
+# https://github.com/ksh93/ksh/issues/420
+# https://github.com/att/ast/issues/69#issuecomment-325435618
+exp='len=0: typeset -a Y_ARR=()'
+got=$("$SHELL" -c '
+	typeset -a Y_ARR
+	function Y_ARR.unset {
+		:
+	}
+	print -n "len=${#Y_ARR[@]}: "
+	typeset -p Y_ARR
+')
+[[ $exp == $got ]] || err_exit 'Giving an array a .unset discipline function adds a spurious [0] element' \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# https://github.com/att/ast/issues/69#issuecomment-325551035
+exp='len=0: typeset -a X_ARR=()'
+got=$("$SHELL" -c '
+	typeset -a X_ARR=(aa bb cc)
+	unset X_ARR[2]
+	unset X_ARR[1]
+	unset X_ARR[0]
+	print -n "len=${#X_ARR[@]}: "
+	typeset -p X_ARR
+')
+[[ $exp == $got ]] || err_exit 'Unsetting all elements of an array adds a spurious [0] element' \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
+# https://github.com/ksh93/ksh/issues/383
+unset foo
+exp=bar
+got=$(echo "${foo[42]=bar}")
+[[ $got == "$exp" ]] || err_exit '${array[index]=value} does not assign value' \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+exp=baz
+got=$(echo "${foo[42]:=baz}")
+[[ $got == "$exp" ]] || err_exit '${array[index]:=value} does not assign value' \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+exp=': parameter not set'
+got=$(set +x; redirect 2>&1; : ${foo[42]?})
+[[ $got == *"$exp" ]] || err_exit '${array[index]?error} does not throw error' \
+	"(expected match of *$(printf %q "$exp"), got $(printf %q "$got"))"
+exp=': parameter null'
+got=$(set +x; redirect 2>&1; foo[42]=''; : ${foo[42]:?})
+[[ $got == *"$exp" ]] || err_exit '${array[index]:?error} does not throw error' \
+	"(expected match of *$(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
+# A multidimensional indexed array should be printed correctly by
+# 'typeset -p'. Additionally, the printed command must produce the
+# same result when reinput to the shell.
+unset foo
+typeset -a foo[1][2]=bar
+exp='typeset -a foo=(typeset -a [1]=([2]=bar) )'
+got=$(typeset -p foo)
+[[ $exp == "$got" ]] || err_exit "Multidimensional indexed arrays are not printed correctly with 'typeset -p'" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+unset foo
+typeset -a foo=(typeset -a [1]=([2]=bar) )
+got=$(typeset -p foo)
+[[ $exp == "$got" ]] || err_exit "Output from 'typeset -p' for indexed array cannot be used for reinput" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
+# Regression test for 'typeset -a' from ksh93v- 2013-04-02
+"$SHELL" -c 'a=(foo bar); [[ $(typeset -a) == *"a=("*")"* ]]' || err_exit "'typeset -a' doesn't work correctly"
+
+# ======
+# https://github.com/ksh93/ksh/issues/409
+got=$(typeset -a a=(1 2 3); (typeset -A a; typeset -p a); typeset -p a)
+exp=$'typeset -A a=([0]=1 [1]=2 [2]=3)\ntypeset -a a=(1 2 3)'
+[[ $got == "$exp" ]] || err_exit 'conversion of indexed array to associative fails in subshell' \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
+# spurious command execution of a word starting with '[' but not containing ']=' in associative array assignments
+# https://github.com/ksh93/ksh/issues/427
+exp='*: syntax error at line *: `\[badword]'\'' unexpected'
+got=$(set +x; PATH=/dev/null; eval 'typeset -A badword=([x]=1 \[badword])' 2>&1)
+case $((e=$?)),$got in
+3,$exp)	;;
+*)	err_exit 'spurious command execution in invalid associative array assignment' \
+		"(expected status 3 and $(printf %q "$exp"), got status $e and $(printf %q "$got"))" ;;
+esac
 
 # ======
 exit $((Errors<125?Errors:125))

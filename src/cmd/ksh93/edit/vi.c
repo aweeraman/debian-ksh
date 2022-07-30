@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,7 +18,6 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /* Adapted for ksh by David Korn */
 /*+	VI.C			P.D. Sullivan
  *
@@ -28,6 +27,8 @@
  *		P.D. Sullivan
  *		cbosgd!pds
 -*/
+
+#include	"shopt.h"
 
 #if SHOPT_VSH
 
@@ -68,8 +69,8 @@
 #   define isalph(v)	_isalph(virtual[v])
 #else
     static genchar	_c;
-#   define gencpy(a,b)	strcpy((char*)(a),(char*)(b))
-#   define genncpy(a,b,n) strncpy((char*)(a),(char*)(b),n)
+#   define gencpy(a,b)	strcopy((char*)(a),(char*)(b))
+#   define genncpy(a,b,n) strncopy((char*)(a),(char*)(b),n)
 #   define genlen(str)	strlen(str)
 #   define isalph(v)	((_c=virtual[v])=='_'||isalnum(_c))
 #   undef  isblank
@@ -113,6 +114,7 @@ typedef struct _vi_
 	int U_saved;		/* original virtual saved */
 	genchar *U_space;	/* used for U command */
 	genchar *u_space;	/* used for u command */
+	unsigned char del_word;	/* used for Ctrl-Delete */
 #ifdef FIORDCHK
 	clock_t typeahead;	/* typeahead occurred */
 #else
@@ -191,10 +193,10 @@ static int	search(Vi_t*,int);
 static void	sync_cursor(Vi_t*);
 static int	textmod(Vi_t*,int,int);
 
-/*+	VI_READ( fd, shbuf, nchar )
+/*+	ED_VIREAD( context, fd, shbuf, nchar, reedit )
  *
  *	This routine implements a one line version of vi and is
- * called by _filbuf.c
+ * called by slowread() in io.c
  *
 -*/
 
@@ -218,7 +220,7 @@ int ed_viread(void *context, int fd, register char *shbuf, int nchar, int reedit
 #if SHOPT_RAWONLY
 #   define viraw	1
 #else
-	int viraw = (sh_isoption(SH_VIRAW) || ed->sh->st.trap[SH_KEYTRAP]);
+	int viraw = (sh_isoption(SH_VIRAW) || sh.st.trap[SH_KEYTRAP]);
 #   ifndef FIORDCHK
 	clock_t oldtime, newtime;
 	struct tms dummy;
@@ -253,7 +255,7 @@ int ed_viread(void *context, int fd, register char *shbuf, int nchar, int reedit
 		oldtime = times(&dummy);
 #endif /* FIORDCHK */
 		/* abort of interrupt has occurred */
-		if(ed->sh->trapnote&SH_SIGSET)
+		if(sh.trapnote&SH_SIGSET)
 			i = -1;
 		else
 		{
@@ -472,7 +474,10 @@ int ed_viread(void *context, int fd, register char *shbuf, int nchar, int reedit
 				pr_string(vp,Prompt);
 				putstring(vp,0, last_phys+1);
 				if(echoctl)
-					ed_crlf(vp->ed);
+				{
+					putchar('\n');
+					ed_flush(vp->ed);
+				}
 				else
 					while(kill_erase-- > 0)
 						putchar(' ');
@@ -481,7 +486,10 @@ int ed_viread(void *context, int fd, register char *shbuf, int nchar, int reedit
 			if( term_char=='\n' )
 			{
 				if(!echoctl)
-					ed_crlf(vp->ed);
+				{
+					putchar('\n');
+					ed_flush(vp->ed);
+				}
 				virtual[++last_virt] = '\n';
 			}
 			vp->last_cmd = 'i';
@@ -594,7 +602,8 @@ int ed_viread(void *context, int fd, register char *shbuf, int nchar, int reedit
 	if( vp->addnl )
 	{
 		virtual[++last_virt] = '\n';
-		ed_crlf(vp->ed);
+		putchar('\n');
+		ed_flush(vp->ed);
 	}
 	if( ++last_virt >= 0 )
 	{
@@ -754,7 +763,7 @@ static int cntlmode(Vi_t *vp)
 		if(mvcursor(vp,c))
 		{
 			sync_cursor(vp);
-			if( c != '[' )
+			if( c != '[' && c != 'O' )
 				vp->repeat = 1;
 			continue;
 		}
@@ -908,7 +917,7 @@ static int cntlmode(Vi_t *vp)
 				hist_copy((char*)virtual, MAXLINE, curhline,-1);
 			else
 			{
-				strcpy((char*)virtual,(char*)vp->u_space);
+				strcopy((char*)virtual,(char*)vp->u_space);
 #if SHOPT_MULTIBYTE
 				ed_internal((char*)vp->u_space,vp->u_space);
 #endif /* SHOPT_MULTIBYTE */
@@ -1037,7 +1046,7 @@ static int cntlmode(Vi_t *vp)
 			if(lookahead)
 			{
 				ed_ungetchar(vp->ed,c=ed_getchar(vp->ed,1));
-				if(c=='[')
+				if(c=='[' || c=='O')
 					continue;
 			}
 			/* FALLTHROUGH */
@@ -1158,7 +1167,7 @@ static void del_line(register Vi_t *vp, int mode)
 
 /*{	DELMOTION( motion, mode )
  *
- *	Delete thru motion.
+ *	Delete through motion.
  *
  *	mode	= 'd', save deleted characters, delete
  *		= 'c', do not save characters, change
@@ -1431,6 +1440,10 @@ static void getline(register Vi_t* vp,register int mode)
 			}
 			break;
 
+		case cntl('G'):
+			if(mode!=SEARCH)
+				goto fallback;
+			/* FALLTHROUGH */
 		case UINTR:
 				first_virt = 0;
 				cdelete(vp,cur_virt+1, BAD);
@@ -1529,8 +1542,7 @@ static void getline(register Vi_t* vp,register int mode)
 			if(sh_isoption(SH_VI) &&
 				mode != SEARCH &&
 				last_virt >= 0 &&
-				(vp->ed->e_tabcount || !isblank(cur_virt)) &&
-				vp->ed->sh->nextprompt)
+				sh.nextprompt)
 			{
 				if(virtual[cur_virt]=='\\')
 				{
@@ -1552,6 +1564,7 @@ static void getline(register Vi_t* vp,register int mode)
 			}
 			/* FALLTHROUGH */
 		default:
+		fallback:
 			if( mode == REPLACE )
 			{
 				if( cur_virt < last_virt )
@@ -1585,7 +1598,7 @@ static void getline(register Vi_t* vp,register int mode)
 
 static int mvcursor(register Vi_t* vp,register int motion)
 {
-	register int count;
+	register int count, c, d;
 	register int tcur_virt;
 	register int incr = -1;
 	register int bound = 0;
@@ -1614,7 +1627,8 @@ static int mvcursor(register Vi_t* vp,register int motion)
 		tcur_virt = last_virt;
 		break;
 
-	case '[':
+	case '[':	/* feature not in book */
+	case 'O':	/* after running top <ESC>O instead of <ESC>[ */
 		switch(motion=ed_getchar(vp->ed,-1))
 		{
 		    case 'A':
@@ -1629,7 +1643,7 @@ static int mvcursor(register Vi_t* vp,register int motion)
 #if SHOPT_MULTIBYTE
 				ed_external(virtual,lsearch+1);
 #else
-				strcpy(lsearch+1,virtual);
+				strcopy(lsearch+1,virtual);
 #endif /* SHOPT_MULTIBYTE */
 				*lsearch = '^';
 				vp->direction = -2;
@@ -1661,12 +1675,95 @@ static int mvcursor(register Vi_t* vp,register int motion)
 			/* VT220 End key */
 			ed_ungetchar(vp->ed,'$');
 			return(1);
+		    case '1':
+		    case '7':
+			bound = ed_getchar(vp->ed,-1);
+			if(bound=='~')
+			{ /* Home key */
+				ed_ungetchar(vp->ed,'0');
+				return(1);
+			}
+			else if(motion=='1' && bound==';')
+			{
+				c = ed_getchar(vp->ed,-1);
+				if(c == '3' || c == '5' || c == '9') /* 3 == Alt, 5 == Ctrl, 9 == iTerm2 Alt */
+				{
+					d = ed_getchar(vp->ed,-1);
+					switch(d)
+					{
+					    case 'D': /* Ctrl/Alt-Left arrow (go back one word) */
+						ed_ungetchar(vp->ed, 'b');
+						return(1);
+					    case 'C': /* Ctrl/Alt-Right arrow (go forward one word) */
+						ed_ungetchar(vp->ed, 'w');
+						return(1);
+					}
+					ed_ungetchar(vp->ed,d);
+				}
+				ed_ungetchar(vp->ed,c);
+			}
+			ed_ungetchar(vp->ed,bound);
+			ed_ungetchar(vp->ed,motion);
+			return(0);
+		    case '2':
+			bound = ed_getchar(vp->ed,-1);
+			if(bound=='~')
+			{
+				/* VT220 insert key */
+				ed_ungetchar(vp->ed,'i');
+				return(1);
+			}
+			ed_ungetchar(vp->ed,bound);
+			ed_ungetchar(vp->ed,motion);
+			return(0);
 		    case '3':
 			bound = ed_getchar(vp->ed,-1);
 			if(bound=='~')
 			{
 				/* VT220 forward-delete key */
 				ed_ungetchar(vp->ed,'x');
+				return(1);
+			}
+			else if(bound==';')
+			{
+				c = ed_getchar(vp->ed,-1);
+				if(c == '5')
+				{
+					d = ed_getchar(vp->ed,-1);
+					if(d == '~')
+					{
+						/* Ctrl-Delete */
+						vp->del_word = 1;
+						ed_ungetchar(vp->ed,'d');
+						return(1);
+					}
+					ed_ungetchar(vp->ed,d);
+				}
+				ed_ungetchar(vp->ed,c);
+			}
+			ed_ungetchar(vp->ed,bound);
+			ed_ungetchar(vp->ed,motion);
+			return(0);
+		    case '5':  /* Haiku terminal Ctrl-Arrow key */
+			bound = ed_getchar(vp->ed,-1);
+			switch(bound)
+			{
+			    case 'D': /* Ctrl-Left arrow (go back one word) */
+				ed_ungetchar(vp->ed, 'b');
+				return(1);
+			    case 'C': /* Ctrl-Right arrow (go forward one word) */
+				ed_ungetchar(vp->ed, 'w');
+				return(1);
+			}
+			ed_ungetchar(vp->ed,bound);
+			ed_ungetchar(vp->ed,motion);
+			return(0);
+		    case '4':
+		    case '8':
+			bound = ed_getchar(vp->ed,-1);
+			if(bound=='~')
+			{ /* End key */
+				ed_ungetchar(vp->ed,'$');
 				return(1);
 			}
 			ed_ungetchar(vp->ed,bound);
@@ -2233,7 +2330,7 @@ static int curline_search(Vi_t *vp, const char *string)
 #endif /* SHOPT_MULTIBYTE */
 	for(dp=(char*)vp->u_space,dpmax=dp+strlen(dp)-len; dp<=dpmax; dp++)
 	{
-		if(*dp==*cp && memcmp(cp,dp,len)==0)
+		if(strncmp(cp,dp,len)==0)
 			return(dp-(char*)vp->u_space);
 	}
 #if SHOPT_MULTIBYTE
@@ -2274,7 +2371,7 @@ static int search(register Vi_t* vp,register int mode)
 	{
 		/*** user wants repeat of last search ***/
 		del_line(vp,BAD);
-		strcpy( ((char*)virtual)+1, lsearch);
+		strcopy( ((char*)virtual)+1, lsearch);
 #if SHOPT_MULTIBYTE
 		*((char*)virtual) = '/';
 		ed_internal((char*)virtual,virtual);
@@ -2303,10 +2400,10 @@ static int search(register Vi_t* vp,register int mode)
 		i = INVALID;
 		if( new_direction==1 && curhline >= histmax )
 			curhline = histmin + 1;
-		location = hist_find(shgd->hist_ptr,((char*)virtual)+1, curhline, 1, new_direction);
+		location = hist_find(sh.hist_ptr,((char*)virtual)+1, curhline, 1, new_direction);
 	}
 	cur_virt = i;
-	strncpy(lsearch, ((char*)virtual)+1, SEARCHSIZE-1);
+	strncopy(lsearch, ((char*)virtual)+1, SEARCHSIZE-1);
 	lsearch[SEARCHSIZE-1] = 0;
 	if( (curhline=location.hist_command) >=0 )
 	{
@@ -2480,7 +2577,7 @@ addin:
 			--cur_virt;
 			--last_virt;
 			vp->ocur_virt = MAXCHAR;
-			if(c=='=' || (mode<cur_virt && (virtual[cur_virt]==' ' || virtual[cur_virt]=='/')))
+			if(c=='=' || (mode<cur_virt && virtual[cur_virt]=='/'))
 				vp->ed->e_tabcount = 0;
 			return(APPEND);
 		}
@@ -2604,6 +2701,11 @@ chgeol:
 	case 'd':		/** delete **/
 		if( mode )
 			c = vp->lastmotion;
+		else if( vp->del_word )
+		{
+			vp->del_word = 0;
+			c = 'w';
+		}
 		else
 			c = getcount(vp,ed_getchar(vp->ed,-1));
 deleol:
@@ -2700,7 +2802,7 @@ deleol:
 		c = '$';
 		goto yankeol;
 
-	case 'y':		/** yank thru motion **/
+	case 'y':		/** yank through motion **/
 		if( mode )
 			c = vp->lastmotion;
 		else
@@ -2739,10 +2841,12 @@ yankeol:
 #if SHOPT_MULTIBYTE
 				if((c&~STRIP)==0)
 #endif /* SHOPT_MULTIBYTE */
-				if( isupper(c) )
-					c = tolower(c);
-				else if( islower(c) )
-					c = toupper(c);
+				{
+					if( isupper(c) )
+						c = tolower(c);
+					else if( islower(c) )
+						c = toupper(c);
+				}
 				replace(vp,c, 1);
 			}
 			return(GOOD);

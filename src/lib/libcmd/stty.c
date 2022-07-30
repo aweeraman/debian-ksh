@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -19,7 +19,6 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * stty.c
  * Written by David Korn
@@ -38,7 +37,7 @@ static const char usage[] =
 "[g:save?Writes the current settings to standard output in a form that "
     "can be used as an argument to another \bstty\b command. The \brows\b "
     "and \bcolumns\b values are not included.]"
-"[t:terminal-group?Print the terminal group id of the device, -1 if "
+"[t:terminal-group?Print the terminal group ID of the device, -1 if "
     "unknown.]"
 "\n"
 "\n[mode ...]\n"
@@ -598,7 +597,6 @@ static const Tty_t *lookup(const char *name)
 			return(&Ttable[i]);
 	}
 	return(0);
-
 }
 
 static const Tty_t *getspeed(unsigned long val)

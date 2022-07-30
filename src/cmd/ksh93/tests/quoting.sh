@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2011 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -361,5 +361,14 @@ set --
 ARGS=("$@")
 set -- "${ARGS[@]}"
 (( $# )) &&  err_exit 'set -- "${ARGS[@]}" for empty array should not produce arguments'
+
+# ======
+# Backported tests from ksh93v- 2013-04-22 for using
+# backslashes in variables.
+x=\\x
+[[ x == $x ]] && err_exit "\$x='$x' should not match x"
+case x in
+$x) err_exit "case \$x='$x' should not match x";;
+esac
 
 exit $((Errors<125?Errors:125))

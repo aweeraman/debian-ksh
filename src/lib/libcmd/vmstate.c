@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -19,13 +19,14 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 
 #include <cmd.h>
 #include <vmalloc.h>
 #include <sfdisc.h>
 
-#if !_std_malloc  /* do not pointlessly compile this if vmalloc is disabled */
+#if _std_malloc  /* do not pointlessly compile this if vmalloc is disabled */
+NoN(vmstate)
+#else
 
 #define FORMAT		"region=%(region)p method=%(method)s flags=%(flags)s size=%(size)d segments=%(segments)d busy=(%(busy_size)d,%(busy_blocks)d,%(busy_max)d) free=(%(free_size)d,%(free_blocks)d,%(free_max)d)"
 
@@ -35,8 +36,8 @@ static const char usage[] =
 "[+NAME?vmstate - list the calling process vmalloc region state]"
 "[+DESCRIPTION?When invoked as a shell builtin, \bvmstate\b lists the "
     "calling process \bvmalloc\b(3) state for all regions.]"
-"[f:format?List the ids specified by \aformat\a. \aformat\a follows "
-    "\bprintf\b(3) conventions, except that \bsfio\b(3) inline ids are used "
+"[f:format?List the IDs specified by \aformat\a. \aformat\a follows "
+    "\bprintf\b(3) conventions, except that \bsfio\b(3) inline IDs are used "
     "instead of arguments: "
     "%[-+]][\awidth\a[.\aprecis\a[.\abase\a]]]]]](\aid\a)\achar\a. The "
     "supported \aid\as are:]:[format:=" FORMAT "]"

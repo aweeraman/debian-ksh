@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -45,28 +45,23 @@
 #define STREAM_PEEK	001
 #define SOCKET_PEEK	002
 
-#if __STD_C
-ssize_t sfpkrd(int fd, Void_t* argbuf, size_t n, int rc, long tm, int action)
-#else
-ssize_t sfpkrd(fd, argbuf, n, rc, tm, action)
-int	fd;	/* file descriptor */
-Void_t*	argbuf;	/* buffer to read data */
-size_t	n;	/* buffer size */
-int	rc;	/* record character */
-long	tm;	/* time-out */
-int	action;	/* >0: peeking, if rc>=0, get action records,
-		   <0: no peeking, if rc>=0, get action records,
-		   =0: no peeking, if rc>=0, must get a single record
-		   =2: same as >0, but always use select(2)
-		*/
-#endif
+ssize_t sfpkrd(int	fd,	/* file descriptor */
+	       void*	argbuf,	/* buffer to read data */
+	       size_t	n,	/* buffer size */
+	       int	rc,	/* record character */
+	       long	tm,	/* time-out */
+	       int	action)	/* >0: peeking, if rc>=0, get action records,
+				   <0: no peeking, if rc>=0, get action records,
+				   =0: no peeking, if rc>=0, must get a single record
+				   =2: same as >0, but always use select(2)
+				*/
 {
 	reg ssize_t	r;
 	reg int		ntry, t;
 	reg char	*buf = (char*)argbuf, *endbuf;
 
 	if(rc < 0 && tm < 0 && action <= 0)
-		return sysreadf(fd,buf,n);
+		return read(fd,buf,n);
 
 	t = (action > 0 || rc >= 0) ? (STREAM_PEEK|SOCKET_PEEK) : 0;
 #if !_stream_peek
@@ -99,7 +94,7 @@ int	action;	/* >0: peeking, if rc>=0, get action records,
 			{	t &= ~SOCKET_PEEK;
 				if(r > 0 && (r = pbuf.databuf.len) <= 0)
 				{	if(action <= 0)	/* read past eof */
-						r = sysreadf(fd,buf,1);
+						r = read(fd,buf,1);
 					return r;
 				}
 				if(r == 0)
@@ -156,7 +151,7 @@ int	action;	/* >0: peeking, if rc>=0, get action records,
 
 			if(r > 0)		/* there is data now */
 			{	if(action <= 0 && rc < 0)
-					return sysreadf(fd,buf,n);
+					return read(fd,buf,n);
 				else	r = -1;
 			}
 			else if(tm >= 0)	/* timeout exceeded */
@@ -181,7 +176,7 @@ int	action;	/* >0: peeking, if rc>=0, get action records,
 					break;
 				else	/* read past eof */
 				{	if(action <= 0)
-						r = sysreadf(fd,buf,1);
+						r = read(fd,buf,1);
 					return r;
 				}
 			}
@@ -197,7 +192,7 @@ int	action;	/* >0: peeking, if rc>=0, get action records,
 			if((action = action ? -action : 1) > (int)n)
 				action = n;
 			r = 0;
-			while((t = sysreadf(fd,buf,action)) > 0)
+			while((t = read(fd,buf,action)) > 0)
 			{	r += t;
 				for(endbuf = buf+t; buf < endbuf;)
 					if(*buf++ == rc)
@@ -223,7 +218,7 @@ int	action;	/* >0: peeking, if rc>=0, get action records,
 
 	/* advance */
 	if(action <= 0)
-		r = sysreadf(fd,buf,r);
+		r = read(fd,buf,r);
 
 	return r;
 }

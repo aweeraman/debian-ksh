@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -239,9 +239,9 @@ if	rm -rf "$file" && ln -s / "$file"
 then	[[ -L "$file" ]] || err_exit '-L not working'
 	[[ -L "$file"/ ]] && err_exit '-L with file/ not working'
 fi
-$SHELL -c 't=1234567890; [[ $t == @({10}(\d)) ]]' 2> /dev/null || err_exit ' @({10}(\d)) pattern not working'
-$SHELL -c '[[ att_ == ~(E)(att|cus)_.* ]]' 2> /dev/null || err_exit ' ~(E)(att|cus)_* pattern not working'
-$SHELL -c '[[ att_ =~ (att|cus)_.* ]]' 2> /dev/null || err_exit ' =~ ere not working'
+$SHELL -c 't=1234567890; [[ $t == @({10}(\d)) ]]' 2> /dev/null || err_exit '@({10}(\d)) pattern not working'
+$SHELL -c '[[ att_ == ~(E)(att|cus)_.* ]]' 2> /dev/null || err_exit '~(E)(att|cus)_* pattern not working'
+$SHELL -c '[[ att_ =~ (att|cus)_.* ]]' 2> /dev/null || err_exit '=~ ere not working'
 $SHELL -c '[[ abc =~ a(b)c ]]' 2> /dev/null || err_exit '[[ abc =~ a(b)c ]] fails'
 $SHELL -xc '[[ abc =~  \babc\b ]]' 2> /dev/null || err_exit '[[ abc =~ \babc\b ]] fails'
 [[ abc == ~(E)\babc\b ]] || err_exit '\b not preserved for ere when not in ()'
@@ -325,15 +325,15 @@ x=abc
 [[ -v x[0] ]] || err_exit  'x[0] should be set'
 [[ ${x[0]+x} ]] || err_exit print  '${x[0]+x} should be x'
 [[ -v x[3] ]] && err_exit 'x[3] should not be set'
-[[ ${x[3]+x} ]] && err_exit  '${x[0]+x} should be Empty'
+[[ ${x[3]+x} ]] && err_exit '${x[0]+x} should be empty'
 unset x
-[[ ${x[@]+x} ]] && err_exit  '${x[@]+x} should be Empty'
+[[ ${x[@]+x} ]] && err_exit '${x[@]+x} should be empty'
 unset x y z foo bar
 
 { x=$($SHELL -c '[[ (( $# -eq 0 )) ]] && print ok') 2> /dev/null;}
 [[ $x == ok ]] || err_exit '((...)) inside [[ ... ]] not treated as nested ()'
 
-[[ -e /dev/fd/ ]] || err_exit '/dev/fd/ does not exits'
+[[ -e /dev/fd/ ]] || err_exit '/dev/fd/ does not exist'
 [[ -e /dev/tcp/ ]] || err_exit '/dev/tcp/ does not exist'
 [[ -e /dev/udp/ ]] || err_exit '/dev/udp/ does not exist'
 [[ -e /dev/xxx/ ]] &&  err_exit '/dev/xxx/ exists'
@@ -355,18 +355,8 @@ test ! ! ! 2> /dev/null || err_exit 'test ! ! ! should return 0'
 test ! ! x 2> /dev/null || err_exit 'test ! ! x should return 0'
 test ! ! '' 2> /dev/null && err_exit 'test ! ! "" should return non-zero'
 
-# ======
-# The POSIX mode should disable the ancient 'test -t' compatibility hack.
-if	[[ -o ?posix ]]
-then	# need 'eval' in first test, as it's a parser hack, and ksh normally parses ahead of execution
-	(set -o posix; eval '[ -t ] && test -t') >/dev/null \
-	|| err_exit "posix mode fails to disable 'test -t' compat hack"
-	# the compound command variant of the hack is in the 'test' builtin itself; no 'eval' needed
-	expect=$'*: argument expected\n*: argument expected'
-	actual=$(set -o posix; [ -n X -a -t ] 2>&1; test -n X -a -t 2>&1)
-	[[ $actual == $expect ]] || err_exit "posix mode fails to disable 'test -t' compat hack (compound expression)" \
-		"(expected output matching $(printf %q "$expect"), got $(printf %q "$actual"))"
-fi
+x=10
+([[ x -eq 10 ]]) 2> /dev/null || err_exit 'x -eq 10 fails in [[...]] with x=10'
 
 # ======
 # POSIX specifies that on error, test builtin should always return status > 1
@@ -422,17 +412,6 @@ foo=10
 [ ! ! -n x ] && ! [ ! ! ! -n x ] && [ ! ! ! ! -n x ] && ! [ ! ! ! ! ! -n x ] \
 && [ ! ! -n x -a ! ! ! ! -n x -a ! ! ! ! ! ! -n x ] \
 || err_exit '! does not negate ! in [ ... ]'
-
-# ======
-# https://github.com/ksh93/ksh/issues/330
-if	(set -o posix) 2>/dev/null
-then	set -o posix -o trackall
-	test ! -a "" && err_exit "POSIX test/[: binary -a operator does not work with '!' as left-hand expression"
-	test \( -a \) 2>/dev/null || err_exit "POSIX test/[: binary -a operator does not work with '(' as left-hand expression"
-	test ! -o trackall || err_exit "POSIX test/[: binary -o operator does not work with '!' as left-hand expression"
-	test \( -o \) 2>/dev/null || err_exit "POSIX test/[: binary -o operator does not work with '(' as left-hand expression"
-	set +o posix
-fi
 
 # ======
 # test should support '<' as well as '>'; before 2021-11-13, ksh supported
@@ -514,6 +493,15 @@ $SHELL -c '[[ c<b ]]'; got=$?
 $SHELL -c '[[ c < b ]]'; got=$?
 ((exp == got)) || err_exit "[[ ... ]] cannot handle 'c < b'" \
 	"(expected $exp, got $got)"
+
+# ======
+# https://github.com/ksh93/ksh/issues/486
+unset x
+savePATH=$PATH
+PATH=/dev/null
+command eval 'x=([x]=1 [y)' 2>/dev/null
+[[ -z $x ]] 2>/dev/null || err_exit "[[ ... ]] breaks after syntax error in associative array assignment (got status $?)"
+PATH=$savePATH
 
 # ======
 exit $((Errors<125?Errors:125))

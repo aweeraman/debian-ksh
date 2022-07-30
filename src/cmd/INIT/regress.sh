@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1994-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -128,7 +128,7 @@ unit [ command [ arg ... ] ]
             the files.]
         [+INFO \b\adescription\a?\adescription\a is printed on the
             standard error.]
-        [+INITIALIZE?Called by \bregress\b to initialize a each
+        [+INITIALIZE?Called by \bregress\b to initialize each
             \bTEST\b group.]
         [+INPUT \b[ \b-e\b \afilter\a ]] [ \b-n\b ]] \afile\a | - \adata\a ...?The
 	    standard input is set to either the contents of \afile\a

@@ -6,13 +6,6 @@ typ	__va_list stdio.h
 
 mac	SF_APPEND,SF_CLOSE	sys/stat.h sys/socket.h
 
-dll	import note{ Microsoft import/export nonsense }end execute{
-	__declspec(dllimport) int foo;
-	int main() { return foo == 5 ? 0 : 1; }
-	int	bar = 5;
-	int*	_imp__foo = &bar;
-}end
-
 std	proto note{ standard C prototypes ok }end compile{
 	extern int foo(int, int);
 	bar() { foo(1, 1); }
@@ -25,10 +18,32 @@ tst	ptr_void note{ standard C void* ok }end compile{
 
 cat{
 	#pragma clang diagnostic ignored "-Wdeprecated-register"
-	#pragma clang diagnostic ignored "-Wmacro-redefined"
 	#pragma clang diagnostic ignored "-Wparentheses"
 	#pragma clang diagnostic ignored "-Wstring-plus-int"
 	#pragma clang diagnostic ignored "-Wunused-value"
+	#pragma GCC diagnostic ignored "-Wunused-result"
+
+	/* AST backwards compatibility macros */
+	#undef	_NIL_
+	#define	_NIL_(x)	((x)0)
+	#undef	_STD_
+	#define	_STD_		1
+	#undef	_ARG_
+	#define	_ARG_(x)	x
+	#undef	_VOID_
+	#define	_VOID_		void
+	#undef	_BEGIN_EXTERNS_
+	#define	_BEGIN_EXTERNS_
+	#undef	_END_EXTERNS_
+	#define	_END_EXTERNS_
+	#undef __EXTERN__
+	#define __EXTERN__(T,obj)	extern T obj
+	#undef __DEFINE__
+	#define __DEFINE__(T,obj,val)	T obj = val
+	#undef	__STD_C
+	#define	__STD_C		1
+	#undef	Void_t
+	#define	Void_t		void
 
 	/* disable non-standard Linux/GNU inlines */
 	#ifdef __GNUC__	
@@ -36,64 +51,14 @@ cat{
 	#	define	__OPTIMIZE_SIZE__	1
 	#endif
 
-	/* __STD_C indicates that the language is ANSI C or C++ */
-	#if !defined(__STD_C) && __STDC__
-	#	define	__STD_C		1
-	#endif
-	#if !defined(__STD_C) && (__cplusplus || c_plusplus)
-	#	define __STD_C		1
-	#endif
-	#if !defined(__STD_C) && _std_proto
-	#	define __STD_C		1
-	#endif
-	#if !defined(__STD_C)
-	#	define __STD_C		0
-	#endif
-
-	/* extern symbols must be protected against C++ name mangling */
-	#ifndef _BEGIN_EXTERNS_
-	#	if __cplusplus || c_plusplus
-	#		define _BEGIN_EXTERNS_	extern "C" {
-	#		define _END_EXTERNS_	}
-	#	else
-	#		define _BEGIN_EXTERNS_
-	#		define _END_EXTERNS_
-	#	endif
-	#endif
-
-	/* _ARG_ simplifies function prototyping among flavors of C */
-	#ifndef _ARG_
-	#	if __STD_C
-	#		define _ARG_(x)	x
-	#	else
-	#		define _ARG_(x)	()
-	#	endif
-	#endif
-
-	/* _NIL_ simplifies defining nil pointers to a given type */
-	#ifndef _NIL_
-	#	define _NIL_(x)	((x)0)
-	#endif
-
 	/* __INLINE__, if defined, is the inline keyword */
-	#if !defined(__INLINE__) && defined(__cplusplus)
-	#	define __INLINE__	inline
-	#endif
 	#if !defined(__INLINE__) && defined(_WIN32) && !defined(__GNUC__)
 	#	define __INLINE__	__inline
 	#endif
 
-	/* Void_t is defined so that Void_t* can address any type */
-	#ifndef Void_t
-	#	if __STD_C
-	#		define Void_t		void
-	#	else
-	#		define Void_t		char
-	#	endif
-	#endif
-
 	/* Windows variants and veneers */
-	#if !defined(_WINIX) && (_UWIN || __CYGWIN__ || __EMX__)
+	/* (as of 2022-07-21, only Cygwin) */
+	#if !defined(_WINIX) && __CYGWIN__
 	#	define _WINIX		1
 	#endif
 
@@ -103,43 +68,6 @@ cat{
 	#	ifndef _DLL
 	#		define _DLL		1
 	#	endif
-	#endif
-	#if _dll_import
-	#	if _BLD_STATIC && !_BLD_DLL
-	#		undef	_DLL
-	#	else
-	#		if !_UWIN && !defined(_DLL)
-	#			define _DLL		1
-	#		endif
-	#	endif
-	#	if !defined(__EXPORT__) && _BLD_DLL
-	#		define __EXPORT__	__declspec(dllexport)
-	#	endif
-	#	if !defined(__IMPORT__) && ( _BLD_DLL || defined(_DLL) )
-	#		define __IMPORT__	__declspec(dllimport)
-	#	endif
-	#	if _BLD_DLL && _UWIN
-	#	define __DYNAMIC__(v)		(_ast_getdll()->_ast_ ## v)
-	#	endif
-	#endif
-	#if !defined(_astimport)
-	#	if defined(__IMPORT__) && defined(_DLL)
-	#		define _astimport	__IMPORT__
-	#	else
-	#		define _astimport	extern
-	#	endif
-	#endif
-	#if _dll_import && ( !_BLD_DLL || _WINIX && !_UWIN )
-	#	ifdef __STDC__
-	#	define __EXTERN__(T,obj)	extern T obj; T* _imp__ ## obj = &obj
-	#	define __DEFINE__(T,obj,val)	T obj = val; T* _imp__ ## obj = &obj
-	#	else
-	#	define __EXTERN__(T,obj)	extern T obj; T* _imp__/**/obj = &obj
-	#	define __DEFINE__(T,obj,val)	T obj = val; T* _imp__/**/obj = &obj
-	#	endif
-	#else
-	#	define __EXTERN__(T,obj)	extern T obj
-	#	define __DEFINE__(T,obj,val)	T obj = val
 	#endif
 
 	#if !_hdr_stdnoreturn
@@ -179,7 +107,6 @@ tst	- -DN=1 - -DN=2 - -DN=3 - -DN=4 - -DN=5 - -DN=6 - -DN=7 - -DN=8 - -DN=0 outp
 	#include <string.h>
 	#include <sys/types.h>
 
-	#if _STD_
 	#if N == 1
 	#define _ast_int8_t	long
 	#define _ast_int8_str	"long"
@@ -211,7 +138,6 @@ tst	- -DN=1 - -DN=2 - -DN=3 - -DN=4 - -DN=5 - -DN=6 - -DN=7 - -DN=8 - -DN=0 outp
 	#if N == 8
 	#define _ast_int8_t	int64
 	#define _ast_int8_str	"int64"
-	#endif
 	#endif
 
 	#define elementsof(x)	(sizeof(x)/sizeof(x[0]))
@@ -359,7 +285,8 @@ tst	- output{
 		return 0;
 	}
 }end fail{
-	echo '#error Output block #2 in src/lib/libast/features/common failed to compile. Rebuild with IFFEFLAGS=-d1 to debug.'
+	echo "$0: Output block failed to compile. Export IFFEFLAGS=-d1 to debug." >&2
+	exit 1
 }end
 
 tst	- -DN=1 - -DN=0 output{
@@ -368,7 +295,7 @@ tst	- -DN=1 - -DN=0 output{
 	#include <string.h>
 	#include <sys/types.h>
 
-	#if !N || !_STD_
+	#if !N
 	#undef	_typ_long_double
 	#endif
 
@@ -483,7 +410,7 @@ typ uintptr_t stdint.h inttypes.h no{
 }end
 
 tst	- -DTRY=1 - -DTRY=1 -Dvoid=char - -DTRY=2 - -DTRY=3 - -DTRY=4 output{
-	#if _STD_ && _hdr_stdarg
+	#if _hdr_stdarg
 	#include <stdarg.h>
 	static void
 	varyfunny(int* p, ...)
@@ -530,11 +457,7 @@ tst	- -DTRY=1 - -DTRY=1 -Dvoid=char - -DTRY=2 - -DTRY=3 - -DTRY=4 output{
 
 		printf("\n#ifndef va_listref\n");
 		printf("#ifndef	va_start\n");
-		printf("#if __STD_C\n");
 		printf("#include <stdarg.h>\n");
-		printf("#else\n");
-		printf("#include <varargs.h>\n");
-		printf("#endif\n");
 		printf("#endif\n");
 	#if TRY == 4
 		printf("#define va_listref(p) (&(p))\t");
@@ -560,12 +483,6 @@ tst	- -DTRY=1 - -DTRY=1 -Dvoid=char - -DTRY=2 - -DTRY=3 - -DTRY=4 output{
 			printf("/* va_arg() va_list type */\n");
 	#endif /*TRY == 4*/
 	
-	#if _UWIN
-		printf("#ifndef va_copy\n");
-		printf("#define va_copy(to,fr) ((to)=(fr))\t");
-			printf("/* copy va_list fr -> to */\n");
-		printf("#endif\n");
-	#else
 	#if !defined(va_copy)
 	#if defined(__va_copy)
 		printf("#ifndef va_copy\n");
@@ -586,7 +503,6 @@ tst	- -DTRY=1 - -DTRY=1 -Dvoid=char - -DTRY=2 - -DTRY=3 - -DTRY=4 output{
 	#endif
 	#endif
 	#endif
-	#endif
 	
 		printf("#endif\n");
 		return 0;
@@ -595,7 +511,7 @@ tst	- -DTRY=1 - -DTRY=1 -Dvoid=char - -DTRY=2 - -DTRY=3 - -DTRY=4 output{
 
 cat{
 	#ifndef _AST_STD_H
-	#	if __STD_C && _hdr_stddef
+	#	if _hdr_stddef
 	#	include	<stddef.h>
 	#	endif
 	#	if _sys_types
@@ -648,6 +564,7 @@ tst - note{ does this compiler have __builtin_unreachable() }end output{
 	 * argc should never be zero on init, but hopefully optimizers aren't that smart.
 	 */
 	#include <stdio.h>
+	#include "releaseflags.h"
 	void testfn(int a)
 	{
 		switch(a)
@@ -655,11 +572,11 @@ tst - note{ does this compiler have __builtin_unreachable() }end output{
 		case 0:
 			__builtin_unreachable();
 		default:
-			printf("#if _AST_ksh_release\n");
+	#if _AST_release
 			printf("#   define UNREACHABLE()\t__builtin_unreachable()\n");
-			printf("#else\n");
+	#else
 			printf("#   define UNREACHABLE()\tabort()\n");
-			printf("#endif\n");
+	#endif
 		}
 	}
 	int main(int argc, char *argv[])
@@ -668,9 +585,5 @@ tst - note{ does this compiler have __builtin_unreachable() }end output{
 		return 0;
 	}
 }end fail{
-	echo '#if _AST_ksh_release'
-	echo '#   define UNREACHABLE()	0'
-	echo '#else'
-	echo '#   define UNREACHABLE()	abort()'
-	echo '#endif'
+	echo '#define UNREACHABLE()	abort()'
 }end

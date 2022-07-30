@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,11 +18,10 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
- * This is a program to execute 'execute only' and suid/sgid shell scripts.
- * This program must be owned by root and must have the set uid bit set.
- * It must not have the set group id bit set.  This program must be installed
+ * This is a program to execute 'execute only' and SUID/SGID shell scripts.
+ * This program must be owned by root and must have the setuid bit set.
+ * It must not have the set group ID bit set.  This program must be installed
  * where the define parameter THISPROG indicates to work correctly on System V.
  *
  *  Written by David Korn
@@ -33,14 +32,14 @@
 /* The file name of the script to execute is argv[0]
  * argv[1] is the program name
  * The basic idea is to open the script as standard input, set the effective
- *   user and group id correctly, and then exec the shell.
- * The complicated part is getting the effective uid of the caller and 
- *   setting the effective uid/gid.  The program which execs this program
+ *   user and group ID correctly, and then exec the shell.
+ * The complicated part is getting the effective UID of the caller and
+ *   setting the effective UID/GID.  The program which execs this program
  *   may pass file descriptor FDIN as an open file with mode SPECIAL if
- *   the effective user id is not the real user id.  The effective
- *   user id for authentication purposes will be the owner of this
+ *   the effective user ID is not the real user ID.  The effective
+ *   user ID for authentication purposes will be the owner of this
  *   open file.  On systems without the setreuid() call, e[ug]id is set
- *   by copying this program to a /tmp/file, making it a suid and/or sgid
+ *   by copying this program to a /tmp/file, making it an SUID and/or SGID
  *   program, and then execing this program.
  * A forked version of this program waits until it can unlink the /tmp
  *   file and then exits.  Actually, we fork() twice so the parent can
@@ -208,7 +207,7 @@ int main(int argc,char *argv[])
 		error_exit(badexec);
 	close(n);
 
-	/* compute the desired new effective user and group id */
+	/* compute the desired new effective user and group ID */
 	effuid = euserid;
 	effgid = egroupid;
 	mode = 0;
@@ -222,7 +221,7 @@ int main(int argc,char *argv[])
 		if(effgid != rgroupid || setgid(rgroupid) < 0)
 			mode = S_ISGID;
 		
-	/* now see if the uid needs setting */
+	/* now see if the UID needs setting */
 	if(mode)
 	{
 		if(effuid != ruserid)
@@ -259,7 +258,6 @@ exec:
 /*
  * return true if shell ends in sh or ksh
  */
-
 static int endsh(register const char *shell)
 {
 	while(*shell)
@@ -277,7 +275,6 @@ static int endsh(register const char *shell)
 /*
  * return true if shell is in <dir> directory
  */
-
 static int in_dir(register const char *dir,register const char *shell)
 {
 	while(*dir)
@@ -297,9 +294,8 @@ static void error_exit(const char *message)
 
 
 /*
- * This version of access checks against effective uid and effective gid
+ * This version of access checks against effective UID and effective GID
  */
-
 int eaccess(register const char *name, register int mode)
 {	
 	struct stat statb;
@@ -361,7 +357,7 @@ static void setids(int mode,int owner,int group)
 	if(mode & S_ISGID)
 		setregid(rgroupid,group);
 
-	/* set effective uid even if S_ISUID is not set.  This is because
+	/* set effective UID even if S_ISUID is not set.  This is because
 	 * we are *really* executing EUID root at this point.  Even if S_ISUID
 	 * is not set, the value for owner that is passed should be correct.
 	 */
@@ -371,11 +367,10 @@ static void setids(int mode,int owner,int group)
 #else
 /*
  * This version of setids creates a /tmp file and copies itself into it.
- * The "clone" file is made executable with appropriate suid/sgid bits.
+ * The "clone" file is made executable with appropriate SUID/SGID bits.
  * Finally, the clone is exec'd.  This file is unlinked by a grandchild
  * of this program, who waits around until the text is free.
  */
-
 static void setids(int mode,uid_t owner,gid_t group)
 {
 	register int n,m;
@@ -384,7 +379,7 @@ static void setids(int mode,uid_t owner,gid_t group)
 	/*
 	 * Create a token to pass to the new program for validation.
 	 * This token can only be procured by someone running with an
-	 * effective userid of root, and hence gives the clone a way to
+	 * effective user ID of root, and hence gives the clone a way to
 	 * certify that it was really invoked by THISPROG.  Someone who
 	 * is already root could spoof us, but why would they want to?
 	 *
@@ -486,26 +481,23 @@ static void setids(int mode,uid_t owner,gid_t group)
 /*
  * create a unique name into the <template>
  */
-
 static void maketemp(char *template)
 {
 	register char *cp = template;
-	register pid_t n = shgd->current_pid;
+	register pid_t n = getpid();
 	/* skip to end of string */
 	while(*++cp);
-	/* convert process id to string */
+	/* convert process ID to string */
 	while(n > 0)
 	{
 		*--cp = (n%10) + '0';
 		n /= 10;
 	}
-	
 }
 
 /*
  *  copy THISPROG into the open file number <fdo> and close <fdo>
  */
-
 static int mycopy(int fdi, int fdo)
 {
 	char buffer[BLKSIZE];

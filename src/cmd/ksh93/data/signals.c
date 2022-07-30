@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,6 +18,7 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
+#include	"shopt.h"
 #include	"defs.h"
 #include	"jobs.h"
 
@@ -128,6 +129,9 @@ const struct shtable2 shtab_signals[] =
 #ifdef SIGKILL
 	"KILL",		VAL(SIGKILL,0),					S("Killed"),
 #endif /* SIGKILL */
+#ifdef SIGKILLTHR
+	"KILLTHR",	VAL(SIGKILLTHR,SH_SIGDONE),			S("Kill Thread"),
+#endif /* SIGKILLTHR */
 #ifdef SIGLAB
 	"LAB",		VAL(SIGLAB,0),					S("Security label changed"),
 #endif	/* SIGLAB */

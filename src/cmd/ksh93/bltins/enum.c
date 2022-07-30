@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,24 +18,36 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
+#include	"shopt.h"
 #include	"defs.h"
 
-#define ENUM_ID "enum (ksh 93u+m) 2021-12-17"
+#define ENUM_ID "enum (ksh 93u+m) 2022-03-05"
 
 const char sh_optenum[] =
 "[-?@(#)$Id: " ENUM_ID " $\n]"
 "[--catalog?" ERROR_CATALOG "]"
 "[+NAME?enum - create an enumeration type]"
-"[+DESCRIPTION?\benum\b is a declaration command that creates an enumeration "
-    "type \atypename\a that can only store any one of the values in the indexed "
-    "array variable \atypename\a.]"
+"[+DESCRIPTION?\benum\b is a declaration command that creates one or more "
+	"enumeration type declaration commands named \atypename\a. Variables "
+	"of the created type can only store any one of the \avalue\as given. "
+	"For example, \benum bool=(false true)\b creates a Boolean variable "
+	"type of which variables may be declared like \bbool x=true y=false\b.]"
 "[+?If the list of \avalue\as is omitted, then \atypename\a must name an "
     "indexed array variable with at least two elements.]" 
-"[+?For more information, see \atypename\a \b--man\b.]"
+"[+?For more information, create a type, then use \atypename\a \b--man\b.]"
+"[+USE IN ARITHMETIC EXPRESSIONS?When an enumeration variable is used in an "
+	"arithmetic expression, its value is the index into the array that "
+	"defined it, starting from 0. Taking the \bbool\b type from the "
+	"example above, if a variable of this type is used in an arithmetic "
+	"expression, \bfalse\b translates to 0 and \btrue\b to 1.]"
+"[+?Enumeration values may also be used directly in an arithmetic expression "
+	"that refers to a variable of an enumeration type. "
+	"To continue our example, for a \bbool\b variable \bv\b, "
+	"\b((v==true))\b is the same as \b((v==1))\b and "
+	"if a variable named \btrue\b exists, it is ignored.]"
 "[i:ignorecase?The values are case insensitive.]"
 "\n"
-"\n\atypename\a[\b=(\b \avalue\a ... \b)\b]\n"
+"\n\atypename\a[\b=(\b \avalue\a ... \b)\b] ...\n"
 "\n"
 "[+EXIT STATUS]"
     "{"
@@ -89,6 +101,8 @@ static const char enum_type[] =
 "[+SEE ALSO?\benum\b(1), \btypeset\b(1)]"
 ;
 
+extern const char is_spcbuiltin[];
+
 struct Enum
 {
 	Namfun_t	hdr;
@@ -117,7 +131,7 @@ static int enuminfo(Opt_t* op, Sfio_t *out, const char *str, Optdisc_t *fp)
 		return(0);
 	if(strcmp(str,"default")==0)
 		sfprintf(out,"\b%s\b",ep->values[0]);
-	else if(memcmp(str,"last",4)==0)
+	else if(strncmp(str,"last",4)==0)
 	{
 		while(ep->values[++n])
 			;
@@ -210,7 +224,6 @@ int b_enum(int argc, char** argv, Shbltin_t *context)
 	Namarr_t		*ap;
 	char			*cp,*sp;
 	struct Enum		*ep;
-	Shell_t			*shp = context->shp;
 	struct {
 	    Optdisc_t	opt;
 	    Namval_t	*np;
@@ -234,7 +247,7 @@ int b_enum(int argc, char** argv, Shbltin_t *context)
 		break;
 	}
 	argv += opt_info.index;
-	if (error_info.errors || !*argv || *(argv + 1))
+	if (error_info.errors || !*argv)
 	{
 		error(ERROR_USAGE|2, "%s", optusage(NiL));
 		return 1;
@@ -245,6 +258,13 @@ int b_enum(int argc, char** argv, Shbltin_t *context)
 #endif
 	while(cp = *argv++)
 	{
+		/* Do not allow 'enum' to override special built-ins -- however, exclude
+		 * previously created type commands from this search as that is handled elsewhere. */
+		if((tp=nv_search(cp,sh.bltin_tree,0)) && nv_isattr(tp,BLT_SPC) && !nv_search(cp,sh.typedict,0))
+		{
+			errormsg(SH_DICT,ERROR_exit(1),"%s:%s",cp,is_spcbuiltin);
+			UNREACHABLE();
+		}
 		if(!(np = nv_open(cp, (void*)0, NV_VARNAME|NV_NOADD))  || !(ap=nv_arrayptr(np)) || ap->fun || (sz=ap->nelem&(((1L<<ARRAY_BITS)-1))) < 2)
 		{
 			error(ERROR_exit(1), "%s must name an array containing at least two elements",cp);
@@ -252,7 +272,7 @@ int b_enum(int argc, char** argv, Shbltin_t *context)
 		}
 		n = staktell();
 		sfprintf(stkstd,"%s.%s%c",NV_CLASS,np->nvname,0);
-		tp = nv_open(stakptr(n), shp->var_tree, NV_VARNAME);
+		tp = nv_open(stakptr(n), sh.var_tree, NV_VARNAME);
 		stakseek(n);
 		n = sz;
 		i = 0;
@@ -297,12 +317,12 @@ int b_enum(int argc, char** argv, Shbltin_t *context)
 #ifdef STANDALONE
 void lib_init(int flag, void* context)
 {
-	Shell_t		*shp = ((Shbltin_t*)context)->shp;
 	Namval_t	*mp,*bp;
+	NOT_USED(context);
 	if(flag)
 		return;
 	bp = sh_addbuiltin("Enum", enum_create, (void*)0); 
-	mp = nv_search("typeset",shp->bltin_tree,0);
+	mp = nv_search("typeset",sh.bltin_tree,0);
 	nv_onattr(bp,nv_isattr(mp,NV_PUBLIC));
 }
 #endif

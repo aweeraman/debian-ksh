@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,31 +20,22 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * Glenn Fowler
  * AT&T Bell Laboratories
  *
- * uid name -> number
+ * user name -> UID
  */
 
-#if defined(__STDPP__directive) && defined(__STDPP__hide)
-__STDPP__directive pragma pp:hide getpwnam getpwuid
-#else
 #define getpwnam	______getpwnam
 #define getpwuid	______getpwuid
-#endif
 
 #include <ast.h>
 #include <cdt.h>
 #include <pwd.h>
 
-#if defined(__STDPP__directive) && defined(__STDPP__hide)
-__STDPP__directive pragma pp:nohide getpwnam getpwuid
-#else
 #undef	getpwnam
 #undef	getpwuid
-#endif
 
 extern struct passwd*	getpwnam(const char*);
 extern struct passwd*	getpwuid(uid_t);
@@ -57,7 +48,7 @@ typedef struct Id_s
 } Id_t;
 
 /*
- * return uid number given uid name
+ * return UID number for given user name
  * -1 on first error for a given name
  * -2 on subsequent errors for a given name
  */

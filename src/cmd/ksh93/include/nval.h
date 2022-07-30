@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,7 +18,6 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 #ifndef NV_DEFAULT
 /*
  * David Korn
@@ -33,7 +32,6 @@
 #include	<ast.h>
 #include	<cdt.h>
 #include	<option.h>
-#include	<hash.h>
 
 typedef struct Namval Namval_t;
 typedef struct Namfun Namfun_t;
@@ -87,7 +85,7 @@ struct Namarray
 	Namfun_t	hdr;
 	long		nelem;				/* number of elements */
 	void	*(*fun)(Namval_t*,const char*,int);	/* associative arrays */
-	void		*fixed;			/* for fixed sized arrays */
+	void		*fixed;			/* for fixed-size arrays */
 	Dt_t		*table;			/* for subscripts */
 	void		*scope;			/* non-zero when scoped */
 };
@@ -154,7 +152,7 @@ struct Namval
 #define NV_RAW		NV_LJUST	/* used only with NV_BINARY */
 #define NV_HOST		(NV_RJUST|NV_LJUST)	/* map to host filename */
 
-/* The following attributes do not effect the value */
+/* The following attributes do not affect the value */
 #define NV_RDONLY	0x1	/* readonly bit */
 #define NV_EXPORT	0x2000	/* export bit */
 #define NV_TAGGED	0x8000	/* user define tag bit */
@@ -175,7 +173,6 @@ struct Namval
 #define NV_ADD		8
 					/* add node if not found */
 #define NV_ASSIGN	NV_NOFREE	/* assignment is possible */
-#define NV_NOASSIGN	0		/* backward compatibility */
 #define NV_NOARRAY	0x200000	/* array name not possible */
 #define NV_IARRAY	0x400000	/* for indexed array */
 #define NV_NOREF	NV_REF		/* don't follow reference */
@@ -185,6 +182,8 @@ struct Namval
 #define NV_NOSCOPE	0x80000		/* look only in current scope */
 #define NV_NOFAIL	0x100000	/* return 0 on failure, no msg */
 #define NV_NODISC	NV_IDENT	/* ignore disciplines */
+#define NV_UNATTR	0x800000	/* unset attributes before assignment */
+#define NV_GLOBAL	0x20000000	/* create global variable, ignoring local scope */
 
 #define NV_FUNCT	NV_IDENT	/* option for nv_create */
 #define NV_BLTINOPT	NV_ZFILL	/* mark builtins in libcmd */
@@ -192,10 +191,11 @@ struct Namval
 #define NV_PUBLIC	(~(NV_NOSCOPE|NV_ASSIGN|NV_IDENT|NV_VARNAME|NV_NOADD))
 
 /* numeric types */
+/* NV_INT16 and NV_UINT16 store values directly in the node; all the others use pointers */
 #define NV_INT16P	(NV_LJUST|NV_SHORT|NV_INTEGER)
 #define NV_INT16	(NV_SHORT|NV_INTEGER)
+#define NV_UINT16P	(NV_LJUST|NV_UNSIGN|NV_SHORT|NV_INTEGER)
 #define NV_UINT16	(NV_UNSIGN|NV_SHORT|NV_INTEGER)
-#define NV_UINT16P	(NV_LJUSTNV_UNSIGN|NV_SHORT|NV_INTEGER)
 #define NV_INT32	(NV_INTEGER)
 #define NV_UNT32	(NV_UNSIGN|NV_INTEGER)
 #define NV_INT64	(NV_LONG|NV_INTEGER)
@@ -208,6 +208,7 @@ struct Namval
 #define nv_onattr(n,f)		((n)->nvflag |= (f))
 #define nv_offattr(n,f)		((n)->nvflag &= ~(f))
 #define nv_isarray(np)		(nv_isattr((np),NV_ARRAY))
+#define nv_close(np)		/* no-op */
 
 /* The following are operations for associative arrays */
 #define NV_AINIT	1	/* initialize */
@@ -236,13 +237,9 @@ struct Namval
 #define NV_DCADD	0	/* used to add named disciplines */
 #define NV_DCRESTRICT	1	/* variable that are restricted in rsh */
 
-#if defined(__EXPORT__) && defined(_DLL)
-#	define extern __EXPORT__
-#endif /* _DLL */
 /* prototype for array interface */
 extern Namarr_t	*nv_arrayptr(Namval_t*);
 extern Namarr_t	*nv_setarray(Namval_t*,void*(*)(Namval_t*,const char*,int));
-extern int	nv_arraynsub(Namarr_t*);
 extern void	*nv_associative(Namval_t*,const char*,int);
 extern int	nv_aindex(Namval_t*);
 extern int	nv_nextsub(Namval_t*);
@@ -253,7 +250,6 @@ extern Namval_t	*nv_opensub(Namval_t*);
 /* name-value pair function prototypes */
 extern int		nv_adddisc(Namval_t*, const char**, Namval_t**);
 extern int		nv_clone(Namval_t*, Namval_t*, int);
-extern void 		nv_close(Namval_t*);
 extern void		*nv_context(Namval_t*);
 extern Namval_t		*nv_create(const char*, Dt_t*, int,Namfun_t*);
 extern void		nv_delete(Namval_t*, Dt_t*, int);
@@ -289,10 +285,6 @@ extern char		*nv_name(Namval_t*);
 extern Namval_t		*nv_type(Namval_t*);
 extern void		nv_addtype(Namval_t*,const char*, Optdisc_t*, size_t);
 extern const Namdisc_t	*nv_discfun(int);
-
-#ifdef _DLL
-#   undef extern
-#endif /* _DLL */
 
 #define nv_unset(np)		_nv_unset(np,0)
 #define nv_size(np)		nv_setsize((np),-1)

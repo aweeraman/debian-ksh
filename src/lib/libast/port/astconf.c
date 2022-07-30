@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,7 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 
 /*
  * string interface to confstr(),pathconf(),sysconf(),sysinfo()
@@ -606,11 +605,7 @@ format(register Feature_t* fp, const char* path, const char* value, unsigned int
 {
 	register Feature_t*	sp;
 	register int		n;
-#if _UWIN && ( _X86_ || _X64_ )
-	struct stat		st;
-#else
 	static struct utsname	uts;
-#endif
 
 #if DEBUG_astconf
 	error(-6, "astconf format name=%s path=%s value=%s flags=%04x fp=%p%s", fp->name, path, value, flags, fp, state.synthesizing ? " SYNTHESIZING" : "");
@@ -623,31 +618,10 @@ format(register Feature_t* fp, const char* path, const char* value, unsigned int
 	{
 
 	case OP_architecture:
-#if _UWIN && ( _X86_ || _X64_ )
-		if (!stat("/", &st))
-		{
-			if (st.st_ino == 64)
-			{
-				fp->value = "x64";
-				break;
-			}
-			if (st.st_ino == 32)
-			{
-				fp->value = "x86";
-				break;
-			}
-		}
-#if _X64_
-		fp->value = "x64";
-#else
-		fp->value = "x86";
-#endif
-#else
 		if (!uname(&uts))
 			return fp->value = uts.machine;
 		if (!(fp->value = getenv("HOSTNAME")))
 			fp->value = "unknown";
-#endif
 		break;
 
 	case OP_conformance:
@@ -680,32 +654,7 @@ format(register Feature_t* fp, const char* path, const char* value, unsigned int
 		break;
 
 	case OP_path_attributes:
-#ifdef _PC_PATH_ATTRIBUTES
-		{
-			register char*	s;
-			register char*	e;
-			intmax_t	v;
-
-			/*
-			 * _PC_PATH_ATTRIBUTES is a bitmap for 'a' to 'z'
-			 */
-
-			if ((v = pathconf(path, _PC_PATH_ATTRIBUTES)) == -1L)
-				return 0;
-			s = fp->value;
-			e = s + sizeof(fp->value) - 1;
-			for (n = 'a'; n <= 'z'; n++)
-				if (v & (1 << (n - 'a')))
-				{
-					*s++ = n;
-					if (s >= e)
-						break;
-				}
-			*s = 0;
-		}
-#else
 		fp->value = pathicase(path) > 0 ? "c" : null;
-#endif
 		break;
 
 	case OP_path_resolve:
@@ -1352,10 +1301,10 @@ print(Sfio_t* sp, register Lookup_t* look, const char* name, const char* path, i
  * return read stream to native getconf utility
  */
 
+#ifdef _pth_getconf_a
 static Sfio_t*
 nativeconf(Proc_t** pp, const char* operand)
 {
-#ifdef _pth_getconf
 	Sfio_t*		sp;
 	char*		cmd[3];
 	long		ops[2];
@@ -1377,9 +1326,9 @@ nativeconf(Proc_t** pp, const char* operand)
 		}
 		procclose(*pp);
 	}
-#endif
 	return 0;
 }
+#endif
 
 /*
  * value==0 gets value for name
@@ -1409,15 +1358,6 @@ astgetconf(const char* name, const char* path, const char* value, int flags, Err
 	Lookup_t	look;
 	Sfio_t*		tmp;
 
-#if __OBSOLETE__ < 20080101
-	if (pointerof(flags) == (void*)errorf)
-	{
-		conferror = errorf;
-		flags = ASTCONF_error;
-	}
-	else if (conferror && conferror != errorf)
-		conferror = 0;
-#endif
 	if (!name)
 	{
 		if (path)
@@ -1664,7 +1604,7 @@ astconflist(Sfio_t* sp, const char* path, int flags, const char* pattern)
 						sfprintf(sp, "%*s %*s %d %2s %4d %5s %s\n", sizeof(conf[0].name), f, sizeof(prefix[look.standard].name), prefix[look.standard].name, look.section, call, 0, "N", s);
 					}
 					else if (flags & ASTCONF_parse)
-						sfprintf(sp, "%s %s - %s\n", state.id, (flags & ASTCONF_lower) ? fmtlower(f) : f, fmtquote(s, "\"", "\"", strlen(s), FMT_SHELL|FMT_ALWAYS));
+						sfprintf(sp, "%s %s - %s\n", state.id, (flags & ASTCONF_lower) ? fmtlower(f) : f, (flags & ASTCONF_quote) ? fmtquote(s, "\"", "\"", strlen(s), FMT_SHELL|FMT_ALWAYS) : s);
 					else
 						sfprintf(sp, "%s=%s\n", (flags & ASTCONF_lower) ? fmtlower(f) : f, (flags & ASTCONF_quote) ? fmtquote(s, "\"", "\"", strlen(s), FMT_SHELL|FMT_ALWAYS) : s);
 				}
@@ -1712,7 +1652,7 @@ astconflist(Sfio_t* sp, const char* path, int flags, const char* pattern)
 				sfprintf(sp, "%*s %*s %d %2s %4d %5s %s\n", sizeof(conf[0].name), fp->name, sizeof(prefix[fp->standard].name), prefix[fp->standard].name, 1, call, 0, flg, s);
 			}
 			else if (flags & ASTCONF_parse)
-				sfprintf(sp, "%s %s - %s\n", state.id, (flags & ASTCONF_lower) ? fmtlower(fp->name) : fp->name, fmtquote(s, "\"", "\"", strlen(s), FMT_SHELL|FMT_ALWAYS));
+				sfprintf(sp, "%s %s - %s\n", state.id, (flags & ASTCONF_lower) ? fmtlower(fp->name) : fp->name, (flags & ASTCONF_quote) ? fmtquote(s, "\"", "\"", strlen(s), FMT_SHELL|FMT_ALWAYS) : s);
 			else
 				sfprintf(sp, "%s=%s\n", (flags & ASTCONF_lower) ? fmtlower(fp->name) : fp->name, (flags & ASTCONF_quote) ? fmtquote(s, "\"", "\"", strlen(s), FMT_SHELL|FMT_ALWAYS) : s);
 		}

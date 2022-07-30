@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,11 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#if defined(_UWIN) && defined(_BLD_ast)
-
-void _STUB_vmwalk(){}
-
-#else
 
 #include	"vmhdr.h"
 
@@ -33,14 +28,7 @@ void _STUB_vmwalk(){}
 **	Written by Kiem-Phong Vo, kpv@research.att.com (02/08/96)
 */
 
-#if __STD_C
-int vmwalk(Vmalloc_t* vm, int(*segf)(Vmalloc_t*, Void_t*, size_t, Vmdisc_t*, Void_t*), Void_t* handle )
-#else
-int vmwalk(vm, segf, handle)
-Vmalloc_t*	vm;
-int(*		segf)(/* Vmalloc_t*, Void_t*, size_t, Vmdisc_t*, Void_t* */);
-Void_t*		handle;
-#endif
+int vmwalk(Vmalloc_t* vm, int(*segf)(Vmalloc_t*, void*, size_t, Vmdisc_t*, void*), void* handle )
 {	
 	reg Seg_t	*seg;
 	reg int		rv = 0;
@@ -66,5 +54,3 @@ Void_t*		handle;
 
 	return rv;
 }
-
-#endif

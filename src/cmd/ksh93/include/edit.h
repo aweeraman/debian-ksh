@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,7 +18,6 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 #ifndef SEARCHSIZE
 /*
  *  edit.h -  common data structure for vi and emacs edit options
@@ -132,12 +131,13 @@ typedef struct edit
 	char	e_macro[4];	/* macro buffer */
 	void	*e_vi;		/* vi specific data */
 	void	*e_emacs;	/* emacs specific data */
-	Shell_t	*sh;		/* interpreter pointer */ 
 	char	*e_stkptr;	/* saved stack pointer */
 	int	e_stkoff;	/* saved stack offset */
 	char	**e_clist;	/* completion list after <ESC>= */
 	int	e_nlist;	/* number of elements on completion list */
+#if SHOPT_ESH || SHOPT_VSH
 	int	e_multiline;	/* allow multiple lines for editing */
+#endif
 	int	e_winsz;	/* columns in window */ 
 	Edpos_t	e_curpos;	/* cursor line and column */
 	Namval_t *e_default;	/* variable containing default value */
@@ -174,7 +174,6 @@ typedef struct edit
 		(c<'J'?c+1-'A':(c+10-'J'))))))))))))))))
 #endif
 
-extern void	ed_crlf(Edit_t*);
 extern void	ed_putchar(Edit_t*, int);
 extern void	ed_ringbell(void);
 extern void	ed_setup(Edit_t*,int, int);
@@ -191,7 +190,7 @@ extern int	ed_setcursor(Edit_t*, genchar*, int, int, int);
 extern int	ed_macro(Edit_t*,int);
 extern int	ed_expand(Edit_t*, char[],int*,int*,int,int);
 extern int	ed_fulledit(Edit_t*);
-extern void	*ed_open(Shell_t*);
+extern void	*ed_open(void);
 #if SHOPT_MULTIBYTE
 	extern int ed_internal(const char*, genchar*);
 	extern int ed_external(const genchar*, char*);
@@ -238,11 +237,11 @@ extern int hist_expand(const char *, char **);
 #endif /* SHOPT_HISTEXPAND */
 
 #if SHOPT_ESH
-extern void	emacs_redraw(Void_t*);
+extern void	emacs_redraw(void*);
 #endif /* SHOPT_ESH */
 
 #if SHOPT_VSH
-extern void	vi_redraw(Void_t*);
+extern void	vi_redraw(void*);
 #endif /* SHOPT_VSH */
 
 #endif /* !SEARCHSIZE */

@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,24 +20,14 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#if defined(__STDPP__directive) && defined(__STDPP__hide)
-__STDPP__directive pragma pp:hide getpagesize
-#else
 #define getpagesize	______getpagesize
-#endif
 
 #include	"sfhdr.h"
 
-#if defined(__STDPP__directive) && defined(__STDPP__hide)
-__STDPP__directive pragma pp:nohide getpagesize
-#else
 #undef	getpagesize
-#endif
 
 #if _lib_getpagesize
-_BEGIN_EXTERNS_
-extern int	getpagesize _ARG_((void));
-_END_EXTERNS_
+extern int	getpagesize(void);
 #endif
 
 /*	Set a (new) buffer for a stream.
@@ -53,8 +43,8 @@ struct stat
 {	int	st_mode;
 	int	st_size;
 };
-#undef sysfstatf
-#define sysfstatf(fd,st)	(-1)
+#undef fstat
+#define fstat(fd,st)	(-1)
 #endif /*_sys_stat*/
 
 #if _PACKAGE_ast && !defined(SFSETLINEMODE)
@@ -102,47 +92,41 @@ static int sfsetlinemode()
 
 #endif
 
-#if __STD_C
-Void_t* sfsetbuf(Sfio_t* f, Void_t* buf, size_t size)
-#else
-Void_t* sfsetbuf(f,buf,size)
-Sfio_t*	f;	/* stream to be buffered */
-Void_t*	buf;	/* new buffer */
-size_t	size;	/* buffer size, -1 for default size */
-#endif
+void* sfsetbuf(Sfio_t*	f,	/* stream to be buffered */
+	       void*	buf,	/* new buffer */
+	       size_t	size)	/* buffer size, -1 for default size */
 {
 	int		sf_malloc, oflags, init, okmmap, local;
 	ssize_t		bufsize, blksz;
 	Sfdisc_t*	disc;
-	sfstat_t	st;
+	struct stat	st;
 	uchar*		obuf = NIL(uchar*);
 	ssize_t		osize = 0;
-	SFMTXDECL(f);
 
-	SFONCE();
 
-	SFMTXENTER(f,NIL(Void_t*));
+	if(!f)
+		return NIL(void*);
 
 	GETLOCAL(f,local);
 
 	if(size == 0 && buf)
 	{	/* special case to get buffer info */
 		_Sfi = f->val = (f->bits&SF_MMAP) ? (f->endb-f->data) : f->size;
-		SFMTXRETURN(f, (Void_t*)f->data);
+		return (void*)f->data;
 	}
 
 	/* cleanup actions already done, don't allow write buffering any more */
 	if(_Sfexiting && !(f->flags&SF_STRING) && (f->mode&SF_WRITE))
-	{	buf = NIL(Void_t*);
+	{	buf = NIL(void*);
 		size = 0;
 	}
 
 	if((init = f->mode&SF_INIT) )
 	{	if(!f->pool && _sfsetpool(f) < 0)
-			SFMTXRETURN(f, NIL(Void_t*));
+			return NIL(void*);
 	}
 	else if((f->mode&SF_RDWR) != SFMODE(f,local) && _sfmode(f,0,local) < 0)
-		SFMTXRETURN(f, NIL(Void_t*));
+		return NIL(void*);
 
 	if(init)
 		f->mode = (f->mode&SF_RDWR)|SF_LOCK;
@@ -152,12 +136,12 @@ size_t	size;	/* buffer size, -1 for default size */
 		/* make sure there is no hidden read data */
 		if(f->proc && (f->flags&SF_READ) && (f->mode&SF_WRITE) &&
 		   _sfmode(f,SF_READ,local) < 0)
-			SFMTXRETURN(f, NIL(Void_t*));
+			return NIL(void*);
 
 		/* synchronize first */
 		SFLOCK(f,local); rv = SFSYNC(f); SFOPEN(f,local);
 		if(rv < 0)
-			SFMTXRETURN(f, NIL(Void_t*));
+			return NIL(void*);
 
 		/* turn off the SF_SYNCED bit because buffer is changing */
 		f->mode &= ~SF_SYNCED;
@@ -176,7 +160,7 @@ size_t	size;	/* buffer size, -1 for default size */
 			goto done;
 		}
 		else /* initialize stream as if in the default case */
-		{	buf = NIL(Void_t*);
+		{	buf = NIL(void*);
 			size = (size_t)SF_UNBOUND;
 		}
 	}
@@ -234,7 +218,7 @@ size_t	size;	/* buffer size, -1 for default size */
 		}
 
 		/* get file descriptor status */
-		if(sysfstatf((int)f->file,&st) < 0)
+		if(fstat((int)f->file,&st) < 0)
 			f->here = -1;
 		else
 		{
@@ -250,7 +234,7 @@ size_t	size;	/* buffer size, -1 for default size */
 
 #if O_TEXT /* no memory mapping with O_TEXT because read()/write() alter data stream */
 			if(okmmap && f->here >= 0 &&
-			   (sysfcntlf((int)f->file,F_GETFL,0) & O_TEXT) )
+			   (fcntl((int)f->file,F_GETFL,0) & O_TEXT) )
 				okmmap = 0;
 #endif
 		}
@@ -298,7 +282,7 @@ size_t	size;	/* buffer size, -1 for default size */
 						dev = (int)st.st_dev;	
 						ino = (int)st.st_ino;	
 						if(!null_checked)
-						{	if(sysstatf(DEVNULL,&st) < 0)
+						{	if(stat(DEVNULL,&st) < 0)
 								null_checked = -1;
 							else
 							{	null_checked = 1;
@@ -356,21 +340,21 @@ setbuf:
 		else if((ssize_t)(size = _Sfpage) < bufsize)
 			size = bufsize;
 
-		buf = NIL(Void_t*);
+		buf = NIL(void*);
 	}
 
 	sf_malloc = 0;
 	if(size > 0 && !buf && !(f->bits&SF_MMAP))
 	{	/* try to allocate a buffer */
 		if(obuf && size == (size_t)osize && init)
-		{	buf = (Void_t*)obuf;
+		{	buf = (void*)obuf;
 			obuf = NIL(uchar*);
 			sf_malloc = (oflags&SF_MALLOC);
 		}
 		if(!buf)
 		{	/* do allocation */
 			while(!buf && size > 0)
-			{	if((buf = (Void_t*)malloc(size)) )
+			{	if((buf = (void*)malloc(size)) )
 					break;
 				else	size /= 2;
 			}
@@ -382,7 +366,7 @@ setbuf:
 	if(size == 0 && !(f->flags&SF_STRING) && !(f->bits&SF_MMAP) && (f->mode&SF_READ))
 	{	/* use the internal buffer */
 		size = sizeof(f->tiny);
-		buf = (Void_t*)f->tiny;
+		buf = (void*)f->tiny;
 	}
 
 	/* set up new buffer */
@@ -403,7 +387,7 @@ setbuf:
 	f->flags = (f->flags & ~SF_MALLOC)|sf_malloc;
 
 	if(obuf && obuf != f->data && osize > 0 && (oflags&SF_MALLOC))
-	{	free((Void_t*)obuf);
+	{	free((void*)obuf);
 		obuf = NIL(uchar*);
 	}
 
@@ -423,5 +407,5 @@ done:
 
 	SFOPEN(f,local);
 
-	SFMTXRETURN(f, (Void_t*)obuf);
+	return (void*)obuf;
 }

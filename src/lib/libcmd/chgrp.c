@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -19,7 +19,6 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * David Korn
  * Glenn Fowler
@@ -37,7 +36,7 @@ static const char usage_grp_1[] =
 "[+NAME?chgrp - change the group ownership of files]"
 "[+DESCRIPTION?\bchgrp\b changes the group ownership of each file"
 "	to \agroup\a, which can be either a group name or a numeric"
-"	group id. The user ownership of each file may also be changed to"
+"	group ID. The user ownership of each file may also be changed to"
 "	\auser\a by prepending \auser\a\b:\b to the group name.]"
 ;
 
@@ -45,7 +44,7 @@ static const char usage_own_1[] =
 "[+NAME?chown - change the ownership of files]"
 "[+DESCRIPTION?\bchown\b changes the ownership of each file"
 "	to \auser\a, which can be either a user name or a numeric"
-"	user id. The group ownership of each file may also be changed to"
+"	user ID. The group ownership of each file may also be changed to"
 "	\auser\a by appending \b:\b\agroup\a to the user name.]"
 ;
 
@@ -66,10 +65,10 @@ static const char usage_2[] =
     "determined it is not overridden by any subsequent match. Unmatched "
     "files are silently ignored.]"
 "[n:show?Show actions but don't execute.]"
-"[N:numeric?By default numeric user and group id operands are first "
+"[N:numeric?By default numeric user and group ID operands are first "
     "interpreted as names; if no name exists then they are interpreted as "
-    "explicit numeric ids. \b--numeric\b interprets numeric id operands as "
-    "numeric ids.]"
+    "explicit numeric IDs. \b--numeric\b interprets numeric ID operands as "
+    "numeric IDs.]"
 "[r:reference?Omit the explicit ownership operand and use the ownership "
     "of \afile\a instead.]:[file]"
 "[u:unmapped?Print a diagnostic for each file for which either the "
@@ -98,11 +97,7 @@ static const char usage_3[] =
 "[+SEE ALSO?\bchmod\b(1), \bchown\b(2), \btw\b(1), \bgetconf\b(1), \bls\b(1)]"
 ;
 
-#if defined(__STDPP__directive) && defined(__STDPP__hide)
-__STDPP__directive pragma pp:hide lchown
-#else
 #define lchown		______lchown
-#endif
 
 #include <cmd.h>
 #include <cdt.h>
@@ -112,19 +107,15 @@ __STDPP__directive pragma pp:hide lchown
 
 #include "FEATURE/symlink"
 
-#if defined(__STDPP__directive) && defined(__STDPP__hide)
-__STDPP__directive pragma pp:nohide lchown
-#else
 #undef	lchown
-#endif
 
-typedef struct Key_s			/* uid/gid key			*/
+typedef struct Key_s			/* UID/GID key			*/
 {
-	int		uid;		/* uid				*/
-	int		gid;		/* gid				*/
+	int		uid;		/* UID				*/
+	int		gid;		/* GID				*/
 } Key_t;
 
-typedef struct Map_s			/* uid/gid map			*/
+typedef struct Map_s			/* UID/GID map			*/
 {
 	Dtlink_t	link;		/* dictionary link		*/
 	Key_t		key;		/* key				*/
@@ -133,19 +124,19 @@ typedef struct Map_s			/* uid/gid map			*/
 
 #define OPT_CHOWN	0x0001		/* chown			*/
 #define OPT_FORCE	0x0002		/* ignore errors		*/
-#define OPT_GID		0x0004		/* have gid			*/
+#define OPT_GID		0x0004		/* have GID			*/
 #define OPT_LCHOWN	0x0008		/* lchown			*/
-#define OPT_NUMERIC	0x0010		/* favor numeric ids		*/
+#define OPT_NUMERIC	0x0010		/* favor numeric IDs		*/
 #define OPT_SHOW	0x0020		/* show but don't do		*/
 #define OPT_TEST	0x0040		/* canonicalize output		*/
-#define OPT_UID		0x0080		/* have uid			*/
+#define OPT_UID		0x0080		/* have UID			*/
 #define OPT_UNMAPPED	0x0100		/* unmapped file diagnostic	*/
-#define OPT_VERBOSE	0x0200		/* have uid			*/
+#define OPT_VERBOSE	0x0200		/* have UID			*/
 
 extern int	lchown(const char*, uid_t, gid_t);
 
 /*
- * parse uid and gid from s
+ * parse UID and GID from s
  */
 
 static void
@@ -484,11 +475,11 @@ b_chgrp(int argc, char** argv, Shbltin_t* context)
 			if ((options & OPT_UNMAPPED) && (uid < 0 || gid < 0))
 			{
 				if (uid < 0 && gid < 0)
-					error(ERROR_warn(0), "%s: uid and gid not mapped", ent->fts_path);
+					error(ERROR_warn(0), "%s: UID and GID not mapped", ent->fts_path);
 				else if (uid < 0)
-					error(ERROR_warn(0), "%s: uid not mapped", ent->fts_path);
+					error(ERROR_warn(0), "%s: UID not mapped", ent->fts_path);
 				else
-					error(ERROR_warn(0), "%s: gid not mapped", ent->fts_path);
+					error(ERROR_warn(0), "%s: GID not mapped", ent->fts_path);
 			}
 			if (uid != ent->fts_statp->st_uid && uid >= 0 || gid != ent->fts_statp->st_gid && gid >= 0)
 			{

@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,7 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 
 /*
  * mime/mailcap interface
@@ -65,17 +64,13 @@ struct Mimedisc_s
 
 struct Mime_s
 {
-	const char*	id;		/* library id string		*/
+	const char*	id;		/* library ID string		*/
 
 #ifdef _MIME_PRIVATE_
 	_MIME_PRIVATE_
 #endif
 
 };
-
-#if _BLD_ast && defined(__EXPORT__)
-#define extern		__EXPORT__
-#endif
 
 extern Mime_t*	mimeopen(Mimedisc_t*);
 extern int	mimeload(Mime_t*, const char*, unsigned long);
@@ -86,7 +81,5 @@ extern char*	mimetype(Mime_t*, Sfio_t*, const char*, struct stat*);
 extern char*	mimeview(Mime_t*, const char*, const char*, const char*, const char*);
 extern int	mimehead(Mime_t*, void*, size_t, size_t, char*);
 extern int	mimecmp(const char*, const char*, char**);
-
-#undef	extern
 
 #endif

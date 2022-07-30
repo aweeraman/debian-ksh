@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,7 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 
 /*
  * Glenn Fowler
@@ -57,14 +56,6 @@ int		sys_nerr = 0;
 extern char*	strerror(int);
 #endif
 
-#if _PACKAGE_astsa
-
-#define fmtbuf(n)	((n),tmp)
-
-static char		tmp[32];
-
-#endif
-
 char*
 _ast_strerror(int err)
 {
@@ -83,7 +74,6 @@ _ast_strerror(int err)
 #endif
 	if (msg)
 	{
-#if !_PACKAGE_astsa
 		if (ERROR_translating())
 		{
 #if _lib_strerror
@@ -126,7 +116,6 @@ _ast_strerror(int err)
 #endif
 			return ERROR_translate(NiL, NiL, "errlist", msg);
 		}
-#endif
 		return msg;
 	}
 	msg = fmtbuf(z = 32);
@@ -135,10 +124,6 @@ _ast_strerror(int err)
 }
 
 #if !_lib_strerror
-
-#if defined(__EXPORT__)
-#define extern		__EXPORT__
-#endif
 
 extern char*
 strerror(int err)

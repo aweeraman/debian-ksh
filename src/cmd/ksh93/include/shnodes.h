@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,7 +18,6 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 #ifndef _SHNODES_H
 #define _SHNODES_H	1
 /*
@@ -210,13 +209,10 @@ union Shnode_u
 	struct arithnod	ar;
 };
 
-extern void			sh_freeup(Shell_t*);
+extern void			sh_freeup(void);
 extern void			sh_funstaks(struct slnod*,int);
-extern Sfio_t 			*sh_subshell(Shell_t*,Shnode_t*, volatile int, int);
-#if defined(__EXPORT__) && defined(_BLD_DLL)
-   __EXPORT__
-#endif
+extern Sfio_t 			*sh_subshell(Shnode_t*, volatile int, int);
 extern int			sh_tdump(Sfio_t*, const Shnode_t*);
-extern Shnode_t			*sh_trestore(Shell_t*, Sfio_t*);
+extern Shnode_t			*sh_trestore(Sfio_t*);
 
 #endif /* _SHNODES_H */

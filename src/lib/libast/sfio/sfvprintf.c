@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -53,13 +53,7 @@
 #endif /* _chr_ebcdic */
 #endif /* _PACKAGE_ast */
 
-#if __STD_C
 static int chr2str(char* buf, int v)
-#else
-static int chr2str(buf, v)
-char*	buf;
-int	v;
-#endif
 {
 	if(isprint(v) && v != '\\')
 	{	*buf++ = v;
@@ -93,14 +87,9 @@ int	v;
 #define _sffmt_small	1
 #endif
 
-#if __STD_C
-int sfvprintf(Sfio_t* f, const char* form, va_list args)
-#else
-int sfvprintf(f,form,args)
-Sfio_t*	f;		/* file to print to	*/
-char*	form;		/* format to use	*/
-va_list	args;		/* arg list if !argf	*/
-#endif
+int sfvprintf(Sfio_t*		f,		/* file to print to	*/
+	      const char*	form,		/* format to use	*/
+	      va_list		args)		/* arg list if !argf	*/
 {
 	int		n, v=0, w, k, n_s, base, fmt, flags;
 	Sflong_t	lv;
@@ -111,7 +100,7 @@ va_list	args;		/* arg list if !argf	*/
 #endif
 	ssize_t		size;
 	Sfdouble_t	dval;
-	Void_t*		valp;
+	void*		valp;
 	char		*tls[2], **ls;	/* for %..[separ]s		*/
 	char*		t_str;		/* stuff between ()		*/
 	ssize_t		n_str;		/* its length			*/
@@ -147,7 +136,7 @@ va_list	args;		/* arg list if !argf	*/
 #define SMnputc(f,c,n)	{ if((o = SFNPUTC(f,c,n)) > 0 ) n_output += 1; \
 			  if(o != n)	{ SFBUF(f); goto done; } \
 			}
-#define SMwrite(f,s,n)	{ if((o = SFWRITE(f,(Void_t*)s,n)) > 0 ) n_output += o; \
+#define SMwrite(f,s,n)	{ if((o = SFWRITE(f,(void*)s,n)) > 0 ) n_output += o; \
 			  if(o != n)	{ SFBUF(f); goto done; } \
 			}
 #if _sffmt_small /* these macros are made smaller at some performance cost */
@@ -173,18 +162,15 @@ va_list	args;		/* arg list if !argf	*/
 			}
 #endif /* _sffmt_small */
 
-	SFMTXDECL(f);
 
 	SFCVINIT();	/* initialize conversion tables */
 
-	SFMTXENTER(f,-1);
-
-	if(!form)
-		SFMTXRETURN(f, -1);
+	if(!f || !form)
+		return -1;
 
 	/* make sure stream is in write mode and buffer is not NULL */
 	if(f->mode != SF_WRITE && _sfmode(f,SF_WRITE,0) < 0)
-		SFMTXRETURN(f, -1);
+		return -1;
 
 	SFLOCK(f,0);
 
@@ -280,7 +266,7 @@ loop_fmt :
 								LEFTP, 0, 0, 0,0,0,
 								NIL(char*),0);
 							n = (*ft->extf)
-							      (f,(Void_t*)&argv,ft);
+							      (f,(void*)&argv,ft);
 							if(n < 0)
 								goto pop_fmt;
 							if(!(ft->flags&SFFMT_VALUE) )
@@ -385,7 +371,7 @@ loop_fmt :
 				v = fp[n].argv.i;
 			else if(ft && ft->extf)
 			{	FMTSET(ft, form,args, '.',dot, 0, 0,0,0, NIL(char*), 0);
-				if((*ft->extf)(f, (Void_t*)(&argv), ft) < 0)
+				if((*ft->extf)(f, (void*)(&argv), ft) < 0)
 					goto pop_fmt;
 				fmt = ft->fmt;
 				flags = (flags&~SFFMT_TYPES) | (ft->flags&SFFMT_TYPES);
@@ -443,7 +429,7 @@ loop_fmt :
 				else if(ft && ft->extf)
 				{	FMTSET(ft, form,args, 'I',sizeof(int), 0, 0,0,0,
 						NIL(char*), 0);
-					if((*ft->extf)(f, (Void_t*)(&argv), ft) < 0)
+					if((*ft->extf)(f, (void*)(&argv), ft) < 0)
 						goto pop_fmt;
 					if(ft->flags&SFFMT_VALUE)
 						size = argv.i;
@@ -546,7 +532,7 @@ loop_fmt :
 		{	FMTSET(ft, form,args, fmt, size,flags, width,precis,base,
 				t_str,n_str);
 			SFEND(f); SFOPEN(f,0);
-			v = (*ft->extf)(f, (Void_t*)(&argv), ft);
+			v = (*ft->extf)(f, (void*)(&argv), ft);
 			SFLOCK(f,0); SFBUF(f);
 
 			if(v < 0)	/* no further processing */
@@ -605,7 +591,7 @@ loop_fmt :
 					argv.d  = va_arg(args,double);
 				break;
 			 case SFFMT_POINTER:
-					argv.vp = va_arg(args,Void_t*);
+					argv.vp = va_arg(args,void*);
 				break;
 			 case SFFMT_CHAR:
 				if(base >= 0)
@@ -640,7 +626,7 @@ loop_fmt :
 				goto pop_fmt;
 			if(!argv.ft->form && ft ) /* change extension functions */
 			{	if(ft->eventf &&
-				   (*ft->eventf)(f,SF_DPOP,(Void_t*)form,ft) < 0)
+				   (*ft->eventf)(f,SF_DPOP,(void*)form,ft) < 0)
 					continue;
 				fmstk->ft = ft = argv.ft;
 			}
@@ -1404,8 +1390,8 @@ pop_fmt:
 	while((fm = fmstk) ) /* pop the format stack and continue */
 	{	if(fm->eventf)
 		{	if(!form || !form[0])
-				(*fm->eventf)(f,SF_FINAL,NIL(Void_t*),ft);
-			else if((*fm->eventf)(f,SF_DPOP,(Void_t*)form,ft) < 0)
+				(*fm->eventf)(f,SF_FINAL,NIL(void*),ft);
+			else if((*fm->eventf)(f,SF_DPOP,(void*)form,ft) < 0)
 				goto loop_fmt;
 		}
 
@@ -1429,7 +1415,7 @@ done:
 		free(fp);
 	while((fm = fmstk) )
 	{	if(fm->eventf)
-			(*fm->eventf)(f,SF_FINAL,NIL(Void_t*),fm->ft);
+			(*fm->eventf)(f,SF_FINAL,NIL(void*),fm->ft);
 		fmstk = fm->next;
 		free(fm);
 	}
@@ -1443,9 +1429,9 @@ done:
 
 	if((((flags = f->flags)&SF_SHARE) && !(flags&SF_PUBLIC) ) ||
 	   (n > 0 && (sp == data || (flags&SF_LINE) ) ) )
-		(void)SFWRITE(f,(Void_t*)sp,n);
+		(void)SFWRITE(f,(void*)sp,n);
 	else	f->next += n;
 
 	SFOPEN(f,0);
-	SFMTXRETURN(f, n_output);
+	return n_output;
 }

@@ -317,6 +317,7 @@ rtests=(
 typeset -i i n
 n=${#rtests[@]}
 ulimit --cpu 3 2>/dev/null
+unset arr
 for ((i=0; i<n; i++))
 do
 	got=$(

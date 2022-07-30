@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,7 +18,6 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * getopts [-a name] optstring name [args...]
  *
@@ -28,6 +27,7 @@
  *
  */
 
+#include	"shopt.h"
 #include	"defs.h"
 #include	"variables.h"
 #include	<error.h>
@@ -36,12 +36,11 @@
 
 static int infof(Opt_t* op, Sfio_t* sp, const char* s, Optdisc_t* dp)
 {
-	Shell_t	*shp = *(Shell_t**)(dp+1);
-	Stk_t	*stkp = shp->stk;
+	Stk_t	*stkp = sh.stk;
 #if SHOPT_NAMESPACE
-	if((shp->namespace && sh_fsearch(shp,s,0)) || nv_search(s,shp->fun_tree,0))
+	if((sh.namespace && sh_fsearch(s,0)) || nv_search(s,sh.fun_tree,0))
 #else
-	if(nv_search(s,shp->fun_tree,0))
+	if(nv_search(s,sh.fun_tree,0))
 #endif /* SHOPT_NAMESPACE */
 	{
 		int savtop = stktell(stkp);
@@ -49,7 +48,7 @@ static int infof(Opt_t* op, Sfio_t* sp, const char* s, Optdisc_t* dp)
 		sfputc(stkp,'$');
 		sfputc(stkp,'(');
 		sfputr(stkp,s,')');
-		sfputr(sp,sh_mactry(shp,stkfreeze(stkp,1)),-1);
+		sfputr(sp,sh_mactry(stkfreeze(stkp,1)),-1);
 		stkset(stkp,savptr,savtop);
 	}
         return(1);
@@ -60,19 +59,14 @@ int	b_getopts(int argc,char *argv[],Shbltin_t *context)
 	register char *options=error_info.context->id;
 	register Namval_t *np;
 	register int flag, mode;
-	register Shell_t *shp = context->shp;
 	char value[2], key[2];
 	int jmpval;
 	volatile int extended, r= -1;
 	struct checkpt buff, *pp;
-	struct {
-	        Optdisc_t	hdr;
-		Shell_t		*sh;
-	} disc;
+	Optdisc_t disc;
         memset(&disc, 0, sizeof(disc));
-        disc.hdr.version = OPT_VERSION;
-        disc.hdr.infof = infof;
-	disc.sh = shp;
+	disc.version = OPT_VERSION;
+	disc.infof = infof;
 	value[1] = 0;
 	key[1] = 0;
 	while((flag = optget(argv,sh_optgetopts))) switch(flag)
@@ -97,7 +91,7 @@ int	b_getopts(int argc,char *argv[],Shbltin_t *context)
 	error_info.context->flags |= ERROR_SILENT;
 	error_info.id = options;
 	options = argv[0];
-	np = nv_open(argv[1],shp->var_tree,NV_NOASSIGN|NV_VARNAME);
+	np = nv_open(argv[1],sh.var_tree,NV_VARNAME);
 	if(argc>2)
 	{
 		argv +=1;
@@ -105,27 +99,27 @@ int	b_getopts(int argc,char *argv[],Shbltin_t *context)
 	}
 	else
 	{
-		argv = shp->st.dolv;
-		argc = shp->st.dolc;
+		argv = sh.st.dolv;
+		argc = sh.st.dolc;
 	}
-	opt_info.index = shp->st.optindex;
-	opt_info.offset = shp->st.optchar;
+	opt_info.index = sh.st.optindex;
+	opt_info.offset = sh.st.optchar;
 	if(mode= (*options==':'))
 		options++;
 	extended = *options=='\n' && *(options+1)=='[' || *options=='[' && *(options+1)=='-';
-	sh_pushcontext(shp,&buff,1);
+	sh_pushcontext(&buff,1);
 	jmpval = sigsetjmp(buff.buff,0);
 	if(jmpval)
 	{
-		sh_popcontext(shp,&buff);
-		shp->st.opterror = 1;
+		sh_popcontext(&buff);
+		sh.st.opterror = 1;
 		if(r==0)
 			return(2);
-		pp = (struct checkpt*)shp->jmplist;
+		pp = (struct checkpt*)sh.jmplist;
 		pp->mode = SH_JMPERREXIT;
 		sh_exit(2);
 	}
-        opt_info.disc = &disc.hdr;
+	opt_info.disc = &disc;
 	switch(opt_info.index>=0 && opt_info.index<=argc?(opt_info.num= LONG_MIN,flag=optget(argv,options)):0)
 	{
 	    case '?':
@@ -149,7 +143,7 @@ int	b_getopts(int argc,char *argv[],Shbltin_t *context)
 			flag = '?';
 		}
 		*(options = value) = flag;
-		shp->st.opterror = 1;
+		sh.st.opterror = 1;
 		if (opt_info.offset != 0 && !argv[opt_info.index][opt_info.offset])
 		{
 			opt_info.offset = 0;
@@ -157,7 +151,7 @@ int	b_getopts(int argc,char *argv[],Shbltin_t *context)
 		}
 		break;
 	    case 0:
-		if(shp->st.opterror)
+		if(sh.st.opterror)
 		{
 			char *com[2];
 			com[0] = "-?";
@@ -184,11 +178,10 @@ int	b_getopts(int argc,char *argv[],Shbltin_t *context)
 	if(r<0)
 		r = 0;
 	error_info.context->flags &= ~ERROR_SILENT;
-	shp->st.optindex = opt_info.index;
-	shp->st.optchar = opt_info.offset;
+	sh.st.optindex = opt_info.index;
+	sh.st.optchar = opt_info.offset;
 	nv_putval(np, options, 0);
-	nv_close(np);
-	np = nv_open(nv_name(OPTARGNOD),shp->var_tree,0);
+	np = nv_open(nv_name(OPTARGNOD),sh.var_tree,0);
 	if(opt_info.num == LONG_MIN)
 		nv_putval(np, opt_info.arg, NV_RDONLY);
 	else if (opt_info.arg && opt_info.num > 0 && isalpha((char)opt_info.num) && !isdigit(opt_info.arg[0]) && opt_info.arg[0] != '-' && opt_info.arg[0] != '+')
@@ -205,8 +198,7 @@ int	b_getopts(int argc,char *argv[],Shbltin_t *context)
 	}
 	else
 		nv_putval(np, opt_info.arg, NV_RDONLY);
-	nv_close(np);
-	sh_popcontext(shp,&buff);
+	sh_popcontext(&buff);
         opt_info.disc = 0;
 	return(r);
 }

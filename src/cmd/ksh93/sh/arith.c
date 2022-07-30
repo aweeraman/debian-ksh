@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,13 +18,13 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * Shell arithmetic - uses streval library
  *   David Korn
  *   AT&T Labs
  */
 
+#include	"shopt.h"
 #include	"defs.h"
 #include	"lexstates.h"
 #include	"name.h"
@@ -63,12 +63,11 @@ static Namval_t *scope(register Namval_t *np,register struct lval *lvalue,int as
 	register int flag = lvalue->flag;
 	register char *sub=0, *cp=(char*)np;
 	register Namval_t *mp;
-	Shell_t		*shp = lvalue->shp;
 	int	c=0,nosub = lvalue->nosub;
-	Dt_t	*sdict = (shp->st.real_fun? shp->st.real_fun->sdict:0);
-	Dt_t	*nsdict = (shp->namespace?nv_dict(shp->namespace):0);
-	Dt_t	*root = shp->var_tree;
-	assign = assign?NV_ASSIGN:NV_NOASSIGN;
+	Dt_t	*sdict = (sh.st.real_fun? sh.st.real_fun->sdict:0);
+	Dt_t	*nsdict = (sh.namespace?nv_dict(sh.namespace):0);
+	Dt_t	*root = sh.var_tree;
+	assign = assign?NV_ASSIGN:0;
 	lvalue->nosub = 0;
 	if(nosub<0 && lvalue->ovalue)
 		return((Namval_t*)lvalue->ovalue);
@@ -79,20 +78,21 @@ static Namval_t *scope(register Namval_t *np,register struct lval *lvalue,int as
 		/* do binding to node now */
 		int c = cp[flag];
 		cp[flag] = 0;
-		if((!(np = nv_open(cp,shp->var_tree,assign|NV_VARNAME|NV_NOADD|NV_NOFAIL)) || nv_isnull(np)) && sh_macfun(shp,cp, offset = staktell()))
+		if((!(np = nv_open(cp,sh.var_tree,assign|NV_VARNAME|NV_NOADD|NV_NOFAIL)) || nv_isnull(np))
+		&& sh_macfun(cp, offset = staktell()))
 		{
-			Fun = sh_arith(shp,sub=stakptr(offset));
+			Fun = sh_arith(sub=stakptr(offset));
 			FunNode.nvalue.ldp = &Fun;
 			nv_onattr(&FunNode,NV_NOFREE|NV_LDOUBLE|NV_RDONLY);
 			cp[flag] = c;
 			return(&FunNode);
 		}
 		if(!np && assign)
-			np = nv_open(cp,shp->var_tree,assign|NV_VARNAME);
+			np = nv_open(cp,sh.var_tree,assign|NV_VARNAME);
 		cp[flag] = c;
 		if(!np)
 			return(0);
-		root = shp->last_root;
+		root = sh.last_root;
 		if(cp[flag+1]=='[')
 			flag++;
 		else
@@ -101,9 +101,9 @@ static Namval_t *scope(register Namval_t *np,register struct lval *lvalue,int as
 	}
 	if((lvalue->emode & ARITH_COMP) && dtvnext(root))
 	{
-		if(mp = nv_search(cp, sdict ? sdict : root, HASH_NOSCOPE|HASH_SCOPE|HASH_BUCKET))
+		if(mp = nv_search(cp, sdict ? sdict : root, NV_NOSCOPE|NV_REF))
 			np = mp;
-		else if(nsdict && (mp = nv_search(cp, nsdict, HASH_SCOPE|HASH_BUCKET)))
+		else if(nsdict && (mp = nv_search(cp, nsdict, NV_REF)))
 			np = mp;
 	}
 	while(nv_isref(np))
@@ -157,13 +157,13 @@ static Namval_t *scope(register Namval_t *np,register struct lval *lvalue,int as
 			*cp = 0;
 			if(c || hasdot)
 			{
-				sfprintf(shp->strbuf,"%s%s%c",nv_name(np),sub,0);
-				sub = sfstruse(shp->strbuf);
+				sfprintf(sh.strbuf,"%s%s%c",nv_name(np),sub,0);
+				sub = sfstruse(sh.strbuf);
 			}
 			*cp = flag;
 			if(c || hasdot)
 			{
-				np = nv_open(sub,shp->var_tree,NV_VARNAME|assign);
+				np = nv_open(sub,sh.var_tree,NV_VARNAME|assign);
 				return(np);
 			}
 #if SHOPT_FIXEDARRAY
@@ -181,10 +181,7 @@ static Namval_t *scope(register Namval_t *np,register struct lval *lvalue,int as
 			{
 				ap = nv_arrayptr(np);
 				if(ap && !ap->table)
-				{
 					ap->table = dtopen(&_Nvdisc,Dtoset);
-					dtuserdata(ap->table,shp,1);
-				}
 				if(ap && ap->table && (nq=nv_search(nv_getsub(np),ap->table,NV_ADD)))
 					nq->nvenv = (char*)np;
 				if(nq && nv_isnull(nq))
@@ -223,7 +220,6 @@ int	sh_mathstd(const char *name)
 
 static Sfdouble_t arith(const char **ptr, struct lval *lvalue, int type, Sfdouble_t n)
 {
-	Shell_t		*shp = lvalue->shp;
 	register Sfdouble_t r= 0;
 	char *str = (char*)*ptr;
 	register char *cp;
@@ -294,14 +290,14 @@ static Sfdouble_t arith(const char **ptr, struct lval *lvalue, int type, Sfdoubl
 			}
 			if(c=='(')
 			{
-				int off=stktell(shp->stk);
+				int off=stktell(sh.stk);
 				int fsize = str- (char*)(*ptr);
 				const struct mathtab *tp;
 				c = **ptr;
 				lvalue->fun = 0;
-				sfprintf(shp->stk,".sh.math.%.*s%c",fsize,*ptr,0);
-				stkseek(shp->stk,off);
-				if(np=nv_search(stkptr(shp->stk,off),shp->fun_tree,0))
+				sfprintf(sh.stk,".sh.math.%.*s%c",fsize,*ptr,0);
+				stkseek(sh.stk,off);
+				if(np=nv_search(stkptr(sh.stk,off),sh.fun_tree,0))
 				{
 						lvalue->nargs = -np->nvalue.rp->argc;
 						lvalue->fun = (Math_f)np;
@@ -330,7 +326,7 @@ static Sfdouble_t arith(const char **ptr, struct lval *lvalue, int type, Sfdoubl
 			{
 				int offset = staktell();
 				char *saveptr = stakfreeze(0);
-				Dt_t  *root = (lvalue->emode&ARITH_COMP)?shp->var_base:shp->var_tree;
+				Dt_t  *root = (lvalue->emode&ARITH_COMP)?sh.var_base:sh.var_tree;
 				*str = c;
 				cp = str;
 				while(c=='[' || c=='.')
@@ -369,7 +365,7 @@ static Sfdouble_t arith(const char **ptr, struct lval *lvalue, int type, Sfdoubl
 					np = &NaNnod;
 					nv_onattr(np,NV_NOFREE|NV_LDOUBLE|NV_RDONLY);
 				}
-				else if(!(np = nv_open(*ptr,root,NV_NOREF|NV_NOASSIGN|NV_VARNAME|dot)))
+				else if(!(np = nv_open(*ptr,root,NV_NOREF|NV_VARNAME|dot)))
 				{
 					lvalue->value = (char*)*ptr;
 					lvalue->flag =  str-lvalue->value;
@@ -408,10 +404,9 @@ static Sfdouble_t arith(const char **ptr, struct lval *lvalue, int type, Sfdoubl
 		else
 		{
 			char	lastbase=0, *val = xp, oerrno = errno;
-			const char radix = GETDECIMAL(0);
 			lvalue->eflag = 0;
 			errno = 0;
-			if(!sh_isoption(shp->bltindata.bnode==SYSLET ? SH_LETOCTAL : SH_POSIX))
+			if(!sh_isoption(sh.bltinfun==b_let ? SH_LETOCTAL : SH_POSIX))
 			{
 				/* Skip leading zeros to avoid parsing as octal */
 				while(*val=='0' && isdigit(val[1]))
@@ -437,12 +432,12 @@ static Sfdouble_t arith(const char **ptr, struct lval *lvalue, int type, Sfdoubl
 				c='e';
 			else
 				c = *str;
-			if(c=='.' && radix!='.')
+			if(c=='.' && sh.radixpoint!='.')
 			{
 				errormsg(SH_DICT,ERROR_exit(1),"%s: radix point '.' requires LC_NUMERIC=C",val);
 				UNREACHABLE();
 			}
-			if(c==radix || c=='e' || c == 'E' || lastbase == 16 && (c == 'p' || c == 'P'))
+			if(c==sh.radixpoint || c=='e' || c == 'E' || lastbase == 16 && (c == 'p' || c == 'P'))
 			{
 				lvalue->isfloat=1;
 				r = strtold(val,&str);
@@ -516,12 +511,10 @@ static Sfdouble_t arith(const char **ptr, struct lval *lvalue, int type, Sfdoubl
 		}
 		return(r);
 	    }
-
 	    case MESSAGE:
 		sfsync(NIL(Sfio_t*));
 		if(lvalue->emode&ARITH_COMP)
 			return(-1);
-			
 		errormsg(SH_DICT,ERROR_exit((lvalue->emode&3)!=0),lvalue->value,*ptr);
 	}
 	*ptr = str;
@@ -533,12 +526,10 @@ static Sfdouble_t arith(const char **ptr, struct lval *lvalue, int type, Sfdoubl
  * ptr is set to the last character processed
  * if mode>0, an error will be fatal with value <mode>
  */
-
 Sfdouble_t sh_strnum(register const char *str, char** ptr, int mode)
 {
-	Shell_t	*shp = sh_getinterp();
 	register Sfdouble_t d;
-	char base = (sh_isoption(shp->bltindata.bnode==SYSLET ? SH_LETOCTAL : SH_POSIX) ? 0 : 10), *last;
+	char base = (sh_isoption(sh.bltinfun==b_let ? SH_LETOCTAL : SH_POSIX) ? 0 : 10), *last;
 	if(*str==0)
 	{
 		d = 0.0;
@@ -550,23 +541,26 @@ Sfdouble_t sh_strnum(register const char *str, char** ptr, int mode)
 		d = strtonll(str,&last,&base,-1);
 		if(*last && sh_isstate(SH_INIT))
 		{
-			/* This call is to handle "base#value" literals if we're importing untrusted env vars. */
+			/* Handle floating point or "base#value" literals if we're importing untrusted env vars. */
 			errno = 0;
-			d = strtonll(str, &last, NIL(char*), -1);
+			if(*last==sh.radixpoint)
+				d = strtold(str,&last);
+			else
+				d = strtonll(str,&last,NIL(char*),-1);
 		}
 		if(*last || errno)
 		{
 			if(sh_isstate(SH_INIT))
 				/*
 				 * Initializing means importing untrusted env vars. The string does not appear to be
-				 * a recognized numeric literal, so give up. We can't safely call strval(), because
+				 * a recognized numeric literal, so give up. We can't safely call arith_strval(), because
 				 * that allows arbitrary expressions, causing security vulnerability CVE-2019-14868.
 				 */
 				d = 0.0;
 			else
 			{
-				if(!last || *last!='.' || last[1]!='.')
-					d = strval(shp,str,&last,arith,mode);
+				if(!last || *last!=sh.radixpoint || last[1]!=sh.radixpoint)
+					d = arith_strval(str,&last,arith,mode);
 				if(!ptr && *last && mode>0)
 				{
 					errormsg(SH_DICT,ERROR_exit(1),e_lexbadchar,*last,str);
@@ -582,17 +576,16 @@ Sfdouble_t sh_strnum(register const char *str, char** ptr, int mode)
 	return(d);
 }
 
-Sfdouble_t sh_arith(Shell_t *shp,register const char *str)
+Sfdouble_t sh_arith(register const char *str)
 {
-	NOT_USED(shp);
 	return(sh_strnum(str, (char**)0, 1));
 }
 
-void	*sh_arithcomp(Shell_t *shp,register char *str)
+void	*sh_arithcomp(register char *str)
 {
 	const char *ptr = str;
 	Arith_t *ep;
-	ep = arith_compile(shp,str,(char**)&ptr,arith,ARITH_COMP|1);
+	ep = arith_compile(str,(char**)&ptr,arith,ARITH_COMP|1);
 	if(*ptr)
 	{
 		errormsg(SH_DICT,ERROR_exit(1),e_lexbadchar,*ptr,str);

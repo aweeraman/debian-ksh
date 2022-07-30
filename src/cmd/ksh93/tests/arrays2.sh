@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -159,7 +159,7 @@ done
 
 $SHELL 2> /dev/null -c 'compound c;float -a c.ar;(( c.ar[2][3][3] = 5))' || 'multidimensional arrays in arithmetic expressions not working'
 
-expected='typeset -a -l -E c.ar=([2]=([3]=([3]=5) ) )'
+expected='typeset -a -l -E c.ar=(typeset -a [2]=(typeset -a [3]=([3]=5) ) )'
 unset c
 float c.ar
 c.ar[2][3][3]=5
@@ -223,6 +223,13 @@ foo[bar][x]=2
 exp=3
 [[ ${foo[bar][x]} == $exp ]] || err_exit "subscript gets added incorrectly to an associative array when ++ operator is called" \
 	"(expected '$exp', got '${foo[bar][x]}')"
+
+unset A
+typeset -A A
+typeset -A A[a]
+A[a][z]=1
+[[ ${!A[a][@]} == z ]] || err_exit 'A[a] should only have subscript z' \
+	"(got $(printf %q "${!A[a][@]}"))"
 
 # ======
 # Multidimensional arrays with an unset method shouldn't cause a crash.

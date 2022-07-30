@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,11 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#if defined(_UWIN) && defined(_BLD_ast)
-
-void _STUB_vmdcheap(){}
-
-#else
 
 #include	"vmhdr.h"
 
@@ -32,33 +27,24 @@ void _STUB_vmdcheap(){}
 **
 **	Written by Kiem-Phong Vo, kpv@research.att.com, 01/16/94.
 */
-#if __STD_C
-static Void_t* heapmem(Vmalloc_t* vm, Void_t* caddr,
-			size_t csize, size_t nsize,
-			Vmdisc_t* disc)
-#else
-static Void_t* heapmem(vm, caddr, csize, nsize, disc)
-Vmalloc_t*	vm;	/* region doing allocation from 	*/
-Void_t*		caddr;	/* current low address			*/
-size_t		csize;	/* current size				*/
-size_t		nsize;	/* new size				*/
-Vmdisc_t*	disc;	/* discipline structure			*/
-#endif
+static void* heapmem(Vmalloc_t*	vm,	/* region doing allocation from 	*/
+		     void*	caddr,	/* current low address			*/
+		     size_t	csize,	/* current size				*/
+		     size_t	nsize,	/* new size				*/
+		     Vmdisc_t*	disc)	/* discipline structure			*/
 {
 	if(csize == 0 && nsize == 0)
-		return NIL(Void_t*);
+		return NIL(void*);
 	else if(csize == 0)
 		return vmalloc(Vmheap,nsize);
 	else if(nsize == 0)
-		return vmfree(Vmheap,caddr) >= 0 ? caddr : NIL(Void_t*);
+		return vmfree(Vmheap,caddr) >= 0 ? caddr : NIL(void*);
 	else	return vmresize(Vmheap,caddr,nsize,0);
 }
 
 static Vmdisc_t _Vmdcheap = { heapmem, NIL(Vmexcept_f), 0 };
-__DEFINE__(Vmdisc_t*,Vmdcheap,&_Vmdcheap);
+Vmdisc_t*	Vmdcheap = &_Vmdcheap;
 
 #ifdef NoF
 NoF(vmdcheap)
-#endif
-
 #endif

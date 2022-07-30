@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,7 +18,6 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * test expression
  * [ expression ]
@@ -28,7 +27,7 @@
  *
  */
 
-
+#include	"shopt.h"
 #include	"defs.h"
 #include	<error.h>
 #include	<ls.h>
@@ -73,7 +72,6 @@ static int	test_mode(const char*);
 
 struct test
 {
-        Shell_t *sh;
         int     ap;
         int     ac;
         char    **av;
@@ -83,9 +81,9 @@ static char *nxtarg(struct test*,int);
 static int expr(struct test*,int);
 static int e3(struct test*);
 
-static int test_strmatch(Shell_t *shp,const char *str, const char *pat)
+static int test_strmatch(const char *str, const char *pat)
 {
-	regoff_t match[2*(MATCH_MAX+1)],n;
+	int match[2*(MATCH_MAX+1)],n;
 	register int c, m=0;
 	register const char *cp=pat; 
 	while(c = *cp++)
@@ -101,11 +99,11 @@ static int test_strmatch(Shell_t *shp,const char *str, const char *pat)
 		match[0] = 0;
 	if(m >  elementsof(match)/2)
 		m = elementsof(match)/2;
-	n = strgrpmatch(str, pat, match, m, STR_GROUP|STR_MAXIMAL|STR_LEFT|STR_RIGHT);
+	n = strgrpmatch(str, pat, (ssize_t*)match, m, STR_GROUP|STR_MAXIMAL|STR_LEFT|STR_RIGHT|STR_INT);
 	if(m==0 && n==1)
-		match[1] = strlen(str);
+		match[1] = (int)strlen(str);
 	if(n)
-		sh_setmatch(shp, str, -1, n, match, 0);
+		sh_setmatch(str, -1, n, match, 0);
 	return(n);
 }
 
@@ -116,7 +114,6 @@ int b_test(int argc, char *argv[],Shbltin_t *context)
 	register int not;
 	int exitval;
 
-	tdata.sh = context->shp;
 	tdata.av = argv;
 	tdata.ap = 1;
 	if(c_eq(cp,'['))
@@ -165,12 +162,12 @@ int b_test(int argc, char *argv[],Shbltin_t *context)
 					break;
 				if(not && cp[0]=='-' && cp[2]==0)
 				{
-					exitval = (test_unop(tdata.sh,cp[1],argv[3])!=0);
+					exitval = (test_unop(cp[1],argv[3])!=0);
 					goto done;
 				}
 				else if(argv[1][0]=='-' && argv[1][2]==0)
 				{
-					exitval = (!test_unop(tdata.sh,argv[1][1],cp));
+					exitval = (!test_unop(argv[1][1],cp));
 					goto done;
 				}
 				else if(not && c_eq(argv[2],'!'))
@@ -181,7 +178,7 @@ int b_test(int argc, char *argv[],Shbltin_t *context)
 				errormsg(SH_DICT,ERROR_exit(2),e_badop,cp);
 				UNREACHABLE();
 			}
-			exitval = (test_binop(tdata.sh,op,argv[1],argv[3])^(argc!=5));
+			exitval = (test_binop(op,argv[1],argv[3])^(argc!=5));
 			goto done;
 		}
 		case 3:
@@ -210,7 +207,7 @@ int b_test(int argc, char *argv[],Shbltin_t *context)
 				}
 				break;
 			}
-			exitval = (!test_unop(tdata.sh,cp[1],argv[2]));
+			exitval = (!test_unop(cp[1],argv[2]));
 			goto done;
 		case 2:
 			exitval = (*cp==0);
@@ -338,16 +335,10 @@ static int e3(struct test *tp)
 	if(*arg=='-' && arg[2]==0)
 	{
 		op = arg[1];
-		if(!cp)
-		{
-			/* for backward compatibility with new flags */
-			if(op==0 || !strchr(test_opchars+10,op))
-				return(1);
-			errormsg(SH_DICT,ERROR_exit(2),e_argument);
-			UNREACHABLE();
-		}
+		if(!cp)					/* no further argument: */
+			return(1);			/* treat as nonempty string instead of unary op, so return true */
 		if(strchr(test_opchars,op))
-			return(test_unop(tp->sh,op,cp));
+			return(test_unop(op,cp));
 	}
 	if(!cp)
 	{
@@ -365,10 +356,10 @@ skip:
 	}
 	if(op==TEST_AND || op==TEST_OR)
 		tp->ap--;
-	return(test_binop(tp->sh,op,arg,cp));
+	return(test_binop(op,arg,cp));
 }
 
-int test_unop(Shell_t *shp,register int op,register const char *arg)
+int test_unop(register int op,register const char *arg)
 {
 	struct stat statb;
 	int f;
@@ -450,11 +441,11 @@ int test_unop(Shell_t *shp,register int op,register const char *arg)
 		if(op=='s')
 			return(statb.st_size>0);
 		else if(op=='O')
-			return(statb.st_uid==shp->gd->userid);
-		return(statb.st_gid==shp->gd->groupid);
+			return(statb.st_uid==sh.userid);
+		return(statb.st_gid==sh.groupid);
 	    case 'a':
 	    case 'e':
-		if(memcmp(arg,"/dev/",5)==0 && sh_open(arg,O_NONBLOCK))
+		if(strncmp(arg,"/dev/",5)==0 && sh_open(arg,O_NONBLOCK))
 			return(1);
 		return(permission(arg, F_OK));
 	    case 'o':
@@ -462,7 +453,7 @@ int test_unop(Shell_t *shp,register int op,register const char *arg)
 		if(*arg=='?')
 			return(sh_lookopt(arg+1,&f)>0);
 		op = sh_lookopt(arg,&f);
-		return(op && (f==(sh_isoption(op)!=0)));
+		return(op>0 && (f==(sh_isoption(op)!=0)));
 	    case 't':
 	    {
 		char *last;
@@ -475,7 +466,7 @@ int test_unop(Shell_t *shp,register int op,register const char *arg)
 		Namval_t *np;
 		Namarr_t *ap;
 		int isref;
-		if(!(np = nv_open(arg,shp->var_tree,NV_VARNAME|NV_NOFAIL|NV_NOADD|NV_NOREF)))
+		if(!(np = nv_open(arg,sh.var_tree,NV_VARNAME|NV_NOFAIL|NV_NOADD|NV_NOREF)))
 			return(0);
 		isref = nv_isref(np);
 		if(op=='R')
@@ -486,12 +477,9 @@ int test_unop(Shell_t *shp,register int op,register const char *arg)
 				np = nv_refnode(np);
 			else
 				return(0);
-			
 		}
 		if(ap = nv_arrayptr(np))
 			return(nv_arrayisset(np,ap));
-		if(*arg=='I' && strcmp(arg,"IFS")==0)
-			return(nv_getval(np)!=NULL);  /* avoid BUG_IFSISSET */
 		return(!nv_isnull(np));
 	    }
 	    default:
@@ -508,7 +496,7 @@ int test_unop(Shell_t *shp,register int op,register const char *arg)
  * This function handles binary operators for both the
  * test/[ built-in and the [[ ... ]] compound command
  */
-int test_binop(Shell_t *shp,register int op,const char *left,const char *right)
+int test_binop(register int op,const char *left,const char *right)
 {
 	register double lnum = 0, rnum = 0;
 	if(op&TEST_ARITH)
@@ -517,8 +505,8 @@ int test_binop(Shell_t *shp,register int op,const char *left,const char *right)
 			left++;
 		while(*right=='0')
 			right++;
-		lnum = sh_arith(shp,left);
-		rnum = sh_arith(shp,right);
+		lnum = sh_arith(left);
+		rnum = sh_arith(right);
 	}
 	switch(op)
 	{
@@ -526,9 +514,9 @@ int test_binop(Shell_t *shp,register int op,const char *left,const char *right)
 		case TEST_OR:
 			return(*left!=0);
 		case TEST_PEQ:
-			return(test_strmatch(shp, left, right));
+			return(test_strmatch(left, right));
 		case TEST_PNE:
-			return(!test_strmatch(shp, left, right));
+			return(!test_strmatch(left, right));
 		case TEST_SGT:
 			return(strcoll(left, right)>0);
 		case TEST_SLT:
@@ -538,8 +526,8 @@ int test_binop(Shell_t *shp,register int op,const char *left,const char *right)
 		case TEST_SNE:
 			return(strcmp(left, right)!=0);
 		case TEST_REP:
-			sfprintf(stkstd, "~(E)%s", right);
-			return(test_strmatch(shp, left, stkfreeze(stkstd, 1))>0);
+			sfprintf(sh.strbuf, "~(E)%s", right);
+			return(test_strmatch(left, sfstruse(sh.strbuf))>0);
 		case TEST_EF:
 			return(test_inode(left,right));
 		case TEST_NT:
@@ -566,7 +554,6 @@ int test_binop(Shell_t *shp,register int op,const char *left,const char *right)
 /*
  * returns the modification time of f1 - modification time of f2
  */
-
 static time_t test_time(const char *file1,const char *file2)
 {
 	Time_t t1, t2;
@@ -588,7 +575,6 @@ static time_t test_time(const char *file1,const char *file2)
 /*
  * return true if inode of two files are the same
  */
-
 int test_inode(const char *file1,const char *file2)
 {
 	struct stat stat1,stat2;
@@ -600,41 +586,39 @@ int test_inode(const char *file1,const char *file2)
 
 
 /*
- * This version of access checks against effective uid/gid
+ * This version of access checks against the effective UID/GID
  * The static buffer statb is shared with test_mode.
  */
-
 int sh_access(register const char *name, register int mode)
 {
-	Shell_t	*shp = sh_getinterp();
 	struct stat statb;
 	if(*name==0)
 		return(-1);
 	if(sh_isdevfd(name))
 		return(sh_ioaccess((int)strtol(name+8, (char**)0, 10),mode));
 	/* can't use access function for execute permission with root */
-	if(mode==X_OK && shp->gd->euserid==0)
+	if(mode==X_OK && sh.euserid==0)
 		goto skip;
-	if(shp->gd->userid==shp->gd->euserid && shp->gd->groupid==shp->gd->egroupid)
+	if(sh.userid==sh.euserid && sh.groupid==sh.egroupid)
 		return(access(name,mode));
 #ifdef _lib_setreuid
-	/* swap the real uid to effective, check access then restore */
-	/* first swap real and effective gid, if different */
-	if(shp->gd->groupid==shp->gd->euserid || setregid(shp->gd->egroupid,shp->gd->groupid)==0) 
+	/* swap the real UID to effective, check access then restore */
+	/* first swap real and effective GID, if different */
+	if(sh.groupid==sh.euserid || setregid(sh.egroupid,sh.groupid)==0)
 	{
-		/* next swap real and effective uid, if needed */
-		if(shp->gd->userid==shp->gd->euserid || setreuid(shp->gd->euserid,shp->gd->userid)==0)
+		/* next swap real and effective UID, if needed */
+		if(sh.userid==sh.euserid || setreuid(sh.euserid,sh.userid)==0)
 		{
 			mode = access(name,mode);
-			/* restore ids */
-			if(shp->gd->userid!=shp->gd->euserid)
-				setreuid(shp->gd->userid,shp->gd->euserid);
-			if(shp->gd->groupid!=shp->gd->egroupid)
-				setregid(shp->gd->groupid,shp->gd->egroupid);
+			/* restore IDs */
+			if(sh.userid!=sh.euserid)
+				setreuid(sh.userid,sh.euserid);
+			if(sh.groupid!=sh.egroupid)
+				setregid(sh.groupid,sh.egroupid);
 			return(mode);
 		}
-		else if(shp->gd->groupid!=shp->gd->egroupid)
-			setregid(shp->gd->groupid,shp->gd->egroupid);
+		else if(sh.groupid!=sh.egroupid)
+			setregid(sh.groupid,sh.egroupid);
 	}
 #endif /* _lib_setreuid */
 skip:
@@ -642,16 +626,16 @@ skip:
 	{
 		if(mode == F_OK)
 			return(mode);
-		else if(shp->gd->euserid == 0)
+		else if(sh.euserid == 0)
 		{
 			if(!S_ISREG(statb.st_mode) || mode!=X_OK)
 				return(0);
 		    	/* root needs execute permission for someone */
 			mode = (S_IXUSR|S_IXGRP|S_IXOTH);
 		}
-		else if(shp->gd->euserid == statb.st_uid)
+		else if(sh.euserid == statb.st_uid)
 			mode <<= 6;
-		else if(shp->gd->egroupid == statb.st_gid)
+		else if(sh.egroupid == statb.st_gid)
 			mode <<= 3;
 #ifdef _lib_getgroups
 		/* on some systems you can be in several groups */
@@ -692,7 +676,6 @@ skip:
  * If <file> is null, then the previous stat buffer is used.
  * The mode bits are zero if the file doesn't exist.
  */
-
 static int test_mode(register const char *file)
 {
 	struct stat statb;

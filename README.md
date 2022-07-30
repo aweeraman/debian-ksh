@@ -2,7 +2,8 @@
 
 # KornShell 93u+m
 
-This repository is used to develop bugfixes
+This is version 1.0.x of the 93u+m fork of the KornShell, including a
+sizeable number of enhancements and roughly a thousand bugfixes compared
 to the last stable release (93u+ 2012-08-01) of
 [ksh93](http://www.kornshell.com/),
 formerly developed by AT&T Software Technology (AST).
@@ -10,60 +11,18 @@ The sources in this repository were forked from the
 GitHub [AST repository](https://github.com/att/ast)
 which is no longer under active development.
 
-For user-visible fixes, see [NEWS](https://github.com/ksh93/ksh/blame/master/NEWS)
+For information on the shell, see
+[`src/cmd/ksh93/README`](https://github.com/ksh93/ksh/tree/1.0/src/cmd/ksh93#readme)
+and other files in the same directory.
+For user-visible fixes, see [NEWS](https://github.com/ksh93/ksh/blame/1.0/NEWS)
 and click on commit messages for full details.
-For all fixes, see [the commit log](https://github.com/ksh93/ksh/commits/).
-To see what's left to fix, see [the issue tracker](https://github.com/ksh93/ksh/issues).
-
-## Policy
-
-1. Fixing bugs is main focus of the 1.x series.
-   Major feature development is for future versions (2.x and up).
-2. No major rewrites. No refactoring code that is not fully understood.
-3. No changes in documented behaviour, except if required for compliance with the
-   [POSIX shell language standard](https://pubs.opengroup.org/onlinepubs/9699919799/utilities/contents.html)
-   which David Korn [intended](http://www.kornshell.com/info/) for ksh to follow.
-4. No 100% bug compatibility. Broken and undocumented behaviour gets fixed.
-5. No bureaucracy, no formalities. Just fix it, or report it: create issues,
-   send pull requests. Every interested party is invited to contribute.
-6. To help increase everyone's understanding of this code base, fixes and
-   significant changes should be fully documented in commit messages.
-7. Code style varies somewhat in this historic code base.
-   Your changes should match the style of the code surrounding them.
-   Indent with tabs, assuming an 8-space tab width.
-   Opening braces are on a line of their own, at the same indentation level
-   as their corresponding closing brace.
-   Comments always use `/*`...`*/`.
-8. Good judgment may override this policy.
-
-## Why?
-
-Between 2017 and 2020 there was an ultimately unsuccessful
-[attempt](https://github.com/att/ast/tree/2020.0.1)
-to breathe new life into the KornShell by extensively refactoring the last
-unstable AST beta version (93v-).
-While that ksh2020 branch is now abandoned and still has many critical bugs,
-it also had a lot of bugs fixed. More importantly, the AST issue tracker
-now contains a lot of documentation on how to fix those bugs, which made
-it possible to backport many of them to the last stable release instead.
-This ksh 93u+m reboot now incorporates many of these bugfixes,
-plus patches from
-[OpenSUSE](https://github.com/ksh93/ksh/wiki/Patch-Upstream-Report:-OpenSUSE),
-[Red Hat](https://github.com/ksh93/ksh/wiki/Patch-Upstream-Report:-Red-Hat),
-and
-[Solaris](https://github.com/ksh93/ksh/wiki/Patch-Upstream-Report:-Solaris),
-as well as many new fixes from the community
-([1](https://github.com/ksh93/ksh/pulls?q=is%3Apr+is%3Amerged),
-[2](https://github.com/ksh93/ksh/issues?q=is%3Aissue+is%3Aclosed+label%3Abug)).
-Though there are many
-[bugs left to fix](https://github.com/ksh93/ksh/issues),
-we are confident at this point that 93u+m is already the least buggy branch
-of ksh93 ever released.
+For all fixes, see [the commit log](https://github.com/ksh93/ksh/commits/1.0).
+For known issues in the current release, see [TODO](https://github.com/ksh93/ksh/blob/1.0/TODO).
 
 ## Build
 
 To build ksh with a custom configuration of features, edit
-[`src/cmd/ksh93/SHOPT.sh`](https://github.com/ksh93/ksh/blob/master/src/cmd/ksh93/SHOPT.sh).
+[`src/cmd/ksh93/SHOPT.sh`](https://github.com/ksh93/ksh/blob/1.0/src/cmd/ksh93/SHOPT.sh).
 
 Then `cd` to the top directory and run:
 ```sh
@@ -92,16 +51,28 @@ to run the build scripts this way. For example:
 bin/package make SHELL=/bin/bash CCFLAGS="-O2 -I/opt/local/include" LDFLAGS="-L/opt/local/lib"
 ```
 
+**Note:** Do not add compiler flags that cause the compiler to emit terminal
+escape codes, such as `-fdiagnostics-color=always`; this will cause the
+build to fail as the probing code greps compiler diagnostics.
+
 For more information run
 ```sh
 bin/package help
 ```
 Many other commands in this repo self-document via the `--help`, `--man` and
 `--html` options; those that do have no separate manual page.
+The autoloadable `man` function in
+[`src/cmd/ksh93/fun/man`](https://github.com/ksh93/ksh/blob/1.0/src/cmd/ksh93/fun/man)
+integrates this self-documentation into your regular `man` command.
 
 ### Test
 
 After compiling, you can run the regression tests.
+To run the default test sets for ksh and the build system, use:
+```sh
+bin/package test
+```
+For ksh, use the `shtests` command directly to control the regression test runs.
 Start by reading the information printed by:
 ```sh
 bin/shtests --man

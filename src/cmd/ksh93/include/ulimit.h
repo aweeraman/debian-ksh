@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,7 +18,6 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 #ifndef _ULIMIT_H
 #define _ULIMIT_H 1
 /*
@@ -30,7 +29,7 @@
 #if defined(_sys_resource) && defined(_lib_getrlimit)
 #   include	<sys/resource.h>
 #   if !defined(RLIMIT_FSIZE) && defined(_sys_vlimit)
-	/* This handles hp/ux problem */ 
+	/* This handles HP-UX problem */
 #	include	<sys/vlimit.h>
 #	define RLIMIT_FSIZE	(LIM_FSIZE-1)
 #	define RLIMIT_DATA	(LIM_DATA-1)
@@ -104,6 +103,9 @@
 #ifndef RLIMIT_FSIZE
 #define RLIMIT_FSIZE	RLIMIT_UNKNOWN
 #endif
+#ifndef RLIMIT_KQUEUES
+#define RLIMIT_KQUEUES	RLIMIT_UNKNOWN
+#endif
 #ifndef RLIMIT_LOCKS
 #define RLIMIT_LOCKS	RLIMIT_UNKNOWN
 #endif
@@ -122,6 +124,9 @@
 #ifndef RLIMIT_NPROC
 #define RLIMIT_NPROC	RLIMIT_UNKNOWN
 #endif
+#ifndef RLIMIT_NPTS
+#define RLIMIT_NPTS	RLIMIT_UNKNOWN
+#endif
 #ifndef RLIMIT_PIPE
 #define RLIMIT_PIPE	RLIMIT_UNKNOWN
 #endif
@@ -133,6 +138,9 @@
 #endif
 #ifndef RLIMIT_RTPRIO
 #define RLIMIT_RTPRIO	RLIMIT_UNKNOWN
+#endif
+#ifndef RLIMIT_RTTIME
+#define RLIMIT_RTTIME	RLIMIT_UNKNOWN
 #endif
 #ifndef RLIMIT_SBSIZE
 #define RLIMIT_SBSIZE	RLIMIT_UNKNOWN
@@ -155,6 +163,7 @@
 #define LIM_BYTE	2
 #define LIM_KBYTE	3
 #define LIM_SECOND	4
+#define LIM_MICROSECOND	5
 
 typedef struct Limit_s
 {

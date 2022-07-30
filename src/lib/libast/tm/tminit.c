@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,7 +20,6 @@
 *                     Phong Vo <phongvo@gmail.com>                     *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * Glenn Fowler
  * AT&T Research
@@ -68,23 +67,9 @@ static const Namval_t		options[] =
 /*
  * 2007-03-19 move tm_info from _tm_info_ to (*_tm_infop_)
  *	      to allow future Tm_info_t growth
- *            by 2009 _tm_info_ can be static
  */
 
-#if _BLD_ast && defined(__EXPORT__)
-#define extern		extern __EXPORT__
-#endif
-
-extern Tm_info_t	_tm_info_;
-
-#undef	extern
-
-Tm_info_t		_tm_info_ = { 0 };
-
-__EXTERN__(Tm_info_t, _tm_info_);
-
-__EXTERN__(Tm_info_t*, _tm_infop_);
-
+static Tm_info_t	_tm_info_ = { 0 };
 Tm_info_t*		_tm_infop_ = &_tm_info_;
 
 #if _tzset_environ

@@ -1,5 +1,3 @@
-set	prototyped
-
 header	sys/types.h
 header	pty.h
 header	libutil.h
@@ -13,7 +11,8 @@ lib	openpty,_getpty,ptsname -lutil
 lib	grantpt,unlockpt,posix_openpt stdlib.h
 lib	cfmakeraw termios.h
 
-tst - -lm output{
+# try once with -lm, once without
+tst - -lm - - output{
 	#include	<fcntl.h>
 	#if _lib_ptsname
 	#include	<stdlib.h>
@@ -52,7 +51,11 @@ tst - -lm output{
 		return 0;
 	}
 }end fail{
-	echo '#error The output block in src/cmd/builtin/features/pty failed to compile. Rebuild with IFFEFLAGS=-d1 to debug.'
+	case ${_features_pty_TRIEDONCE-no} in
+	no)	_features_pty_TRIEDONCE=yes ;;
+	*)	echo "$0: Output block failed to compile. Export IFFEFLAGS=-d1 to debug." >&2
+		exit 1 ;;
+	esac
 }end
 
 extern	_getpty		char*		(int*, int, mode_t, int)

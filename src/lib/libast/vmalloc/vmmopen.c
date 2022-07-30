@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -21,18 +21,16 @@
 *                                                                      *
 ***********************************************************************/
 #include "FEATURE/vmalloc"
-#if !_hdr_sys_shm || (defined(_UWIN) && defined(_BLD_ast))
+#if !_hdr_sys_shm
 
-void _STUB_vmmapopen(){}
+NoN(vmmapopen)
 
 #else
 
 #include	"vmhdr.h"
 #include	<sys/types.h>
 #include	<string.h>
-#if _hdr_unistd
 #include	<unistd.h>
-#endif
 
 #undef	ALIGN	/* some sys/param.h define this */
 
@@ -86,12 +84,12 @@ typedef struct _mmuser_s	Mmuser_t;
 struct _mmuser_s
 {	Mmuser_t*	next;	/* link list		*/
 	int		key;	/* identifying key	*/
-	Void_t*		val;	/* associated value	*/
+	void*		val;	/* associated value	*/
 };
 
 typedef struct _mmvm_s
 {	unsigned int	magic;	/* magic bytes		*/
-	Void_t*		base;	/* address to map to	*/
+	void*		base;	/* address to map to	*/
 	ssize_t		size;	/* total data size	*/
 	ssize_t		busy;	/* amount in use	*/
 	Mmuser_t*	user;	/* stored (key,val)'s	*/
@@ -136,18 +134,18 @@ int _vmmdump(Vmalloc_t* vm, int fd)
 /* fix the mapped address for a region */
 static Mmvm_t* mmfix(Mmvm_t* mmvm, Mmdisc_t* mmdc, int fd)
 {
-	Void_t	*base = mmvm->base;
+	void	*base = mmvm->base;
 	ssize_t	size = mmvm->size;
 
-	if(base != (Void_t*)mmvm) /* mmvm is not right yet */
+	if(base != (void*)mmvm) /* mmvm is not right yet */
 	{	/**/ASSERT(!base || (base && (VLONG(base)%_Vmpagesize) == 0) );
 		if(mmdc->proj < 0)
-		{	munmap((Void_t*)mmvm, size); 
+		{	munmap((void*)mmvm, size); 
 			mmvm = (Mmvm_t*)mmap(base, size, (PROT_READ|PROT_WRITE),
 					     (MAP_FIXED|MAP_SHARED), fd, (off_t)0 );
 		}
 		else
-		{	shmdt((Void_t*)mmvm);
+		{	shmdt((void*)mmvm);
 			mmvm = (Mmvm_t*)shmat(mmdc->shmid, base, 0);
 		}
 		if(!mmvm || mmvm == (Mmvm_t*)(-1) )
@@ -160,7 +158,7 @@ static Mmvm_t* mmfix(Mmvm_t* mmvm, Mmdisc_t* mmdc, int fd)
 /* initialize region data */
 static int mminit(Mmdisc_t* mmdc)
 {
-	Void_t		*base;
+	void		*base;
 	int		try, k;
 	int		fd = -1;
 	key_t		key = -1;
@@ -200,18 +198,18 @@ static int mminit(Mmdisc_t* mmdc)
 				goto done;
 
 		/* map the file into memory */
-		mmvm = (Mmvm_t*)mmap(NIL(Void_t*), size, (PROT_READ|PROT_WRITE),
+		mmvm = (Mmvm_t*)mmap(NIL(void*), size, (PROT_READ|PROT_WRITE),
 		 		     MAP_SHARED, fd, (off_t)0 );
 	}
 	else 
-	{	/* make the key and get/create an id for the share mem segment */
+	{	/* make the key and get/create an ID for the share mem segment */
 		if((key = ftok(mmdc->file, mmdc->proj)) < 0 )
 			goto done;
 		if((mmdc->shmid = shmget(key, size, IPC_CREAT|FILE_MODE)) < 0 )
 			goto done;
 
 		/* map the data segment into memory */
-		mmvm = (Mmvm_t*)shmat(mmdc->shmid, NIL(Void_t*), 0);
+		mmvm = (Mmvm_t*)shmat(mmdc->shmid, NIL(void*), 0);
 	}
 
 	if(!mmvm || mmvm == (Mmvm_t*)(-1) ) /* initial mapping failed */
@@ -220,7 +218,7 @@ static int mminit(Mmdisc_t* mmdc)
 	/* all processes compete for the chore to initialize data */
 	if(asocasint(&mmvm->magic, 0, MM_LETMEDOIT) == 0 ) /* lucky winner: us! */
 	{	if(!(base = vmmaddress(size)) ) /* get a suitable base for the map */
-			base = (Void_t*)mmvm;
+			base = (void*)mmvm;
 		mmdc->flag |= MM_INIT;
 		mmvm->base = base;
 		mmvm->size = size;
@@ -228,9 +226,9 @@ static int mminit(Mmdisc_t* mmdc)
 		mmvm->proj = mmdc->proj;
 		strcpy(mmvm->file, mmdc->file);
 		if(mmdc->proj < 0 ) /* flush to file */
-			msync((Void_t*)mmvm, MMHEAD(mmvm->file), MS_SYNC);
+			msync((void*)mmvm, MMHEAD(mmvm->file), MS_SYNC);
 
-		if(mmvm->base != (Void_t*)mmvm) /* not yet at the right address */
+		if(mmvm->base != (void*)mmvm) /* not yet at the right address */
 			if(!(mmvm = mmfix(mmvm, mmdc, fd)) )
 				goto done;
 		rv = 0; /* success, return this value to indicate a new map */
@@ -251,7 +249,7 @@ static int mminit(Mmdisc_t* mmdc)
 		if(mmvm->proj != mmdc->proj || strcmp(mmvm->file, mmdc->file) != 0 )
 			goto done;
 
-		if(mmvm->base != (Void_t*)mmvm) /* not yet at the right address */
+		if(mmvm->base != (void*)mmvm) /* not yet at the right address */
 			if(!(mmvm = mmfix(mmvm, mmdc, fd)) )
 				goto done;
 		rv = 1; /* success, return this value to indicate a finished map */
@@ -265,19 +263,15 @@ done:	(void)close(fd);
 	}
 	else if(mmvm && mmvm != (Mmvm_t*)(-1)) /* error, remove map */
 	{	if(mmdc->proj < 0)
-			(void)munmap((Void_t*)mmvm, size);
-		else	(void)shmdt((Void_t*)mmvm);
+			(void)munmap((void*)mmvm, size);
+		else	(void)shmdt((void*)mmvm);
 	}
 
 	return rv;
 }
 
-#if __STD_C /* end a file mapping */
+/* end a file mapping */
 static int mmend(Mmdisc_t* mmdc)
-#else
-static int mmend(mmdc)
-Mmdisc_t*	mmdc;
-#endif
 {
 	Mmvm_t		*mmvm;
 	struct shmid_ds	shmds;
@@ -309,23 +303,14 @@ Mmdisc_t*	mmdc;
 	return 0;
 }
 
-#if __STD_C
-static Void_t* mmgetmem(Vmalloc_t* vm, Void_t* caddr,
+static void* mmgetmem(Vmalloc_t* vm, void* caddr,
 			size_t csize, size_t nsize, Vmdisc_t* disc)
-#else
-static Void_t* mmgetmem(vm, caddr, csize, nsize, disc)
-Vmalloc_t*	vm;
-Void_t*		caddr;
-size_t		csize;
-size_t		nsize;
-Vmdisc_t*	disc;
-#endif
 {
 	Mmvm_t		*mmvm;
 	Mmdisc_t	*mmdc = (Mmdisc_t*)disc;
 
 	if(!(mmvm = mmdc->mmvm) ) /* bad data */
-		return NIL(Void_t*);
+		return NIL(void*);
 
 	/* this region allows only a single busy block! */
 	if(caddr) /* resizing/freeing an existing block */
@@ -333,26 +318,18 @@ Vmdisc_t*	disc;
 		{	mmvm->busy = nsize;
 			return MMDATA(mmvm);
 		}
-		else	return NIL(Void_t*);
+		else	return NIL(void*);
 	}
 	else /* requesting a new block */
 	{	if(mmvm->busy == 0 )
 		{	mmvm->busy = nsize;
 			return MMDATA(mmvm);
 		}
-		else	return NIL(Void_t*);
+		else	return NIL(void*);
 	}
 }
 
-#if __STD_C
-static int mmexcept(Vmalloc_t* vm, int type, Void_t* data, Vmdisc_t* disc)
-#else
-static int mmexcept(vm, type, data, disc)
-Vmalloc_t*	vm;
-int		type;
-Void_t*		data;
-Vmdisc_t*	disc;
-#endif
+static int mmexcept(Vmalloc_t* vm, int type, void* data, Vmdisc_t* disc)
 {
 	int		rv;
 	Mmdisc_t	*mmdc = (Mmdisc_t*)disc;
@@ -369,7 +346,7 @@ Vmdisc_t*	disc;
 			else /* an existing map was reconstructed */
 			{	/**/ASSERT(!(mmdc->flag&MM_INIT));
 				/**/ASSERT(mmdc->mmvm->magic == MM_MAGIC);
-				*((Void_t**)data) = MMDATA(mmdc->mmvm);
+				*((void**)data) = MMDATA(mmdc->mmvm);
 				return 1;
 			}
 		}
@@ -381,7 +358,7 @@ Vmdisc_t*	disc;
 			asocasint(&mmdc->mmvm->magic, MM_LETMEDOIT, MM_MAGIC);
 
 			if(mmdc->proj < 0) /* sync data to file now */
-				msync((Void_t*)mmdc->mmvm, MMHEAD(mmdc->file), MS_SYNC);
+				msync((void*)mmdc->mmvm, MMHEAD(mmdc->file), MS_SYNC);
 		} /**/ASSERT(mmdc->mmvm->magic == MM_MAGIC);
 		return 0;
 	}
@@ -395,14 +372,9 @@ Vmdisc_t*	disc;
 	else	return 0;
 }
 
-#if __STD_C
-Vmalloc_t* vmmopen(char* file, int proj, ssize_t size )
-#else
-Vmalloc_t* vmmopen(file, proj, size )
-char*		file;	/* file for key or data backing */
-int		proj;	/* project ID, < 0 doing mmap	*/
-ssize_t		size;	/* desired size for mem segment	*/
-#endif
+Vmalloc_t* vmmopen(char*	file,	/* file for key or data backing */
+		   int		proj,	/* project ID, < 0 doing mmap	*/
+		   ssize_t	size)	/* desired size for mem segment	*/
 {
 	Vmalloc_t	*vm;
 	Mmdisc_t	*mmdc;
@@ -439,15 +411,10 @@ ssize_t		size;	/* desired size for mem segment	*/
 }
 
 /* to store (key,value) data in the map */
-#if __STD_C
-Void_t* vmmvalue(Vmalloc_t* vm, int key, Void_t* val, int oper)
-#else
-Void_t* vmmvalue(vm, key, val, oper)
-Vmalloc_t*	vm;	/* a region based on vmmapopen	*/
-int		key;	/* key of data to be set	*/
-Void_t*		val;	/* data to be set		*/
-int		oper;	/* operation type		*/
-#endif
+void* vmmvalue(Vmalloc_t*	vm,	/* a region based on vmmapopen	*/
+		 int		key,	/* key of data to be set	*/
+		 void*	val,	/* data to be set		*/
+		 int		oper)	/* operation type		*/
 {
 	Mmuser_t	*u;
 	Mmdisc_t	*mmdc = (Mmdisc_t*)vm->disc;
@@ -455,7 +422,7 @@ int		oper;	/* operation type		*/
 
 	/* check to see if operation is well-defined */
 	if(oper != VM_MMGET && oper != VM_MMSET && oper != VM_MMADD)
-		return NIL(Void_t*);
+		return NIL(void*);
 
 	SETLOCK(vm, 0);
 
@@ -466,7 +433,7 @@ int		oper;	/* operation type		*/
 
 	if(!u && (oper == VM_MMSET || oper == VM_MMADD) )
 	{	if((u = KPVALLOC(vm, sizeof(Mmuser_t), vm->meth.allocf)) )
-		{	u->val  = NIL(Void_t*);
+		{	u->val  = NIL(void*);
 			u->key  = key;
 			u->next = mmvm->user;
 			mmvm->user = u;
@@ -477,10 +444,10 @@ int		oper;	/* operation type		*/
 	{	if(oper == VM_MMSET)
 			u->val = val;
 		else if(oper == VM_MMADD)
-			u->val = (Void_t*)((long)(u->val) + (long)(val));
+			u->val = (void*)((long)(u->val) + (long)(val));
 		val = u->val;
 	}
-	else	val = NIL(Void_t*);
+	else	val = NIL(void*);
 
 	CLRLOCK(vm, 0);
 
@@ -497,12 +464,12 @@ void vmmrelease(Vmalloc_t* vm, int type)
 }
 
 /* suggest an address usable for mapping memory */
-Void_t* vmmaddress(size_t size)
+void* vmmaddress(size_t size)
 {
 #if !defined(_map_min) || !defined(_map_max) || !defined(_map_dir)
-	return NIL(Void_t*);
+	return NIL(void*);
 #else
-	Void_t			*avail;
+	void			*avail;
 	static Vmuchar_t	*min = (Vmuchar_t*)_map_min;
 	static Vmuchar_t	*max = (Vmuchar_t*)_map_max;
 
@@ -510,14 +477,14 @@ Void_t* vmmaddress(size_t size)
 	size = ROUND(size, _Vmpagesize);
 
 	if(_map_dir == 0 || (min+size) > max)
-		avail = NIL(Void_t*);
+		avail = NIL(void*);
 	else if(_map_dir > 0)
-	{	avail = (Void_t*)min;
+	{	avail = (void*)min;
 		min += size;
 	}
 	else 
 	{	max -= size;
-		avail = (Void_t*)max;
+		avail = (void*)max;
 	}
 
 	return avail;

@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -68,7 +68,7 @@ then
 		integer running=0 maxrunning=0
 		trap "((running--))" CHLD
 		for ((i=0; i<JOBCOUNT; i++))
-		do	sleep .5 &
+		do	sleep 1 &
 			if	((++running > maxrunning))
 			then	((maxrunning=running))
 			fi
@@ -126,7 +126,7 @@ then	err_exit "CHLD trap failed -- expected 4 args, got $#"
 elif	(( $4 != 0 ))
 then	err_exit "CHLD trap failed -- exit code $4"
 elif	(( $1 != $2 ))
-then	err_exit "child pid mismatch -- got '$1' != '$2'"
+then	err_exit "child PID mismatch -- got '$1' != '$2'"
 elif	(( $3 != 9 ))
 then	err_exit "child status mismatch -- expected '9', got '$3'"
 fi

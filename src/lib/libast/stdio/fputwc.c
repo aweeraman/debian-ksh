@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,15 +20,12 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 
 #include "stdhdr.h"
 
 wint_t
 fputwc(wchar_t c, Sfio_t* f)
 {
-	STDIO_INT(f, "fputc", wint_t, (wchar_t, Sfio_t*), (c, f))
-
 	FWIDE(f, WEOF);
 	return (sfwrite(f, &c, sizeof(c)) == sizeof(c)) ? c : WEOF;
 }

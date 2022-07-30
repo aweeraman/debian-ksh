@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,7 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * regexp interface and partial implementation
  * what a novel approach
@@ -61,16 +60,10 @@ typedef struct
 #define compile(a,b,c,d)	_re_read(&_re_info,a,b,c,d)
 #define step(a,b)		_re_exec(&_re_info,a,b,0)
 
-#if _BLD_ast && defined(__EXPORT__)
-#define extern		__EXPORT__
-#endif
-
 extern int	_re_comp(regexp_t*, const char*, char*, unsigned int);
 extern int	_re_exec(regexp_t*, const char*, const char*, int);
 extern char*	_re_putc(int);
 extern char*	_re_read(regexp_t*, const char*, char*, const char*, int);
-
-#undef	extern
 
 #ifndef _REGEXP_DECLARE
 

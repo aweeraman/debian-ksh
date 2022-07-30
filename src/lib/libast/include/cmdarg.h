@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,7 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * Glenn Fowler
  * AT&T Research
@@ -67,17 +66,13 @@ struct Cmddisc_s
 
 typedef struct Cmdarg_s			/* cmdopen() handle		*/
 {
-	const char*	id;		/* library id string		*/
+	const char*	id;		/* library ID string		*/
 
 #ifdef _CMDARG_PRIVATE_
 	_CMDARG_PRIVATE_
 #endif
 
 } Cmdarg_t;
-
-#if _BLD_ast && defined(__EXPORT__)
-#define extern		__EXPORT__
-#endif
 
 #ifndef cmdopen
 extern Cmdarg_t*	cmdopen(char**, int, int, const char*, int);
@@ -87,7 +82,5 @@ extern Cmdarg_t*	cmdopen_20120411(char**, int, int, const char*, Cmddisc_t*);
 extern int		cmdflush(Cmdarg_t*);
 extern int		cmdarg(Cmdarg_t*, const char*, int);
 extern int		cmdclose(Cmdarg_t*);
-
-#undef	extern
 
 #endif

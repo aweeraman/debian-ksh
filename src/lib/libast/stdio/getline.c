@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,7 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 
 #ifndef _USE_GNU
 #define _USE_GNU
@@ -31,7 +30,5 @@
 ssize_t
 getline(char** sp, size_t* np, Sfio_t* f)
 {
-	STDIO_INT(f, "getline", ssize_t, (char**, size_t*, Sfio_t*), (sp, np, f))
-
 	return getdelim(sp, np, '\n', f);
 }

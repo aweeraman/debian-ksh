@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -26,17 +26,8 @@
  * for backwards compatibility with pre-threaded sfgetl() inline
  */
 
-#ifdef __EXPORT__
-#define extern	__EXPORT__
-#endif
-
 extern
-#if __STD_C
 Sflong_t _sfgetl(reg Sfio_t* f)
-#else
-Sflong_t _sfgetl(f)
-reg Sfio_t*	f;
-#endif
 {
 	sfungetc(f, (unsigned char)_SF_(f)->val);
 	return sfgetl(f);

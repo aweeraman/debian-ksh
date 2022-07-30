@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,11 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#if defined(_UWIN) && defined(_BLD_ast)
-
-void _STUB_vmsegment(){}
-
-#else
 
 #include	"vmhdr.h"
 
@@ -33,13 +28,8 @@ void _STUB_vmsegment(){}
 **	Written by Kiem-Phong Vo, kpv@research.att.com, 02/07/95
 */
 
-#if __STD_C
-Void_t* vmsegment(Vmalloc_t* vm, Void_t* addr)
-#else
-Void_t* vmsegment(vm, addr)
-Vmalloc_t*	vm;	/* region	*/
-Void_t*		addr;	/* address	*/
-#endif
+void* vmsegment(Vmalloc_t*	vm,	/* region	*/
+		void*		addr)	/* address	*/
 {
 	Seg_t		*seg;
 	Vmdata_t	*vd = vm->data;
@@ -53,7 +43,5 @@ Void_t*		addr;	/* address	*/
 
 	CLRLOCK(vm, 0);
 
-	return seg ? (Void_t*)seg->addr : NIL(Void_t*);
+	return seg ? (void*)seg->addr : NIL(void*);
 }
-
-#endif

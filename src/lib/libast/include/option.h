@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,7 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * Glenn Fowler
  * AT&T Research
@@ -46,7 +45,7 @@ typedef struct Optdisc_s
 {
 	unsigned long	version;	/* OPT_VERSION			*/
 	unsigned long	flags;		/* OPT_* flags			*/
-	char*		catalog;	/* error catalog id		*/
+	char*		catalog;	/* error catalog ID		*/
 	Optinfo_f	infof;		/* runtime info function	*/
 } Optdisc_t;
 
@@ -75,24 +74,11 @@ typedef struct Opt_s
 	_OPT_PRIVATE_
 } Opt_t;
 
-#if _BLD_ast && defined(__EXPORT__)
-#define extern		extern __EXPORT__
-#endif
-#if !_BLD_ast && defined(__IMPORT__)
-#define extern		extern __IMPORT__
-#endif
-
 extern Opt_t*		_opt_infop_;
 
 #define opt_info	(*_opt_infop_)
 
-#undef	extern
-
 #define optinit(d,f)	(memset(d,0,sizeof(*(d))),(d)->version=OPT_VERSION,(d)->infof=(f),opt_info.disc=(d))
-
-#if _BLD_ast && defined(__EXPORT__)
-#define extern		__EXPORT__
-#endif
 
 extern int		optget(char**, const char*);
 extern int		optjoin(char**, ...);
@@ -101,7 +87,5 @@ extern char*		optusage(const char*);
 extern int		optstr(const char*, const char*);
 extern int		optesc(Sfio_t*, const char*, int);
 extern Opt_t*		optctx(Opt_t*, Opt_t*);
-
-#undef	extern
 
 #endif

@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -22,8 +22,7 @@
 . "${SHTESTS_COMMON:-${0%/*}/_common}"
 
 # regression tests for compound variables
-Command=${0##*/}
-integer Errors=0
+
 Point=(
 	float x=1. y=0.
 )
@@ -668,7 +667,7 @@ compound  -a c.board
 for ((i=2; i < 4; i++))
 do	c.board[1][$i]=(foo=bar)
 done
-exp=$'(\n\ttypeset -C -a board=(\n\t\t[1]=(\n\t\t\t[2]=(\n\t\t\t\tfoo=bar\n\t\t\t)\n\t\t\t[3]=(\n\t\t\t\tfoo=bar\n\t\t\t)\n\t\t)\n\t)\n)'
+exp=$'(\n\ttypeset -C -a board=(\n\t\ttypeset -a [1]=(\n\t\t\t[2]=(\n\t\t\t\tfoo=bar\n\t\t\t)\n\t\t\t[3]=(\n\t\t\t\tfoo=bar\n\t\t\t)\n\t\t)\n\t)\n)'
 [[ "$(print -v c)" == "$exp" ]] || err_exit 'compound variable assignment to two dimensional array not working'
 
 unset zz
@@ -706,6 +705,15 @@ EOF
 	chmod +x "$compound_array"
 	"$SHELL" -c "$compound_array"
 ) || err_exit 'unsetting an array turned into a compound variable fails'
+
+# ======
+# before 2022-06-22, this resulted in:
+#   ksh: echo: arr[0]._AST_FEATURES=CONFORMANCE - ast UNIVERSE - ucb: cannot be an array
+#   ksh: [1]=1: invalid variable name
+got=$(set +x; eval 'typeset -a arr=( ( (a $(($(echo 1) + 1)) c)1))' 2>&1; typeset -p arr)
+exp='typeset -a arr=(((a 2 c) 1) )'
+[[ $got == "$exp" ]] || err_exit "'echo' environment messed up by compound assignment" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
 
 # ======
 exit $((Errors<125?Errors:125))

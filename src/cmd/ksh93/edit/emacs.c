@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,7 +18,6 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /* Original version by Michael T. Veach 
  * Adapted for ksh by David Korn */
 /* EMACS_MODES: c tabstop=4 
@@ -62,9 +61,12 @@ One line screen editor for any program
  *  but you can use them to separate features.
  */
 
+#include	"shopt.h"
+
 #if SHOPT_ESH
 
 #include	<ast.h>
+#include	<releaseflags.h>
 #include	"FEATURE/cmds"
 #include	"defs.h"
 #include	"io.h"
@@ -91,8 +93,8 @@ One line screen editor for any program
 #   define digit(c)	((c&~STRIP)==0 && isdigit(c))
 
 #else
-#   define gencpy(a,b)	strcpy((char*)(a),(char*)(b))
-#   define genncpy(a,b,n)	strncpy((char*)(a),(char*)(b),n)
+#   define gencpy(a,b)	strcopy((char*)(a),(char*)(b))
+#   define genncpy(a,b,n)	strncopy((char*)(a),(char*)(b),n)
 #   define genlen(str)	strlen(str)
 #   define print(c)	isprint(c)
 #   define isword(c)	(isalnum(out[c]) || (out[c]=='_'))
@@ -160,7 +162,7 @@ characters in the middle of the line.
 
 typedef enum
 {
-	FIRST,		/* First time thru for logical line, prompt on screen */
+	FIRST,		/* First time through for logical line, prompt on screen */
 	REFRESH,	/* Redraw entire screen */
 	APPEND,		/* Append char before cursor to screen */
 	UPDATE,		/* Update the screen as need be */
@@ -206,7 +208,6 @@ int ed_emacsread(void *context, int fd,char *buff,int scend, int reedit)
 	}
 	raw = 1;
 	/* This mess in case the read system call fails */
-	
 	ed_setup(ep->ed,fd,reedit);
 #if !SHOPT_MULTIBYTE
 	out = (genchar*)buff;
@@ -264,7 +265,7 @@ int ed_emacsread(void *context, int fd,char *buff,int scend, int reedit)
 #ifdef ESH_NFIRST
 		ed_ungetchar(ep->ed,cntl('N'));
 #else
-		location = hist_locate(shgd->hist_ptr,location.hist_command,location.hist_line,1);
+		location = hist_locate(sh.hist_ptr,location.hist_command,location.hist_line,1);
 		if (location.hist_command < histlines)
 		{
 			hline = location.hist_command;
@@ -351,7 +352,7 @@ int ed_emacsread(void *context, int fd,char *buff,int scend, int reedit)
 			continue;
 #endif	/* u370 */
 		case '\t':
-			if(cur>0  && ep->ed->sh->nextprompt)
+			if(cur>0  && sh.nextprompt)
 			{
 				if(ep->ed->e_tabcount==0)
 				{
@@ -612,7 +613,7 @@ update:
 			}
 			continue;
 		case cntl('L'):
-			ed_crlf(ep->ed);
+			putchar(ep->ed,'\n');
 			draw(ep,REFRESH);
 			continue;
 		case ESC :
@@ -685,7 +686,7 @@ update:
 			hline = location.hist_command;	/* start at saved position */
 			hloff = location.hist_line;
 #endif /* ESH_NFIRST */
-			location = hist_locate(shgd->hist_ptr,hline,hloff,count);
+			location = hist_locate(sh.hist_ptr,hline,hloff,count);
 			if (location.hist_command > histlines)
 			{
 				beep();
@@ -715,11 +716,8 @@ update:
 			draw(ep,UPDATE);
 			continue;
 		}
-		
 	}
-	
 process:
-
 	if (c == (-1))
 	{
 		lookahead = 0;
@@ -735,7 +733,8 @@ process:
 	{
 		out[eol++] = '\n';
 		out[eol] = '\0';
-		ed_crlf(ep->ed);
+		putchar(ep->ed,'\n');
+		ed_flush(ep->ed);
 	}
 #if SHOPT_MULTIBYTE
 	ed_external(out,buff);
@@ -782,7 +781,7 @@ static void putstring(Emacs_t* ep,register char *sp)
 static int escape(register Emacs_t* ep,register genchar *out,int count)
 {
 	register int i,value;
-	int digit,ch;
+	int digit,ch,c,d;
 	digit = 0;
 	value = 0;
 	while ((i=ed_getchar(ep->ed,0)),digit(i))
@@ -829,6 +828,7 @@ static int escape(register Emacs_t* ep,register genchar *out,int count)
 		case 'd':	/* M-d == delete word */
 		case 'c':	/* M-c == uppercase */
 		case 'f':	/* M-f == move cursor forward one word */
+		forward:
 		{
 			i = cur;
 			while(value-- && i<eol)
@@ -881,11 +881,11 @@ static int escape(register Emacs_t* ep,register genchar *out,int count)
 			}
 		}
 		
-		
 		case 'b':	/* M-b == go backward one word */
 		case DELETE :
 		case '\b':
 		case 'h':	/* M-h == delete the previous word */
+		backward:
 		{
 			i = cur;
 			while(value-- && i>0)
@@ -1082,6 +1082,7 @@ static int escape(register Emacs_t* ep,register genchar *out,int count)
 			return(-1);
 #endif
 		case '[':	/* feature not in book */
+		case 'O':	/* after running top <ESC>O instead of <ESC>[ */
 			switch(i=ed_getchar(ep->ed,1))
 			{
 			    case 'A':
@@ -1134,8 +1135,53 @@ static int escape(register Emacs_t* ep,register genchar *out,int count)
 				/* VT220 End key */
 				ed_ungetchar(ep->ed,cntl('E'));
 				return(-1);
+			    case '1':
+			    case '7':
+				/*
+				 * ed_getchar() can only be run once on each character
+				 * and shouldn't be used on non-existent characters.
+				 */
+				ch = ed_getchar(ep->ed,1);
+				if(ch == '~')
+				{ /* Home key */
+					ed_ungetchar(ep->ed,cntl('A'));
+					return(-1);
+				}
+				else if(i == '1' && ch == ';')
+				{
+					c = ed_getchar(ep->ed,1);
+					if(c == '3' || c == '5' || c == '9') /* 3 == Alt, 5 == Ctrl, 9 == iTerm2 Alt */
+					{
+						d = ed_getchar(ep->ed,1);
+						switch(d)
+						{
+						    case 'D': /* Ctrl/Alt-Left arrow (go back one word) */
+							ch = 'b';
+							goto backward;
+						    case 'C': /* Ctrl/Alt-Right arrow (go forward one word) */
+							ch = 'f';
+							goto forward;
+						}
+						ed_ungetchar(ep->ed,d);
+					}
+					ed_ungetchar(ep->ed,c);
+				}
+				ed_ungetchar(ep->ed,ch);
+				ed_ungetchar(ep->ed,i);
+				return(-1);
+			    case '2': /* Insert key */
+				ch = ed_getchar(ep->ed,1);
+				if(ch == '~')
+				{
+					ed_ungetchar(ep->ed, cntl('V'));
+					return(-1);
+				}
+				ed_ungetchar(ep->ed,ch);
+				ed_ungetchar(ep->ed,i);
+				return(-1);
 			    case '3':
-				if((ch=ed_getchar(ep->ed,1))=='~')
+				ch = ed_getchar(ep->ed,1);
+				if(ch == '~')
 				{	/*
 					 * VT220 forward-delete key.
 					 * Since ERASECHAR and EOFCHAR are usually both mapped to ^D, we
@@ -1144,6 +1190,47 @@ static int escape(register Emacs_t* ep,register genchar *out,int count)
 					 */
 					if(cur < eol)
 						ed_ungetchar(ep->ed,ERASECHAR);
+					return(-1);
+				}
+				else if(ch == ';')
+				{
+					c = ed_getchar(ep->ed,1);
+					if(c == '5')
+					{
+						d = ed_getchar(ep->ed,1);
+						if(d == '~')
+						{
+							/* Ctrl-Delete (delete next word) */
+							ch = 'd';
+							goto forward;
+						}
+						ed_ungetchar(ep->ed,d);
+					}
+					ed_ungetchar(ep->ed,c);
+				}
+				ed_ungetchar(ep->ed,ch);
+				ed_ungetchar(ep->ed,i);
+				return(-1);
+			    case '5':  /* Haiku terminal Ctrl-Arrow key */
+				ch = ed_getchar(ep->ed,1);
+				switch(ch)
+				{
+				    case 'D': /* Ctrl-Left arrow (go back one word) */
+					ch = 'b';
+					goto backward;
+				    case 'C': /* Ctrl-Right arrow (go forward one word) */
+					ch = 'f';
+					goto forward;
+				}
+				ed_ungetchar(ep->ed,ch);
+				ed_ungetchar(ep->ed,i);
+				return(-1);
+			    case '4':
+			    case '8': /* rxvt */
+				ch = ed_getchar(ep->ed,1);
+				if(ch == '~')
+				{
+					ed_ungetchar(ep->ed,cntl('E')); /* End key */
 					return(-1);
 				}
 				ed_ungetchar(ep->ed,ch);
@@ -1230,7 +1317,7 @@ static void xcommands(register Emacs_t *ep,int count)
 				show_info(ep,hbuf);
 				return;
 			}
-#	if !_AST_ksh_release		/* debugging, modify as required */
+#	if !_AST_release		/* debugging, modify as required */
 		case cntl('D'):		/* ^X^D show debugging info */
 			{
 				char debugbuf[MAXLINE];
@@ -1291,7 +1378,7 @@ static void search(Emacs_t* ep,genchar *out,int direction)
 				goto restore;
 			continue;
 		}
-		if(i == ep->ed->e_intr)  /* end reverse search */
+		if(i == ep->ed->e_intr || i == cntl('G'))  /* end reverse search */
 			goto restore;
 		if (i==usrkill)
 		{
@@ -1328,7 +1415,6 @@ static void search(Emacs_t* ep,genchar *out,int direction)
 	}
 	skip:
 	i = genlen(string);
-	
 	if(ep->prevdirection == -2 && i!=2 || direction!=1)
 		ep->prevdirection = -1;
 	if (direction < 1)
@@ -1343,13 +1429,13 @@ static void search(Emacs_t* ep,genchar *out,int direction)
 #if SHOPT_MULTIBYTE
 		ed_external(string,(char*)string);
 #endif /* SHOPT_MULTIBYTE */
-		strncpy(lstring,((char*)string)+2,SEARCHSIZE-1);
+		strncopy(lstring,((char*)string)+2,SEARCHSIZE-1);
 		lstring[SEARCHSIZE-1] = 0;
 		ep->prevdirection = direction;
 	}
 	else
 		direction = ep->prevdirection ;
-	location = hist_find(shgd->hist_ptr,(char*)lstring,hline,1,direction);
+	location = hist_find(sh.hist_ptr,(char*)lstring,hline,1,direction);
 	i = location.hist_command;
 	if(i>0)
 	{
@@ -1430,9 +1516,7 @@ static void draw(register Emacs_t *ep,Draw_t option)
 	
 	if ((lookahead)&&(option != FINAL))
 	{
-		
 		ep->scvalid = 0; /* Screen is out of date, APPEND will not work */
-		
 		return;
 	}
 	
@@ -1442,7 +1526,6 @@ static void draw(register Emacs_t *ep,Draw_t option)
 	and the window has room for another character,
 	then output the character and adjust the screen only.
 	*****************************************/
-	
 
 	if(logcursor > drawbuff)
 		i = *(logcursor-1);	/* last character inserted */
@@ -1500,7 +1583,6 @@ static void draw(register Emacs_t *ep,Draw_t option)
 	**********************/
 	
 	i = ncursor - nscreen;
-	
 	if ((ep->offset && i<=ep->offset)||(i >= (ep->offset+w_size)))
 	{
 		/* Center the cursor on the screen */
@@ -1510,19 +1592,16 @@ static void draw(register Emacs_t *ep,Draw_t option)
 	}
 			
 	/*********************
-	 Is the range of screen[0] thru screen[w_size] up-to-date
-	 with nscreen[offset] thru nscreen[offset+w_size] ?
+	 Is the range of screen[0] through screen[w_size] up-to-date
+	 with nscreen[offset] through nscreen[offset+w_size] ?
 	 If not, update as need be.
 	***********************/
 	
 	nptr = &nscreen[ep->offset];
 	sptr = ep->screen;
-	
 	i = w_size;
-	
 	while (i-- > 0)
 	{
-		
 		if (*nptr == '\0')
 		{
 			*(nptr + 1) = '\0';
@@ -1555,7 +1634,6 @@ static void draw(register Emacs_t *ep,Draw_t option)
 	if(ep->ed->e_multiline && option == REFRESH)
 		ed_setcursor(ep->ed, ep->screen, ep->ed->e_peol, ep->ed->e_peol, -1);
 
-	
 	/******************
 	
 	Screen overflow checks 

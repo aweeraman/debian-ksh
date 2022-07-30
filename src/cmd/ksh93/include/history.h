@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,7 +18,6 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 #ifndef HIST_VERSION
 /*
  *	Interface for history mechanism
@@ -57,7 +56,7 @@ extern int _Hist;
 #define	hist_min(hp)	((_Hist=((int)((hp)->histind-(hp)->histsize)))>=0?_Hist:0)
 #define	hist_max(hp)	((int)((hp)->histind))
 /* these are the history interface routines */
-extern int		sh_histinit(void *);
+extern int		sh_histinit(void);
 extern void 		hist_cancel(History_t*);
 extern void 		hist_close(History_t*);
 extern int		hist_copy(char*, int, int, int);

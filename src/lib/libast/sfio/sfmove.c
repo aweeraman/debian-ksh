@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -31,15 +31,10 @@
 */
 #define MAX_SSIZE	((ssize_t)((~((size_t)0)) >> 1))
 
-#if __STD_C
-Sfoff_t sfmove(Sfio_t* fr, Sfio_t* fw, Sfoff_t n, reg int rc)
-#else
-Sfoff_t sfmove(fr,fw,n,rc)
-Sfio_t*	fr;	/* moving data from this stream */
-Sfio_t*	fw;	/* moving data to this stream */
-Sfoff_t		n;	/* number of bytes/records to move. <0 for unbounded move */
-reg int		rc;	/* record separator */
-#endif
+Sfoff_t sfmove(Sfio_t*	fr,	/* moving data from this stream */
+	       Sfio_t*	fw,	/* moving data to this stream */
+               Sfoff_t	n,	/* number of bytes/records to move. <0 for unbounded move */
+	       reg int	rc)	/* record separator */
 {
 	reg uchar	*cp, *next;
 	reg ssize_t	r, w;
@@ -48,12 +43,9 @@ reg int		rc;	/* record separator */
 	Sfoff_t		n_move, sk, cur;
 	uchar		*rbuf = NIL(uchar*);
 	ssize_t		rsize = 0;
-	SFMTXDECL(fr);	/* declare a shadow stream variable for from stream */
-	SFMTXDECL2(fw);	/* declare a shadow stream variable for to stream */
 
-	SFMTXENTER(fr, (Sfoff_t)0);
+	if(!(fr)) return (Sfoff_t)0;
 	if(fw)
-		SFMTXBEGIN2(fw, (Sfoff_t)0);
 
 	for(n_move = 0; n != 0; )
 	{
@@ -195,7 +187,7 @@ reg int		rc;	/* record separator */
 		{	/* move leftover to read stream */
 			if(w > fr->size)
 				w = fr->size;
-			memmove((Void_t*)fr->data,(Void_t*)cp,w);
+			memmove((void*)fr->data,(void*)cp,w);
 			fr->endb = fr->data+w;
 			if((w = endb - (cp+w)) > 0)
 				(void)SFSK(fr,(Sfoff_t)(-w),SEEK_CUR,fr->disc);
@@ -205,10 +197,10 @@ reg int		rc;	/* record separator */
 		{	if(direct == SF_WRITE)
 				fw->next += r;
 			else if(r <= (fw->endb-fw->next) )
-			{	memmove((Void_t*)fw->next,(Void_t*)next,r);
+			{	memmove((void*)fw->next,(void*)next,r);
 				fw->next += r;
 			}
-			else if((w = SFWRITE(fw,(Void_t*)next,r)) != r)
+			else if((w = SFWRITE(fw,(void*)next,r)) != r)
 			{	/* a write error happened */
 				if(w > 0)
 				{	r -= w;
@@ -239,9 +231,8 @@ reg int		rc;	/* record separator */
 
 	if(fw)
 	{	SFOPEN(fw,0);
-		SFMTXEND2(fw);
 	}
 
 	SFOPEN(fr,0);
-	SFMTXRETURN(fr, n_move);
+	return n_move;
 }

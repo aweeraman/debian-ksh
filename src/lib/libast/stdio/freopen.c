@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,14 +20,11 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 
 #include "stdhdr.h"
 
 Sfio_t*
 freopen(const char* path, const char* mode, Sfio_t* f)
 {
-	STDIO_PTR(f, "freopen", Sfio_t*, (const char*, const char*, Sfio_t*), (path, mode, f))
-
 	return sfopen(f, path, mode);
 }

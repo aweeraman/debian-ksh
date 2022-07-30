@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -44,15 +44,7 @@ typedef struct
  * prefix write
  */
 
-#if __STD_C
-static ssize_t pfxwrite(Sfio_t* f, const Void_t* buf, register size_t n, Sfdisc_t* dp)
-#else
-static ssize_t pfxwrite(f, buf, n, dp)
-Sfio_t* 	f;
-Void_t*		buf;
-register size_t	n;
-Sfdisc_t*	dp;
-#endif
+static ssize_t pfxwrite(Sfio_t* f, const void* buf, register size_t n, Sfdisc_t* dp)
 {
 	register Prefix_t*	pfx = (Prefix_t*)dp;
 	register char*		b;
@@ -85,22 +77,13 @@ Sfdisc_t*	dp;
 	} while ((s = t + 1) < e);
 	pfx->skip = skip;
 	return w;
-
 }
 
 /*
  * remove the discipline on close
  */
 
-#if __STD_C
-static int pfxexcept(Sfio_t* f, int type, Void_t* data, Sfdisc_t* dp)
-#else
-static int pfxexcept(f, type, data, dp)
-Sfio_t*		f;
-int		type;
-Void_t*		data;
-Sfdisc_t*	dp;
-#endif
+static int pfxexcept(Sfio_t* f, int type, void* data, Sfdisc_t* dp)
 {
 	if (type == SF_FINAL || type == SF_DPOP)
 		free(dp);
@@ -111,13 +94,7 @@ Sfdisc_t*	dp;
  * push the prefix discipline on f
  */
 
-#if __STD_C
 int sfdcprefix(Sfio_t* f, const char* prefix)
-#else
-int sfdcprefix(f, prefix)
-Sfio_t*		f;
-char*		prefix;
-#endif
 {
 	register Prefix_t*	pfx;
 	register char*		s;

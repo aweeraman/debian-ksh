@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -26,26 +26,18 @@
 **
 **	Written by Kiem-Phong Vo.
 */
-#if __STD_C
 Sfoff_t sfsize(Sfio_t* f)
-#else
-Sfoff_t sfsize(f)
-Sfio_t*	f;
-#endif
 {
 	Sfdisc_t*	disc;
 	reg int		mode;
 	Sfoff_t		s;
-	SFMTXDECL(f);
 
-	SFMTXENTER(f, (Sfoff_t)(-1));
-
-	if((mode = f->mode&SF_RDWR) != (int)f->mode && _sfmode(f,mode,0) < 0)
-		SFMTXRETURN(f, (Sfoff_t)(-1));
+	if(!f || ((mode = f->mode&SF_RDWR) != (int)f->mode && _sfmode(f,mode,0) < 0))
+		return (Sfoff_t)(-1);
 
 	if(f->flags&SF_STRING)
 	{	SFSTRSIZE(f);
-		SFMTXRETURN(f, f->extent);
+		return f->extent;
 	}
 
 	SFLOCK(f,0);
@@ -66,8 +58,8 @@ Sfio_t*	f;
 			}
 #if _sys_stat
 			else
-			{	sfstat_t	st;
-				if(sysfstatf(f->file,&st) < 0)
+			{	struct stat	st;
+				if(fstat(f->file,&st) < 0)
 					f->extent = -1;
 				else if((f->extent = st.st_size) < f->here)
 					f->here = SFSK(f,(Sfoff_t)0,SEEK_CUR,disc);
@@ -106,5 +98,5 @@ Sfio_t*	f;
 	}
 
 	SFOPEN(f,0);
-	SFMTXRETURN(f, s);
+	return s;
 }

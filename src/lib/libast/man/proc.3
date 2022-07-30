@@ -38,7 +38,7 @@
 ..
 .TH PROC 3
 .SH NAME
-proc \- process control routines
+proc \- process control routines (deprecated)
 .SH SYNOPSIS
 .EX
 #include <proc.h>
@@ -50,14 +50,15 @@ int procrun(const char* \fIcommand\fP, char** \fIargv\fP);
 .EE
 .SH DESCRIPTION
 These routines provide a portable interface to process creation and execution.
-They work on systems with
-.IR fork (2)
-and
-.IR exec (2)
-as well as on systems with only
+They used to work on systems with only
 .IR spawnve (2)
 or
 .IR spawnveg (3).
+Now that libast has joined the 21st century and requires
+.IR fork (2)
+and
+.IR execve (2),
+this interface is deprecated and only kept for backward compatibility.
 .PP
 .L procopen
 runs
@@ -206,7 +207,7 @@ The child environment is cleared before
 is added.
 .TP
 .L PROC_GID
-The child effective group id is set to the real group id.
+The child effective group ID is set to the real group ID.
 .TP
 .L PROC_IGNORE
 Parent pipe errors are ignored.
@@ -239,11 +240,11 @@ is used to execute
 if it is a shell script.
 .TP
 .L PROC_PRIVELEGED
-If the effective user id is
+If the effective user ID is
 .L 0
-then the child real user id is set to
+then the child real user ID is set to
 .L 0
-and the child real group id is set to the effective group id.
+and the child real group ID is set to the effective group ID.
 .TP
 .L PROC_READ
 .I proc.rfd
@@ -259,7 +260,7 @@ entry
 .LR PROC_SYS_PGRP(-1) .)
 .TP
 .L PROC_UID
-The child effective user id is set to the real user id.
+The child effective user ID is set to the real user ID.
 .TP
 .L PROC_WRITE
 .I proc.wfd
@@ -270,7 +271,7 @@ standard input.
 The return value is a pointer to a structure with the following members:
 .TP
 .L "pid_t \fIpid\fP"
-The child process id.
+The child process ID.
 .TP
 .L "pid_t \fIpgrp\fP"
 The child process group.

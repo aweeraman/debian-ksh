@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,7 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * David Korn
  * AT&T Research
@@ -48,20 +47,7 @@
 #define	stktell(sp)	((sp)->_next-(sp)->_data)
 #define stkseek(sp,n)	((n)==0?(char*)((sp)->_next=(sp)->_data):_stkseek(sp,n))
 
-#if _BLD_ast && defined(__EXPORT__)
-#define extern		extern __EXPORT__
-#endif
-#if !_BLD_ast && defined(__IMPORT__)
-#define extern		extern __IMPORT__
-#endif
-
 extern Sfio_t		_Stk_data;
-
-#undef	extern
-
-#if _BLD_ast && defined(__EXPORT__)
-#define extern		__EXPORT__
-#endif
 
 extern Stk_t*		stkopen(int);
 extern Stk_t*		stkinstall(Stk_t*, char*(*)(int));
@@ -73,7 +59,5 @@ extern char*		stkset(Stk_t*, char*, size_t);
 extern char*		_stkseek(Stk_t*, ssize_t);
 extern char*		stkfreeze(Stk_t*, size_t);
 extern int		stkon(Stk_t*, char*);
-
-#undef	extern
 
 #endif

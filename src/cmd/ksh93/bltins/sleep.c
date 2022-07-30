@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,7 +18,6 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * sleep [-s] duration
  *
@@ -27,6 +26,7 @@
  *
  */
 
+#include	"shopt.h"
 #include	"defs.h"
 #include	<error.h>
 #include	<errno.h>
@@ -39,11 +39,11 @@ int	b_sleep(register int argc,char *argv[],Shbltin_t *context)
 {
 	register char *cp;
 	register double d=0;
-	register Shell_t *shp = context->shp;
 	int sflag=0;
 	time_t tloc = 0;
 	char *last;
-	if(!(shp->sigflag[SIGALRM]&(SH_SIGFAULT|SH_SIGOFF)))
+	NOT_USED(context);
+	if(!(sh.sigflag[SIGALRM]&(SH_SIGFAULT|SH_SIGOFF)))
 		sh_sigtrap(SIGALRM);
 	while((argc = optget(argv,sh_optsleep))) switch(argc)
 	{
@@ -74,16 +74,16 @@ int	b_sleep(register int argc,char *argv[],Shbltin_t *context)
 			ns = 0;
 			if(*cp == 'P' || *cp == 'p')
 				ns = tmxdate(cp, &last, now);
-			else if(*last=='.' && shp->decomma && d==(unsigned long)d)
+			else if(*last=='.' && sh.radixpoint!='.' && d==(unsigned long)d)
 			{
-				*(pp=last) = ',';
+				*(pp=last) = sh.radixpoint;
 				if(!strchr(cp,'.'))
 					d = strtod(cp,&last);
 				*pp = '.';
 				if(*last==0)
 					goto skip;
 			}
-			else if(*last!='.' && *last!=',')
+			else if(*last!='.' && *last!=sh.radixpoint)
 			{
 				if(pp = sfprints("exact %s", cp))
 					ns = tmxdate(pp, &last, now);
@@ -121,16 +121,14 @@ skip:
 	{
 		time_t now;
 		errno = 0;
-		shp->lastsig=0;
+		sh.lastsig=0;
 		sh_delay(d,sflag);
-		if(sflag || tloc==0 || errno!=EINTR || shp->lastsig)
+		if(sflag || tloc==0 || errno!=EINTR || sh.lastsig)
 			break;
-		sh_sigcheck(shp);
+		sh_sigcheck();
 		if(tloc < (now=time(NIL(time_t*))))
 			break;
 		d = (double)(tloc-now);
-		if(shp->sigflag[SIGALRM]&SH_SIGTRAP)
-			sh_timetraps(shp);
 	}
 	return(0);
 }
@@ -142,7 +140,6 @@ skip:
  */
 void sh_delay(double t, int sflag)
 {
-	Shell_t *shp = sh_getinterp();
 	int n = (int)t;
 	Tv_t ts, tx;
 
@@ -150,7 +147,7 @@ void sh_delay(double t, int sflag)
 	ts.tv_nsec = 1000000000 * (t - (double)n);
 	while(tvsleep(&ts, &tx) < 0)
 	{
-		if ((shp->trapnote & (SH_SIGSET | SH_SIGTRAP)) || sflag)
+		if ((sh.trapnote & (SH_SIGSET | SH_SIGTRAP)) || sflag)
 			return;
 		ts = tx;
 	}

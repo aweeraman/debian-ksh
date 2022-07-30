@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,7 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * Glenn Fowler
  * AT&T Research
@@ -64,7 +63,7 @@ typedef struct Finddisc_s
 
 typedef struct Find_s
 {
-	const char*	id;		/* library id string		*/
+	const char*	id;		/* library ID string		*/
 	unsigned long	stamp;		/* codes time stamp		*/
 
 #ifdef _FIND_PRIVATE_
@@ -73,15 +72,9 @@ typedef struct Find_s
 
 } Find_t;
 
-#if _BLD_ast && defined(__EXPORT__)
-#define extern		__EXPORT__
-#endif
-
 extern Find_t*		findopen(const char*, const char*, const char*, Finddisc_t*);
 extern char*		findread(Find_t*);
 extern int		findwrite(Find_t*, const char*, size_t, const char*);
 extern int		findclose(Find_t*);
-
-#undef	extern
 
 #endif

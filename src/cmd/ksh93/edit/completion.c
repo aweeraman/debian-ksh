@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,12 +18,12 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  *  completion.c - command and file completion for shell editors
  *
  */
 
+#include	"shopt.h"
 #include	"defs.h"
 #include	<ast_wchar.h>
 #include	"lexstates.h"
@@ -106,12 +106,17 @@ static char *overlaid(register char *str,register const char *newstr,int nocase)
 
 /*
  * returns pointer to beginning of expansion and sets type of expansion
+ *
+ * Detects variable expansions, command substitutions, and three quoting styles:
+ * 1. '...'	inquote=='\'', dollarquote==0; no special characters
+ * 2. $'...'	inquote=='\'', dollarquote==1; skips \.
+ * 3. "..."	inquote=='"',  dollarquote==0; skips \., $..., ${...}, $(...), `...`
  */
 static char *find_begin(char outbuff[], char *last, int endchar, int *type)
 {
 	register char	*cp=outbuff, *bp, *xp;
-	register int 	c,inquote = 0, inassign=0;
-	int		mode=*type;
+	char		inquote = 0, dollarquote = 0, inassign = 0;
+	int		mode=*type, c;
 	bp = outbuff;
 	*type = 0;
 	mbinit();
@@ -128,15 +133,19 @@ static char *find_begin(char outbuff[], char *last, int endchar, int *type)
 				break;
 			}
 			if(inquote==c)
-				inquote = 0;
+				inquote = dollarquote = 0;
 			break;
 		    case '\\':
-			if(inquote != '\'')
+			if(inquote != '\'' || dollarquote)
 				mbchar(cp);
 			break;
 		    case '$':
 			if(inquote == '\'')
+			{
+				*type = '\'';
+				bp = xp;
 				break;
+			}
 			c = *(unsigned char*)cp;
 			if(mode!='*' && (isaletter(c) || c=='{'))
 			{
@@ -174,14 +183,17 @@ static char *find_begin(char outbuff[], char *last, int endchar, int *type)
 				if(*(cp=xp)!=')')
 					bp = xp;
 			}
+			else if(c=='\'' && !inquote)
+				dollarquote = 1;
 			break;
 		    case '`':
 			if(inquote=='\'')
-				break;
-			*type = mode;
-			xp = find_begin(cp,last,'`',type);
-			if(*(cp=xp)!='`')
+			{
+				*type = '\'';
 				bp = xp;
+			}
+			else
+				bp = cp;
 			break;
 		    case '=':
 			if(!inquote)
@@ -210,7 +222,11 @@ static char *find_begin(char outbuff[], char *last, int endchar, int *type)
 		}
 	}
 	if(inquote && *bp==inquote)
-		*type = *bp++;
+	{
+		/* set special type -1 for $'...' */
+		*type = dollarquote ? -1 : inquote;
+		bp++;
+	}
 	return(bp);
 }
 
@@ -288,9 +304,15 @@ int ed_expand(Edit_t *ep, char outbuff[],int *cur,int *eol,int mode, int count)
 		c =  *(unsigned char*)out;
 		var = mode;
 		begin = out = find_begin(outbuff,last,0,&var);
-		/* addstar set to zero if * should not be added */
-		if(var=='$')
+		if(var=='\'' && (*begin=='$' || *begin=='`'))
 		{
+			/* avoid spurious expansion or comsub execution within '...' */
+			rval = -1;
+			goto done;
+		}
+		else if(var=='$')
+		{
+			/* expand ${!varname@} to complete variable name(s) */
 			stakputs("${!");
 			stakwrite(out,last-out);
 			stakputs("@}");
@@ -298,6 +320,7 @@ int ed_expand(Edit_t *ep, char outbuff[],int *cur,int *eol,int mode, int count)
 		}
 		else
 		{
+			/* addstar set to zero if * should not be added */
 			addstar = '*';
 			while(out < last)
 			{
@@ -327,12 +350,12 @@ int ed_expand(Edit_t *ep, char outbuff[],int *cur,int *eol,int mode, int count)
 		sh_onoption(SH_MARKDIRS);
 	{
 		register char	**com;
-		char		*cp=begin, *left=0, *saveout=".";
+		char		*cp=begin, *left=0, *saveout=(char*)e_dot;
 		int	 	nocase=0,narg,cmd_completion=0;
 		register 	int size='x';
 		while(cp>outbuff && ((size=cp[-1])==' ' || size=='\t'))
 			cp--;
-		if(!var && !strchr(ap->argval,'/') && (((cp==outbuff&&ep->sh->nextprompt==1) || (strchr(";&|(",size)) && (cp==outbuff+1||size=='('||cp[-2]!='>') && *begin!='~' )))
+		if(!var && !strchr(ap->argval,'/') && (((cp==outbuff&&sh.nextprompt==1) || (strchr(";&|(",size)) && (cp==outbuff+1||size=='('||cp[-2]!='>') && *begin!='~' )))
 		{
 			cmd_completion=1;
 			sh_onstate(SH_COMPLETE);
@@ -346,14 +369,18 @@ int ed_expand(Edit_t *ep, char outbuff[],int *cur,int *eol,int mode, int count)
 		}
 		else
 		{
-			com = sh_argbuild(ep->sh,&narg,comptr,0);
+			com = sh_argbuild(&narg,comptr,0);
 			/* special handling for leading quotes */
 			if(begin>outbuff && (begin[-1]=='"' || begin[-1]=='\''))
-			begin--;
+			{
+				begin--;
+				if(var == -1)		/* $'...' */
+					begin--;	/* also remove initial dollar */
+			}
 		}
 		sh_offstate(SH_COMPLETE);
                 /* allow a search to be aborted */
-		if(ep->sh->trapnote&SH_SIGSET)
+		if(sh.trapnote&SH_SIGSET)
 		{
 			rval = -1;
 			goto done;
@@ -462,7 +489,7 @@ int ed_expand(Edit_t *ep, char outbuff[],int *cur,int *eol,int mode, int count)
 					Namval_t *np;
 					/* add as tracked alias */
 					Pathcomp_t *pp;
-					if(*cp=='/' && (pp=path_dirfind(ep->sh->pathlist,cp,'/')) && (np=nv_search(begin,ep->sh->track_tree,NV_ADD)))
+					if(*cp=='/' && (pp=path_dirfind(sh.pathlist,cp,'/')) && (np=nv_search(begin,sh.track_tree,NV_ADD)))
 						path_alias(np,pp);
 					out = strcopy(begin,cp);
 				}
@@ -553,7 +580,7 @@ int ed_macro(Edit_t *ep, register int i)
 		ep->e_macro[2] = ed_getchar(ep,1);
 	else
 		ep->e_macro[2] = 0;
-	if (isalnum(i)&&(np=nv_search(ep->e_macro,ep->sh->alias_tree,HASH_SCOPE))&&(out=nv_getval(np)))
+	if (isalnum(i)&&(np=nv_search(ep->e_macro,sh.alias_tree,0))&&(out=nv_getval(np)))
 	{
 #if SHOPT_MULTIBYTE
 		/* copy to buff in internal representation */
@@ -584,7 +611,7 @@ int ed_macro(Edit_t *ep, register int i)
 int ed_fulledit(Edit_t *ep)
 {
 	register char *cp;
-	if(!shgd->hist_ptr)
+	if(!sh.hist_ptr)
 		return(-1);
 	/* use EDITOR on current command */
 	if(ep->e_hline == ep->e_hismax)
@@ -595,9 +622,9 @@ int ed_fulledit(Edit_t *ep)
 		ep->e_inbuf[ep->e_eol+1] = 0;
 		ed_external(ep->e_inbuf, (char *)ep->e_inbuf);
 #endif /* SHOPT_MULTIBYTE */
-		sfwrite(shgd->hist_ptr->histfp,(char*)ep->e_inbuf,ep->e_eol+1);
+		sfwrite(sh.hist_ptr->histfp,(char*)ep->e_inbuf,ep->e_eol+1);
 		sh_onstate(SH_HISTORY);
-		hist_flush(shgd->hist_ptr);
+		hist_flush(sh.hist_ptr);
 	}
 	cp = strcopy((char*)ep->e_inbuf,e_runvi);
 	cp = strcopy(cp, fmtbase((long)ep->e_hline,10,0));

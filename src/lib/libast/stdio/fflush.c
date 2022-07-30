@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,7 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 
 #ifndef _USE_GNU
 #define _USE_GNU
@@ -33,8 +32,6 @@ fflush(Sfio_t* f)
 {
 	if (!f)
 		return fcloseall();
-
-	STDIO_INT(f, "fflush", int, (Sfio_t*), (f))
 
 	if (f->extent > 0)
 		sfseek(f, (Sfoff_t)0, SEEK_CUR|SF_PUBLIC);

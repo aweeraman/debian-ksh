@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,7 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * Glenn Fowler
  * David Korn
@@ -145,10 +144,6 @@ struct Fts
 
 };
 
-#if _BLD_ast && defined(__EXPORT__)
-#define extern		__EXPORT__
-#endif
-
 extern FTSENT*	fts_children(FTS*, int);
 extern int	fts_close(FTS*);
 extern int	fts_flags(void);
@@ -157,7 +152,5 @@ extern int	fts_notify(int(*)(FTS*, FTSENT*, void*), void*);
 extern FTS*	fts_open(char* const*, int, int(*)(FTSENT* const*, FTSENT* const*));
 extern FTSENT*	fts_read(FTS*);
 extern int	fts_set(FTS*, FTSENT*, int);
-
-#undef	extern
 
 #endif

@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,14 +18,13 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 
 /*
  * tables for the test builtin [[ ... ]] and [ ... ]
  */
 
+#include	"shopt.h"
 #include	<ast.h>
-
 #include	"defs.h"
 #include	"test.h"
 
@@ -57,7 +56,7 @@ const Shtable_t shtab_testops[] =
 };
 
 const char sh_opttest[] =
-"[-1c?\n@(#)$Id: test (ksh 93u+m) 2021-11-14 $\n]"
+"[-1c?\n@(#)$Id: test (ksh 93u+m) 2022-03-10 $\n]"
 "[--catalog?" SH_DICT "]"
 "[+NAME?test, [ - evaluate expression]"
 "[+DESCRIPTION?\btest\b evaluates expressions and returns its result using the "
@@ -104,11 +103,7 @@ const char sh_opttest[] =
 	"[+-e \afile\a?\afile\a exists and is not a broken symlink.]"
 	"[+-f \afile\a?\afile\a is a regular file.]"
 	"[+-g \afile\a?\afile\a has its set-group-id bit set.]"
-	"[+-h \afile\a?Same as \b-L\b.]"
 	"[+-k \afile\a *?\afile\a has its sticky bit on.]"
-#if SHOPT_TEST_L
-	"[+-l \afile\a *?Same as \b-L\b.]"
-#endif
 	"[+-n \astring\a?Length of \astring\a is non-zero.]"
 	"[+-o \aoption\a *?Shell option \aoption\a is enabled.]"
 	"[+-p \afile\a?\afile\a is a FIFO.]"
@@ -123,7 +118,11 @@ const char sh_opttest[] =
 	"[+-z \astring\a?\astring\a is a zero-length string.]"
 	"[+-G \afile\a *?Group of \afile\a is the effective "
 		"group ID of the current process.]"
-	"[+-L \afile\a?\afile\a is a symbolic link.]"
+#if SHOPT_TEST_L
+	"[+-L|l|h \afile\a?\afile\a is a symbolic link.]"
+#else
+	"[+-L|h \afile\a?\afile\a is a symbolic link.]"
+#endif
 	"[+-N \afile\a *?\afile\a has been modified since it was last read.]"
 	"[+-O \afile\a *?\afile\a exists and owner is the effective "
 		"user ID of the current process.]"

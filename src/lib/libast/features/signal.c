@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,7 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 #pragma clang diagnostic ignored "-Wdeprecated-register"
 #pragma clang diagnostic ignored "-Wparentheses"
 /*
@@ -121,6 +120,10 @@ static struct _m_ map[] =
 #define HAD_SIGILL	1
 "Illegal instruction",		"ILL",		SIGILL,
 #endif
+#ifdef SIGINFO
+#define HAD_SIGINFO	1
+"Information request", 		"INFO",		SIGINFO,
+#endif
 #ifdef SIGINT
 #define HAD_SIGINT	1
 "Interrupt",			"INT",		SIGINT,
@@ -136,6 +139,10 @@ static struct _m_ map[] =
 #ifdef SIGKILL
 #define HAD_SIGKILL	1
 "Killed",			"KILL",		SIGKILL,
+#endif
+#ifdef SIGKILLTHR
+#define HAD_SIGKILLTHR	1
+"Kill Thread",			"KILLTHR",	SIGKILLTHR,
 #endif
 #ifdef SIGLAB
 #define HAD_SIGLAB	1
@@ -329,7 +336,6 @@ main()
 		mapindex[j] = RANGE_MAX | RANGE_RT | n;
 	}
 #endif
-	printf("#pragma prototyped\n");
 	printf("#define SIG_MAX	%d\n", k);
 	printf("\n");
 	printf("static const char* const	sig_name[] =\n");

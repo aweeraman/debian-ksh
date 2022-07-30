@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,8 +18,8 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 
+#include	"shopt.h"
 #include	<ast.h>
 #include	<sig.h>
 #include	<error.h>
@@ -98,7 +98,7 @@ static void sigalrm(int sig)
 	if(time_state&SIGALRM_CALL)
 		time_state &= ~SIGALRM_CALL;
 	else if(alarm(0))
-		kill(shgd->current_pid,SIGALRM|SH_TRAP);
+		kill(sh.current_pid,SIGALRM|SH_TRAP);
 	if(time_state)
 	{
 		if(time_state&IN_ADDTIMEOUT)
@@ -229,7 +229,7 @@ void *sh_timeradd(unsigned long msec,int flags,void (*action)(void*),void *handl
 /*
  * delete timer <tp>.  If <tp> is NULL, all timers are deleted
  */
-void	timerdel(void *handle)
+void	sh_timerdel(void *handle)
 {
 	register Timer_t *tp = (Timer_t*)handle;
 	if(tp)

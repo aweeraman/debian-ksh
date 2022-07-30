@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,7 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 
 /*
  * ksh builtin command API
@@ -34,11 +33,7 @@
 #endif
 #define SH_PLUGIN_VERSION	AST_PLUGIN_VERSION(20111111L)
 
-#if __STDC__
 #define SHLIB(m)	unsigned long	plugin_version(void) { return SH_PLUGIN_VERSION; }
-#else
-#define SHLIB(m)	unsigned long	plugin_version() { return SH_PLUGIN_VERSION; }
-#endif
 
 #ifndef SH_VERSION
 #   define Shell_t	void
@@ -51,11 +46,7 @@
 struct Shbltin_s;
 typedef struct Shbltin_s Shbltin_t;
 
-#ifdef _SHTABLE_H /* pre-ksh93u+ -- obsolete */
-typedef int (*Shbltin_f)(int, char**, void*);
-#else
 typedef int (*Shbltin_f)(int, char**, Shbltin_t*);
-#endif /* _SHTABLE_H */
 
 struct Shbltin_s
 {
@@ -78,7 +69,7 @@ struct Shbltin_s
 	int		invariant;
 };
 
-#if defined(SH_VERSION) ||  defined(_SH_PRIVATE)
+#if defined(shell_h_defined) || defined(defs_h_defined)
 #   undef Shell_t
 #   undef Namval_t
 #else 
@@ -102,12 +93,6 @@ struct Shbltin_s
 #   endif
 #endif
 
-#if _BLD_ast && defined(__EXPORT__)
-#define extern		__EXPORT__
-#endif
-
 extern int		astintercept(Shbltin_t*, int);
-
-#undef	extern
 
 #endif

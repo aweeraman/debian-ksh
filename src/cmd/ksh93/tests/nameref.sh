@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -593,7 +593,7 @@ function read_c
 	read -C v
 }
 print "( typeset -i x=36 ) " | read_c ar[5][9][2]
-exp=$'(\n\t[5]=(\n\t\t[9]=(\n\t\t\t[2]=(\n\t\t\t\ttypeset -i x=36\n\t\t\t)\n\t\t)\n\t)\n)'
+exp=$'(\n\ttypeset -a [5]=(\n\t\ttypeset -a [9]=(\n\t\t\t[2]=(\n\t\t\t\ttypeset -i x=36\n\t\t\t)\n\t\t)\n\t)\n)'
 [[ $(print -v ar) == "$exp" ]] || err_exit 'read into nameref of global array instance from within a function fails'
 
 function read_c
@@ -606,7 +606,7 @@ function main
 	compound -a ar
 	nameref nar=ar
 	print "( typeset -i x=36 ) " | read_c nar[5][9][2]
-	exp=$'(\n\t[5]=(\n\t\t[9]=(\n\t\t\t[2]=(\n\t\t\t\ttypeset -i x=36\n\t\t\t)\n\t\t)\n\t)\n)'
+	exp=$'(\n\ttypeset -a [5]=(\n\t\ttypeset -a [9]=(\n\t\t\t[2]=(\n\t\t\t\ttypeset -i x=36\n\t\t\t)\n\t\t)\n\t)\n)'
 	[[ $(print -v nar) == "$exp" ]] || err_exit 'read from a nameref variable from calling scope fails'
 }
 main

@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1997-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,7 +18,6 @@
 *                 Glenn Fowler <gsf@research.att.com>                  *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * provide dlopen/dlsym/dlerror interface
  *
@@ -35,20 +34,15 @@ static const char id[] = "\n@(#)$Id: dll library (AT&T Research) 2010-10-20 $\0\
 
 #define T(x)	ERROR_dictionary(x)
 
-#if _BLD_dll && defined(__EXPORT__)
-#define extern	__EXPORT__
-#endif
-
 #if _hdr_dlfcn && _lib_dlopen
 
 	/*
 	 * standard
 	 */
 
-#	include <dlfcn.h> 
+	NoN(dlopen)
 
-#else
-#if _hdr_dl
+#elif _hdr_dl
 
 	/*
 	 * HP-UX
@@ -108,8 +102,7 @@ static const char id[] = "\n@(#)$Id: dll library (AT&T Research) 2010-10-20 $\0\
 		return msg;
 	}
 
-#else
-#if _sys_ldr && _lib_loadbind
+#elif _sys_ldr && _lib_loadbind
 
 	/*
 	 * rs6000
@@ -264,8 +257,7 @@ static const char id[] = "\n@(#)$Id: dll library (AT&T Research) 2010-10-20 $\0\
 		return msg;
 	}
 
-#else
-#if _hdr_dll && _lib_dllload
+#elif _hdr_dll && _lib_dllload
 
 	/*
 	 * MVS
@@ -310,8 +302,7 @@ static const char id[] = "\n@(#)$Id: dll library (AT&T Research) 2010-10-20 $\0\
 		return msg;
 	}
 
-#else
-#if _hdr_mach_o_dyld
+#elif _hdr_mach_o_dyld
 
 	/*
 	 * mac[h]
@@ -530,8 +521,4 @@ static const char id[] = "\n@(#)$Id: dll library (AT&T Research) 2010-10-20 $\0\
 		return "dynamic linking not supported";
 	}
 
-#endif
-#endif
-#endif
-#endif
 #endif

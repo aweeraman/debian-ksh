@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1997-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,7 +18,6 @@
 *                 Glenn Fowler <gsf@research.att.com>                  *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * Glenn Fowler
  * AT&T Research
@@ -227,7 +226,7 @@ dllsopen(const char* lib, const char* name, const char* version)
 	if (lib && *lib && (*lib != '-' || *(lib + 1)))
 	{
 		/*
-		 * grab the local part of the library id
+		 * grab the local part of the library ID
 		 */
 
 		if (s = strrchr(lib, ':'))

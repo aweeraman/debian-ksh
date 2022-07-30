@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -27,13 +27,7 @@
 **	Written by Kiem-Phong Vo.
 */
 
-#if __STD_C
 static void newpos(Sfio_t* f, Sfoff_t p)
-#else
-static void newpos(f, p)
-Sfio_t*	f;
-Sfoff_t p;
-#endif
 {
 #ifdef MAP_TYPE
 	if((f->bits&SF_MMAP) && f->data)
@@ -49,20 +43,15 @@ Sfoff_t p;
 	}
 }
 
-#if __STD_C
-Sfoff_t sfseek(Sfio_t* f, Sfoff_t p, int type)
-#else
-Sfoff_t sfseek(f,p,type)
-Sfio_t*	f;	/* seek to a new location in this stream */
-Sfoff_t	p;	/* place to seek to */
-int	type;	/* 0: from org, 1: from here, 2: from end */
-#endif
+Sfoff_t sfseek(Sfio_t*	f,	/* seek to a new location in this stream */
+	       Sfoff_t	p,	/* place to seek to */
+	       int	type)	/* 0: from org, 1: from here, 2: from end */
 {
 	Sfoff_t	r, s;
 	int	mode, local, hardseek, mustsync;
-	SFMTXDECL(f);
 
-	SFMTXENTER(f, (Sfoff_t)(-1));
+	if(!f)
+		return (Sfoff_t)(-1);
 
 	GETLOCAL(f,local);
 
@@ -84,7 +73,7 @@ int	type;	/* 0: from org, 1: from here, 2: from end */
 			f->flags = flags;
 
 		if(mode < 0)
-			SFMTXRETURN(f, (Sfoff_t)(-1));
+			return (Sfoff_t)(-1);
 	}
 
 	mustsync = (type&SF_SHARE) && !(type&SF_PUBLIC) &&
@@ -94,13 +83,12 @@ int	type;	/* 0: from org, 1: from here, 2: from end */
 	if((type &= (SEEK_SET|SEEK_CUR|SEEK_END)) != SEEK_SET &&
 	   type != SEEK_CUR && type != SEEK_END )
 	{	errno = EINVAL;
-		SFMTXRETURN(f, (Sfoff_t)(-1));
+		return (Sfoff_t)(-1);
 	}
 
 	if(f->extent < 0)
-	{	/* let system call set errno */
-		(void)SFSK(f,(Sfoff_t)0,SEEK_CUR,f->disc);
-		SFMTXRETURN(f, (Sfoff_t)(-1));
+	{	/* not seekable with sfio: let the system call either set errno or succeed */
+		return SFSK(f,p,type,f->disc);
 	}
 
 	/* throw away ungetc data */
@@ -207,7 +195,7 @@ int	type;	/* 0: from org, 1: from here, 2: from end */
 	{	/* if mmap is not great, stop mmapping if moving around too much */
 #if _mmap_worthy < 2
 		if((f->next - f->data) < ((f->endb - f->data)/4) )
-		{	SFSETBUF(f,(Void_t*)f->tiny,(size_t)SF_UNBOUND);
+		{	SFSETBUF(f,(void*)f->tiny,(size_t)SF_UNBOUND);
 			hardseek = 1; /* this forces a hard seek below */
 		}
 		else
@@ -278,5 +266,5 @@ done :
 
 	if(mustsync)
 		sfsync(f);
-	SFMTXRETURN(f, p);
+	return p;
 }

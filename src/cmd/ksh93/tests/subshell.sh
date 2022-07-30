@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -23,7 +23,7 @@
 
 typeset -F SECONDS  # for fractional seconds in PS4
 
-builtin getconf
+builtin getconf 2> /dev/null
 bincat=$(PATH=$(getconf PATH) whence -p cat)
 binecho=$(PATH=$(getconf PATH) whence -p echo)
 # make an external 'sleep' command that supports fractional seconds
@@ -65,16 +65,22 @@ z.bar[1]=(x=12 y=5)
 eval val="$z"
 (
 	z.foo[three]=good
-	[[ ${z.foo[three]} == good ]] || err_exit 'associative array assignment in subshell not working'
-)
+	[[ ${z.foo[three]} == good ]]
+) || err_exit 'associative array assignment in subshell not working'
 [[ $z == "$val" ]] || err_exit 'compound variable changes after associative array assignment'
 eval val="$z"
 (
 	z.foo[two]=ok
-	[[ ${z.foo[two]} == ok ]] || err_exit 'associative array assignment to compound variable in subshell not working'
+	[[ ${z.foo[two]} == ok ]] || exit 101
 	z.bar[1]=yes
-	[[ ${z.bar[1]} == yes ]] || err_exit 'indexed array assignment to compound variable in subshell not working'
+	[[ ${z.bar[1]} == yes ]] || exit 102
 )
+case $? in
+0)	;;
+101)	err_exit 'associative array assignment to compound variable in subshell not working' ;;
+102)	err_exit 'indexed array assignment to compound variable in subshell not working' ;;
+*)	err_exit 'assignment to compound variable in subshell fails' ;;
+esac
 [[ $z == "$val" ]] || err_exit 'compound variable changes after associative array assignment'
 
 x=(
@@ -84,10 +90,16 @@ x=(
 eval val="$x"
 (
 	unset x.foo
-	[[ ${x.foo.qqq} ]] && err_exit 'x.foo.qqq should be unset'
+	[[ ${x.foo.qqq} ]] && exit 101
 	x.foo=good
-	[[ ${x.foo} == good ]] || err_exit 'x.foo should be good'
+	[[ ${x.foo} == good ]] || exit 102
 )
+case $? in
+0)	;;
+101)	err_exit 'x.foo.qqq should be unset' ;;
+102)	err_exit 'x.foo should be good' ;;
+*)	err_exit "x.foo fails" ;;
+esac
 [[ $x == "$val" ]] || err_exit 'compound variable changes after unset leaves'
 unset l
 (
@@ -100,6 +112,10 @@ while	whence $TEST_notfound >/dev/null 2>&1
 do	TEST_notfound=notfound-$RANDOM
 done
 
+for exp in 65535 65536
+do	got=$($SHELL -c 'x=$(printf "%.*c" '$exp' x); print ${#x}' 2>&1)
+	[[ $got == $exp ]] || err_exit "large command substitution failed -- expected $exp, got $got"
+done
 
 integer BS=1024 nb=64 ss=60 bs no
 for bs in $BS 1
@@ -340,54 +356,54 @@ actual=$(
 #
 # the tests and timeouts are done in async subshells to prevent
 # the test harness from hanging
+if builtin cat 2> /dev/null; then
+	SUB=(
+		( BEG='$( '	END=' )'	)
+		( BEG='${ '	END='; }'	)
+	)
+	CAT=(  cat  $bincat  )
+	INS=(  ""  "builtin cat; "  "builtin -d cat $bincat; "  ": > /dev/null; "  )
+	APP=(  ""  "; :"  )
+	TST=(
+		( CMD='print foo | $cat'			EXP=3		)
+		( CMD='$cat < $tmp/lin'						)
+		( CMD='cat $tmp/lin | $cat'					)
+		( CMD='read v < $tmp/buf; print $v'		LIM=4*1024	)
+		( CMD='cat $tmp/buf | read v; print $v'		LIM=4*1024	)
+	)
 
-SUB=(
-	( BEG='$( '	END=' )'	)
-	( BEG='${ '	END='; }'	)
-)
-CAT=(  cat  $bincat  )
-INS=(  ""  "builtin cat; "  "builtin -d cat $bincat; "  ": > /dev/null; "  )
-APP=(  ""  "; :"  )
-TST=(
-	( CMD='print foo | $cat'			EXP=3		)
-	( CMD='$cat < $tmp/lin'						)
-	( CMD='cat $tmp/lin | $cat'					)
-	( CMD='read v < $tmp/buf; print $v'		LIM=4*1024	)
-	( CMD='cat $tmp/buf | read v; print $v'		LIM=4*1024	)
-)
+	if	cat /dev/fd/3 3</dev/null >/dev/null 2>&1 || whence mkfifo > /dev/null
+	then	T=${#TST[@]}
+		TST[T].CMD='$cat <(print foo)'
+		TST[T].EXP=3
+	fi
 
-if	cat /dev/fd/3 3</dev/null >/dev/null 2>&1 || whence mkfifo > /dev/null
-then	T=${#TST[@]}
-	TST[T].CMD='$cat <(print foo)'
-	TST[T].EXP=3
-fi
+	# prime the two data files to 512 bytes each
+	# $tmp/lin has newlines every 16 bytes and $tmp/buf has no newlines
+	# the outer loop doubles the file size at top
 
-# prime the two data files to 512 bytes each
-# $tmp/lin has newlines every 16 bytes and $tmp/buf has no newlines
-# the outer loop doubles the file size at top
+	buf=$'1234567890abcdef'
+	lin=$'\n1234567890abcde'
+	for ((i=0; i<5; i++))
+	do	buf=$buf$buf
+		lin=$lin$lin
+	done
+	print -n "$buf" > $tmp/buf
+	print -n "$lin" > $tmp/lin
 
-buf=$'1234567890abcdef'
-lin=$'\n1234567890abcde'
-for ((i=0; i<5; i++))
-do	buf=$buf$buf
-	lin=$lin$lin
-done
-print -n "$buf" > $tmp/buf
-print -n "$lin" > $tmp/lin
-
-unset SKIP
-for ((n=1024; n<=1024*1024; n*=2))
-do	cat $tmp/buf $tmp/buf > $tmp/tmp
-	mv $tmp/tmp $tmp/buf
-	cat $tmp/lin $tmp/lin > $tmp/tmp
-	mv $tmp/tmp $tmp/lin
-	for ((S=0; S<${#SUB[@]}; S++))
-	do	for ((C=0; C<${#CAT[@]}; C++))
-		do	cat=${CAT[C]}
-			for ((I=0; I<${#INS[@]}; I++))
-			do	for ((A=0; A<${#APP[@]}; A++))
-				do	for ((T=0; T<${#TST[@]}; T++))
-					do	#undent...#
+	unset SKIP
+	for ((n=1024; n<=1024*1024; n*=2))
+	do	cat $tmp/buf $tmp/buf > $tmp/tmp
+		mv $tmp/tmp $tmp/buf
+		cat $tmp/lin $tmp/lin > $tmp/tmp
+		mv $tmp/tmp $tmp/lin
+		for ((S=0; S<${#SUB[@]}; S++))
+		do	for ((C=0; C<${#CAT[@]}; C++))
+			do	cat=${CAT[C]}
+				for ((I=0; I<${#INS[@]}; I++))
+				do	for ((A=0; A<${#APP[@]}; A++))
+					do	for ((T=0; T<${#TST[@]}; T++))
+						do	#undent...#
 
 	if	[[ ! ${SKIP[S][C][I][A][T]} ]]
 	then	eval "{ x=${SUB[S].BEG}${INS[I]}${TST[T].CMD}${APP[A]}${SUB[S].END}; print \${#x}; } >\$tmp/out &"
@@ -419,13 +435,14 @@ do	cat $tmp/buf $tmp/buf > $tmp/tmp
 		fi
 	fi
 
-						#...indent#
+							#...indent#
+						done
 					done
 				done
 			done
 		done
 	done
-done
+fi
 
 # specifics -- there's more?
 
@@ -546,11 +563,16 @@ $SHELL <<- \EOF
 		print -u2 done
 	}
 	out=$(eval "foo | cat" 2>&1)
-	(( ${#out} == 96011 )) || err_exit "\${#out} is ${#out} should be 96011"
+	print "${#out}" >out
 EOF
 } & pid=$!
-$SHELL -c "{ sleep .4 && kill $pid ;}" 2> /dev/null
-(( $? == 0 )) &&  err_exit 'process has hung'
+(sleep 4; kill -s KILL "$pid" 2>/dev/null) &	# another bg job to kill frozen test job
+{ wait "$pid"; } 2>/dev/null			# get job's exit status, suppressing signal messages
+if	((!(e = $?)))
+then	[[ $(<out) == '96011' ]] || err_exit "\${#out} is $(printf %q "$(<out)"), should be 96011"
+else	err_exit "process has hung (got status $e$( ((e>128)) && print -n /SIG && kill -l "$e"))"
+fi
+kill "$!" 2>/dev/null				# kill sleep process
 
 {
 x=$( $SHELL  <<- \EOF
@@ -602,7 +624,7 @@ trap ERR ERR
 [[ $(trap -p) == *ERR* ]] || err_exit 'trap -p in subshell does not contain ERR'
 trap - USR1 ERR
 
-( builtin getconf && PATH=$(getconf PATH)
+( builtin getconf 2> /dev/null && PATH=$(getconf PATH)
 dot=$(cat <<-EOF
 		$(ls -d .)
 	EOF
@@ -768,16 +790,17 @@ hash -r
 
 # ======
 # Variables set in functions inside of a virtual subshell should not affect the
-# outside environment. This regression test must be run from the disk.
-testvars=$tmp/testvars.sh
-cat >| "$testvars" << 'EOF'
+# outside environment. This regression test must be run as a separate script.
+got=$("$SHELL" -c '
 c=0
 function set_ac { a=1; c=1; }
 function set_abc { ( set_ac ; b=1 ) }
 set_abc
 echo "a=$a b=$b c=$c"
-EOF
-v=$($SHELL $testvars) && [[ "$v" == "a= b= c=0" ]] || err_exit 'variables set in subshells are not confined to the subshell'
+')
+exp='a= b= c=0'
+[[ $got == "$exp" ]] || err_exit 'variables set in subshells are not confined to the subshell' \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
 
 # ======
 got=$("$SHELL" -c '
@@ -843,7 +866,7 @@ test_pid=$!
 (sleep 10; kill -s KILL "$test_pid" 2>/dev/null) &	# another bg job to kill frozen test job
 sleep_pid=$!
 { wait "$test_pid"; } 2>/dev/null			# get job's exit status, suppressing signal messages
-((!(e = $?))) || err_exit "backtick comsub crash/freeze (got status $e$( ((e>128)) && print -n / && kill -l "$e"))"
+((!(e = $?))) || err_exit "backtick comsub crash/freeze (got status $e$( ((e>128)) && print -n /SIG && kill -l "$e"))"
 kill "$sleep_pid" 2>/dev/null
 
 # ======
@@ -853,7 +876,7 @@ test_pid=$!
 (sleep 2; kill -s KILL "$test_pid" 2>/dev/null) &
 sleep_pid=$!
 { wait "$test_pid"; } 2>/dev/null
-((!(e = $?))) || err_exit "backtick comsub hang (got status $e$( ((e>128)) && print -n / && kill -l "$e"))"
+((!(e = $?))) || err_exit "backtick comsub hang (got status $e$( ((e>128)) && print -n /SIG && kill -l "$e"))"
 kill "$sleep_pid" 2>/dev/null
 
 # Backtick command substitution with pipe hangs when filling out pipe buffer (rhbz#1138751)
@@ -862,7 +885,7 @@ test_pid=$!
 (sleep 2; kill -s KILL "$test_pid" 2>/dev/null) &
 sleep_pid=$!
 { wait "$test_pid"; } 2>/dev/null
-((!(e = $?))) || err_exit "backtick comsub with pipe hangs (got status $e$( ((e>128)) && print -n / && kill -l "$e"))"
+((!(e = $?))) || err_exit "backtick comsub with pipe hangs (got status $e$( ((e>128)) && print -n /SIG && kill -l "$e"))"
 kill "$sleep_pid" 2>/dev/null
 
 # ======
@@ -919,7 +942,7 @@ cat >$tmp/crash_rhbz1117404.ksh <<-'EOF'
 EOF
 got=$( { "$SHELL" "$tmp/crash_rhbz1117404.ksh"; } 2>&1)
 ((!(e = $?))) || err_exit 'crash while handling subshell trap' \
-	"(got status $e$( ((e>128)) && print -n / && kill -l "$e"), $(printf %q "$got"))"
+	"(got status $e$( ((e>128)) && print -n /SIG && kill -l "$e"), $(printf %q "$got"))"
 
 # ======
 # Segmentation fault when using cd in a subshell, when current directory cannot be determined
@@ -936,14 +959,14 @@ got=$(set +x; { "$SHELL" -c '(subshfn() { bad; }; cd ..; echo "subPWD: $PWD"); t
 exp="PWD=$PWD"
 got=$(set +x; { "$SHELL" -c '(cd /; (cd /)); print -r -- "PWD=$PWD"'; } 2>&1)
 ((!(e = $?))) && [[ $got == "$exp" ]] || err_exit 'failed to restore nonexistent PWD on exiting a virtual subshell' \
-	"(got status $e$( ((e>128)) && print -n / && kill -l "$e"), $(printf %q "$got"))"
+	"(got status $e$( ((e>128)) && print -n /SIG && kill -l "$e"), $(printf %q "$got"))"
 mkdir "$tmp/recreated"
 cd "$tmp/recreated"
 tmp=$tmp "$SHELL" -c 'cd /; rmdir "$tmp/recreated"; mkdir "$tmp/recreated"'
 exp="PWD=$PWD"
 got=$(set +x; { "$SHELL" -c '(cd /); print -r -- "PWD=$PWD"'; } 2>&1)
 ((!(e = $?))) && [[ $got == "$exp" ]] || err_exit 'failed to restore re-created PWD on exiting a virtual subshell' \
-	"(got status $e$( ((e>128)) && print -n / && kill -l "$e"), $(printf %q "$got"))"
+	"(got status $e$( ((e>128)) && print -n /SIG && kill -l "$e"), $(printf %q "$got"))"
 cd "$tmp"
 
 # ======
@@ -1089,6 +1112,78 @@ fi
 e1=$( (f() { return 267; }; f); echo $? )
 e2=$( (ulimit -t unlimited 2>/dev/null; f() { return 267; }; f); echo $? )
 ((e1==11 && e2==11)) || err_exit "exit status of virtual ($e1) and real ($e2) subshell should both be clipped to 8 bits (11)"
+
+# ======
+# Regression test backported from ksh93v- 2014-04-15 for
+# a nonexistent command at the end of a pipeline in ``
+"$SHELL" -c 'while((SECONDS<3)); do test -z `/bin/false | /bin/false | /bin/doesnotexist`; done; :' 2> /dev/null || \
+	err_exit 'nonexistent last command in pipeline causes `` command substitution to fail'
+
+# Regression test backported from ksh93v- 2013-07-19 for the
+# effects of .sh.value on shared-state command substitutions.
+function foo
+{
+       .sh.value=bam
+}
+got=${ foo; }
+[[ $got ]] && err_exit "setting .sh.value in a function affects shared-state command substitution output when it shouldn't print anything" \
+	"(got $(printf %q "$got"))"
+
+# Regression test from ksh93v- 2012-11-21 for testing nested
+# command substitutions with a 2>&1 redirection.
+fun()
+{
+	echo=$(whence -p echo)
+	foo=` $echo foo`
+	print -n stdout=$foo
+	print -u2 stderr=$foo
+}
+[[ `set +x; fun 2>&1` == 'stdout=foostderr=foo' ]] || err_exit 'nested command substitution with 2>&1 not working'
+
+# Various regression tests from ksh93v- 2012-10-04 and 2012-10-24
+$SHELL > /dev/null -c 'echo $(for x in whatever; do case y in *) true;; esac; done)' || err_exit 'syntax error with case in command substitution'
+
+print 'print OK' | got=$("$SHELL")
+exp=OK
+[[ $got == $exp ]] || err_exit '$() command substitution not waiting for process completion' \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+print 'print OK' | out=$( "$SHELL" 2>&1 )
+got="${out}$?"
+exp=OK0
+[[ $got == $exp ]] || err_exit "capturing output from ksh when piped doesn't work correctly" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
+# A virtual subshell should trim its exit status to 8 bits just like a real subshell, but if
+# its last command was killed by a signal then that should still be reflected in the 9th bit.
+sig=USR1
+exp=$((${ kill -l "$sig"; }|0x100))
+{ (:; "$SHELL" -c "kill -s $sig \$\$"); } 2>/dev/null
+let "(got=$?)==exp" || err_exit "command killed by signal in virtual subshell: expected status $exp, got status $got"
+{ (ulimit -t unlimited; "$SHELL" -c "kill -s $sig \$\$"); } 2>/dev/null
+let "(got=$?)==exp" || err_exit "command killed by signal in real subshell: expected status $exp, got status $got"
+{ (trap : EXIT; "$SHELL" -c "kill -s $sig \$\$"); } 2>/dev/null
+let "(got=$?)==exp" || err_exit "command killed by signal in virtual subshell with trap: expected status $exp, got status $got"
+{ (ulimit -t unlimited; trap : EXIT; "$SHELL" -c "kill -s $sig \$\$"); } 2>/dev/null
+let "(got=$?)==exp" || err_exit "command killed by signal in real subshell with trap: expected status $exp, got status $got"
+(:; exit "$exp")
+let "(got=$?)==(exp&0xFF)" || err_exit "fake signal exit from virtual subshell: expected status $((exp&0xFF)), got status $got"
+(ulimit -t unlimited 2>/dev/null; exit "$exp")
+let "(got=$?)==(exp&0xFF)" || err_exit "fake signal exit from real subshell: expected status $((exp&0xFF)), got status $got"
+
+# ======
+got=$(set +x; { "$SHELL" -c 'trap "echo OK" TERM; (kill -s TERM $$)'; } 2>&1)
+exp=OK
+[[ $got == "$exp" ]] || err_exit 'trap ignored when signalled from a subshell that is the last command' \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
+# if this fails with empty output, sh_subtmpfile() is not getting called where it should be
+exp='some output'
+{ got=$(eval 'print -r -- "$exp" | "$bincat"'); } >/dev/null
+[[ $got == "$exp" ]] || err_exit 'command substitution did not catch output' \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
 
 # ======
 exit $((Errors<125?Errors:125))

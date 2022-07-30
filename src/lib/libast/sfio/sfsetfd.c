@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -27,23 +27,17 @@
 **	Written by Kiem-Phong Vo.
 */
 
-#if __STD_C
 static int _sfdup(int fd, int newfd)
-#else
-static int _sfdup(fd,newfd)
-int	fd;
-int	newfd;
-#endif
 {
 	reg int	dupfd;
 
 #ifdef F_DUPFD	/* the simple case */
-	while((dupfd = sysfcntlf(fd,F_DUPFD,newfd)) < 0 && errno == EINTR)
+	while((dupfd = fcntl(fd,F_DUPFD,newfd)) < 0 && errno == EINTR)
 		errno = 0;
 	return dupfd;
 
 #else	/* do it the hard way */
-	if((dupfd = sysdupf(fd)) < 0 || dupfd >= newfd)
+	if((dupfd = dup(fd)) < 0 || dupfd >= newfd)
 		return dupfd;
 
 	/* dup() succeeded but didn't get the right number, recurse */
@@ -56,31 +50,25 @@ int	newfd;
 #endif
 }
 
-#if __STD_C
 int sfsetfd(Sfio_t* f, int newfd)
-#else
-int sfsetfd(f,newfd)
-Sfio_t	*f;
-int	newfd;
-#endif
 {
 	reg int		oldfd;
-	SFMTXDECL(f);
 
-	SFMTXENTER(f, -1);
+	if(!f)
+		return -1;
 
 	if(f->flags&SF_STRING)
-		SFMTXRETURN(f, -1);
+		return -1;
 
 	if((f->mode&SF_INIT) && f->file < 0)
 	{	/* restoring file descriptor after a previous freeze */
 		if(newfd < 0)
-			SFMTXRETURN(f, -1);
+			return -1;
 	}
 	else
 	{	/* change file descriptor */
 		if((f->mode&SF_RDWR) != f->mode && _sfmode(f,0,0) < 0)
-			SFMTXRETURN(f, -1);
+			return -1;
 		SFLOCK(f,0);
 
 		oldfd = f->file;
@@ -88,7 +76,7 @@ int	newfd;
 		{	if(newfd >= 0)
 			{	if((newfd = _sfdup(oldfd,newfd)) < 0)
 				{	SFOPEN(f,0);
-					SFMTXRETURN(f, -1);
+					return -1;
 				}
 				CLOSE(oldfd);
 			}
@@ -98,7 +86,7 @@ int	newfd;
 				   (f->mode&SF_READ) || f->disc == _Sfudisc)
 				{	if(SFSYNC(f) < 0)
 					{	SFOPEN(f,0);
-						SFMTXRETURN(f, -1);
+						return -1;
 					}
 				}
 
@@ -106,7 +94,7 @@ int	newfd;
 				   ((f->mode&SF_READ) && f->extent < 0 &&
 				    f->next < f->endb) )
 				{	SFOPEN(f,0);
-					SFMTXRETURN(f, -1);
+					return -1;
 				}
 
 #ifdef MAP_TYPE
@@ -133,5 +121,5 @@ int	newfd;
 
 	f->file = newfd;
 
-	SFMTXRETURN(f,newfd);
+	return newfd;
 }

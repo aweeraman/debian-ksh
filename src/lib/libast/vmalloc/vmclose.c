@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,11 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#if defined(_UWIN) && defined(_BLD_ast)
-
-void _STUB_vmclose(){}
-
-#else
 
 #include	"vmhdr.h"
 
@@ -32,12 +27,7 @@ void _STUB_vmclose(){}
 **
 **	Written by Kiem-Phong Vo, kpv@research.att.com, 01/16/94.
 */
-#if __STD_C
 int vmclose(Vmalloc_t* vm)
-#else
-int vmclose(vm)
-Vmalloc_t*	vm;
-#endif
 {
 	Seg_t		*seg, *vmseg, *next;
 	Vmalloc_t	*v, *last;
@@ -49,7 +39,7 @@ Vmalloc_t*	vm;
 		return -1;
 
 	if(vm->disc->exceptf && /* announcing closing event */
-	   (rv = (*vm->disc->exceptf)(vm,VM_CLOSE,(Void_t*)1,vm->disc)) < 0 )
+	   (rv = (*vm->disc->exceptf)(vm,VM_CLOSE,(void*)1,vm->disc)) < 0 )
 		return -1;
 
 	mode = vd->mode; /* remember this in case it gets destroyed below */
@@ -81,12 +71,10 @@ Vmalloc_t*	vm;
 	}
 
 	if(disc->exceptf) /* finalizing closing */
-		(void)(*disc->exceptf)(vm, VM_ENDCLOSE, (Void_t*)0, disc);
+		(void)(*disc->exceptf)(vm, VM_ENDCLOSE, (void*)0, disc);
 
 	if(!(mode & VM_MEMORYF) )
 		vmfree(Vmheap,vm);
 
 	return 0;
 }
-
-#endif

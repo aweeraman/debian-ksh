@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -57,7 +57,7 @@ done
 typeset -T X_t=( typeset name=aha )
 typeset -a[X_t] arr
 ) 2> /dev/null
-[[ $? == 1 ]] || err_exit 'typeset -a[X_t] should generate an error message when X-t is not an enumeration type'
+[[ $? == 1 ]] || err_exit 'typeset -a[X_t] should generate an error message when X_t is not an enumeration type'
 
 typeset -a [Color_t] arr
 arr[green]=foo
@@ -150,7 +150,7 @@ a=blue; let "a*=3" 2>/dev/null && err_exit "arithmetic can assign out of range (
 # Enum types should parse with 'command' prefix(es) and options and instantly
 # recognise subsequent builtins it creates, even as a oneliner, even with
 # shcomp. (This requires an ugly parser hack that this tests for.)
-got=$(eval 2>&1 'command command command enum -i -i -iii --igno -ii PARSER_t=(r g b); '\
+got=$(set +x; eval 2>&1 'command command command enum -i -i -iii --igno -ii PARSER_t=(r g b); '\
 'command command PARSER_t -r -rrAAA -A -rArArA -Arrrrrrr hack=([C]=G); typeset -p hack')
 exp='PARSER_t -r -A hack=([C]=g)'
 [[ $got == "$exp" ]] || err_exit "incorrect typeset output for enum with command prefix and options" \
@@ -160,6 +160,35 @@ if	false
 then	enum PARSER2_t=(a b)
 fi
 PATH=/dev/null command -v PARSER2_t >/dev/null && err_exit "PARSER2_t incompletely defined though definition was never executed"
+
+# ======
+# https://github.com/ksh93/ksh/issues/350#issuecomment-982168684
+got=$("$SHELL" -c 'enum trap=(BAD TYPE)' 2>&1)
+exp=': trap: is a special shell builtin'
+[[ $got == *"$exp" ]] || err_exit "enum overrides special builtin" \
+	"(expected match of *$(printf %q "$exp"); got $(printf %q "$got"))"
+
+# ======
+# Various tests backported from ksh93v- for enum type arrays.
+enum bool=(false true)
+bool -A a=( [2]=true [4]=false )
+exp=true
+got=${a[2]}
+[[ $got == $exp ]] || err_exit 'associative array assignment failure when using enums' \
+	"(expected $(printf %q "$exp"); got $(printf %q "$got"))"
+exp=2
+got=${#a[@]}
+[[ $got == $exp ]] || err_exit 'bool -A a should only have two elements' \
+	"(expected $(printf %q "$exp"); got $(printf %q "$got"))"
+
+bool -a bia
+(( bia[4]=false ))
+[[ ${bia[3]} ]] && err_exit 'empty index array element should not produce a value'
+(( bia[3] == 0 )) || err_exit 'empty index array element should be numerically 0'
+bool -A baa
+(( baa[4]=false ))
+[[ ${baa[3]} ]] && err_exit 'empty associative array element should not produce a value'
+(( baa[3] == 0 )) || err_exit 'empty associative array element should be numerically 0'
 
 # ======
 exit $((Errors<125?Errors:125))

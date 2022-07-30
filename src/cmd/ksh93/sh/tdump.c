@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,7 +18,6 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * David Korn
  * AT&T Labs
@@ -27,6 +26,7 @@
  *
  */
 
+#include	"shopt.h"
 #include	"defs.h"
 #include	"shnodes.h"
 #include	"path.h"
@@ -161,7 +161,7 @@ static int p_arg(register const struct argnod *arg)
 	struct fornod *fp;
 	while(arg)
 	{
-		if((n = strlen(arg->argval)) || (arg->argflag&~(ARG_APPEND|ARG_MESSAGE|ARG_QUOTED)))
+		if((n = strlen(arg->argval)) || (arg->argflag&~(ARG_APPEND|ARG_MESSAGE|ARG_QUOTED|ARG_ARRAY)))
 			fp=0;
 		else
 		{

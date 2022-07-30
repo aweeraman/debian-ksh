@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -30,13 +30,7 @@
 **	Written by Kiem-Phong Vo.
 */
 
-#if __STD_C
 Sfio_t* sfswap(reg Sfio_t* f1, reg Sfio_t* f2)
-#else
-Sfio_t* sfswap(f1,f2)
-reg Sfio_t*	f1;
-reg Sfio_t*	f2;
-#endif
 {
 	Sfio_t	tmp;
 	int	f1pool, f2pool, f1mode, f2mode, f1flags, f2flags;
@@ -68,7 +62,7 @@ reg Sfio_t*	f2;
 				return NIL(Sfio_t*);
 			}
 
-			SFCLEAR(f2,NIL(Vtmutex_t*));
+			SFCLEAR(f2);
 		}
 		f2->mode = SF_AVAIL|SF_LOCK;
 		f2mode = SF_AVAIL;
@@ -89,9 +83,9 @@ reg Sfio_t*	f2;
 	f2flags = f2->flags;
 
 	/* swap image and pool entries */
-	memcpy((Void_t*)(&tmp),(Void_t*)f1,sizeof(Sfio_t));
-	memcpy((Void_t*)f1,(Void_t*)f2,sizeof(Sfio_t));
-	memcpy((Void_t*)f2,(Void_t*)(&tmp),sizeof(Sfio_t));
+	memcpy((void*)(&tmp),(void*)f1,sizeof(Sfio_t));
+	memcpy((void*)f1,(void*)f2,sizeof(Sfio_t));
+	memcpy((void*)f2,(void*)(&tmp),sizeof(Sfio_t));
 	if(f2pool >= 0)
 		f1->pool->sf[f2pool] = f1;
 	if(f1pool >= 0)

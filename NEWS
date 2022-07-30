@@ -1,7 +1,534 @@
-This documents significant changes in the 93u+m branch of AT&T ksh93.
-For full details, see the git log at: https://github.com/ksh93/ksh
+This documents significant changes in the 1.0 branch of ksh 93u+m.
+For full details, see the git log at: https://github.com/ksh93/ksh/tree/1.0
 
 Any uppercase BUG_* names are modernish shell bug IDs.
+
+2022-07-25:
+
+- Release candidate: ksh 93u+m/1.0.0-rc.1.
+
+2722-07-24:
+
+- Add new 'man' function in src/cmd/ksh93/fun/man. This integrates the --man
+  self-documentation of ksh built-in and external AST commands with your
+  system's 'man' command so you can conveniently use 'man' for all commands,
+  whether built-in or external. To use this, put the file in a directory in
+  your $FPATH and then issue 'autoload man' in your .kshrc to override the
+  system's man(1) command. See the file for details.
+
+- Add new 'autocd' function in src/cmd/ksh93/fun/autocd. This activates a
+  feature like 'shopt -s autocd' in bash: type only a directory name to change.
+  See the file for details. Add this file to a directory in your $FPATH to use.
+
+- New feature to make 'set -b'/'set -o notify' more usable. When that option
+  is on (and either the vi or emacs/gmacs line editor is in use), 'Done' and
+  similar notifications from completed background jobs no longer mess up the
+  command line you're typing. Instead, the notification is inserted directly
+  above the line you're typing, without affecting your command line display.
+
+- Fixed a bug that caused the -b/--notify option to only notify on one job if
+  more than one background job completed at the same time.
+
+- Fixed a bug in the 'command -x' feature introduced on 2021-01-30; it is meant
+  to always run an external command, but failed to bypass path-bound builtins.
+
+2022-07-21:
+
+- Fixed a bug where a reproducible $RANDOM sequence (after assigning a
+  specific value to $RANDOM) was influenced by running any external command.
+
+- When an error occurs in a POSIX name() function or a dot script, the
+  function or script name is now reported in the error message.
+
+2022-07-14:
+
+- Fixed a bug that caused a spurious "Done" message on the interactive shell
+  when an external command was run as a foreground job from a SIGINT trap.
+
+2022-07-12:
+
+- The .sh.level variable can now only be changed within a DEBUG trap. When
+  trap execution ends, the variable and the scope are now restored. These
+  changes disallow an inconsistent shell scoping state causing instability.
+
+2022-07-10:
+
+- Fixed a potential crash on retrieving an empty line from the command history.
+
+- Fixed a potential crash in the lexical analyser on processing single-byte
+  characters with the highest bit set.
+
+2022-07-09:
+
+- Fixed a bug that broke '[[ ... ]]' test expressions for the command
+  following a syntax error in an associative array assignment.
+
+2022-07-05:
+
+- Fixed a spurious syntax error on encountering a process substitution
+  following a redirection without being an argument to a redirection.
+  For example, this now writes 'OK' to standard error: cat >&2 <(echo OK)
+
+- Fixed the detection of a syntax error in compound assignments to
+  associative arays.
+
+2022-07-02:
+
+- Fixed a bug where, if the last command in a subshell was an external
+  command that was terminated by a signal, the exit status ($?) of the
+  subshell did not reflect this by adding 256 to the signal number.
+
+- Fixed a bug that caused signal traps to be ignored if the shell was
+  signalled from a subshell that is the last command in the script.
+
+2022-07-01:
+
+- In scripts, $COLUMNS and $LINES are now kept up to date in scripts at
+  initialization and when the window size changes (previously, this
+  required setting a dummy trap for the SIGWINCH signal in the script).
+
+2022-06-28:
+
+- Fixed a bug that caused the <#((num)) or >#((num)) arithmetic seek
+  redirection operator to fail if used with file descriptor 0, 1 or 2
+  connected to a block device.
+
+2022-06-22:
+
+- Fixed: 'echo' failed when used inside a command substitution that
+  is inside a nested compound assignment.
+
+- Fixed a crash in KEYBD trap handling introduced on 2021-11-29.
+
+2022-06-20:
+
+- Fixed a race condition that could cause redirections to fail with a
+  "cannot create" or "cannot open" error while processing a signal trap.
+
+2022-06-18:
+
+- Fixed a bug where, with the monitor or pipefail option on, the shell
+  failed to wait for all component commands in a pipeline to terminate if
+  the last component command was an external command and the pipeline was
+  the last command in a background subshell.
+
+- When any trap except DEBUG, KILL or STOP is set to a non-empty command,
+  the last command in a script or forked subshell will no longer avoid forking
+  before executing; this optimization incorrectly bypassed the traps.
+
+2022-06-15:
+
+- Fixed a bug where converting an indexed array into an associative array in
+  a subshell failed, resulting in an empty associative array.
+
+2022-06-13:
+
+- Trapping a signal that is not a pseudosignal will now cause a virtual
+  subshell to fork into a real one. This ensures a persistent PID where
+  other processes can signal the subshell (the PID of a virtual subshell may
+  change as other commands cause it to fork), and fixes a bug where a signal
+  could not be correctly or effectively trapped in a subshell if the same
+  signal was also trapped in the main shell environment.
+
+2022-06-12:
+
+- The POSIX mode now disables zero-padding of seconds in 'time'/'times' output.
+
+2022-06-09:
+
+- The POSIX mode has been amended to use a UNIX pipe(2) instead of a
+  socketpair(2) to connect commands in a pipeline, as the standard requires.
+  (When reading directly from a pipeline in posix mode, the <#pattern and
+  <##pattern redirection operators will not work and the -n option to the
+  read built-in will not return early when reading from a slow device.)
+
+- An interactive shell initialized in POSIX mode now once again has the
+  preset aliases defined. This amends a change made on 2020-09-11.
+
+- If a long-form shell option name is abbreviated so it matches multiple
+  options, the error message from ksh or 'set' now reads "ambiguous option".
+
+2022-06-08:
+
+- If -B/--braceexpand is turned on in --posix mode, it now only allows brace
+  expansion on literal strings and not on the values of unquoted expansions.
+  This behaviour is like bash and zsh, as well as compliant with a future
+  version of the POSIX standard that may specify brace expansion:
+  https://www.austingroupbugs.net/view.php?id=1193
+
+2022-06-07:
+
+- Fixed a bug in 'typeset' where compound variables could acquire a spurious
+  -x (export) attribute when printing their values, triggering other bugs.
+
+2022-06-05:
+
+- Fixed a bug where tab completion would spuriously execute a command
+  substitution after entering: '`something<TAB> or generate a spurious
+  'end of file unexpected' syntax error after entering: '$(something<TAB>.
+
+- Fixed bug where tab completion stopped working for arguments following a
+  quoted string with an escaped backslash in the form $'foo\'bar'.
+
+2022-06-04:
+
+- Added a new --functrace long-form shell option which causes the -x/--xtrace
+  option's state and the DEBUG trap action to be inherited by function scopes
+  instead of being reset to default. Changes made to them within a function
+  scope still do not propagate back to the parent scope. Similarly, this
+  option also causes the DEBUG trap action to be inherited by subshells.
+
+2022-06-03:
+
+- Fixed a couple of bugs that caused floating point variables imported from
+  a parent ksh through the environment to be corrupted.
+
+- Fixed a bug where invocation-local assignments preceding a built-in or
+  external command or function call did not honour their pre-existing
+  attributes set by typeset (such as -i or -F) in certain cases.
+
+2022-06-01:
+
+- New 'typeset' feature inspired by bash (and zsh and mksh): the -g flag
+  causes the specified variable(s) to be created globally, ignoring the
+  local scope of ksh functions or name spaces. For example, this allows
+  creating a global array or numeric variable from a ksh function.
+  Thanks to @ormaaj for the feature suggestion and to @hyenias for testing.
+
+2022-05-29:
+
+- Fixed a bug causing an inconsistent state after a special built-in command
+  threw an error within a namespace.
+
+2022-05-27:
+
+- Fixed a bug introduced on 2022-03-05 where 'set --default', while turning
+  off the --posix option, did not re-enable the special handling of a repeated
+  $IFS whitespace character as non-whitespace.
+
+2022-05-25:
+
+- Fixed a bug introduced on 2021-02-20 that caused incorrect output for
+  typeset -L/-R/-Z when the variable contained leading or trailing spaces.
+  Thanks to George Lijo for the report and the fix.
+
+2022-05-21:
+
+- Fixed a bug, present since the beginning of ksh93, that broke backslash line
+  continuation within $(standard) and ${ shared-state; } command substitutions.
+  Thanks to atheik for the analysis and the fix. (BUG_CSUBLNCONT)
+
+2022-05-20:
+
+- Fixed an ancient bug that caused a spurious syntax error when using double
+  quotes within a `backtick` command substitution within double quotes.
+  Thanks to atheik for the analysis and the fix. (BUG_CSUBBTQUOT)
+
+2022-03-10:
+
+- Fixed another corner case bug in the 'test'/'[' command.
+
+- A memory leak was fixed in the --man self-documentation options
+  of built-in commands.
+
+2022-03-05:
+
+- The 'enum' command can now create more than one type per invocation.
+
+- The POSIX compatibility mode has been amended to disable the special handling
+  of a repeated $IFS whitespace character as non-whitespace.
+
+2022-02-23:
+
+- When reading input from the keyboard, ksh now turns off nonblocking I/O
+  mode for standard input if a previously ran program left it on, so that
+  interactive programs that expect it to be off work properly.
+
+- Fixed a regression introduced on 2022-02-02 that caused interactive shells
+  to enter an infinite loop when a command failed to execute on Linux
+  systems with version 2.35 of glibc.
+
+- Fixed a SIGTTOU lockup that could cause ksh to freeze under strace(1) after
+  a command failed to execute in an interactive shell.
+
+2022-02-18:
+
+- Fixed a regression introduced on 2021-04-11 that caused the += operator in
+  invocation-local assignments to crash the shell or modify variables outside
+  of the invocation-local scope.
+
+2022-02-17:
+
+- Fixed a crash, introduced on 2021-01-19, that occurred when using 'cd' in
+  a subshell with the PWD variable unset.
+
+- Fixed a crash that could occur when or after entering the suspend character
+  (Ctrl+Z) while the shell was blocked trying to write to a FIFO special file.
+
+2022-02-16:
+
+- Backported minor additions to the 'read' built-in command from ksh 93v-:
+  '-a' is now the same as '-A' and '-u p' is the same as '-p'. This is for
+  compatibility with some 93v- or ksh2020 scripts. (Note that their change
+  to the '-p' option to support both prompts and coprocess reads was not
+  backported because we found it to be broken and unfixable.)
+
+2022-02-15:
+
+- A bug was fixed in fast filescan loops (like 'while <file; do ...; done',
+  enabled by default by the SHOPT_FILESCAN compile-time option) in which
+  "$@" incorrectly acted like "$*" within the do...done block.
+
+- Improved sanity check for filescan loops: they are now only recognised if
+  'while' is followed by a single input redirection without any command
+  name/arguments or variable assignments.
+
+- As SHOPT_FILESCAN has been enabled by default since ksh 93l 2001-06-01,
+  the fast filescan loop is now documented in the manual page and the
+  compile-time option is no longer considered experimental.
+
+- Filescan loops are now disabled at runtime if the --posix option is active
+  as they break a portable use case: POSIXly, 'while <file; do stuff; done'
+  repeatedly executes 'stuff' while 'file' can successfully be opened for
+  reading, without actually reading from 'file'.
+
+2022-02-12:
+
+- In multibyte locales such as UTF-8, shell input is no longer corrupted when
+  a KEYBD trap is active. However, the KEYBD trap is not yet multibyte ready
+  and is now only triggered for ASCII characters (1-127) in a multibyte locale.
+
+2022-02-11:
+
+- On the interactive shell, tab/esc completion is no longer disabled as a side
+  effect of turning off pathname expansion with 'set -f' or 'set -o noglob'.
+
+- Fixed a bug in which a >&- or <&- redirection could persist past a
+  subshell in certain corner cases involving 'exec' or 'redirect'.
+
+2022-02-08:
+
+- Multiple bugs were fixed in the method that ksh uses to execute a shell
+  script without a #! path. Among other things, custom types and other
+  changes in built-in commands will no longer affect the invoked script.
+  The state of the 'posix' option is now inherited by the script.
+
+- To avoid an inconsistent state, the 'enum' and 'typeset -T' commands are
+  no longer allowed to replace special built-in commands. For instance,
+  'enum trap=(a b c)' is now an error because 'trap' is a special built-in.
+  The ability of 'typeset -T' to redefine a type is not affected.
+
+- A command like 'typeset -T foo_t' without any assignment no longer creates
+  an incompletely defined 'foo_t' built-in command that will crash the shell
+  when used. Instead, it is now silently ignored for backwards compatibility.
+
+- Compound arrays belonging to a type created with 'typeset -T' now have
+  their -C attribute preserved in the output of 'typeset -p'.
+
+- A bug has been fixed in which the 'typeset -p' output of a two-dimensional
+  sparse indexed array would cause the second subscript to be treated as an
+  associative array when read back in by the shell. Elements that are sparse
+  indexed arrays are now prefixed with "typeset -a".
+
+- The rewritten .sh.match code from ksh93v- has been backported to ksh93u+m,
+  fixing many bugs and improving performance by a considerable amount.
+
+2022-02-05:
+
+- Fixed: for indexed arrays, given an unset array member a[i] with i > 0,
+  ${a[i]=value} failed to assign the value and ${v[i]?error} failed to throw
+  an error.
+
+- Fixed: the -a/--allexport shell option incorrectly exported some variables
+  with names containing a dot to the environment. Note that the '-x' typeset
+  attribute may still be set for them, but this will now not have any
+  effect. Variables created in namespaces declared with the 'namespace'
+  keyword are only exported while their namespace is active.
+
+2022-02-04:
+
+- Fixed a bug in 'typeset -p': for an indexed array variable that is set
+  but empty, it will no longer output a nonexistent '[0]=' element.
+
+2022-02-02:
+
+- Fixed the -a/allexport option to export all variables that are assigned
+  values. Previously, arithmetic $((var=1)) or conditional ${var:=value}
+  assignments were not exported even with allexport on.
+
+- Fixed a memory leak that could occur when using traps.
+
+- Fixed a use after free issue that could occur when modifying or setting
+  a SIGCHLD trap.
+
+2022-02-01:
+
+- Upon invocation, the interactive shell no longer leaves the user without
+  a line editor if the VISUAL or EDITOR variable does not indicate emacs,
+  gmacs or vi; instead, it now turns on the emacs option by default.
+
+2022-01-31:
+
+- Improved keyboard support for the vi and emacs built-in line editors:
+  - Added support for Home key sequences ^[[1~ and ^[[7~ as well as End key
+    sequences ^[[4~ and ^[[8~.
+  - Added support for arrow key sequences ^[OA, ^[OB, ^[OC and ^[OD.
+  - Added support for the following keyboard shortcuts (if the platform
+    supports the expected escape sequence):
+    - Ctrl-Left Arrow:  Go back one word
+    - Alt-Left Arrow:   Go back one word        (Not supported on Haiku)
+    - Ctrl-Right Arrow: Go forward one word
+    - Alt-Right Arrow:  Go forward one word     (Not supported on Haiku)
+    - Ctrl-G:           Cancel reverse search
+    - Ctrl-Delete:      Delete next word        (Not supported on Haiku)
+  - Added a keybind for the Insert key, which differs in the emacs and vi
+    editing modes:
+    - In emacs mode, Insert escapes the next character.
+    - In vi mode, Insert will switch the editor to insert mode (like in vim).
+
+- Fixed a bug in SIGINT handling: if a script ran an external command that
+  interrupted itself (and only itself, not the process group) with SIGINT,
+  the script that ran the command was also interrupted.
+
+2022-01-28:
+
+- Fixed longstanding job control breakage that occurred on the interactive
+  shell when suspending (Ctrl+Z) an external command invoked by a dot script
+  or POSIX shell function, or via 'eval'.
+
+- Fixed a memory leak that occurred when running a command that was found on
+  the PATH.
+
+2022-01-26:
+
+- On Cygwin, ksh now executes scripts that do not have a #! path itself,
+  like it does on other systems, instead of with /bin/sh.
+
+- Fixed a spurious syntax error which occurred when attempting to use array
+  subscript expansion with unset variables (i.e., ${foo[${bar}..${baz}]}).
+
+2022-01-24:
+
+- Fixed a crashing bug in history expansion that could occur when using the "&"
+  modifier to repeat a substitution while there was no previous substitution.
+
+- History expansion is now documented in the ksh(1) manual page.
+
+- In history expansion, the history comment character '#' is now enabled by
+  default, as it is on bash.
+
+- In history expansion, the 'a' modifier is now a synonym for 'g', as on bash.
+
+- Fixed a bug in history expansion where the 'p' modifier had no effect if
+  the 'histverify' option is on.
+
+2022-01-20:
+
+- Disallow out-of-range event numbers in history expansion (-H/-o histexpand).
+  Previously these were accepted, resulting in corrupted expansions.
+
+- Fixed a potential crash in history expansion due to a buffer overflow.
+
+2022-01-12:
+
+- Added bash-inspired --histreedit and --histverify options that modify history
+  expansion (--histexpand), allowing editing on failure or before execution.
+
+2022-01-04:
+
+- Fixed an issue in vi mode that caused tab completion to fail if the
+  last character on the command line was a space.
+
+2021-12-29:
+
+- Fixed numerous build errors that prevented ksh from running on Haiku OS.
+
+- Added support for the SIGKILLTHR signal on operating systems that
+  implement it.
+
+2021-12-28:
+
+- Fixed a bug that caused CDPATH to continue working after unsetting it.
+
+- Added three options to the ulimit builtin with the same names and
+  functionality as in Bash:
+  - 'ulimit -k' sets the maximum number of kqueues.
+  - 'ulimit -P' sets the maximum number of pseudo-terminals.
+  - 'ulimit -R' sets the maximum time in microseconds a real-time process
+    can run before blocking.
+  Note that to use these options the operating system must support the
+  corresponding resource limit.
+
+- Ported performance optimizations from illumos to improve the performance
+  of the cksum builtin. (Note that the cksum builtin is not enabled by
+  default.)
+
+2021-12-27:
+
+- Two bash-like flags for 'whence' were backported from ksh 93v-:
+  - 'whence -P/type -P' is an alias to the existing -p flag.
+  - 'whence -t/type -t' will print only the type of a command in a simple
+    format that is designed to be easy to use for scripts. Example:
+        $ type -t typeset; whence -t sh
+        builtin
+        file
+
+- Fixed a crash or freeze that would occur on Linux when using Ctrl+C to
+  interrupt a command substitution containing a pipe in an interactive shell.
+
+- Fixed a crash that could occur while processing a here-document while
+  xtrace (set -x) is on and the $PS4 prompt contains parameter expansions or
+  command substitutions.
+
+- The mkservice and eloop builtins can now be built by enabling the
+  new SHOPT_MKSERVICE setting in src/cmd/ksh93/SHOPT.sh.
+
+2021-12-26:
+
+- Listing aliases or tracked aliases in a script no longer corrupts
+  shcomp's generated bytecode.
+
+- Listing specific aliases with 'alias -p' and specific tracked aliases
+  with 'alias -pt' now works as documented. This means that the following
+  string of commands now works as you would expect:
+	$ hash -r; unalias -a
+	$ alias foo=bar; hash cat
+	$ alias -p foo; alias -pt cat
+	alias foo=bar
+	alias -t cat
+
+- As a result of the above fix, listing all tracked aliases with 'alias -pt'
+  now prints commands that can be reused to recreate the tracked aliases.
+
+- Attempting to list a non-existent alias or tracked alias with the -p option
+  now causes an error and sets the exit status to the number of non-existent
+  aliases passed.
+
+- Attempting to list 256 non-existent aliases now errors out with the exit
+  status set to one.
+
+2021-12-22:
+
+- Process substitutions run in a profile script no longer print their
+  process ID when run.
+
+2021-12-21:
+
+- Fixed a bug that caused subshells (such as code blocks in parentheses) to
+  partially behave like the interactive main shell after running anything
+  that invokes the parser. For example:
+	$ (eval :; sleep 1 & echo done)
+	[1]	30909      <--- incorrect job control output from subshell
+	done
+
+- Fixed: after suspending (Ctrl+Z) a subshell that is running an external
+  command, resuming the subshell with 'fg' failed and the job was lost.
+	$ (vi)    <--- press Ctrl+Z
+	[2] + Stopped                  (vi)
+	$ fg
+	(vi)      <--- vi failed to resume; immediate return to command line
+	$ fg
+	ksh: no such job
 
 2021-12-17:
 
@@ -18,7 +545,7 @@ Any uppercase BUG_* names are modernish shell bug IDs.
 2021-12-16:
 
 - Changed the default selection of compiled-in /opt/ast/bin built-in libcmd
-  command to: basename, cat, cp, cut, dirname, getconf, ln, mktemp, mv.
+  commands to: basename, cat, cp, cut, dirname, getconf, ln, mktemp, mv.
   Add /opt/ast/bin to your $PATH to use these. Type 'cp --man', etc. for info.
 
 - A bug introduced on 2020-09-17 was fixed that caused interactive ksh to exit
@@ -718,7 +1245,7 @@ Any uppercase BUG_* names are modernish shell bug IDs.
   the parent environment was corrupted or the shell crashed.
   When a redirection was used in a DEBUG trap action, the trap was disabled.
   DEBUG traps were also incorrectly inherited by subshells and ksh functions.
-  All this was caused by a bug introduced in ksh 93t 2008-07-25.
+  All this was caused by a bug introduced in ksh 93t 2008-06-24.
 
 2021-01-22:
 
@@ -729,7 +1256,7 @@ Any uppercase BUG_* names are modernish shell bug IDs.
 
 - Fixed: executing a DEBUG trap in a command substitution had side effects
   on the exit status ($?) of non-trap commands.
-  This bug was introduced in ksh 93t 2008-11-04.
+  This bug was introduced in ksh 93t 2008-09-21.
 
 - The typeset builtin command now gives an informative error message if an
   incompatible combination of options is given.
@@ -860,7 +1387,7 @@ Any uppercase BUG_* names are modernish shell bug IDs.
   to lose the output of the commands they ran. This bug occurred when ksh was
   compiled with the SHOPT_SPAWN compile-time option.
 
-- Bugfix: var=$(< file) now reads the file even if the standard inout, standard
+- Bugfix: var=$(< file) now reads the file even if the standard input, standard
   output and/or standard error file descriptors are closed.
 
 2020-09-20:

@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,7 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * Advanced Software Technology Library
  * AT&T Research
@@ -34,15 +33,14 @@
 #define _AST_STD_H		1
 #define _AST_STD_I		1
 
+#include <ast_standards.h>
 #include <ast_common.h>
 
 #if _BLD_ast
 #define _BLD_aso	1
 #define _BLD_cdt	1
 #define _BLD_sfio	1
-#if !_UWIN
 #define _BLD_vmalloc	1
-#endif
 #endif
 
 #ifdef	_SFSTDIO_H
@@ -64,6 +62,9 @@ struct _sfio_s;
 #endif
 
 #include <ast_lib.h>
+#if !_lib_fork
+#error In 2022, libast joined the 21st century and started requiring fork(2).
+#endif
 #include <ast_sys.h>
 #include <ast_getopt.h>	/* <stdlib.h> does this */
 #include <ast_fcntl.h>
@@ -127,12 +128,6 @@ struct lconv
 
 #endif
 
-#if _BLD_ast && defined(__EXPORT__)
-#define extern		__EXPORT__
-#endif
-
-#if !_UWIN /* for AST54 compatibility */
-
 #undef	getenv
 #define getenv		_ast_getenv
 
@@ -140,8 +135,6 @@ struct lconv
 #define setenviron	_ast_setenviron
 
 extern char*		getenv(const char*);
-
-#endif
 
 #undef	localeconv
 #define localeconv	_ast_localeconv
@@ -234,8 +227,6 @@ extern char*		strerror(int);
 #define LC_LANG			(-AST_LC_LANG)
 #endif
 
-#undef	extern
-
 #undef	strcoll
 #if _std_strcoll
 #define strcoll		_ast_info.collate
@@ -282,43 +273,9 @@ typedef struct
 
 } _Ast_info_t;
 
-#if _BLD_ast && defined(__EXPORT__)
-#define extern		extern __EXPORT__
-#endif
-#if !_BLD_ast && defined(__IMPORT__)
-#define extern		extern __IMPORT__
-#endif
-
 extern _Ast_info_t	_ast_info;
 
-#undef	extern
-
-/* largefile hackery -- AST uses the large versions by default */
-
-#if _typ_ino64_t
-#undef	ino_t
-#define ino_t		ino64_t
-#endif
-#if _typ_off64_t
-#undef	off_t
-#define off_t		off64_t
-#endif
-#if !defined(ftruncate) && _lib_ftruncate64
-#define ftruncate	ftruncate64
-extern int		ftruncate64(int, off64_t);
-#endif
-#if !defined(lseek) && _lib_lseek64
-#define lseek		lseek64
-extern off64_t		lseek64(int, off64_t, int);
-#endif
-#if !defined(truncate) && _lib_truncate64
-#define truncate	truncate64
-extern int		truncate64(const char*, off64_t);
-#endif
-
 /* direct macro access for bsd crossover */
-
-#if !defined(__cplusplus)
 
 #if !defined(memcpy) && !defined(_lib_memcpy) && defined(_lib_bcopy)
 #define memcpy(t,f,n)	(bcopy(f,t,n),(t))
@@ -330,8 +287,6 @@ extern int		truncate64(const char*, off64_t);
 #else
 #define memzero(b,n)	(bzero(b,n),(b))
 #endif
-#endif
-
 #endif
 
 #if !defined(remove)
@@ -352,15 +307,9 @@ extern int		rename(const char*, const char*);
 
 /* and now introducing prototypes botched by the standard(s) */
 
-#if _BLD_ast && defined(__EXPORT__)
-#define extern		__EXPORT__
-#endif
-
 #undef	getpgrp
 #define	getpgrp()	_ast_getpgrp()
 extern int		_ast_getpgrp(void);
-
-#undef	extern
 
 /*
  * and finally, standard interfaces hijacked by AST

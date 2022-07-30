@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,11 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#if defined(_UWIN) && defined(_BLD_ast)
-
-void _STUB_vmexit(){}
-
-#else
 
 #include	"vmhdr.h"
 
@@ -34,18 +29,13 @@ void _STUB_vmexit(){}
 */
 #if _PACKAGE_ast || _lib_atexit
 
-void _STUB_vmexit(){}
+NoN(vmexit)
 
 #else
 
 #if _lib_onexit
 
-#if __STD_C
 int atexit(void (*exitf)(void))
-#else
-int atexit(exitf)
-void	(*exitf)();
-#endif
 {
 	return onexit(exitf);
 }
@@ -54,16 +44,11 @@ void	(*exitf)();
 
 typedef struct _exit_s
 {	struct _exit_s*	next;
-	void(*		exitf)_ARG_((void));
+	void(*		exitf)(void);
 } Exit_t;
 static Exit_t*	Exit;
 
-#if __STD_C
 atexit(void (*exitf)(void))
-#else
-atexit(exitf)
-void	(*exitf)();
-#endif
 {	Exit_t*	e;
 
 	if(!(e = (Exit_t*)malloc(sizeof(Exit_t))) )
@@ -74,12 +59,7 @@ void	(*exitf)();
 	return 0;
 }
 
-#if __STD_C
 void exit(int type)
-#else
-void exit(type)
-int	type;
-#endif
 {
 	Exit_t*	e;
 
@@ -97,5 +77,3 @@ int	type;
 #endif	/* _lib_onexit */
 
 #endif /*!PACKAGE_ast*/
-
-#endif
