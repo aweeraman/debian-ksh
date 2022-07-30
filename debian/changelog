@@ -1,3 +1,9 @@
+ksh93u+m (1.0.0~rc.1-1) unstable; urgency=high
+
+  * New upstream release.
+
+ -- Anuradha Weeraman <anuradha@debian.org>  Sat, 30 Jul 2022 15:28:13 +0530
+
 ksh93u+m (1.0.0~beta.2-1) unstable; urgency=high
 
   * New upstream release.
