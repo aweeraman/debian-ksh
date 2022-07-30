@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,7 +18,7 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
+#include	"shopt.h"
 #include	"defs.h"
 #include	<stak.h>
 #include	<ls.h>
@@ -45,7 +45,6 @@ int	b_hist(int argc,char *argv[], Shbltin_t *context)
 	register History_t *hp;
 	register char *arg;
 	register int flag,fdo;
-	register Shell_t *shp = context->shp;
 	Sfio_t *outfile;
 	char *fname;
 	int range[2], incr, index2, indx= -1;
@@ -57,12 +56,13 @@ int	b_hist(int argc,char *argv[], Shbltin_t *context)
 #endif
 	Histloc_t location;
 	NOT_USED(argc);
-	if(!sh_histinit((void*)shp))
+	NOT_USED(context);
+	if(!sh_histinit())
 	{
 		errormsg(SH_DICT,ERROR_system(1),e_histopen);
 		UNREACHABLE();
 	}
-	hp = shp->gd->hist_ptr;
+	hp = sh.hist_ptr;
 	while((flag = optget(argv,sh_opthist))) switch(flag)
 	{
 	    case 'e':
@@ -215,7 +215,7 @@ int	b_hist(int argc,char *argv[], Shbltin_t *context)
 			errormsg(SH_DICT,ERROR_system(1),e_create,fname);
 			UNREACHABLE();
 		}
-		outfile= sfnew(NIL(Sfio_t*),shp->outbuff,IOBSIZE,fdo,SF_WRITE);
+		outfile= sfnew(NIL(Sfio_t*),sh.outbuff,IOBSIZE,fdo,SF_WRITE);
 		arg = "\n";
 		nflag++;
 	}
@@ -225,9 +225,9 @@ int	b_hist(int argc,char *argv[], Shbltin_t *context)
 			sfprintf(outfile,"%d\t",range[flag]);
 		else if(lflag)
 			sfputc(outfile,'\t');
-		hist_list(shp->gd->hist_ptr,outfile,hist_tell(shp->gd->hist_ptr,range[flag]),0,arg);
+		hist_list(sh.hist_ptr,outfile,hist_tell(sh.hist_ptr,range[flag]),0,arg);
 		if(lflag)
-			sh_sigcheck(shp);
+			sh_sigcheck();
 		if(range[flag] == range[1-flag])
 			break;
 		range[flag] += incr;
@@ -237,7 +237,7 @@ int	b_hist(int argc,char *argv[], Shbltin_t *context)
 	sfclose(outfile);
 	hist_eof(hp);
 	arg = edit;
-	if(!arg && !(arg=nv_getval(sh_scoped(shp,HISTEDIT))) && !(arg=nv_getval(sh_scoped(shp,FCEDNOD))))
+	if(!arg && !(arg=nv_getval(sh_scoped(HISTEDIT))) && !(arg=nv_getval(sh_scoped(FCEDNOD))))
 	{
 		arg = (char*)e_defedit;
 		if(*arg!='/')
@@ -273,7 +273,7 @@ int	b_hist(int argc,char *argv[], Shbltin_t *context)
 		char buff[IOBSIZE+1];
 		Sfio_t *iop;
 		/* read in and run the command */
-		if(shp->hist_depth++ > HIST_RECURSE)
+		if(sh.hist_depth++ > HIST_RECURSE)
 		{
 			sh_close(fdo);
 			errormsg(SH_DICT,ERROR_exit(1),e_toodeep,"history");
@@ -281,7 +281,7 @@ int	b_hist(int argc,char *argv[], Shbltin_t *context)
 		}
 		iop = sfnew(NIL(Sfio_t*),buff,IOBSIZE,fdo,SF_READ);
 		sh_eval(iop,1); /* this will close fdo */
-		shp->hist_depth--;
+		sh.hist_depth--;
 	}
 	else
 	{
@@ -290,7 +290,7 @@ int	b_hist(int argc,char *argv[], Shbltin_t *context)
 			sh_offstate(SH_VERBOSE);
 		sh_offstate(SH_HISTORY);
 	}
-	return(shp->exitval);
+	return(sh.exitval);
 }
 
 
@@ -298,7 +298,6 @@ int	b_hist(int argc,char *argv[], Shbltin_t *context)
  * given a file containing a command and a string of the form old=new,
  * execute the command with the string old replaced by new
  */
-
 static void hist_subst(const char *command,int fd,char *replace)
 {
 	register char *newp=replace;

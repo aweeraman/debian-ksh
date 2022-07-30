@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,7 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 
 /*
  * regex library interface
@@ -124,7 +123,7 @@
 #define REG_ENULL	14		/* empty subexpr in pattern	*/
 #define REG_ECOUNT	15		/* re component count overflow	*/
 #define REG_BADESC	16		/* invalid \char escape		*/
-#define REG_VERSIONID	17		/* version id (pseudo error)	*/
+#define REG_VERSIONID	17		/* version ID (pseudo error)	*/
 #define REG_EFLAGS	18		/* flags conflict		*/
 #define REG_EDELIM	19		/* invalid or omitted delimiter	*/
 #define REG_PANIC	20		/* unrecoverable internal error	*/
@@ -196,10 +195,6 @@ struct regex_s
 
 #define reginit(disc)	(memset(disc,0,sizeof(*(disc))),(disc)->re_version=REG_VERSION)
 
-#if _BLD_ast && defined(__EXPORT__)
-#define extern		__EXPORT__
-#endif
-
 extern int	regcomp(regex_t*, const char*, regflags_t);
 extern size_t	regerror(int, const regex_t*, char*, size_t);
 extern int	regexec(const regex_t*, const char*, size_t, regmatch_t*, regflags_t);
@@ -249,7 +244,5 @@ struct _sfio_s;
 
 extern void	regalloc(void*, regresize_t, regflags_t);
 extern int	regsub(const regex_t*, struct _sfio_s*, const char*, const char*, size_t, regmatch_t*, regflags_t);
-
-#undef	extern
 
 #endif

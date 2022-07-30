@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -26,24 +26,16 @@
 **
 **	Written by Kiem-Phong Vo.
 */
-#if __STD_C
-ssize_t sfputr(Sfio_t* f, const char* s, int rc)
-#else
-ssize_t sfputr(f,s,rc)
-Sfio_t*		f;	/* write to this stream	*/
-char*		s;	/* string to write	*/
-int		rc;	/* record separator.	*/
-#endif
+ssize_t sfputr(Sfio_t*		f,	/* write to this stream	*/
+	       const char*	s,	/* string to write	*/
+	       int		rc)	/* record separator 	*/
 {
 	ssize_t		p, n, w, sn;
 	uchar		*ps;
 	char		*ss;
-	SFMTXDECL(f);
 
-	SFMTXENTER(f,-1);
-
-	if(f->mode != SF_WRITE && _sfmode(f,SF_WRITE,0) < 0)
-		SFMTXRETURN(f, -1);
+	if(!f || (f->mode != SF_WRITE && _sfmode(f,SF_WRITE,0) < 0))
+		return -1;
 
 	SFLOCK(f,0);
 
@@ -128,9 +120,9 @@ int		rc;	/* record separator.	*/
 	{	if(n > w)
 			n = w;
 		f->next -= n;
-		(void)SFWRITE(f,(Void_t*)f->next,n);
+		(void)SFWRITE(f,(void*)f->next,n);
 	}
 
 	SFOPEN(f,0);
-	SFMTXRETURN(f, w);
+	return w;
 }

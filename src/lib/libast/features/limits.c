@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,7 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * Glenn Fowler
  * AT&T Research
@@ -32,12 +31,8 @@
  * NOTE: two's complement binary integral representation assumed
  */
 
-#if defined(__STDPP__directive) && defined(__STDPP__hide)
-__STDPP__directive pragma pp:hide getpagesize getdtablesize
-#else
 #define getpagesize	______getpagesize
 #define getdtablesize	______getdtablesize
-#endif
 
 /*
  * we'd like as many symbols as possible defined
@@ -71,18 +66,12 @@ __STDPP__directive pragma pp:hide getpagesize getdtablesize
 #include "FEATURE/lib"
 #include "FEATURE/common"
 
-#if _hdr_unistd
 #include <unistd.h>
-#endif
 
 #include "FEATURE/param"
 
-#if defined(__STDPP__directive) && defined(__STDPP__hide)
-__STDPP__directive pragma pp:nohide getpagesize getdtablesize
-#else
 #undef	getpagesize
 #undef	getdtablesize   
-#endif
 
 int main()
 {
@@ -131,11 +120,7 @@ int main()
 
 #ifndef UCHAR_MAX
 	val = uc;
-	printf("#if defined(__STDC__)\n");
 	printf("#define UCHAR_MAX	%luU\n", val);
-	printf("#else\n");
-	printf("#define UCHAR_MAX	%lu\n", val);
-	printf("#endif\n");
 #endif
 
 #ifndef SCHAR_MIN
@@ -171,11 +156,7 @@ int main()
 
 #ifndef USHRT_MAX
 	val = us;
-	printf("#if defined(__STDC__)\n");
 	printf("#define USHRT_MAX	%luU\n", val);
-	printf("#else\n");
-	printf("#define USHRT_MAX	%lu\n", val);
-	printf("#endif\n");
 #endif
 
 #ifndef SHRT_MIN
@@ -206,11 +187,7 @@ int main()
 	{
 #ifndef UINT_MAX
 		val = ui;
-		printf("#if defined(__STDC__)\n");
 		printf("#define UINT_MAX	%luU\n", val);
-		printf("#else\n");
-		printf("#define UINT_MAX	%lu\n", val);
-		printf("#endif\n");
 #endif
 
 #ifndef INT_MIN
@@ -243,11 +220,7 @@ int main()
 	{
 #ifndef ULONG_MAX
 		val = ul;
-		printf("#if defined(__STDC__)\n");
 		printf("#define ULONG_MAX	%luLU\n", val);
-		printf("#else\n");
-		printf("#define ULONG_MAX	%lu\n", val);
-		printf("#endif\n");
 #endif
 
 #ifndef LONG_MIN
@@ -281,7 +254,7 @@ int main()
 #ifndef ULLONG_MAX
 		vll = ull;
 		printf("#ifndef ULLONG_MAX\n");
-		printf("#if defined(__STDC__) && _ast_LL\n");
+		printf("#if _ast_LL\n");
 		printf("#define ULLONG_MAX	%lluULL\n", vll);
 		printf("#else\n");
 		printf("#define ULLONG_MAX	%llu\n", vll);
@@ -292,7 +265,7 @@ int main()
 #ifndef LLONG_MIN
 		vll = (uint64_t)(ull >> 1) + 1;
 		printf("#ifndef LLONG_MIN\n");
-		printf("#if defined(__STDC__) && _ast_LL\n");
+		printf("#if _ast_LL\n");
 		printf("#define LLONG_MIN	(-%lluLL-1LL)\n", vll - 1);
 		printf("#else\n");
 		printf("#define LLONG_MIN	(-%llu-1)\n", vll - 1);
@@ -303,7 +276,7 @@ int main()
 #ifndef LLONG_MAX
 		vll = (uint64_t)(ull >> 1);
 		printf("#ifndef LLONG_MAX\n");
-		printf("#if defined(__STDC__) && _ast_LL\n");
+		printf("#if _ast_LL\n");
 		printf("#define LLONG_MAX	%lluLL\n", vll);
 		printf("#else\n");
 		printf("#define LLONG_MAX	%llu\n", vll);
@@ -314,23 +287,6 @@ int main()
 #endif
 
 	printf("\n");
-#ifdef _UWIN
-	printf("#ifdef _UWIN\n");
-	printf("#ifndef DBL_DIG\n");
-	printf("#define DBL_DIG		15\n");
-	printf("#endif\n");
-	printf("#ifndef DBL_MAX\n");
-	printf("#define DBL_MAX		1.7976931348623158e+308\n");
-	printf("#endif\n");
-	printf("#ifndef FLT_DIG\n");
-	printf("#define FLT_DIG		6\n");
-	printf("#endif\n");
-	printf("#ifndef FLT_MAX\n");
-	printf("#define FLT_MAX		3.402823466e+38F\n");
-	printf("#endif\n");
-	printf("#endif\n");
-	printf("\n");
-#endif
 
 #include "conflim.h"
 

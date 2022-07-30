@@ -1,8 +1,8 @@
 /***********************************************************************
 *                                                                      *
 *               This software is part of the ast package               *
-*          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 1982-2014 AT&T Intellectual Property          *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,7 +18,6 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  *   History file manipulation routines
  *
@@ -40,6 +39,8 @@
  */
 
 
+#include "shopt.h"
+
 #define HIST_MAX	(sizeof(int)*HIST_BSIZE)
 #define HIST_BIG	(0100000-1024)	/* 1K less than maximum short */
 #define HIST_LINE	32		/* typical length for history line */
@@ -59,7 +60,6 @@
 #endif
 
 #define _HIST_PRIVATE \
-	void	*histshell; \
 	off_t	histcnt;	/* offset into history file */\
 	off_t	histmarker;	/* offset of last command marker */ \
 	int	histflush;	/* set if flushed outside of hflush() */\
@@ -108,7 +108,7 @@ static History_t *hist_ptr;
     static int  acctinit(History_t *hp)
     {
 	register char *cp, *acctfile;
-	Namval_t *np = nv_search("ACCTFILE",((Shell_t*)hp->histshell)->var_tree,0);
+	Namval_t *np = nv_search("ACCTFILE",sh.var_tree,0);
 
 	if(!np || !(acctfile=nv_getval(np)))
 		return(0);
@@ -170,9 +170,9 @@ static int sh_checkaudit(History_t *hp, const char *name, char *logbuf, size_t l
 		id1 = id2 = strtol(cp,&last,10);
 		if(*last=='-')
 			id1 = strtol(last+1,&last,10);
-		if(shgd->euserid >=id1 && shgd->euserid <= id2)
+		if(sh.euserid >=id1 && sh.euserid <= id2)
 			r |= 1;
-		if(shgd->userid >=id1 && shgd->userid <= id2)
+		if(sh.userid >=id1 && sh.userid <= id2)
 			r |= 2;
 		cp = last;
 	}
@@ -180,7 +180,6 @@ static int sh_checkaudit(History_t *hp, const char *name, char *logbuf, size_t l
 done:
 	sh_close(fd);
 	return(r);
-	
 }
 #endif /* SHOPT_AUDIT */
 
@@ -195,13 +194,11 @@ static void hist_touch(void *handle)
 /*
  * open the history file
  * if HISTNAME is not given and userid==0 then no history file.
- * if login_sh and HISTFILE is longer than HIST_MAX bytes then it is
- * cleaned up.
+ * if HISTFILE is longer than HIST_MAX bytes then it is cleaned up.
  * hist_open() returns 1, if history file is open
  */
-int  sh_histinit(void *sh_context)
+int  sh_histinit(void)
 {
-	Shell_t *shp = (Shell_t*)sh_context;
 	register int fd;
 	register History_t *hp;
 	register char *histname;
@@ -210,7 +207,7 @@ int  sh_histinit(void *sh_context)
 	register char *cp;
 	register off_t hsize = 0;
 
-	if(shgd->hist_ptr=hist_ptr)
+	if(sh.hist_ptr=hist_ptr)
 		return(1);
 	if(!(histname = nv_getval(HISTFILE)))
 	{
@@ -223,7 +220,7 @@ int  sh_histinit(void *sh_context)
 		histname = stakptr(offset);
 	}
 retry:
-	cp = path_relative(shp,histname);
+	cp = path_relative(histname);
 	if(!histinit)
 		histmode = S_IRUSR|S_IWUSR;
 	if((fd=open(cp,O_BINARY|O_APPEND|O_RDWR|O_CREAT|O_cloexec,histmode))>=0)
@@ -251,7 +248,7 @@ retry:
 	if(fd < 0)
 	{
 		/* don't allow root a history_file in /tmp */
-		if(shgd->userid)
+		if(sh.userid)
 		{
 			if(!(fname = pathtmp(NIL(char*),0,0,NIL(int*))))
 				return(0);
@@ -268,8 +265,7 @@ retry:
 		maxlines = HIST_DFLT;
 	for(histmask=16;histmask <= maxlines; histmask <<=1 );
 	hp = new_of(History_t,(--histmask)*sizeof(off_t));
-	shgd->hist_ptr = hist_ptr = hp;
-	hp->histshell = (void*)shp;
+	sh.hist_ptr = hist_ptr = hp;
 	hp->histsize = maxlines;
 	hp->histmask = histmask;
 	hp->histfp= sfnew(NIL(Sfio_t*),hp->histbuff,HIST_BSIZE,fd,SF_READ|SF_WRITE|SF_APPENDWR|SF_SHARE);
@@ -320,7 +316,7 @@ retry:
 	if(hist_clean(fd) && hist_start>1 && hsize > HIST_MAX)
 	{
 #ifdef DEBUG
-		sfprintf(sfstderr,"%d: hist_trim hsize=%d\n",shgd->current_pid,hsize);
+		sfprintf(sfstderr,"%d: hist_trim hsize=%d\n",sh.current_pid,hsize);
 		sfsync(sfstderr);
 #endif /* DEBUG */
 		hp = hist_trim(hp,(int)hp->histind-maxlines);
@@ -362,7 +358,6 @@ retry:
 /*
  * close the history file and free the space
  */
-
 void hist_close(register History_t *hp)
 {
 	sfclose(hp->histfp);
@@ -376,7 +371,7 @@ void hist_close(register History_t *hp)
 #endif /* SHOPT_AUDIT */
 	free((char*)hp);
 	hist_ptr = 0;
-	shgd->hist_ptr = 0;
+	sh.hist_ptr = 0;
 #if SHOPT_ACCTFILE
 	if(acctfd)
 	{
@@ -410,7 +405,6 @@ static int hist_clean(int fd)
 /*
  * Copy the last <n> commands to a new file and make this the history file
  */
-
 static History_t* hist_trim(History_t *hp, int n)
 {
 	register char *cp;
@@ -434,7 +428,7 @@ static History_t* hist_trim(History_t *hp, int n)
 			*last = '/';
 		}
 		else
-			pathtmp(tmpname,".","hist",NIL(int*));
+			pathtmp(tmpname,e_dot,"hist",NIL(int*));
 		if(rename(name,tmpname) < 0)
 		{
 			free(tmpname);
@@ -451,7 +445,7 @@ static History_t* hist_trim(History_t *hp, int n)
 		histinit = 1;
 		histmode =  statb.st_mode;
 	}
-	if(!sh_histinit(hp->histshell))
+	if(!sh_histinit())
 	{
 		/* use the old history file */
 		return hist_ptr = hist_old;
@@ -576,7 +570,6 @@ begin:
  * unless it is followed by 0.  If followed by 0 then it cancels
  * the previous command.
  */
-
 void hist_eof(register History_t *hp)
 {
 	register char *cp,*first,*endbuff;
@@ -690,7 +683,6 @@ again:
 /*
  * This routine will cause the previous command to be cancelled
  */
-
 void hist_cancel(register History_t *hp)
 {
 	register int c;
@@ -707,7 +699,6 @@ void hist_cancel(register History_t *hp)
 /*
  * flush the current history command
  */
-
 void hist_flush(register History_t *hp)
 {
 	register char *buff;
@@ -723,7 +714,7 @@ void hist_flush(register History_t *hp)
 		if(sfsync(hp->histfp)<0)
 		{
 			hist_close(hp);
-			if(!sh_histinit(hp->histshell))
+			if(!sh_histinit())
 				sh_offoption(SH_HISTORY);
 		}
 		hp->histflush = 0;
@@ -735,7 +726,6 @@ void hist_flush(register History_t *hp)
  * When called from hist_flush(), trailing newlines are deleted and
  * a zero byte.  Line sequencing is added as required
  */
-
 static ssize_t hist_write(Sfio_t *iop,const void *buff,register size_t insize,Sfdisc_t* handle)
 {
 	register History_t *hp = (History_t*)handle;
@@ -773,7 +763,9 @@ static ssize_t hist_write(Sfio_t *iop,const void *buff,register size_t insize,Sf
 	if(hp->auditfp)
 	{
 		time_t	t=time((time_t*)0);
-		sfprintf(hp->auditfp,"%u;%lu;%s;%*s%c",sh_isoption(SH_PRIVILEGED)?shgd->euserid:shgd->userid,(unsigned long)t,hp->tty,size,buff,0);
+		sfprintf(hp->auditfp, "%u;%lu;%s;%*s%c",
+			 sh_isoption(SH_PRIVILEGED) ? sh.euserid : sh.userid,
+			 (unsigned long)t, hp->tty, size, buff, 0);
 		sfsync(hp->auditfp);
 	}
 #endif	/* SHOPT_AUDIT */
@@ -824,7 +816,6 @@ static ssize_t hist_write(Sfio_t *iop,const void *buff,register size_t insize,Sf
  * Put history sequence number <n> into buffer <buff>
  * The buffer must be large enough to hold HIST_MARKSZ chars
  */
-
 static void hist_marker(register char *buff,register long cmdno)
 {
 	*buff++ = HIST_CMDNO;
@@ -848,6 +839,8 @@ off_t hist_tell(register History_t *hp, int n)
  */
 off_t hist_seek(register History_t *hp, int n)
 {
+	if(!(n >= hist_min(hp) && n < hist_max(hp)))
+		return(-1);
 	return(sfseek(hp->histfp,hp->histcmds[hist_ind(hp,n)],SEEK_SET));
 }
 
@@ -856,7 +849,6 @@ off_t hist_seek(register History_t *hp, int n)
  * if character <last> appears before newline it is deleted
  * each new-line character is replaced with string <nl>.
  */
-
 void hist_list(register History_t *hp,Sfio_t *outfile, off_t offset,int last, char *nl)
 {
 	register int oldc=0;
@@ -881,13 +873,12 @@ void hist_list(register History_t *hp,Sfio_t *outfile, off_t offset,int last, ch
 	}
 	return;
 }
-		 
+
 /*
  * find index for last line with given string
  * If flag==0 then line must begin with string
  * direction < 1 for backwards search
 */
-
 Histloc_t hist_find(register History_t*hp,char *string,register int index1,int flag,int direction)
 {
 	register int index2;
@@ -934,7 +925,7 @@ Histloc_t hist_find(register History_t*hp,char *string,register int index1,int f
 			return(location);
 		}
 		/* allow a search to be aborted */
-		if(((Shell_t*)hp->histshell)->trapnote&SH_SIGSET)
+		if(sh.trapnote & SH_SIGSET)
 			break;
 	}
 	return(location);
@@ -945,7 +936,6 @@ Histloc_t hist_find(register History_t*hp,char *string,register int index1,int f
  * If coffset==0 then line must begin with string
  * returns the line number of the match if successful, otherwise -1
  */
-
 int hist_match(register History_t *hp,off_t offset,char *string,int *coffset)
 {
 	register unsigned char *first, *cp;
@@ -958,7 +948,7 @@ int hist_match(register History_t *hp,off_t offset,char *string,int *coffset)
 	n = (int)strlen(string);
 	while(m > n)
 	{
-		if(*cp==*string && memcmp(cp,string,n)==0)
+		if(strncmp((char*)cp,string,n)==0)
 		{
 			if(coffset)
 				*coffset = (cp-first);
@@ -986,13 +976,13 @@ int hist_match(register History_t *hp,off_t offset,char *string,int *coffset)
  * line < 0 for full command copy
  * -1 returned if there is no history file
  */
-
 int hist_copy(char *s1,int size,int command,int line)
 {
 	register int c;
-	register History_t *hp = shgd->hist_ptr;
+	register History_t *hp = sh.hist_ptr;
 	register int count = 0;
-	register char *s1max = s1+size;
+	char *const s1orig = s1;
+	char *const s1max = s1 + size;
 	if(!hp)
 		return(-1);
 	hist_seek(hp,command);
@@ -1014,12 +1004,11 @@ int hist_copy(char *s1,int size,int command,int line)
 			}
 			*s1++ = c;
 		}
-			
 	}
 	sfseek(hp->histfp,(off_t)0,SEEK_END);
 	if(s1==0)
 		return(count);
-	if(count && (c= *(s1-1)) == '\n')
+	if(count && s1 > s1orig && (c = *(s1 - 1)) == '\n')
 		s1--;
 	*s1 = '\0';
 	return(count);
@@ -1028,7 +1017,6 @@ int hist_copy(char *s1,int size,int command,int line)
 /*
  * return word number <word> from command number <command>
  */
-
 char *hist_word(char *string,int size,int word)
 {
 	register int c;
@@ -1071,7 +1059,7 @@ char *hist_word(char *string,int size,int word)
 	*cp = 0;
 	if(s1 != string)
 		/* We can't use strcpy() because the two buffers may overlap. */
-		memmove(string,s1,strlen(s1)+1);
+		strcopy(string,s1);
 	return(string);
 }
 
@@ -1083,7 +1071,6 @@ char *hist_word(char *string,int size,int word)
  * and number of lines back or forward,
  * compute the new command and line number.
  */
-
 Histloc_t hist_locate(History_t *hp,register int command,register int line,int lines)
 {
 	Histloc_t next;

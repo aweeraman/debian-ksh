@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -75,6 +75,8 @@ actual=$( trap 'print -n got_child' SIGCHLD
 expect=01got_child23
 [[ $actual == "$expect" ]] || err_exit 'SIGCHLD not working' \
 	"(expected $(printf %q "$expect"), got $(printf %q "$actual"))"
+
+# ======
 
 # begin standalone SIGINT test generation
 
@@ -243,14 +245,14 @@ chmod +x tst tst-?
 
 # end standalone test generation
 
-export PATH=$PATH:
+PATH=:$PATH
 typeset -A expected
 expected[---]="3-intr"
 expected[--d]="3-intr"
 expected[-t-]="3-intr 2-intr 1-intr 1-0258"
 expected[-td]="3-intr 2-intr 1-intr 1-0258"
-expected[x--]="3-intr 2-intr 1-0000"
-expected[x-d]="3-intr 2-intr 1-0000"
+expected[x--]="3-intr 2-intr"
+expected[x-d]="3-intr 2-intr"
 expected[xt-]="3-intr 2-intr 1-intr 1-0000"
 expected[xtd]="3-intr 2-intr 1-intr 1-0000"
 expected[z--]="3-intr 2-intr 1-0000"
@@ -263,26 +265,45 @@ tst $SHELL > tst.got
 while	read ops out
 do	[[ $out == ${expected[$ops]} ]] || err_exit "interrupt $ops test failed -- expected '${expected[$ops]}', got '$out'"
 done < tst.got
+unset expected
+PATH=${PATH#:}
+
+# ======
 
 if	[[ ${SIG[USR1]} ]]
 then	float s=$SECONDS
 	exp=SIGUSR1
+
 	got=$(LC_ALL=C $SHELL -c '
 		trap "print SIGUSR1 ; exit 0" USR1
 		(trap "" USR1 ; exec kill -USR1 $$ & sleep .5)
 		print done')
 	[[ $got == "$exp" ]] || err_exit 'subshell ignoring signal does not send signal to parent' \
-		"(expected '$exp', got '$got')"
+		"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
 	(( (SECONDS-s) < .4 )) && err_exit 'parent does not wait for child to complete before handling signal'
 	((s = SECONDS))
-	exp=SIGUSR1
+
+	: >out
+	trap 'echo SIGUSR1 >out; exit 0' USR1
+	(trap '' USR1; kill -USR1 $$)
+	got=$(<out)
+	[[ $got == "$exp" ]] || err_exit 'subshell ignoring signal does not send signal to parent [simple case]' \
+		"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
 	got=$(LC_ALL=C $SHELL -c '
 		trap "print SIGUSR1 ; exit 0" USR1
 		(trap "exit" USR1 ; exec kill -USR1 $$ & sleep .5)
 		print done')
 	[[ $got == "$exp" ]] || err_exit 'subshell catching signal does not send signal to parent' \
-		"(expected '$exp', got '$got')"
+		"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
 	(( SECONDS-s < .4 )) && err_exit 'parent completes early'
+
+	: >out
+	trap 'echo SIGUSR1 >out; exit 0' USR1
+	(trap 'echo wrong' USR1; kill -USR1 $$)
+	got=$(<out)
+	[[ $got == "$exp" ]] || err_exit 'subshell catching signal does not send signal to parent [simple case]' \
+		"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
 fi
 
 yes() for ((;;)); do print y; done
@@ -496,7 +517,7 @@ got=$(export sig; "$SHELL" -c '
 	trap - "$sig"
 ' 2>&1)
 ((!(e = $?))) && [[ $got == "$exp" ]] || err_exit "failed to handle SIG$sig from subshell" \
-	"(got status $e$( ((e>128)) && print -n / && kill -l "$e"), $(printf %q "$got"))"
+	"(got status $e$( ((e>128)) && print -n /SIG && kill -l "$e"), $(printf %q "$got"))"
 
 got=$(export sig; "$SHELL" -c '
 	function tryTrap
@@ -508,7 +529,7 @@ got=$(export sig; "$SHELL" -c '
 	trap - "$sig"
 ' 2>&1)
 ((!(e = $?))) && [[ $got == "$exp" ]] || err_exit "failed to handle SIG$sig from ksh function" \
-	"(got status $e$( ((e>128)) && print -n / && kill -l "$e"), $(printf %q "$got"))"
+	"(got status $e$( ((e>128)) && print -n /SIG && kill -l "$e"), $(printf %q "$got"))"
 
 # ======
 # ksh-style functions didn't handle signals other than SIGINT and SIGQUIT (rhbz#1454804)
@@ -526,7 +547,7 @@ got=$(export exp; "$SHELL" -c '
 ' 2>&1)
 got=${got% }	# rm final space
 ((!(e = $?))) && [[ $got == "$exp" ]] || err_exit "ksh function ignores global signal traps" \
-	"(got status $e$( ((e>128)) && print -n / && kill -l "$e"), $(printf %q "$got"))"
+	"(got status $e$( ((e>128)) && print -n /SIG && kill -l "$e"), $(printf %q "$got"))"
 
 # ======
 # Signal incorrectly issued when function returns with status > 256 and EXIT trap is active
@@ -538,7 +559,7 @@ cat > exit267 <<-EOF  # unquoted delimiter; expansion active
 	foo
 EOF
 exp="OK $((signum+256))"
-got=$( { "$SHELL" exit267; } 2>&1 )
+got=$( set +x; { "$SHELL" exit267; } 2>&1 )
 (( (e=$?)==signum+128 )) && [[ $got == "$exp" ]] || err_exit "'return' with status > 256:" \
 	"(expected status $((signum+128)) and $(printf %q "$exp"), got status $e and $(printf %q "$got"))"
 
@@ -549,9 +570,24 @@ cat > bar <<-'EOF'
 	echo OK
 EOF
 exp="OK"
-got=$( { "$SHELL" bar; } 2>&1 )
+got=$( set +x; { "$SHELL" bar; } 2>&1 )
 (( (e=$?)==0 )) && [[ $got == "$exp" ]] || err_exit "segfaulting child process:" \
 	"(expected status 0 and $(printf %q "$exp"), got status $e and $(printf %q "$got"))"
+
+# ======
+# A script that SIGINTs only itself (not the process group) should not cause the parent script to be interrupted
+trap '' INT  # workaround for old ksh -- ignore SIGINT or the entire test suite gets interrupted
+exp='258, continuing'
+got=$("$SHELL" -c 'trap + INT; "$SHELL" -c '\''kill -s INT $$'\''; echo "$?, continuing"')
+((!(e = $?))) && [[ $got == "$exp" ]] || err_exit "child process interrupting itself interrupts parent" \
+	"(got status $e$( ((e>128)) && print -n /SIG && kill -l "$e"), $(printf %q "$got"))"
+trap - INT
+
+# Test for 'trap - INT' backported from ksh93v- 2013-07-27
+float s=SECONDS
+(trap - INT; exec sleep 2) & sleep .5; kill -sINT $!
+wait $!
+(( (SECONDS-s) < 1.8)) && err_exit "'trap - INT' causing trap to not be ignored"
 
 # ======
 exit $((Errors<125?Errors:125))

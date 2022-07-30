@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -47,37 +47,15 @@
 /* define va_list, etc. before including sfio_t.h (sfio.h) */
 #if !_PACKAGE_ast
 
-/* some systems don't know large files */
-#if defined(_NO_LARGEFILE64_SOURCE) || _mips == 2 /* || __hppa */
-#undef _NO_LARGEFILE64_SOURCE
-#define _NO_LARGEFILE64_SOURCE	1
-#undef	_LARGEFILE64_SOURCE
-#undef	_LARGEFILE_SOURCE
-#endif
-
-#if !_NO_LARGEFILE64_SOURCE && _typ_off64_t && _lib_lseek64 && _lib_stat64
-#undef	_LARGEFILE64_SOURCE
-#undef	_LARGEFILE_SOURCE
-#undef	_FILE_OFFSET_BITS
-#define _LARGEFILE64_SOURCE	1	/* enabling the *64 stuff */
-#define _LARGEFILE_SOURCE	1	
-#endif
-
 #if _hdr_stdarg
 #include	<stdarg.h>
 #else
 #include	<varargs.h>
 #endif
 #include	"FEATURE/common"
-#if !__STD_C
-#define const	
-#endif
 #endif /* !_PACKAGE_ast */
 
 #include	"sfio_t.h"
-
-/* note that the macro vt_threaded has effect on vthread.h */
-#include	<vthread.h>
 
 /* file system info */
 #if _PACKAGE_ast
@@ -102,24 +80,6 @@
 #if _lib_localeconv && _hdr_locale
 #define _lib_locale	1
 #endif
-
-#define sfoff_t		off_t
-#define sfstat_t	struct stat
-#define sysclosef	close
-#define syscreatf	creat
-#define sysdupf		dup
-#define sysfcntlf	fcntl
-#define sysfstatf	fstat
-#define sysftruncatef	ftruncate
-#define syslseekf	lseek
-#define sysmmapf	mmap
-#define sysmunmapf	munmap
-#define sysopenf	open
-#define syspipef	pipe
-#define sysreadf	read
-#define sysremovef	remove
-#define sysstatf	stat
-#define syswritef	write
 
 #else /*!_PACKAGE_ast*/
 
@@ -190,28 +150,9 @@
 #endif /*_FIOCLEX*/
 #endif /*F_SETFD*/
 
-#if _hdr_unistd
 #include	<unistd.h>
-#endif
-
-#if !_LARGEFILE64_SOURCE	/* turn off the *64 stuff */
-#undef	_typ_off64_t
-#undef	_typ_struct_stat64
-#undef	_lib_creat64
-#undef	_lib_open64
-#undef	_lib_close64
-#undef	_lib_stat64
-#undef	_lib_fstat64
-#undef	_lib_ftruncate64
-#undef	_lib_lseek64
-#undef	_lib_mmap64
-#undef	_lib_munmap64
-#endif /*!_LARGEFILE64_SOURCE */
 
 /* see if we can use memory mapping for io */
-#if _LARGEFILE64_SOURCE && !_lib_mmap64
-#undef _mmap_worthy
-#endif
 #if !_mmap_worthy
 #undef _hdr_mman
 #undef _sys_mman
@@ -223,76 +164,9 @@
 #include	<sys/mman.h>
 #endif
 
-/* standardize system calls and types dealing with files */
-#if _typ_off64_t
-#define sfoff_t		off64_t
-#else
-#define sfoff_t		off_t
+#if !_lib_remove
+#define remove		unlink
 #endif
-#if _typ_struct_stat64
-#define sfstat_t	struct stat64
-#else
-#define sfstat_t	struct stat
-#endif
-#if _lib_lseek64
-#define syslseekf	lseek64
-#else
-#define syslseekf	lseek
-#endif
-#if _lib_stat64
-#define sysstatf	stat64
-#else
-#define sysstatf	stat
-#endif
-#if _lib_fstat64
-#define sysfstatf	fstat64
-#else
-#define sysfstatf	fstat
-#endif
-#if _lib_mmap64
-#define sysmmapf	mmap64
-#else
-#define sysmmapf	mmap
-#endif
-#if _lib_munmap64
-#define sysmunmapf	munmap64
-#else
-#define sysmunmapf	munmap
-#endif
-#if _lib_open64
-#define sysopenf	open64
-#else
-#define sysopenf	open
-#endif
-#if _lib_creat64
-#define syscreatf	creat64
-#else
-#define syscreatf	creat
-#endif
-#if _lib_close64
-#define sysclosef	close64
-#else
-#define sysclosef	close
-#endif
-#if _lib_ftruncate64
-#undef _lib_ftruncate
-#define _lib_ftruncate	1
-#define sysftruncatef	ftruncate64
-#endif
-#if !_lib_ftruncate64 && _lib_ftruncate
-#define sysftruncatef	ftruncate
-#endif
-#if _lib_remove
-#define sysremovef	remove
-#else
-#define sysremovef	unlink
-#endif
-
-#define sysreadf	read
-#define syswritef	write
-#define syspipef	pipe
-#define sysdupf		dup
-#define sysfcntlf	fcntl
 
 #endif /*_PACKAGE_ast*/
 
@@ -365,77 +239,6 @@
 #define SFMBLEN(s,mb)		(*(s) ? 1 : 0)
 #endif /* _has_multibyte */
 
-/* dealing with streams that might be accessed concurrently */
-#if vt_threaded
-
-#define SFMTXdecl(ff,_mf_)	Sfio_t* _mf_ = (ff)
-#define SFMTXbegin(ff,_mf_,rv) \
-	{	if((ff)->_flags&SF_MTSAFE) \
-		{	(_mf_) = (ff); \
-			if(sfmutex((ff), SFMTX_LOCK) != 0) return(rv); \
-			if(_Sfnotify) \
-			{	(*_Sfnotify)((_mf_), SF_MTACCESS, (Void_t*)(&(ff)) ); \
-				if(!(ff)) (ff) = (_mf_); \
-			} \
-		} \
-	}
-#define SFMTXend(ff,_mf_) \
-	{	if((ff)->_flags&SF_MTSAFE) \
-		{	if(_Sfnotify) \
-				(*_Sfnotify)((_mf_), SF_MTACCESS, NIL(Void_t*) ); \
-			sfmutex((ff), SFMTX_UNLOCK); \
-			(ff) = (_mf_); \
-		} \
-	}
-
-#define SFONCE()		(_Sfdone ? 0 : vtonce(_Sfonce,_Sfoncef))
-
-#define SFMTXLOCK(f)		(((f)->flags&SF_MTSAFE) ? sfmutex(f,SFMTX_LOCK) : 0)
-#define SFMTXUNLOCK(f)		(((f)->flags&SF_MTSAFE) ? sfmutex(f,SFMTX_UNLOCK) : 0)
-
-#define SFMTXDECL(ff)		SFMTXdecl((ff), _mtxf1_)
-#define SFMTXBEGIN(ff,v) 	{ SFMTXbegin((ff), _mtxf1_, (v) ); }
-#define SFMTXEND(ff)		{ SFMTXend(ff, _mtxf1_); }
-#define SFMTXENTER(ff,v) 	{ if(!(ff)) return(v); SFMTXBEGIN((ff), (v)); }
-#define SFMTXRETURN(ff,v)	{ SFMTXEND(ff); return(v); }
-
-#define SFMTXDECL2(ff)		SFMTXdecl((ff), _mtxf2_)
-#define SFMTXBEGIN2(ff,v) 	{ SFMTXbegin((ff), _mtxf2_, (v) ); }
-#define SFMTXEND2(ff)		{ SFMTXend((ff), _mtxf2_); }
-
-#define POOLMTXLOCK(p)		( vtmtxlock(&(p)->mutex) )
-#define POOLMTXUNLOCK(p)	( vtmtxunlock(&(p)->mutex) )
-#define POOLMTXENTER(p)		{ POOLMTXLOCK(p); }
-#define POOLMTXRETURN(p,rv)	{ POOLMTXUNLOCK(p); return(rv); }
-
-#else /*!vt_threaded*/
-
-#undef SF_MTSAFE /* no need to worry about thread-safety */
-#define SF_MTSAFE		0
-
-#define SFONCE()		/*(0)*/
-
-#define SFMTXLOCK(f)		/*(0)*/
-#define SFMTXUNLOCK(f)		/*(0)*/
-
-#define	SFMTXDECL(ff)		/*(0)*/
-#define SFMTXBEGIN(ff,v) 	/*(0)*/
-#define SFMTXEND(ff)		/*(0)*/
-#define SFMTXENTER(ff,v)	{ if(!(ff)) return(v); }
-#define SFMTXRETURN(ff,v)	{ return(v); }
-
-#define SFMTXDECL2(ff)		/*(0)*/
-#define SFMTXBEGIN2(ff,v) 	/*(0)*/
-#define SFMTXEND2(ff)		/*(0)*/
-
-#define POOLMTXLOCK(p)
-#define POOLMTXUNLOCK(p)
-#define POOLMTXENTER(p)
-#define POOLMTXRETURN(p,v)	{ return(v); }
-
-#endif /*vt_threaded*/
-
-
 /* functions for polling readiness of streams */
 #if _lib_select
 #undef _lib_poll
@@ -463,7 +266,13 @@
 #endif
 
 #if _socket_peek
+#if __FreeBSD__ && __BSD_VISIBLE
+#undef __BSD_VISIBLE	/* Hide conflicting SF_SYNC definition. [Added 2022-01-20. TODO: review periodically] */
 #include	<sys/socket.h>
+#define	__BSD_VISIBLE	1
+#else
+#include	<sys/socket.h>
+#endif
 #endif
 
 /* to test for executable access mode of a file */
@@ -483,11 +292,7 @@
 #endif
 
 /* to get rid of pesky compiler warnings */
-#if __STD_C
 #define NOTUSED(x)	(void)(x)
-#else
-#define NOTUSED(x)	(&x,1)
-#endif
 
 /* Private flags in the "bits" field */
 #define SF_MMAP		00000001	/* in memory mapping mode		*/
@@ -496,7 +301,7 @@
 #define SF_NULL		00000010	/* stream is /dev/null			*/
 #define SF_SEQUENTIAL	00000020	/* sequential access			*/
 #define SF_JUSTSEEK	00000040	/* just did a sfseek			*/
-#define SF_PRIVATE	00000100	/* private stream to Sfio, no mutex	*/
+#define SF_PRIVATE	00000100	/* private stream to Sfio		*/
 #define SF_ENDING	00000200	/* no re-io on interrupts at closing	*/
 #define SF_WIDE		00000400	/* in wide mode - stdio only		*/
 #define SF_PUTR		00001000	/* in sfputr()				*/
@@ -560,7 +365,7 @@
 
 #define SECOND		1000	/* millisecond units */
 
-/* macros do determine stream types from sfstat_t data */
+/* macros to determine stream types from 'struct stat' data */
 #ifndef S_IFDIR
 #define S_IFDIR	0
 #endif
@@ -662,7 +467,6 @@ struct _sfpool_s
 	int		n_sf;		/* number currently in pool	*/
 	Sfio_t**	sf;		/* array of streams		*/
 	Sfio_t*		array[3];	/* start with 3			*/
-	Vtmutex_t	mutex;		/* mutex lock object		*/
 };
 
 /* reserve buffer structure */
@@ -676,7 +480,7 @@ struct _sfrsrv_s
 /* co-process structure */
 typedef struct _sfproc_s	Sfproc_t;
 struct _sfproc_s
-{	int		pid;	/* process id			*/
+{	int		pid;	/* process ID			*/
 	uchar*		rdata;	/* read data being cached	*/
 	int		ndata;	/* size of cached data		*/
 	int		size;	/* buffer size			*/
@@ -713,7 +517,7 @@ typedef union
 #endif
 	char		c, *s, **sp;
 	uchar		uc, *us, **usp;
-	Void_t		*vp;
+	void		*vp;
 	Sffmt_t		*ft;
 } Argv_t;
 
@@ -779,7 +583,7 @@ struct _fmtpos_s
 #define SFFMT_CLASS	040		/* %[			*/
 
 /* local variables used across sf-functions */
-typedef void  (*Sfnotify_f)_ARG_((Sfio_t*, int, void*));
+typedef void  (*Sfnotify_f)(Sfio_t*, int, void*);
 #define _Sfpage		(_Sfextern.sf_page)
 #define _Sfpool		(_Sfextern.sf_pool)
 #define _Sfpmove	(_Sfextern.sf_pmove)
@@ -790,23 +594,17 @@ typedef void  (*Sfnotify_f)_ARG_((Sfio_t*, int, void*));
 #define _Sfcleanup	(_Sfextern.sf_cleanup)
 #define _Sfexiting	(_Sfextern.sf_exiting)
 #define _Sfdone		(_Sfextern.sf_done)
-#define _Sfonce		(_Sfextern.sf_once)
-#define _Sfoncef	(_Sfextern.sf_oncef)
-#define _Sfmutex	(_Sfextern.sf_mutex)
 typedef struct _sfextern_s
 {	ssize_t			sf_page;
 	struct _sfpool_s	sf_pool;
-	int			(*sf_pmove)_ARG_((Sfio_t*, int));
-	Sfio_t*			(*sf_stack)_ARG_((Sfio_t*, Sfio_t*));
-	void			(*sf_notify)_ARG_((Sfio_t*, int, void*));
-	int			(*sf_stdsync)_ARG_((Sfio_t*));
+	int			(*sf_pmove)(Sfio_t*, int);
+	Sfio_t*			(*sf_stack)(Sfio_t*, Sfio_t*);
+	void			(*sf_notify)(Sfio_t*, int, void*);
+	int			(*sf_stdsync)(Sfio_t*);
 	struct _sfdisc_s	sf_udisc;
-	void			(*sf_cleanup)_ARG_((void));
+	void			(*sf_cleanup)(void);
 	int			sf_exiting;
 	int			sf_done;
-	Vtonce_t*		sf_once;
-	void			(*sf_oncef)_ARG_((void));
-	Vtmutex_t*		sf_mutex;
 } Sfextern_t;
 
 /* get the real value of a byte in a coded long or ulong */
@@ -858,12 +656,12 @@ typedef struct _sfextern_s
 #define SFMMSEQOFF(f,a,s)
 #endif
 
-#define SFMUNMAP(f,a,s)		(sysmunmapf((caddr_t)(a),(size_t)(s)), \
+#define SFMUNMAP(f,a,s)		(munmap((caddr_t)(a),(size_t)(s)), \
 				 ((f)->endb = (f)->endr = (f)->endw = (f)->next = \
 				  (f)->data = NIL(uchar*)) )
 
 /* safe closing function */
-#define CLOSE(f)	{ while(sysclosef(f) < 0 && errno == EINTR) errno = 0; }
+#define CLOSE(f)	{ while(close(f) < 0 && errno == EINTR) errno = 0; }
 
 /* the bottomless bit bucket */
 #define DEVNULL		"/dev/null"
@@ -885,8 +683,8 @@ typedef struct _sfextern_s
 #define SFISALL(f,v)	((((v) = (f)->mode&SF_RV) ? ((f)->mode &= ~SF_RV) : 0), \
 			 ((v) || ((f)->flags&(SF_SHARE|SF_APPENDWR|SF_WHOLE)) ) )
 #define SFSK(f,a,o,d)	(SETLOCAL(f),sfsk(f,(Sfoff_t)a,o,d))
-#define SFRD(f,b,n,d)	(SETLOCAL(f),sfrd(f,(Void_t*)b,n,d))
-#define SFWR(f,b,n,d)	(SETLOCAL(f),sfwr(f,(Void_t*)b,n,d))
+#define SFRD(f,b,n,d)	(SETLOCAL(f),sfrd(f,(void*)b,n,d))
+#define SFWR(f,b,n,d)	(SETLOCAL(f),sfwr(f,(void*)b,n,d))
 #define SFSYNC(f)	(SETLOCAL(f),sfsync(f))
 #define SFCLOSE(f)	(SETLOCAL(f),sfclose(f))
 #define SFFLSBUF(f,n)	(SETLOCAL(f),_sfflsbuf(f,n))
@@ -901,8 +699,8 @@ typedef struct _sfextern_s
 /* lock/open a stream */
 #define SFMODE(f,l)	((f)->mode & ~(SF_RV|SF_RC|((l) ? SF_LOCK : 0)) )
 #define SFLOCK(f,l)	(void)((f)->mode |= SF_LOCK, (f)->endr = (f)->endw = (f)->data)
-#define _SFOPENRD(f)	((f)->endr = ((f)->flags&SF_MTSAFE) ? (f)->data : (f)->endb)
-#define _SFOPENWR(f)	((f)->endw = ((f)->flags&(SF_MTSAFE|SF_LINE)) ? (f)->data : (f)->endb)
+#define _SFOPENRD(f)	((f)->endr = (f)->endb)
+#define _SFOPENWR(f)	((f)->endw = ((f)->flags&SF_LINE) ? (f)->data : (f)->endb)
 #define _SFOPEN(f)	((f)->mode == SF_READ  ? _SFOPENRD(f) : \
 			 (f)->mode == SF_WRITE ? _SFOPENWR(f) : \
 			 ((f)->endw = (f)->endr = (f)->data) )
@@ -1049,8 +847,8 @@ typedef struct _sftab_
 	char*		sf_digits;		/* digits for general bases	*/ 
 	int		(*sf_cvinitf)();	/* initialization function	*/
 	int		sf_cvinit;		/* initialization state		*/
-	Fmtpos_t*	(*sf_fmtposf)_ARG_((Sfio_t*,const char*,va_list,Sffmt_t*,int));
-	char*		(*sf_fmtintf)_ARG_((const char*,int*));
+	Fmtpos_t*	(*sf_fmtposf)(Sfio_t*,const char*,va_list,Sffmt_t*,int);
+	char*		(*sf_fmtintf)(const char*,int*);
 	float*		sf_flt_pow10;		/* float powers of 10		*/
 	double*		sf_dbl_pow10;		/* double powers of 10		*/
 	Sfdouble_t*	sf_ldbl_pow10;		/* Sfdouble_t powers of 10	*/
@@ -1132,7 +930,7 @@ typedef struct _sftab_
 /* note that MEMCPY advances the associated pointers */
 #define MEMCPY(to,fr,n) \
 	switch(n) \
-	{ default : memcpy((Void_t*)to,(Void_t*)fr,n); to += n; fr += n; break; \
+	{ default : memcpy((void*)to,(void*)fr,n); to += n; fr += n; break; \
 	  case  7 : *to++ = *fr++;	\
 		/* FALLTHROUGH */	\
 	  case  6 : *to++ = *fr++;	\
@@ -1149,7 +947,7 @@ typedef struct _sftab_
 	}
 #define MEMSET(s,c,n) \
 	switch(n) \
-	{ default : memset((Void_t*)s,(int)c,n); s += n; break; \
+	{ default : memset((void*)s,(int)c,n); s += n; break; \
 	  case  7 : *s++ = c;		\
 		    /* FALLTHROUGH */	\
 	  case  6 : *s++ = c;		\
@@ -1165,31 +963,20 @@ typedef struct _sftab_
 	  case  1 : *s++ = c;		\
 	}
 
-_BEGIN_EXTERNS_
-
 extern Sftab_t		_Sftable;
 
-extern int		_sfpopen _ARG_((Sfio_t*, int, int, int));
-extern int		_sfpclose _ARG_((Sfio_t*));
-extern int		_sfexcept _ARG_((Sfio_t*, int, ssize_t, Sfdisc_t*));
-extern Sfrsrv_t*	_sfrsrv _ARG_((Sfio_t*, ssize_t));
-extern int		_sfsetpool _ARG_((Sfio_t*));
-extern char*		_sfcvt _ARG_((Void_t*,char*,size_t,int,int*,int*,int*,int));
-extern char**		_sfgetpath _ARG_((char*));
-
-#if _BLD_sfio && defined(__EXPORT__)
-#define extern		__EXPORT__
-#endif
-#if !_BLD_sfio && defined(__IMPORT__)
-#define extern		extern __IMPORT__
-#endif
+extern int		_sfpopen(Sfio_t*, int, int, int);
+extern int		_sfpclose(Sfio_t*);
+extern int		_sfexcept(Sfio_t*, int, ssize_t, Sfdisc_t*);
+extern Sfrsrv_t*	_sfrsrv(Sfio_t*, ssize_t);
+extern int		_sfsetpool(Sfio_t*);
+extern char*		_sfcvt(void*,char*,size_t,int,int*,int*,int*,int);
+extern char**		_sfgetpath(char*);
 
 extern Sfextern_t	_Sfextern;
 
-extern int		_sfmode _ARG_((Sfio_t*, int, int));
-extern int		_sftype _ARG_((const char*, int*, int*, int*));
-
-#undef	extern
+extern int		_sfmode(Sfio_t*, int, int);
+extern int		_sftype(const char*, int*, int*);
 
 #ifndef errno
 extern int		errno;
@@ -1201,7 +988,7 @@ extern int		errno;
 #define frexpl		frexp
 #endif
 #if !_lib_frexpl
-extern Sfdouble_t	frexpl _ARG_((Sfdouble_t, int*));
+extern Sfdouble_t	frexpl(Sfdouble_t, int*);
 #endif
 #endif
 #ifndef ldexpl
@@ -1209,94 +996,38 @@ extern Sfdouble_t	frexpl _ARG_((Sfdouble_t, int*));
 #define ldexpl		ldexp
 #endif
 #if !_lib_ldexpl
-extern Sfdouble_t	ldexpl _ARG_((Sfdouble_t, int));
+extern Sfdouble_t	ldexpl(Sfdouble_t, int);
 #endif
 #endif
 
 #if !_PACKAGE_ast
 
-#if !__STDC__ && !_hdr_stdlib
-extern void	abort _ARG_((void));
-extern int	atexit _ARG_((void(*)(void)));
-extern char*	getenv _ARG_((const char*));
-extern void*	malloc _ARG_((size_t));
-extern void*	realloc _ARG_((void*, size_t));
-extern void	free _ARG_((void*));
-extern size_t	strlen _ARG_((const char*));
-extern char*	strcpy _ARG_((char*, const char*));
-
-extern Void_t*	memset _ARG_((void*, int, size_t));
-extern Void_t*	memchr _ARG_((const void*, int, size_t));
-extern Void_t*	memccpy _ARG_((void*, const void*, int, size_t));
-#ifndef memcpy
-extern Void_t*	memcpy _ARG_((void*, const void*, size_t));
-#endif
-#if !defined(strtod)
-extern double	strtod _ARG_((const char*, char**));
-#endif
-#if !defined(remove)
-extern int	sysremovef _ARG_((const char*));
-#endif
-#endif /* !__STDC__ && !_hdr_stdlib */
-
-#if !_hdr_unistd
-#if _proto_open && __cplusplus
-extern int	sysopenf _ARG_((const char*, int, ...));
-#endif
-extern int	sysclosef _ARG_((int));
-extern ssize_t	sysreadf _ARG_((int, void*, size_t));
-extern ssize_t	syswritef _ARG_((int, const void*, size_t));
-extern sfoff_t	syslseekf _ARG_((int, sfoff_t, int));
-extern int	sysdupf _ARG_((int));
-extern int	syspipef _ARG_((int*));
-extern int	sysaccessf _ARG_((const char*, int));
-extern int	sysremovef _ARG_((const char*));
-extern int	sysfstatf _ARG_((int, sfstat_t*));
-extern int	sysstatf _ARG_((const char*, sfstat_t*));
-
-extern int	isatty _ARG_((int));
-
-extern int	wait _ARG_((int*));
-extern uint	sleep _ARG_((uint));
-extern int	execl _ARG_((const char*, const char*,...));
-extern int	execv _ARG_((const char*, char**));
-#if !defined(fork)
-extern int	fork _ARG_((void));
-#endif
-#if _lib_unlink
-extern int	unlink _ARG_((const char*));
-#endif
-
-#endif /*_hdr_unistd*/
-
 #if _lib_bcopy && !_proto_bcopy
-extern void	bcopy _ARG_((const void*, void*, size_t));
+extern void	bcopy(const void*, void*, size_t);
 #endif
 #if _lib_bzero && !_proto_bzero
-extern void	bzero _ARG_((void*, size_t));
+extern void	bzero(void*, size_t);
 #endif
 
-extern time_t	time _ARG_((time_t*));
-extern int	waitpid _ARG_((int,int*,int));
-extern void	_exit _ARG_((int));
-typedef int(*	Onexit_f)_ARG_((void));
-extern Onexit_f	onexit _ARG_((Onexit_f));
+extern time_t	time(time_t*);
+extern int	waitpid(int,int*,int);
+extern void	_exit(int);
+typedef int(*	Onexit_f)(void);
+extern Onexit_f	onexit(Onexit_f);
 
 #if _lib_vfork && !_hdr_vfork && !_sys_vfork
-extern pid_t	vfork _ARG_((void));
+extern pid_t	vfork(void);
 #endif /*_lib_vfork*/
 
 #if _lib_poll
 #if _lib_poll_fd_1
-extern int	poll _ARG_((struct pollfd*, ulong, int));
+extern int	poll(struct pollfd*, ulong, int);
 #else
-extern int	poll _ARG_((ulong, struct pollfd*, int));
+extern int	poll(ulong, struct pollfd*, int);
 #endif
 #endif /*_lib_poll*/
 
 #endif /* _PACKAGE_ast */
-
-_END_EXTERNS_
 
 #ifdef _SF_HIDESFFLAGS
 #undef SFIO_FLAGS

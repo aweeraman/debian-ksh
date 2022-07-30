@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -29,11 +29,7 @@
 */
 
 /* synchronize unseekable write streams */
-#if __STD_C
 static void _sfwrsync(void)
-#else
-static void _sfwrsync()
-#endif
 {	reg Sfpool_t*	p;
 	reg Sfio_t*	f;
 	reg int		n;
@@ -58,22 +54,14 @@ static void _sfwrsync()
 	}
 }
 
-#if __STD_C
-ssize_t sfrd(Sfio_t* f, Void_t* buf, size_t n, Sfdisc_t* disc)
-#else
-ssize_t sfrd(f,buf,n,disc)
-Sfio_t*		f;
-Void_t*		buf;
-size_t		n;
-Sfdisc_t*	disc;
-#endif
+ssize_t sfrd(Sfio_t* f, void* buf, size_t n, Sfdisc_t* disc)
 {
 	Sfoff_t		r;
 	reg Sfdisc_t*	dc;
 	reg int		local, rcrv, dosync, oerrno;
-	SFMTXDECL(f);
 
-	SFMTXENTER(f,-1);
+	if(!f)
+		return -1;
 
 	GETLOCAL(f,local);
 	if((rcrv = f->mode & (SF_RC|SF_RV)) )
@@ -81,14 +69,14 @@ Sfdisc_t*	disc;
 	f->bits &= ~SF_JUSTSEEK;
 
 	if(f->mode&SF_PKRD)
-		SFMTXRETURN(f, -1);
+		return -1;
 
 	if(!local && !(f->bits&SF_DCDOWN)) /* an external user's call */
 	{	if(f->mode != SF_READ && _sfmode(f,SF_READ,0) < 0)
-			SFMTXRETURN(f, -1);
+			return -1;
 		if(f->next < f->endb)
 		{	if(SFSYNC(f) < 0)
-				SFMTXRETURN(f, -1);
+				return -1;
 			if((f->mode&(SF_SYNCED|SF_READ)) == (SF_SYNCED|SF_READ) )
 			{	f->endb = f->next = f->endr = f->data;
 				f->mode &= ~SF_SYNCED;
@@ -106,7 +94,7 @@ Sfdisc_t*	disc;
 	for(dosync = 0;;)
 	{	/* stream locked by sfsetfd() */
 		if(!(f->flags&SF_STRING) && f->file < 0)
-			SFMTXRETURN(f, 0);
+			return 0;
 
 		f->flags &= ~(SF_EOF|SF_ERROR);
 
@@ -116,7 +104,7 @@ Sfdisc_t*	disc;
 				r = 0;
 			if(r <= 0)
 				goto do_except;
-			SFMTXRETURN(f, (ssize_t)r);
+			return (ssize_t)r;
 		}
 
 		/* warn that a read is about to happen */
@@ -129,14 +117,14 @@ Sfdisc_t*	disc;
 				n = rv;
 			else if(rv < 0)
 			{	f->flags |= SF_ERROR;
-				SFMTXRETURN(f, (ssize_t)rv);
+				return (ssize_t)rv;
 			}
 		}
 
 #ifdef MAP_TYPE
 		if(f->bits&SF_MMAP)
 		{	reg ssize_t	a, round;
-			sfstat_t	st;
+			struct stat	st;
 
 			/* determine if we have to copy data to buffer */
 			if((uchar*)buf >= f->data && (uchar*)buf <= f->endb)
@@ -152,7 +140,7 @@ Sfdisc_t*	disc;
 
 			/* before mapping, make sure we have data to map */
 			if((f->flags&SF_SHARE) || (size_t)(r = f->extent-f->here) < n)
-			{	if((r = sysfstatf(f->file,&st)) < 0)
+			{	if((r = fstat(f->file,&st)) < 0)
 					goto do_except;
 				if((r = (f->extent = st.st_size) - f->here) <= 0 )
 				{	r = 0;	/* eof */
@@ -174,10 +162,10 @@ Sfdisc_t*	disc;
 				SFMUNMAP(f, f->data, f->endb-f->data);
 
 			for(;;)
-			{	f->data = (uchar*) sysmmapf((caddr_t)0, (size_t)r,
+			{	f->data = (uchar*) mmap((caddr_t)0, (size_t)r,
 							(PROT_READ|PROT_WRITE),
 							MAP_PRIVATE,
-							f->file, (sfoff_t)f->here);
+							f->file, (off_t)f->here);
 				if(f->data && (caddr_t)f->data != (caddr_t)(-1))
 					break;
 				else
@@ -207,7 +195,7 @@ Sfdisc_t*	disc;
 				}
 				else	n = f->endb - f->next;
 
-				SFMTXRETURN(f, n);
+				return n;
 			}
 			else
 			{	r = -1;
@@ -217,10 +205,10 @@ Sfdisc_t*	disc;
 				(void)SFSK(f,f->here,SEEK_SET,dc);
 
 				/* make a buffer */
-				(void)SFSETBUF(f,(Void_t*)f->tiny,(size_t)SF_UNBOUND);
+				(void)SFSETBUF(f,(void*)f->tiny,(size_t)SF_UNBOUND);
 
 				if(!buf)
-				{	buf = (Void_t*)f->data;
+				{	buf = (void*)f->data;
 					n = f->size;
 				}
 			}
@@ -271,7 +259,7 @@ Sfdisc_t*	disc;
 				else	f->mode |= SF_RC;
 			}
 		}
-		else	r = sysreadf(f->file,buf,n);
+		else	r = read(f->file,buf,n);
 
 		if(errno == 0 )
 			errno = oerrno;
@@ -288,7 +276,7 @@ Sfdisc_t*	disc;
 					f->endb = f->endr = ((uchar*)buf) + r;
 			}
 
-			SFMTXRETURN(f, (ssize_t)r);
+			return (ssize_t)r;
 		}
 
 	do_except:
@@ -300,13 +288,13 @@ Sfdisc_t*	disc;
 			goto do_continue;
 		case SF_EDONE :
 			n = local ? 0 : (ssize_t)r;
-			SFMTXRETURN(f,n);
+			return n;
 		case SF_EDISC :
 			if(!local && !(f->flags&SF_STRING))
 				goto do_continue;
 			/* FALLTHROUGH */
 		case SF_ESTACK :
-			SFMTXRETURN(f, -1);
+			return -1;
 		}
 
 	do_continue:

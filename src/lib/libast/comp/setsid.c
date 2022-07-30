@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,7 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 
 #include <ast.h>
 
@@ -66,24 +65,6 @@ setsid(void)
 		ioctl(fd, TIOCNOTTY, 0);
 		close(fd);
 	}
-#else
-
-	/*
-	 * second child in s5 to avoid reacquiring the control tty
-	 */
-
-#if _lib_fork && HUH920711 /* some s5's botch this */
-	switch (fork())
-	{
-	case -1:
-		exit(1);
-	case 0:
-		break;
-	default:
-		exit(0);
-	}
-#endif
-
 #endif
 	return(pg);
 }

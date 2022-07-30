@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,8 +18,8 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 
+#include	"shopt.h"
 #include	<ast.h>
 #include	"FEATURE/options"
 #include	"FEATURE/dynamic"
@@ -98,7 +98,7 @@ const struct shtable2 shtab_variables[] =
 	".sh.file",	0,				(char*)0,
 	".sh.fun",	0,				(char*)0,
 	".sh.subshell",	NV_INTEGER|NV_NOFREE,		(char*)0,
-	".sh.level",	0,				(char*)0,
+	".sh.level",	NV_INT16|NV_NOFREE|NV_RDONLY,	(char*)0,
 	".sh.lineno",	NV_INTEGER|NV_NOFREE,		(char*)0,
 	".sh.stats",	0,				(char*)0,
 	".sh.math",	0,				(char*)0,
@@ -106,13 +106,10 @@ const struct shtable2 shtab_variables[] =
 	".sh.pid",	NV_INTEGER|NV_NOFREE,		(char*)0,
 	".sh.tilde",	0,				(char*)0,
 	"SHLVL",	NV_INTEGER|NV_NOFREE|NV_EXPORT,	(char*)0,
-#if SHOPT_MULTIBYTE
-	"CSWIDTH",	0,				(char*)0,
-#endif /* SHOPT_MULTIBYTE */
 	"",	0,					(char*)0
 };
 
-const char *nv_discnames[] = { "get", "set", "append", "unset", "getn", 0 };
+const char *nv_discnames[] = { "get", "set", "append", "unset", 0 };
 
 #if SHOPT_STATS
 const Shtable_t shtab_stats[] =

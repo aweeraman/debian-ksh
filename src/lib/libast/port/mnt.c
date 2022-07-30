@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,7 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * Glenn Fowler
  * AT&T Research
@@ -461,12 +460,8 @@ mntclose(void* handle)
 
 #if _lib_getmntent && ( _hdr_mntent || _sys_mntent && !_sys_mnttab )
 
-#if defined(__STDPP__directive) && defined(__STDPP__hide)
-__STDPP__directive pragma pp:hide endmntent getmntent
-#else
 #define endmntent	______endmntent
 #define getmntent	______getmntent
-#endif
 
 #include <stdio.h>
 #if _hdr_mntent
@@ -475,12 +470,8 @@ __STDPP__directive pragma pp:hide endmntent getmntent
 #include <sys/mntent.h>
 #endif
 
-#if defined(__STDPP__directive) && defined(__STDPP__hide)
-__STDPP__directive pragma pp:nohide endmntent getmntent
-#else
 #undef	endmntent
 #undef	getmntent
-#endif
 
 extern int		endmntent(FILE*);
 extern struct mntent*	getmntent(FILE*);
@@ -519,13 +510,13 @@ extern struct mntent*	getmntent(FILE*);
 
 #if _lib_getmntent
 
-typedef struct
 #if _mem_mnt_opts_mntent
 #define OPTIONS(p)	((p)->mnt_opts)
 #else
 #define OPTIONS(p)	NiL
 #endif
 
+typedef struct
 {
 	Header_t	hdr;
 	FILE*		fp;

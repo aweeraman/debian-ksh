@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,7 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * fnmatch implementation
  */
@@ -45,10 +44,6 @@ static const Map_t	map[] =
 	FNM_PATHNAME,	REG_SHELL_PATH,
 	FNM_PERIOD,	REG_SHELL_DOT,
 };
-
-#if defined(__EXPORT__)
-#define extern	__EXPORT__
-#endif
 
 extern int
 fnmatch(const char* pattern, const char* subject, register int flags)

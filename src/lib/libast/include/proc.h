@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,7 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 
 /*
  * process library interface
@@ -84,8 +83,8 @@
 
 typedef struct
 {
-	pid_t	pid;			/* process id			*/
-	pid_t	pgrp;			/* process group id		*/
+	pid_t	pid;			/* process ID			*/
+	pid_t	pgrp;			/* process group ID		*/
 	int	rfd;			/* read fd if applicable	*/
 	int	wfd;			/* write fd if applicable	*/
 
@@ -95,15 +94,9 @@ _PROC_PRIVATE_
 
 } Proc_t;
 
-#if _BLD_ast && defined(__EXPORT__)
-#define extern		__EXPORT__
-#endif
-
 extern int	procclose(Proc_t*);
 extern int	procfree(Proc_t*);
 extern Proc_t*	procopen(const char*, char**, char**, long*, int);
 extern int	procrun(const char*, char**, int);
-
-#undef	extern
 
 #endif

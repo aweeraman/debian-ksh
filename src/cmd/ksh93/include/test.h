@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,7 +18,6 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 #ifndef TEST_ARITH
 /*
  *	UNIX shell
@@ -58,9 +57,9 @@
 #define TEST_SGT	17
 #define TEST_REP	20
 
-extern int test_unop(Shell_t*,int, const char*);
+extern int test_unop(int, const char*);
 extern int test_inode(const char*, const char*);
-extern int test_binop(Shell_t*,int, const char*, const char*);
+extern int test_binop(int, const char*, const char*);
 
 extern const char	sh_opttest[];
 extern const char	test_opchars[];

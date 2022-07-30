@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -125,9 +125,9 @@ X_t x
 [[ ${x.s} == ${x.x} ]] || err_exit 'x.s should be x.x'
 typeset -T Y_t=( X_t r )
 Y_t z
-[[ ${z.r.x} == foo ]] || err_exit 'z.r.x should be foo'
-[[ ${z.r.y} == bam ]] || err_exit 'z.r.y should be bam'
-[[ ${z.r.s} == ${z.r.x} ]] || err_exit 'z.r.s should be z.r.x'
+[[ ${z.r.x} == foo ]] || err_exit "z.r.x should be foo (got $(printf %q "${z.r.x}"))"
+[[ ${z.r.y} == bam ]] || err_exit "z.r.y should be bam (got $(printf %q "${z.r.y}"))"
+[[ ${z.r.s} == ${z.r.x} ]] || err_exit "z.r.s should be z.r.x (expected $(printf %q "${z.r.x}"), got $(printf %q "${z.r.s}"))"
 
 unset xx yy
 typeset -T xx=(typeset yy=zz)
@@ -467,7 +467,7 @@ cat > B_t <<-  \EOF
 EOF
 
 unset n
-if	n=$(FPATH=$PWD PATH=$PWD:$PATH "$SHELL" -c 'A_t a; print ${a.b.n}' 2>&1)
+if	n=$(set +x; FPATH=$PWD PATH=$PWD:$PATH "$SHELL" -c 'A_t a; print ${a.b.n}' 2>&1)
 then	[[ $n == '5' ]] || err_exit "dynamic loading of types gives wrong result (got $(printf %q "$n"))"
 else	err_exit "unable to load types dynamically (got $(printf %q "$n"))"
 fi
@@ -552,7 +552,8 @@ compound -a b.ca
 b_t b.ca[4].b
 exp='typeset -C b=(typeset -C -a ca=( [4]=(b_t b=(a_t b=(a=hello))));)'
 got=$(typeset -p b)
-[[ $got == "$exp" ]] || err_exit 'typeset -p of nested type not correct'
+[[ $got == "$exp" ]] || err_exit 'typeset -p of nested type not correct' \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
 
 typeset -T u_t=(
 	integer dummy 
@@ -565,8 +566,9 @@ unset z
 u_t -a x | read z
 [[ $z == unset ]]  && err_exit 'unset discipline called on type creation'
 
-{ z=$($SHELL 2> /dev/null 'typeset -T foo; typeset -T') ;} 2> /dev/null
-[[ $z == 'typeset -T foo' ]] || err_exit '"typeset -T foo; typeset -T" failed'
+got=$("$SHELL" -c 'typeset -T foo; typeset -T' 2>&1)
+[[ -z $got ]] || err_exit '"typeset -T foo; typeset -T" exposed incomplete type builtin' \
+	"(got $(printf %q "$got"))"
 
 { z=$($SHELL 2> /dev/null 'typeset -T foo=bar; typeset -T') ;} 2> /dev/null
 [[ $z ]] && err_exit '"typeset -T foo=bar" should not creates type foo'
@@ -591,15 +593,15 @@ $SHELL << \EOF
 			 compound p=( hello=world )
 			 c.b.binsert p 1 $i
 		done
-		exp='typeset -C c=(board_t b=(typeset -a board_y=( [1]=(typeset -a board_x=( [0]=(field=(hello=world;))[1]=(field=(hello=world)));));))'
+		exp='typeset -C c=(board_t b=(typeset -C -a board_y=( [1]=(typeset -a board_x=( [0]=(field=(hello=world;))[1]=(field=(hello=world)));));))'
 		[[ $(typeset -p c) == "$exp" ]] || exit 1
 	}
 	main
 EOF
-} 2> /dev/null
+}
 if	(( exitval=$?))
-then	if	[[ $(kill -l $exitval) == SEGV ]]
-	then	err_exit 'typeset -m in type discipline causes exception'
+then	if	((exitval>128))
+	then	err_exit "typeset -m in type discipline crashed with SIG$(kill -l $exitval)"
 	else	err_exit 'typeset -m in type discipline gives wrong value'
 	fi
 fi
@@ -619,7 +621,6 @@ function main
 	for ((i=2 ; i < 8 ; i++ )) ; do
 		pawn_t c.board[1][$i]
 	done
-	
 }
 main 2> /dev/null && err_exit 'type assignment to compound array instance should generate an error'
 
@@ -632,6 +633,13 @@ typeset -T Bar_t=(
 Bar_t bar
 bar.foo+=(bam)
 [[ ${bar.foo[0]} == bam ]] || err_exit 'appending to empty array variable in type does not create element 0'
+
+# ======
+# Compound arrays listed with 'typeset -p' should have their -C attribute
+# preserved in the output.
+typeset -T Z_t=(compound -a x)
+Z_t z
+[[ $(typeset -p z.x) ==  *'-C -a'* ]] || err_exit 'typeset -p for compound array element does not display all attributes'
 
 # ======
 # Type names that have 'a' as the first letter should be functional
@@ -649,6 +657,8 @@ if	false
 then	typeset -T PARSER_t=(typeset name=foobar)
 fi
 PATH=/dev/null command -v PARSER_t >/dev/null && err_exit "PARSER_t incompletely defined though definition was never executed"
+(PATH=/dev/null eval 'PARSER_t x=(name=y)') 2>/dev/null
+(($?==3)) || err_exit "PARSER_t assignment not a syntax error though definition was never executed"
 
 unset v
 got=$( set +x; redirect 2>&1; typeset -T Subsh_t=(typeset -i x); Subsh_t -a v=( (x=1) (x=2) (x=3) ); typeset -p v )
@@ -656,6 +666,117 @@ exp='Subsh_t -a v=((typeset -i x=1) (typeset -i x=2) (typeset -i x=3))'
 [[ $got == "$exp" ]] || err_exit "bad typeset output for Subsh_t" \
 	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
 PATH=/dev/null command -v Subsh_t >/dev/null && err_exit "Subsh_t leaked out of subshell"
+
+# ======
+# https://github.com/ksh93/ksh/issues/350#issuecomment-982168684
+got=$("$SHELL" -c 'typeset -T trap=( typeset -i i )' 2>&1)
+exp=': trap: is a special shell builtin'
+[[ $got == *"$exp" ]] || err_exit "typeset -T overrides special builtin" \
+	"(expected match of *$(printf %q "$exp"); got $(printf %q "$got"))"
+
+# ======
+# Bugs involving scripts without a #! path
+# Hashbangless scripts are executed in a reinitialised fork of ksh, which is very bug-prone.
+# https://github.com/ksh93/ksh/issues/350
+# Some of these fixed bugs don't involve types at all, but the tests need to go somewhere.
+# Plus, invoking these from an environment with a bunch of types defined is an additional test.
+: >|foo1
+: >|foo2
+chmod +x foo1 foo2
+
+enum _foo1_t=(VERY BAD TYPE)
+_foo1_t foo=BAD
+normalvar=BAD2
+cat >|foo1 <<-'EOF'
+	# no hashbang path here
+	echo "normalvar=$normalvar"
+	echo "foo=$foo"
+	PATH=/dev/null
+	typeset -p .sh.type
+	_foo1_t --version
+EOF
+./foo1 >|foo1.out 2>&1
+got=$(<foo1.out)
+exp=$'normalvar=\nfoo=\nnamespace sh.type\n{\n\t:\n}\n*: _foo1_t: not found'
+[[ $got == $exp ]] || err_exit "types survive exec of hashbangless script" \
+	"(expected match of $(printf %q "$exp"), got $(printf %q "$got"))"
+
+if	builtin basename 2>/dev/null
+then	cat >|foo1 <<-'EOF'
+		PATH=/dev/null
+		basename --version
+	EOF
+	./foo1 >|foo1.out 2>&1
+	got=$(<foo1.out)
+	exp=': basename: not found'
+	[[ $got == *"$exp" ]] || err_exit "builtins survive exec of hashbangless script" \
+		"(expected match of *$(printf %q "$exp"), got $(printf %q "$got"))"
+fi
+
+echo $'echo start1\ntypeset -p a\n. ./foo2\necho end1' >| foo1
+echo $'echo start2\ntypeset -p a\necho end2' >| foo2
+unset a
+typeset -a a=(one two three)
+export a
+got=$(./foo1)
+exp=$'start1\ntypeset -x a=one\nstart2\ntypeset -x a=one\nend2\nend1'
+[[ $got == "$exp" ]] || err_exit 'exporting variable to #!-less script' \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# Backported regression test from ksh93v- 2013-08-07 for
+# short integer arrays in types.
+got=$(set +x; "$SHELL" 2>&1 <<- \EOF
+       typeset -T X_t=(typeset -si -a arr=(7 8) )
+       X_t x
+       print -r -- $((x.arr[1]))
+EOF) || err_exit "short integer arrays in types fails (got exit status $?)"
+exp=8
+[[ $got == $exp ]] || err_exit "short integer arrays in types isn't working correctly" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
+# Printing .sh.type should not crash or give variables a spurious -x attribute.
+# https://github.com/ksh93/ksh/issues/456
+
+got=$("$SHELL" -c 'typeset -p .sh.type
+typeset -Ttyp1 typ1=(
+	function get {
+	        .sh.value="'\''Sample'\''";
+	}
+)
+typeset -p .sh.type
+typ1
+command typ1 var11
+typ1
+print $var11
+print -v var11
+typeset -p .sh.type' 2>&1)
+
+exp='namespace sh.type
+{
+	:
+}
+namespace sh.type
+{
+	typeset -r typ1='\''Sample'\''
+}
+typ1 var11='\''Sample'\''
+'\''Sample'\''
+'\''Sample'\''
+namespace sh.type
+{
+	typeset -r typ1='\''Sample'\''
+}'
+
+[[ $got == "$exp" ]] || err_exit "'tyeset -p .sh.type' failed" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
+# Check for correct error message when attempting to set a discipline function for a nonexistent type member
+exp=": foo.get: cannot set discipline for undeclared type member"
+got=$(set +x; redirect 2>&1; typeset -T _bad_disc_t=(typeset dummy; function foo.get { :; }); echo end_reached)
+let "(e=$?)==1" && [[ $got == *"$exp" ]] || err_exit "attempt to set disc for nonexistent type member not handled correctly" \
+	"(expected status 1, match of *$(printf %q "$exp"); got status $e, $(printf %q "$got"))"
 
 # ======
 exit $((Errors<125?Errors:125))

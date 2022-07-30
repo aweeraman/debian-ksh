@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -27,13 +27,7 @@
 **	Written by Kiem-Phong Vo.
 */
 
-#if __STD_C
 int _sfputd(Sfio_t* f, Sfdouble_t v)
-#else
-int _sfputd(f,v)
-Sfio_t*		f;
-Sfdouble_t	v;
-#endif
 {
 #define N_ARRAY		(16*sizeof(Sfdouble_t))
 	reg ssize_t	n, w;
@@ -41,12 +35,9 @@ Sfdouble_t	v;
 	int		exp;
 	uchar		c[N_ARRAY];
 	Sfdouble_t	x;
-	SFMTXDECL(f);
 
-	SFMTXENTER(f,-1);
-
-	if(f->mode != SF_WRITE && _sfmode(f,SF_WRITE,0) < 0)
-		SFMTXRETURN(f, -1);
+	if(!f || (f->mode != SF_WRITE && _sfmode(f,SF_WRITE,0) < 0))
+		return -1;
 	SFLOCK(f,0);
 
 	/* get the sign of v */
@@ -70,7 +61,7 @@ Sfdouble_t	v;
 	/* write out the signs and the exp */
 	SFOPEN(f,0);
 	if(sfputc(f,n) < 0 || (w = sfputu(f,w)) < 0)
-		SFMTXRETURN(f, -1);
+		return -1;
 	SFLOCK(f,0);
 	w += 1;
 
@@ -90,8 +81,8 @@ Sfdouble_t	v;
 
 	/* write out coded bytes */
 	n = ends - s + 1;
-	w = SFWRITE(f,(Void_t*)s,n) == n ? w+n : -1;
+	w = SFWRITE(f,(void*)s,n) == n ? w+n : -1;
 
 	SFOPEN(f,0);
-	SFMTXRETURN(f,w);
+	return w;
 }

@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -19,7 +19,6 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * David Korn
  * AT&T Bell Laboratories
@@ -53,7 +52,6 @@
 #define eol(c)		((c)&WC_NL)
 #define mbc(c)		((c)&WC_MB)
 #define spc(c)		((c)&WC_SP)
-#define mb2wc(w,p,n)	(*ast.mb_towc)(&w,(char*)p,n)
 
 Wc_t* wc_init(int mode)
 {

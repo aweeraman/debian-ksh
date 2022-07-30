@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,7 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * AT&T Bell Laboratories
  * return 1 if dir [any dir] is the preroot
@@ -36,7 +35,7 @@
 /*
  * return 1 if files a and b are the same under preroot
  *
- * NOTE: the kernel disables preroot for set-uid processes
+ * NOTE: the kernel disables preroot for setuid processes
  */
 
 static int

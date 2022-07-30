@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,7 +18,6 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * break [n]
  * continue [n]
@@ -31,6 +30,7 @@
  *
  */
 
+#include	"shopt.h"
 #include	"defs.h"
 #include	<ast.h>
 #include	<error.h>
@@ -100,7 +100,7 @@ int	b_break(register int n, register char *argv[],Shbltin_t *context)
 {
 	char *arg;
 	register int cont= **argv=='c';
-	register Shell_t *shp = context->shp;
+	NOT_USED(context);
 	while((n = optget(argv,cont?sh_optcont:sh_optbreak))) switch(n)
 	{
 	    case ':':
@@ -126,13 +126,13 @@ int	b_break(register int n, register char *argv[],Shbltin_t *context)
 			UNREACHABLE();
 		}
 	}
-	if(shp->st.loopcnt)
+	if(sh.st.loopcnt)
 	{
-		shp->st.execbrk = shp->st.breakcnt = n;
-		if(shp->st.breakcnt > shp->st.loopcnt)
-			shp->st.breakcnt = shp->st.loopcnt;
+		sh.st.breakcnt = n;
+		if(sh.st.breakcnt > sh.st.loopcnt)
+			sh.st.breakcnt = sh.st.loopcnt;
 		if(cont)
-			shp->st.breakcnt = -shp->st.breakcnt;
+			sh.st.breakcnt = -sh.st.breakcnt;
 	}
 	return(0);
 }

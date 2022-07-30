@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,14 +20,13 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 
 /*
  * signal that disables syscall restart on interrupt with clear signal mask
  * fun==SIG_DFL also unblocks signal
  */
 
-#if !_UWIN
+#if !__HAIKU__
 
 #undef	signal
 #define signal		______signal
@@ -37,18 +36,10 @@
 #include <ast.h>
 #include <sig.h>
 
-#if !_UWIN
-
 #undef	signal
 
 #undef	_def_map_ast
 #include <ast_map.h>
-
-#if defined(__EXPORT__)
-#define extern	__EXPORT__
-#endif
-
-#endif
 
 #if defined(SV_ABORT)                                         
 #undef	SV_INTERRUPT

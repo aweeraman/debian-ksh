@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,7 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 
 /*
  * Glenn Fowler
@@ -49,10 +48,6 @@ typedef struct Ccmap_s
 	void*		data;	/* map specific data		*/
 } Ccmap_t;
 
-#if _BLD_ast && defined(__EXPORT__)
-#define extern		__EXPORT__
-#endif
-
 extern unsigned char*	_ccmap(int, int);
 extern void*		_ccmapcpy(unsigned char*, void*, const void*, size_t);
 extern void*		_ccmapstr(unsigned char*, void*, size_t);
@@ -61,8 +56,6 @@ extern int		ccmapid(const char*);
 extern char*		ccmapname(int);
 extern void*		ccnative(void*, const void*, size_t);
 extern Ccmap_t*		ccmaplist(Ccmap_t*);
-
-#undef	extern
 
 #define CCOP(i,o)		((i)==(o)?0:(((o)<<8)|(i)))
 #define CCIN(x)			((x)&0xFF)

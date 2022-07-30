@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,34 +20,25 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * Glenn Fowler
  * AT&T Bell Laboratories
  *
- * gid name -> number
+ * group name -> GID number
  */
 
-#if defined(__STDPP__directive) && defined(__STDPP__hide)
-__STDPP__directive pragma pp:hide getgrgid getgrnam getpwnam
-#else
 #define getgrgid	______getgrgid
 #define getgrnam	______getgrnam
 #define getpwnam	______getpwnam
-#endif
 
 #include <ast.h>
 #include <cdt.h>
 #include <pwd.h>
 #include <grp.h>
 
-#if defined(__STDPP__directive) && defined(__STDPP__hide)
-__STDPP__directive pragma pp:nohide getgrgid getgrnam getpwnam
-#else
 #undef	getgrgid
 #undef	getgrnam
 #undef	getpwnam
-#endif
 
 extern struct group*	getgrgid(gid_t);
 extern struct group*	getgrnam(const char*);
@@ -61,8 +52,8 @@ typedef struct Id_s
 } Id_t;
 
 /*
- * return gid number given gid/uid name
- * gid attempted first, then uid->pw_gid
+ * return GID number for given group name
+ * gr->gr_gid attempted first, then pw->pw_gid
  * -1 on first error for a given name
  * -2 on subsequent errors for a given name
  */

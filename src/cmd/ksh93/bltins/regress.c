@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,7 +18,6 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * regression test intercept control
  * enable with 'SHOPT REGRESS=1' in src/cmd/ksh93/SHOPT.sh
@@ -30,6 +29,7 @@
  *   AT&T Research
  */
 
+#include	"shopt.h"
 #include	"defs.h"
 
 #if SHOPT_REGRESS
@@ -67,31 +67,31 @@ static const char	usage[] =
     "the specific intercept for \aoption\a, and \ainfo\a is \aoption\a "
     "specific information. Unless noted otherwise, one regression test trace "
     "line is produced each time an enabled intercept is called.]"
-"[101:egid?The intercept effective gid is set to \aoriginal-egid\a. The "
-    "effective gid of the underlying system process is not affected. The "
+"[101:egid?The intercept effective GID is set to \aoriginal-egid\a. The "
+    "effective GID of the underlying system process is not affected. The "
     "trace line info is either \begid==rgid\b or \begid!=rgid\b. The "
     "intercepts are:]#?[original-egid:=1]"
     "{"
-        "[+getegid()?The intercept effective gid is returned. The "
-            "\bsetgid\b() intercept may change this between the real gid and "
+        "[+getegid()?The intercept effective GID is returned. The "
+            "\bsetgid\b() intercept may change this between the real GID and "
             "\aoriginal-egid\a.]"
-        "[+setgid(gid)?Sets the intercept effective gid to \agid\a. "
-            "Fails if \agid\a is neither the real gid nor "
+        "[+setgid(gid)?Sets the intercept effective GID to \agid\a. "
+            "Fails if \agid\a is neither the real GID nor "
             "\aoriginal-egid\a.]"
     "}"
-"[102:euid?The intercept effective uid is set to \aoriginal-euid\a. The "
-    "effective uid of the underlying system process is not affected. The "
+"[102:euid?The intercept effective UID is set to \aoriginal-euid\a. The "
+    "effective UID of the underlying system process is not affected. The "
     "trace line info is either \beuid==ruid\b or \beuid!=ruid\b. The "
     "intercepts are:]#?[original-euid:=1]"
     "{"
-        "[+geteuid()?The intercept effective uid is returned. The "
-            "\bsetuid\b() intercept may change this between the real uid and "
+        "[+geteuid()?The intercept effective UID is returned. The "
+            "\bsetuid\b() intercept may change this between the real UID and "
             "\aoriginal-euid\a.]"
-        "[+setuid(uid)?Sets the intercept effective uid to \auid\a. "
-            "Fails if \auid\a is neither the real uid nor "
+        "[+setuid(uid)?Sets the intercept effective UID to \auid\a. "
+            "Fails if \auid\a is neither the real UID nor "
             "\aoriginal-euid\a.]"
     "}"
-"[103:p_suid?Specifies a value for SHOPT_P_SUID. Effective uids greater "
+"[103:p_suid?Specifies a value for SHOPT_P_SUID. Effective UIDs greater "
     "than the non-privileged-uid disable the privileged mode. The intercepts "
     "are:]#?[non-privileged-uid:=1]"
     "{"
@@ -123,17 +123,16 @@ static const char*	regress_options[] =
 	"etc",
 };
 
-void sh_regress_init(Shell_t* shp)
+void sh_regress_init(void)
 {
 	static Regress_t	state;
 
-	shp->regress = &state;
+	sh.regress = &state;
 }
 
 /*
  * regress info trace output
  */
-
 void sh_regress(unsigned int index, const char* intercept, const char* info, unsigned int line, const char* file)
 {
 	char*	name;
@@ -147,9 +146,8 @@ void sh_regress(unsigned int index, const char* intercept, const char* info, uns
 }
 
 /*
- * egid intercepts
+ * EGID intercepts
  */
-
 static gid_t	intercept_sgid = 0;
 static gid_t	intercept_egid = -1;
 static gid_t	intercept_rgid = -1;
@@ -190,9 +188,8 @@ int setgid(gid_t gid)
 }
 
 /*
- * euid intercepts
+ * EUID intercepts
  */
-
 static uid_t	intercept_suid = 0;
 static uid_t	intercept_euid = -1;
 static uid_t	intercept_ruid = -1;
@@ -235,7 +232,6 @@ int setuid(uid_t uid)
 /*
  * p_suid intercept
  */
-
 static uid_t	intercept_p_suid = 0x7fffffff;
 
 uid_t sh_regress_p_suid(unsigned int line, const char* file)
@@ -247,7 +243,6 @@ uid_t sh_regress_p_suid(unsigned int line, const char* file)
 /*
  * p_suid intercept
  */
-
 static char*	intercept_etc = 0;
 
 char* sh_regress_etc(const char* path, unsigned int line, const char* file)
@@ -259,10 +254,8 @@ char* sh_regress_etc(const char* path, unsigned int line, const char* file)
 /*
  * __regress__ builtin
  */
-
 int b___regress__(int argc, char** argv, Shbltin_t *context)
 {
-	register Shell_t*	shp = context->shp;
 	int			n;
 
 	for (;;)

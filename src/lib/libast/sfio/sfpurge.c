@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -27,23 +27,15 @@
 **	Written by Kiem-Phong Vo.
 */
 
-#if __STD_C
 int sfpurge(Sfio_t* f)
-#else
-int sfpurge(f)
-Sfio_t*	f;
-#endif
 {
 	reg int	mode;
-	SFMTXDECL(f);
 
-	SFMTXENTER(f,-1);
-
-	if((mode = f->mode&SF_RDWR) != (int)f->mode && _sfmode(f,mode|SF_SYNCED,0) < 0)
-		SFMTXRETURN(f, -1);
+	if(!f || (mode = f->mode&SF_RDWR) != (int)f->mode && _sfmode(f,mode|SF_SYNCED,0) < 0)
+		return -1;
 
 	if((f->flags&SF_IOCHECK) && f->disc && f->disc->exceptf)
-		(void)(*f->disc->exceptf)(f,SF_PURGE,(Void_t*)((int)1),f->disc);
+		(void)(*f->disc->exceptf)(f,SF_PURGE,(void*)((int)1),f->disc);
 
 	if(f->disc == _Sfudisc)
 		(void)sfclose((*_Sfstack)(f,NIL(Sfio_t*)));
@@ -63,7 +55,7 @@ Sfio_t*	f;
 			(void)SFSK(f,f->here,SEEK_SET,f->disc);
 		}
 		SFOPEN(f,0);
-		SFMTXRETURN(f, 0);
+		return 0;
 	}
 #endif
 
@@ -71,7 +63,7 @@ Sfio_t*	f;
 	{
 	default :
 		SFOPEN(f,0);
-		SFMTXRETURN(f, -1);
+		return -1;
 	case SF_WRITE :
 		f->next = f->data;
 		if(!f->proc || !(f->flags&SF_READ) || !(f->mode&SF_WRITE) )
@@ -93,7 +85,7 @@ Sfio_t*	f;
 
 done:
 	if((f->flags&SF_IOCHECK) && f->disc && f->disc->exceptf)
-		(void)(*f->disc->exceptf)(f,SF_PURGE,(Void_t*)((int)0),f->disc);
+		(void)(*f->disc->exceptf)(f,SF_PURGE,(void*)((int)0),f->disc);
 
-	SFMTXRETURN(f, 0);
+	return 0;
 }

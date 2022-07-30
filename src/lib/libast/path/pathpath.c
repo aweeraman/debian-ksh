@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,7 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * Glenn Fowler
  * AT&T Research
@@ -77,7 +76,8 @@ pathpath_20100601(const char* p, const char* a, int mode, register char* path, s
 		{
 			if (*p != '/' && (mode & PATH_ABSOLUTE))
 			{
-				getcwd(buf, sizeof(buf));
+				if(!getcwd(buf, sizeof(buf)))
+					return (char*)0;
 				s = buf + strlen(buf);
 				sfsprintf(s, sizeof(buf) - (s - buf), "/%s", p);
 				if (path != buf)

@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1985-2011 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -112,7 +112,7 @@ esac
 
 rm -f $tmp.*
 case $debug in
-'')	trap "code=\$?; rm -f $tmp.*; exit \$code" 0 1 2 ;;
+'')	trap "code=\$?; rm -rf $tmp.*; exit \$code" 0 1 2 ;;
 esac
 
 # determine the intmax_t printf format
@@ -1476,10 +1476,6 @@ cat <<!
 $systeminfo
 
 ${generated}
-
-#if !defined(const) && !defined(__STDC__) && !defined(__cplusplus) && !defined(c_plusplus)
-#define const
-#endif
 
 #define conf		_ast_conf_data
 #define conf_elements	_ast_conf_ndata

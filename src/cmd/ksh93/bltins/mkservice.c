@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,13 +18,19 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * mkservice varname pathname
  * eloop [-t timeout]
  * Written by David Korn
  * AT&T Labs
  */
+
+#include	"shopt.h"
+#include	"defs.h"
+
+#if !SHOPT_MKSERVICE
+NoN(mkservice)
+#else
 
 static const char mkservice_usage[] =
 "[-?\n@(#)$Id: mkservice (AT&T Research) 2001-06-13 $\n]"
@@ -86,8 +92,6 @@ static const char eloop_usage[] =
 "[+SEE ALSO?\bmkservice\b(1)]"
 ;
 
-
-#include	"defs.h"
 
 #include	<cmd.h>
 #include	<error.h>
@@ -259,7 +263,8 @@ static int waitnotify(int fd, long timeout, int rw)
 
 static int service_init(void)
 {
-	file_list = sh_newof(NULL,short,n,0);
+	int n = 20;
+	file_list = (int*)sh_newof(NULL,short,n,0);
 	poll_list = sh_newof(NULL,Sfio_t*,n,0);
 	service_list = sh_newof(NULL,Service_t*,n,0);
 	covered_fdnotify = sh_fdnotify(fdnotify);
@@ -350,7 +355,7 @@ static char* setdisc(Namval_t* np, const char* event, Namval_t* action, Namfun_t
 
 	for (i = 0; cp = disctab[i]; i++)
 	{
-		if (memcmp(event, cp, n))
+		if (strncmp(event, cp, n))
 			continue;
 		if (action == np)
 			action = sp->disc[i];
@@ -410,7 +415,6 @@ int	b_mkservice(int argc, char** argv, Shbltin_t *context)
 	register int		fd;
 
 	NOT_USED(argc);
-	NOT_USED(context);
 	for (;;)
 	{
 		switch (optget(argv, mkservice_usage))
@@ -450,7 +454,7 @@ int	b_mkservice(int argc, char** argv, Shbltin_t *context)
 		close(fd);
 	else
 		sp->fd = fd;
-	np = nv_open(var,sh.var_tree,NV_ARRAY|NV_VARNAME|NV_NOASSIGN);
+	np = nv_open(var,sh.var_tree,NV_ARRAY|NV_VARNAME);
 	sp->node = np;
 	nv_putval(np, path, 0); 
 	nv_stack(np, (Namfun_t*)sp);
@@ -495,3 +499,5 @@ int	b_eloop(int argc, char** argv, Shbltin_t *context)
 	}
 	return(errno != 0);
 }
+
+#endif /* SHOPT_MKSERVICE */

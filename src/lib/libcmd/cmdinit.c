@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -19,7 +19,6 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * command initialization
  */
@@ -58,19 +57,3 @@ _cmd_init(int argc, char** argv, Shbltin_t* context, const char* catalog, int fl
 	opt_info.index = 0;
 	return 0;
 }
-
-#if __OBSOLETE__ < 20080101
-
-#if defined(__EXPORT__)
-#define extern	__EXPORT__
-#endif
-
-#undef	cmdinit
-
-extern void
-cmdinit(char** argv, Shbltin_t* context, const char* catalog, int flags)
-{
-	_cmd_init(0, argv, context, catalog, flags);
-}
-
-#endif

@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,12 +18,12 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * string processing routines for Korn shell
  *
  */
 
+#include	"shopt.h"
 #include	<ast.h>
 #include	<ast_wchar.h>
 #include	"defs.h"
@@ -41,17 +41,11 @@
 #   define iswprint(c)		(((c)&~0377) || isprint(c))
 #endif
 
-#ifndef isxdigit
-#   define isxdigit(c)		((c)>='0'&&(c)<='9'||(c)>='a'&&(c)<='f'||(c)>='A'&&(c)<='F')
-#endif
-
-
 /*
  *  Table lookup routine
  *  <table> is searched for string <sp> and corresponding value is returned
  *  This is only used for small tables and is used to save non-shareable memory
  */
-
 const Shtable_t *sh_locate(register const char *sp,const Shtable_t *table,int size)
 {
 	register int			first;
@@ -72,6 +66,12 @@ const Shtable_t *sh_locate(register const char *sp,const Shtable_t *table,int si
 
 /*
  *  shtab_options lookup routine
+ *
+ *  Long-form option names are case-sensitive but insensitive to '-' and '_', and may be abbreviated to a
+ *  non-arbitrary string. A no- prefix is skipped and inverts the meaning (special handling for 'notify').
+ *  The table must be sorted in ASCII order after skipping the no- prefix.
+ *
+ *  Returns 0 if not found, -1 if multiple found (ambiguous), or the number of the option found.
  */
 
 #define sep(c)		((c)=='-'||(c)=='_')
@@ -170,7 +170,7 @@ int sh_lookopt(register const char *sp, int *invert)
 	}
 	if(hit)
 		*invert ^= inv;
-	return(hit);
+	return(amb ? -1 : hit);
 }
 
 /*
@@ -236,7 +236,6 @@ found:
  * TRIM(sp)
  * Remove escape characters from characters in <sp> and eliminate quoted nulls.
  */
-
 void	sh_trim(register char *sp)
 /*@
 	assume sp!=NULL;
@@ -266,29 +265,6 @@ void	sh_trim(register char *sp)
 		}
 		*dp = 0;
 	}
-}
-
-/*
- * copy <str1> to <str2> changing upper case to lower case
- * <str2> must be big enough to hold <str1>
- * <str1> and <str2> may point to the same place.
- */
-
-void sh_utol(register char const *str1,register char *str2)
-/*@
-	assume str1!=0 && str2!=0
-	return x satisfying strlen(in str1)==strlen(in str2);
-@*/ 
-{
-	register int c;
-	for(; c= *((unsigned char*)str1); str1++,str2++)
-	{
-		if(isupper(c))
-			*str2 = tolower(c);
-		else
-			*str2 = c;
-	}
-	*str2 = 0;
 }
 
 /*
@@ -683,11 +659,17 @@ char	*sh_fmtqf(const char *string, int single, int fold)
 	return(stakptr(offset));
 }
 
-#if SHOPT_MULTIBYTE
-	int sh_strchr(const char *string, register const char *dp)
+/*
+ * Find a multi-byte character in a string.
+ * NOTE: Unlike strchr(3), the return value is an integer offset or -1 if not found.
+ */
+int sh_strchr(const char *string, register const char *dp)
+{
+	const char *cp;
+	if(mbwide())
 	{
 		wchar_t c, d;
-		register const char *cp=string;
+		cp = string;
 		mbinit();
 		d = mbchar(dp); 
 		mbinit();
@@ -700,7 +682,9 @@ char	*sh_fmtqf(const char *string, int single, int fold)
 			return(cp-string);
 		return(-1);
 	}
-#endif /* SHOPT_MULTIBYTE */
+	cp = strchr(string,*dp);
+	return(cp ? cp-string : -1);
+}
 
 const char *_sh_translate(const char *message)
 {

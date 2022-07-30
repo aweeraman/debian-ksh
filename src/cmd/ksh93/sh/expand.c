@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,7 +18,6 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  *	File name expansion
  *
@@ -27,6 +26,7 @@
  *
  */
 
+#include	"shopt.h"
 #include	"defs.h"
 #include	"variables.h"
 #include	"test.h"
@@ -55,10 +55,9 @@ static	int		scantree(Dt_t*,const char*, struct argnod**);
 
 static char *nextdir(glob_t *gp, char *dir)
 {
-	Shell_t	*shp = sh_getinterp();
 	Pathcomp_t *pp = (Pathcomp_t*)gp->gl_handle;
 	if(!dir)
-		pp = path_get(shp,"");
+		pp = path_get(Empty);
 	else
 		pp = pp->next;
 	gp->gl_handle = (void*)pp;
@@ -67,7 +66,7 @@ static char *nextdir(glob_t *gp, char *dir)
 	return(0);
 }
 
-int path_expand(Shell_t *shp,const char *pattern, struct argnod **arghead)
+int path_expand(const char *pattern, struct argnod **arghead)
 {
 	glob_t gdata;
 	register struct argnod *ap;
@@ -86,23 +85,23 @@ int path_expand(Shell_t *shp,const char *pattern, struct argnod **arghead)
 #endif
 	if(sh_isstate(SH_COMPLETE))	/* command completion */
 	{
-		extra += scantree(shp->alias_tree,pattern,arghead); 
-		extra += scantree(shp->fun_tree,pattern,arghead); 
+		extra += scantree(sh.alias_tree,pattern,arghead);
+		extra += scantree(sh.fun_tree,pattern,arghead);
 		gp->gl_nextdir = nextdir;
 		flags |= GLOB_COMPLETE;
 		flags &= ~GLOB_NOCHECK;
 	}
 	if(sh_isstate(SH_FCOMPLETE))	/* file name completion */
 		flags |= GLOB_FCOMPLETE;
-	gp->gl_fignore = nv_getval(sh_scoped(shp,FIGNORENOD));
+	gp->gl_fignore = nv_getval(sh_scoped(FIGNORENOD));
 	if(suflen)
 		gp->gl_suffix = sufstr;
-	gp->gl_intr = &shp->trapnote; 
+	gp->gl_intr = &sh.trapnote;
 	suflen = 0;
-	if(memcmp(pattern,"~(N",3)==0)
+	if(strncmp(pattern,"~(N",3)==0)
 		flags &= ~GLOB_NOCHECK;
 	glob(pattern, flags, 0, gp);
-	sh_sigcheck(shp);
+	sh_sigcheck();
 	for(ap= (struct argnod*)gp->gl_list; ap; ap = ap->argnxt.ap)
 	{
 		ap->argchn.ap = ap->argnxt.ap;
@@ -146,12 +145,11 @@ static int scantree(Dt_t *tree, const char *pattern, struct argnod **arghead)
  * generate the list of files found by adding an suffix to end of name
  * The number of matches is returned
  */
-
-int path_complete(Shell_t *shp,const char *name,register const char *suffix, struct argnod **arghead)
+int path_complete(const char *name,register const char *suffix, struct argnod **arghead)
 {
 	sufstr = suffix;
 	suflen = strlen(suffix);
-	return(path_expand(shp,name,arghead));
+	return(path_expand(name,arghead));
 }
 
 #if SHOPT_BRACEPAT
@@ -161,7 +159,7 @@ static int checkfmt(Sfio_t* sp, void* vp, Sffmt_t* fp)
 	return -1;
 }
 
-int path_generate(Shell_t *shp,struct argnod *todo, struct argnod **arghead)
+int path_generate(struct argnod *todo, struct argnod **arghead)
 /*@
 	assume todo!=0;
 	return count satisfying count>=1;
@@ -286,8 +284,8 @@ again:
 			for(; ap; ap=apin)
 			{
 				apin = ap->argchn.ap;
-				if(!sh_isoption(SH_NOGLOB))
-					brace=path_expand(shp,ap->argval,arghead);
+				if(!sh_isoption(SH_NOGLOB) || sh_isstate(SH_COMPLETE) || sh_isstate(SH_FCOMPLETE))
+					brace=path_expand(ap->argval,arghead);
 				else
 				{
 					ap->argchn.ap = *arghead;
@@ -348,7 +346,7 @@ endloop1:
 	endloop2:
 		brace = *cp;
 		*cp = 0;
-		sh_sigcheck(shp);
+		sh_sigcheck();
 		ap = (struct argnod*)stakseek(ARGVAL);
 		ap->argflag = ARG_RAW;
 		ap->argchn.ap = todo;

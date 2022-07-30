@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -27,18 +27,13 @@
 **	Written by Kiem-Phong Vo
 */
 
-#if __STD_C
 int sfclose(Sfio_t* f)
-#else
-int sfclose(f)
-Sfio_t*	f;
-#endif
 {
 	reg int		local, ex, rv;
-	Void_t*		data = NIL(Void_t*);
-	SFMTXDECL(f); /* declare a local stream variable for multithreading */
+	void*		data = NIL(void*);
 
-	SFMTXENTER(f, -1);
+	if(!f)
+		return -1;
 
 	GETLOCAL(f,local);
 
@@ -46,18 +41,18 @@ Sfio_t*	f;
 	   SFMODE(f,local) != (f->mode&SF_RDWR) &&
 	   SFMODE(f,local) != (f->mode&(SF_READ|SF_SYNCED)) &&
 	   _sfmode(f,SF_SYNCED,local) < 0)
-		SFMTXRETURN(f,-1);
+		return -1;
 
 	/* closing a stack of streams */
 	while(f->push)
 	{	reg Sfio_t*	pop;
 
 		if(!(pop = (*_Sfstack)(f,NIL(Sfio_t*))) )
-			SFMTXRETURN(f,-1);
+			return -1;
 
 		if(sfclose(pop) < 0)
 		{	(*_Sfstack)(f,pop);
-			SFMTXRETURN(f,-1);
+			return -1;
 		}
 	}
 
@@ -72,15 +67,14 @@ Sfio_t*	f;
 	SFLOCK(f,0);
 
 	/* raise discipline exceptions */
-	if(f->disc && (ex = SFRAISE(f,local ? SF_NEW : SF_CLOSING,NIL(Void_t*))) != 0)
-		SFMTXRETURN(f,ex);
+	if(f->disc && (ex = SFRAISE(f,local ? SF_NEW : SF_CLOSING,NIL(void*))) != 0)
+		return ex;
 
 	if(!local && f->pool)
 	{	/* remove from pool */
 		if(f->pool == &_Sfpool)
 		{	reg int	n;
 
-			POOLMTXLOCK(&_Sfpool);
 			for(n = 0; n < _Sfpool.n_sf; ++n)
 			{	if(_Sfpool.sf[n] != f)
 					continue;
@@ -90,13 +84,12 @@ Sfio_t*	f;
 					_Sfpool.sf[n] = _Sfpool.sf[n+1];
 				break;
 			}
-			POOLMTXUNLOCK(&_Sfpool);
 		}
 		else
 		{	f->mode &= ~SF_LOCK;	/**/ASSERT(_Sfpmove);
 			if((*_Sfpmove)(f,-1) < 0)
 			{	SFOPEN(f,0);
-				SFMTXRETURN(f,-1);
+				return -1;
 			}
 			f->mode |= SF_LOCK;
 		}
@@ -111,7 +104,7 @@ Sfio_t*	f;
 		else
 #endif
 		if(f->flags&SF_MALLOC)
-			data = (Void_t*)f->data;
+			data = (void*)f->data;
 
 		f->data = NIL(uchar*);
 		f->size = -1;
@@ -121,7 +114,7 @@ Sfio_t*	f;
 	if(_Sfnotify)
 		(*_Sfnotify)(f, SF_CLOSING, (void*)((long)f->file));
 	if(f->file >= 0 && !(f->flags&SF_STRING))
-	{	while(sysclosef(f->file) < 0 )
+	{	while(close(f->file) < 0 )
 		{	if(errno == EINTR)
 				errno = 0;
 			else
@@ -148,17 +141,8 @@ Sfio_t*	f;
 	if(f->proc)
 		rv = _sfpclose(f);
 
-	/* destroy the mutex */
-	if(f->mutex)
-	{	(void)vtmtxclrlock(f->mutex);
-		if(f != sfstdin && f != sfstdout && f != sfstderr)
-		{	(void)vtmtxclose(f->mutex);
-			f->mutex = NIL(Vtmutex_t*);
-		}
-	}
-
 	if(!local)
-	{	if(f->disc && (ex = SFRAISE(f,SF_FINAL,NIL(Void_t*))) != 0 )
+	{	if(f->disc && (ex = SFRAISE(f,SF_FINAL,NIL(void*))) != 0 )
 		{	rv = ex;
 			goto done;
 		}
@@ -167,7 +151,7 @@ Sfio_t*	f;
 			free(f);
 		else
 		{	f->disc = NIL(Sfdisc_t*);
-			f->stdio = NIL(Void_t*);
+			f->stdio = NIL(void*);
 			f->mode = SF_AVAIL;
 		}
 	}

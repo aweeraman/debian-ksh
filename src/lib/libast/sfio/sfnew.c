@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -29,21 +29,15 @@
 **	Written by Kiem-Phong Vo.
 */
 
-#if __STD_C
-Sfio_t* sfnew(Sfio_t* oldf, Void_t* buf, size_t size, int file, int flags)
-#else
-Sfio_t* sfnew(oldf,buf,size,file,flags)
-Sfio_t* oldf;	/* old stream to be reused */
-Void_t*	buf;	/* a buffer to read/write, if NULL, will be allocated */
-size_t	size;	/* buffer size if buf is given or desired buffer size */
-int	file;	/* file descriptor to read/write from */
-int	flags;	/* type of file stream */
-#endif
+Sfio_t* sfnew(Sfio_t*	oldf,	/* old stream to be reused */
+	      void*	buf,	/* a buffer to read/write, if NULL, will be allocated */
+	      size_t	size,	/* buffer size if buf is given or desired buffer size */
+	      int	file,	/* file descriptor to read/write from */
+	      int	flags)	/* type of file stream */
 {
 	reg Sfio_t*	f;
 	reg int		sflags;
 
-	SFONCE();	/* initialize mutexes */
 
 	if(!(flags&SF_RDWR))
 		return NIL(Sfio_t*);
@@ -51,9 +45,7 @@ int	flags;	/* type of file stream */
 	sflags = 0;
 	if((f = oldf) )
 	{	if(flags&SF_EOF)
-		{	if(f != sfstdin && f != sfstdout && f != sfstderr)
-				f->mutex = NIL(Vtmutex_t*);
-			SFCLEAR(f, f->mutex);
+		{	SFCLEAR(f);
 			oldf = NIL(Sfio_t*);
 		}
 		else if(f->mode&SF_AVAIL)
@@ -73,7 +65,7 @@ int	flags;	/* type of file stream */
 
 			if(f->data && ((flags&SF_STRING) || size != (size_t)SF_UNBOUND) )
 			{	if(sflags&SF_MALLOC)
-					free((Void_t*)f->data);
+					free((void*)f->data);
 				f->data = NIL(uchar*);
 			}
 			if(!f->data)
@@ -88,7 +80,7 @@ int	flags;	/* type of file stream */
 			if(f)
 			{	if(f->mode&SF_AVAIL)
 				{	sflags = f->flags;
-					SFCLEAR(f, f->mutex);
+					SFCLEAR(f);
 				}
 				else	f = NIL(Sfio_t*);
 			}
@@ -97,13 +89,9 @@ int	flags;	/* type of file stream */
 		if(!f)
 		{	if(!(f = (Sfio_t*)malloc(sizeof(Sfio_t))) )
 				return NIL(Sfio_t*);
-			SFCLEAR(f, NIL(Vtmutex_t*));
+			SFCLEAR(f);
 		}
 	}
-
-	/* create a mutex */
-	if(!f->mutex)
-		f->mutex = vtmtxopen(NIL(Vtmutex_t*), VT_INIT);
 
 	/* stream type */
 	f->mode = (flags&SF_READ) ? SF_READ : SF_WRITE;

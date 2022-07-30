@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,7 +18,6 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 #ifndef NOTSYM
 /*
  *	UNIX shell
@@ -62,8 +61,6 @@ struct _shlex_pvt_lexdata_
 	char 		*first;
 	int		level;
 	int		lastc;
-	int		lex_max;
-	int		*lex_match;
 	int		lex_state;
 	int		docextra;
 #if SHOPT_KIA
@@ -76,7 +73,6 @@ struct _shlex_pvt_lexdata_
  */
 typedef struct  _shlex_
 {
-	Shell_t		*sh;		/* pointer to the interpreter */
 	struct argnod	*arg;		/* current word */
 	struct ionod	*heredoc;	/* pending here document list */
 	int		token;		/* current token number */
@@ -92,6 +88,7 @@ typedef struct  _shlex_
 	char		noreserv;	/* reserved works not legal */
 	int		inlineno;	/* saved value of sh.inlineno */
 	int		firstline;	/* saved value of sh.st.firstline */
+	int		assignlevel;	/* nesting level for assignment */
 #if SHOPT_KIA
 	Sfio_t		*kiafile;	/* kia output file */
 	Sfio_t		*kiatmp;	/* kia reference file */
@@ -101,10 +98,10 @@ typedef struct  _shlex_
 	unsigned long	unknown;	/* <unknown> entity number */
 	off_t		kiabegin;	/* offset of first entry */
 	char		*scriptname;	/* name of script file */
-	Dt_t		*entity_tree;	/* for entity ids */
+	Dt_t		*entity_tree;	/* for entity IDs */
 #endif /* SHOPT_KIA */
 	/* The following two struct members are considered private to lex.c */
-	struct _shlex_pvt_lexdata_  lexd; \
+	struct _shlex_pvt_lexdata_  lexd;
 	struct _shlex_pvt_lexstate_  lex;
 } Lex_t;
 
@@ -169,7 +166,7 @@ typedef struct  _shlex_
 #define	SH_ASSIGN	020
 #define	SH_FUNDEF	040
 #define SH_ARRAY	0100
-#define SH_SEMI		0200	/* semi-colon after NL ok */
+#define SH_SEMI		0200	/* semicolon after NL ok */
 
 #define SH_COMPASSIGN	010	/* allow compound assignments only */
 
@@ -188,7 +185,7 @@ extern const char		e_newline[];
 
 extern int		sh_lex(Lex_t*);
 extern Shnode_t		*sh_dolparen(Lex_t*);
-extern Lex_t		*sh_lexopen(Lex_t*, Shell_t*, int);
+extern Lex_t		*sh_lexopen(Lex_t*, int);
 extern void 		sh_lexskip(Lex_t*,int,int,int);
 extern noreturn void 	sh_syntax(Lex_t*);
 #if SHOPT_KIA

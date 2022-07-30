@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,7 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 
 /*
  * Advanced Software Technology Library
@@ -170,11 +169,12 @@ typedef struct
  * strgrpmatch() flags
  */
 
-#define STR_MAXIMAL	01		/* maximal match		*/
-#define STR_LEFT	02		/* implicit left anchor		*/
-#define STR_RIGHT	04		/* implicit right anchor	*/
-#define STR_ICASE	010		/* ignore case			*/
-#define STR_GROUP	020		/* (|&) inside [@|&](...) only	*/
+#define STR_MAXIMAL	0x01		/* maximal match		*/
+#define STR_LEFT	0x02		/* implicit left anchor		*/
+#define STR_RIGHT	0x04		/* implicit right anchor	*/
+#define STR_ICASE	0x08		/* ignore case			*/
+#define STR_GROUP	0x10		/* (|&) inside [@|&](...) only	*/
+#define STR_INT		0x20		/* int* match array		*/
 
 /*
  * fmtquote() flags
@@ -208,22 +208,46 @@ typedef struct
  * multibyte macros
  */
 
-#define mbmax()		(ast.mb_cur_max)
-#define mberr()		(ast.tmp_int<0)
+#if !AST_NOMULTIBYTE
 
-#define mbcoll()	(ast.mb_xfrm!=0)
-#define mbwide()	(mbmax()>1)
+#define mbmax()		( ast.mb_cur_max )
+#define mberr()		( ast.tmp_int < 0 )
 
-#define mb2wc(w,p,n)	(*ast.mb_towc)(&w,(char*)p,n)
-#define mbchar(p)	(mbwide()?((ast.tmp_int=(*ast.mb_towc)(&ast.tmp_wchar,(char*)(p),mbmax()))>0?((p+=ast.tmp_int),ast.tmp_wchar):(p+=ast.mb_sync+1,ast.tmp_int)):(*(unsigned char*)(p++)))
-#define mbnchar(p,n)	(mbwide()?((ast.tmp_int=(*ast.mb_towc)(&ast.tmp_wchar,(char*)(p),n))>0?((p+=ast.tmp_int),ast.tmp_wchar):(p+=ast.mb_sync+1,ast.tmp_int)):(*(unsigned char*)(p++)))
-#define mbinit()	(mbwide()?(*ast.mb_towc)((wchar_t*)0,(char*)0,mbmax()):0)
-#define mbsize(p)	(mbwide()?(*ast.mb_len)((char*)(p),mbmax()):((p),1))
-#define mbnsize(p,n)	(mbwide()?(*ast.mb_len)((char*)(p),n):((p),1))
-#define mbconv(s,w)	(ast.mb_conv?(*ast.mb_conv)(s,w):((*(s)=(w)),1))
-#define mbwidth(w)	(ast.mb_width?(*ast.mb_width)(w):1)
-#define mbxfrm(t,f,n)	(mbcoll()?(*ast.mb_xfrm)((char*)(t),(char*)(f),n):0)
-#define mbalpha(w)	(ast.mb_alpha?(*ast.mb_alpha)(w):isalpha((w)&0xff))
+#define mbcoll()	( ast.mb_xfrm != 0 )
+#define mbwide()	( mbmax() > 1 )
+
+#define mb2wc(w,p,n)	( *ast.mb_towc)(&w, (char*)p, n )
+#define	mbchar(p)	mbnchar(p, mbmax())
+#define mbnchar(p,n)	( mbwide() ? ( (ast.tmp_int = (*ast.mb_towc)(&ast.tmp_wchar, (char*)(p), n)) > 0 ? \
+				( (p+=ast.tmp_int),ast.tmp_wchar) : (p+=ast.mb_sync+1,ast.tmp_int) ) : (*(unsigned char*)(p++)) )
+#define mbinit()	( ast.mb_sync = 0 )
+#define mbsize(p)	mbnsize(p, mbmax())
+#define mbnsize(p,n)	( mbwide() ? (*ast.mb_len)((char*)(p), n) : ((p), 1) )
+#define mbconv(s,w)	( ast.mb_conv ? (*ast.mb_conv)(s,w) : ((*(s)=(w)), 1) )
+#define mbwidth(w)	( ast.mb_width ? (*ast.mb_width)(w) : (w >= 0 && w <= 255 && !iscntrl(w) ? 1 : -1) )
+#define mbxfrm(t,f,n)	( mbcoll() ? (*ast.mb_xfrm)((char*)(t), (char*)(f), n) : 0 )
+#define mbalpha(w)	( ast.mb_alpha ? (*ast.mb_alpha)(w) : isalpha((w) & 0xff) )
+
+#else
+
+#define mbmax()		1
+#define mberr()		0
+
+#define mbcoll()	0
+#define mbwide()	0
+
+#define mb2wc(w,p,n)	( (w) = *(unsigned char*)(p), 1 )
+#define mbchar(p)	( *(unsigned char*)(p++) )
+#define mbnchar(p,n)	mbchar(p)
+#define mbinit()	0
+#define mbsize(p)	1
+#define mbnsize(p,n)	1
+#define mbconv(s,w)	( (*(s)=(w)), 1 )
+#define mbwidth(w)	( w >= 0 && w <= 255 && !iscntrl(w) ? 1 : -1 )
+#define mbxfrm(t,f,n)	0
+#define mbalpha(w)	( isalpha((w) & 0xff) )
+
+#endif /* !AST_NOMULTIBYTE */
 
 /*
  * common macros
@@ -241,13 +265,8 @@ typedef struct
 #define strneq(a,b,n)	(*(a)==*(b)&&!strncmp(a,b,n))
 #define strsignal(s)	fmtsignal(s)
 
-#if defined(__STDC__) || defined(__cplusplus) || defined(c_plusplus)
 #define NiL		0
 #define NoP(x)		do (void)(x); while(0)	/* for silencing "unused parameter" warnings */
-#else
-#define NiL		((char*)0)
-#define NoP(x)		(&x,1)
-#endif
 
 #if !defined(NoF)
 #define NoF(x)		void _DATA_ ## x () {}
@@ -270,10 +289,6 @@ typedef int (*Error_f)(void*, void*, int, ...);
 typedef int (*Ast_confdisc_f)(const char*, const char*, const char*);
 typedef int (*Strcmp_context_f)(const char*, const char*, void*);
 typedef int (*Strcmp_f)(const char*, const char*);
-
-#if _BLD_ast && defined(__EXPORT__)
-#define extern		__EXPORT__
-#endif
 
 extern char*		astgetconf(const char*, const char*, const char*, int, Error_f);
 extern char*		astconf(const char*, const char*, const char*);
@@ -312,7 +327,6 @@ extern int		chrtoi(const char*);
 extern char*		conformance(const char*, size_t);
 extern int		eaccess(const char*, int);
 extern char*		fmtbase(intmax_t, int, int);
-#define fmtbasell(a,b,c) fmtbase(a,b,c) /* until 2014-01-01 */
 extern char*		fmtbuf(size_t);
 extern char*		fmtclock(Sfulong_t);
 extern char*		fmtelapsed(unsigned long, int);
@@ -378,8 +392,8 @@ extern int		strexp(char*, int);
 extern long		streval(const char*, char**, long(*)(const char*, char**));
 extern long		strexpr(const char*, char**, long(*)(const char*, char**, void*), void*);
 extern int		strgid(const char*);
-extern int		strgrpmatch(const char*, const char*, int*, int, int);
-extern int		strgrpmatch_20120528(const char*, const char*, ssize_t*, int, int);
+extern int		strgrpmatch(const char*, const char*, ssize_t*, int, int);
+extern int		strngrpmatch(const char*, size_t, const char*, ssize_t*, int, int);
 extern unsigned int	strhash(const char*);
 extern void*		strlook(const void*, size_t, const char*);
 extern int		strmatch(const char*, const char*);
@@ -413,8 +427,6 @@ extern int		struniq(char**, int);
 extern int		strvcmp(const char*, const char*);
 extern int		wc2utf8(char*, uint32_t);
 
-#undef			extern
-
 /*
  * C library global data symbols not prototyped by <unistd.h>
  */
@@ -446,12 +458,6 @@ extern char**		environ;
 #undef	AST_PLUGIN_VERSION
 #define AST_PLUGIN_VERSION(v)	((v)>AST_VERSION?(v):AST_VERSION)
 
-#if defined(__EXPORT__)
-#define extern		__EXPORT__
-#endif
-
 extern unsigned long	plugin_version(void);
-
-#undef	extern
 
 #endif

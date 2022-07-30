@@ -1,7 +1,7 @@
 /***********************************************************************
 *                                                                      *
 *               This software is part of the ast package               *
-*          Copyright (c) 1985-2012 AT&T Intellectual Property          *
+*          Copyright (c) 1985-2013 AT&T Intellectual Property          *
 *          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
@@ -20,7 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 
 /*
  * POSIX regex implementation
@@ -173,9 +172,9 @@ typedef struct regsubop_s
 
 #define HIT		SSIZE_MAX
 
-#define bitclr(p,c)	((p)[((c)>>3)&037]&=(~(1<<((c)&07))))
-#define bitset(p,c)	((p)[((c)>>3)&037]|=(1<<((c)&07)))
-#define bittst(p,c)	((p)[((c)>>3)&037]&(1<<((c)&07)))
+#define bitclr(p,c)	((p)[(c)>>3]&=(~(1<<((c)&07))))
+#define bitset(p,c)	((p)[(c)>>3]|=(1<<((c)&07)))
+#define bittst(p,c)	((p)[(c)>>3]&(1<<((c)&07)))
 
 #define setadd(p,c)	bitset((p)->bits,c)
 #define setclr(p,c)	bitclr((p)->bits,c)
@@ -537,6 +536,7 @@ typedef struct reglib_s			/* library private regex_t info	*/
 	Vector_t*	bestpos;	/* ditto for best match		*/
 	regmatch_t*	match;		/* subexrs in current match 	*/
 	regmatch_t*	best;		/* ditto in best match yet	*/
+	Stk_t*		mst;		/* match stack			*/
 	Stk_pos_t	stk;		/* exec stack pos		*/
 	size_t		min;		/* minimum match length		*/
 	size_t		nsub;		/* internal re_nsub		*/

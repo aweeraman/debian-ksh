@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -28,29 +28,24 @@
 **	Written by Kiem-Phong Vo
 */
 
-#if __STD_C
-int _sfflsbuf(Sfio_t* f, int c)
-#else
-int _sfflsbuf(f,c)
-Sfio_t*	f;	/* write out the buffered content of this stream */
-int	c;	/* if c>=0, c is also written out */ 
-#endif
+int _sfflsbuf(Sfio_t*	f,	/* write out the buffered content of this stream */
+	      int	c)	/* if c>=0, c is also written out */
 {
 	ssize_t		n, w, written;
 	uchar*		data;
 	uchar		outc;
 	int		local, isall;
 	int		inpc = c;
-	SFMTXDECL(f); /* declare a local stream variable for multithreading */
 
-	SFMTXENTER(f,-1);
+	if(!f)
+		return -1;
 
 	GETLOCAL(f,local);
 
 	for(written = 0;; f->mode &= ~SF_LOCK)
 	{	/* check stream mode */
 		if(SFMODE(f,local) != SF_WRITE && _sfmode(f,SF_WRITE,local) < 0)
-			SFMTXRETURN(f, -1);
+			return -1;
 		SFLOCK(f,local);
 
 		/* current data extent */
@@ -67,7 +62,7 @@ int	c;	/* if c>=0, c is also written out */
 				n = f->next - (data = f->data);
 			else
 			{	SFOPEN(f,local);
-				SFMTXRETURN(f, -1);
+				return -1;
 			}
 		}
 
@@ -108,7 +103,7 @@ int	c;	/* if c>=0, c is also written out */
 				break; /* do normal exit below */
 			else /* nothing was done, returning failure */
 			{	SFOPEN(f,local);
-				SFMTXRETURN(f, -1);
+				return -1;
 			}
 		}
 		else /* w < 0 means SF_EDISC or SF_ESTACK in sfwr() */
@@ -123,5 +118,5 @@ int	c;	/* if c>=0, c is also written out */
 	if(inpc < 0)
 		inpc = f->endb-f->next;
 
-	SFMTXRETURN(f,inpc);
+	return inpc;
 }

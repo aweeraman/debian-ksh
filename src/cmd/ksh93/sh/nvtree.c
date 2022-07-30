@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,7 +18,6 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 
 /*
  * code for tree nodes and name walking
@@ -28,6 +27,7 @@
  *
  */
 
+#include	"shopt.h"
 #include	"defs.h"
 #include	"name.h"
 #include	"argnod.h"
@@ -397,7 +397,6 @@ void nv_attribute(register Namval_t *np,Sfio_t *out,char *prefix,int noname)
 	}
 	if(np==typep)
 	{
-
 		fp = 0;
 		typep = 0;
 	}
@@ -539,7 +538,6 @@ void nv_attribute(register Namval_t *np,Sfio_t *out,char *prefix,int noname)
 
 struct Walk
 {
-	Shell_t	*shp;
 	Sfio_t	*out;
 	Dt_t	*root;
 	int	noscope;
@@ -559,9 +557,11 @@ void nv_outnode(Namval_t *np, Sfio_t* out, int indent, int special)
 	Indent = indent;
 	if(ap)
 	{
+		sfputc(out,'(');
+		if(array_elem(ap)==0)
+			return;
 		if(!(ap->nelem&ARRAY_SCAN))
 			nv_putsub(np,NIL(char*),ARRAY_SCAN);
-		sfputc(out,'(');
 		if(indent>=0)
 		{
 			sfputc(out,'\n');
@@ -588,6 +588,9 @@ void nv_outnode(Namval_t *np, Sfio_t* out, int indent, int special)
 		tabs=0;
 		if(associative||special)
 		{
+			Namarr_t *aq;
+			if(mp && (aq=nv_arrayptr(mp)) && !aq->fun && array_elem(aq) < nv_aimax(mp)+1)
+				sfwrite(out,"typeset -a ",11);
 			if(!(fmtq = nv_getsub(np)))
 				break;
 			sfprintf(out,"[%s]",sh_fmtq(fmtq));
@@ -667,18 +670,19 @@ void nv_outnode(Namval_t *np, Sfio_t* out, int indent, int special)
 
 static void outval(char *name, const char *vname, struct Walk *wp)
 {
-	register Namval_t *np, *nq=0, *last_table=wp->shp->last_table;
-        register Namfun_t *fp;
+	register Namval_t *np, *nq=0, *last_table=sh.last_table;
+	register Namfun_t *fp;
 	int isarray=0, special=0,mode=0;
+	Dt_t *root = wp->root?wp->root:sh.var_base;
 	if(*name!='.' || vname[strlen(vname)-1]==']')
 		mode = NV_ARRAY;
-	if(!(np=nv_open(vname,wp->root,mode|NV_VARNAME|NV_NOADD|NV_NOASSIGN|NV_NOFAIL|wp->noscope)))
+	if(!(np=nv_open(vname,root,mode|NV_VARNAME|NV_NOADD|NV_NOFAIL|wp->noscope)))
 	{
-		wp->shp->last_table = last_table;
+		sh.last_table = last_table;
 		return;
 	}
 	if(!wp->out)
-		wp->shp->last_table = last_table;
+		sh.last_table = last_table;
 	fp = nv_hasdisc(np,&treedisc);
 	if(*name=='.')
 	{
@@ -747,7 +751,9 @@ static void outval(char *name, const char *vname, struct Walk *wp)
 	{
 		if(*name!='.')
 		{
+#if SHOPT_FIXEDARRAY
 			Namarr_t *ap;
+#endif
 			nv_attribute(np,wp->out,"typeset",'=');
 #if SHOPT_FIXEDARRAY
 			if((ap=nv_arrayptr(np)) && ap->fixed)
@@ -827,7 +833,7 @@ static char **genvalue(char **argv, const char *prefix, int n, struct Walk *wp)
 				{
 					Namval_t *np,*tp;
 					*nextcp = 0;
-					np=nv_open(arg,wp->root,NV_VARNAME|NV_NOADD|NV_NOASSIGN|NV_NOFAIL|wp->noscope);
+					np=nv_open(arg,wp->root,NV_VARNAME|NV_NOADD|NV_NOFAIL|wp->noscope);
 					if(!np || (nv_isarray(np) && (!(tp=nv_opensub(np)) || !nv_isvtree(tp))))
 					{
 						*nextcp = '.';
@@ -860,20 +866,18 @@ static char **genvalue(char **argv, const char *prefix, int n, struct Walk *wp)
 					continue;
 				break;
 			}
-			else if(outfile && !wp->nofollow && argv[1] && memcmp(arg,argv[1],l=strlen(arg))==0 && argv[1][l]=='[')
+			else if(outfile && !wp->nofollow && argv[1] && strncmp(arg,argv[1],l=strlen(arg))==0 && argv[1][l]=='[')
 			{
 				int	k=1;
 				Namarr_t *ap=0;
-				Namval_t *np = nv_open(arg,wp->root,NV_VARNAME|NV_NOADD|NV_NOASSIGN|wp->noscope);
+				Namval_t *np = nv_open(arg,wp->root,NV_VARNAME|NV_NOADD|wp->noscope);
 				if(!np)
 					continue;
 				if((wp->array = nv_isarray(np)) && (ap=nv_arrayptr(np)))
 					k = array_elem(ap);
-					
 				if(wp->indent>0)
 					sfnputc(outfile,'\t',wp->indent);
 				nv_attribute(np,outfile,"typeset",1);
-				nv_close(np);
 				sfputr(outfile,arg+m+r+(n?n:0),(k?'=':'\n'));
 				if(!k)
 				{
@@ -923,7 +927,7 @@ static char **genvalue(char **argv, const char *prefix, int n, struct Walk *wp)
 		cp = (char*)prefix;
 		if(c=='.')
 			cp[m-1] = 0;
-		outval(".",prefix-n,wp);
+		outval((char*)e_dot,prefix-n,wp);
 		if(c=='.')
 			cp[m-1] = c;
 		if(wp->indent>0)
@@ -953,18 +957,16 @@ static char *walk_tree(register Namval_t *np, Namval_t *xp, int flags)
 	Namarr_t *arp = nv_arrayptr(np);
 	Dt_t	*save_tree = sh.var_tree;
 	Namval_t	*mp=0;
-	Shell_t		*shp = sh_getinterp();
 	char		*xpname = xp?stakcopy(nv_name(xp)):0;
-	walk.shp = shp;
 	if(xp)
 	{
-		shp->last_root = shp->prev_root;
-		shp->last_table = shp->prev_table;
+		sh.last_root = sh.prev_root;
+		sh.last_table = sh.prev_table;
 	}
-	if(shp->last_table)
-		shp->last_root = nv_dict(shp->last_table);
-	if(shp->last_root)
-		shp->var_tree = shp->last_root;
+	if(sh.last_table)
+		sh.last_root = nv_dict(sh.last_table);
+	if(sh.last_root)
+		sh.var_tree = sh.last_root;
 	stakputs(nv_name(np));
 	if(arp && !(arp->nelem&ARRAY_SCAN) && (subscript = nv_getsub(np)))
 	{
@@ -978,9 +980,9 @@ static char *walk_tree(register Namval_t *np, Namval_t *xp, int flags)
 		mp = np;
 	name = stakfreeze(1);
 	len = strlen(name);
-	shp->last_root = 0;
+	sh.last_root = 0;
 	dir = nv_diropen(mp,name);
-	walk.root = shp->last_root?shp->last_root:shp->var_tree;
+	walk.root = sh.last_root?sh.last_root:sh.var_tree;
 	if(subscript)
 		name[strlen(name)-1] = 0;
 	while(cp = nv_dirnext(dir))
@@ -989,20 +991,20 @@ static char *walk_tree(register Namval_t *np, Namval_t *xp, int flags)
 			continue;
 		if(xp)
 		{
-			Dt_t		*dp = shp->var_tree;
+			Dt_t		*dp = sh.var_tree;
 			Namval_t	*nq, *mq;
 			if(strlen(cp)<=len)
 				continue;
-			nq = nv_open(cp,walk.root,NV_VARNAME|NV_NOADD|NV_NOASSIGN|NV_NOFAIL);
+			nq = nv_open(cp,walk.root,NV_VARNAME|NV_NOADD|NV_NOFAIL);
 			if(!nq && (flags&NV_MOVE))
 				nq = nv_search(cp,walk.root,NV_NOADD);
 			stakseek(0);
 			stakputs(xpname);
 			stakputs(cp+len);
 			stakputc(0);
-			shp->var_tree = save_tree;
-			mq = nv_open(stakptr(0),shp->prev_root,NV_VARNAME|NV_NOASSIGN|NV_NOFAIL);
-			shp->var_tree = dp;
+			sh.var_tree = save_tree;
+			mq = nv_open(stakptr(0),sh.prev_root,NV_VARNAME|NV_NOFAIL);
+			sh.var_tree = dp;
 			if(nq && mq)
 			{
 				nv_clone(nq,mq,flags|NV_RAW);
@@ -1022,7 +1024,7 @@ static char *walk_tree(register Namval_t *np, Namval_t *xp, int flags)
 	nv_dirclose(dir);
 	if(xp)
 	{
-		shp->var_tree = save_tree;
+		sh.var_tree = save_tree;
 		return((char*)0);
 	}
 	argv = (char**)stakalloc((n+1)*sizeof(char*));
@@ -1046,7 +1048,7 @@ static char *walk_tree(register Namval_t *np, Namval_t *xp, int flags)
 	walk.flags = flags;
 	genvalue(argv,name,0,&walk);
 	stakset(savptr,savtop);
-	shp->var_tree = save_tree;
+	sh.var_tree = save_tree;
 	if(!outfile)
 		return((char*)0);
 	sfputc(out,0);
@@ -1096,16 +1098,15 @@ static void put_tree(register Namval_t *np, const char *val, int flags,Namfun_t 
 		return;
 	if(!nv_isattr(np,(NV_INTEGER|NV_BINARY)))
 	{
-		Shell_t		*shp = sh_getinterp();
-		Namval_t	*last_table = shp->last_table;
-		Dt_t		*last_root = shp->last_root;
-		Namval_t 	*mp = val?nv_open(val,shp->var_tree,NV_VARNAME|NV_NOADD|NV_NOASSIGN|NV_ARRAY|NV_NOFAIL):0;
+		Namval_t	*last_table = sh.last_table;
+		Dt_t		*last_root = sh.last_root;
+		Namval_t 	*mp = val?nv_open(val,sh.var_tree,NV_VARNAME|NV_NOADD|NV_ARRAY|NV_NOFAIL):0;
 		if(mp && nv_isvtree(mp))
 		{
-			shp->prev_table = shp->last_table;
-			shp->prev_root = shp->last_root;
-			shp->last_table = last_table;
-			shp->last_root = last_root;
+			sh.prev_table = sh.last_table;
+			sh.prev_root = sh.last_root;
+			sh.last_table = last_table;
+			sh.last_root = last_root;
 			if(!(flags&NV_APPEND))
 				walk_tree(np,(Namval_t*)0,(flags&NV_NOSCOPE)|1);
 			nv_clone(mp,np,NV_COMVAR);

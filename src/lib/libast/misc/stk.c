@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,7 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  *   Routines to implement a stack-like storage library
  *   
@@ -62,9 +61,7 @@ typedef char* (*_stk_overflow_)(int);
 static int stkexcept(Sfio_t*,int,void*,Sfdisc_t*);
 static Sfdisc_t stkdisc = { 0, 0, 0, stkexcept };
 
-Sfio_t _Stak_data = SFNEW((char*)0,0,-1,SF_STATIC|SF_WRITE|SF_STRING,&stkdisc,0);
-
-__EXTERN__(Sfio_t, _Stak_data);
+Sfio_t	_Stak_data = SFNEW((char*)0,0,-1,SF_STATIC|SF_WRITE|SF_STRING,&stkdisc);
 
 struct frame
 {
@@ -230,11 +227,9 @@ Sfio_t *stkopen(int flags)
 	if(flags&STK_NULL) sp->stkoverflow = 0;
 	else sp->stkoverflow = stkcur?stkcur->stkoverflow:overflow;
 	bsize = init+sizeof(struct frame);
-#ifndef USE_REALLOC
 	if(flags&STK_SMALL)
 		bsize = roundof(bsize,STK_FSIZE/16);
 	else
-#endif /* USE_REALLOC */
 		bsize = roundof(bsize,STK_FSIZE);
 	bsize -= sizeof(struct frame);
 	if(!(fp=newof((char*)0,struct frame, 1,bsize)))
@@ -280,9 +275,6 @@ Sfio_t *stkinstall(Sfio_t *stream, _stk_overflow_ oflow)
 		if(stream!=stkstd)
 			sfstack(stkstd,stream);
 		stkcur = sp;
-#ifdef USE_REALLOC
-		/*** someday ***/
-#endif /* USE_REALLOC */
 	}
 	else
 		sp = stkcur;
@@ -423,7 +415,7 @@ char *_stkseek(register Sfio_t *stream, register ssize_t n)
 
 /*
  * advance the stack to the current top
- * if extra is non-zero, first add a extra bytes and zero the first
+ * if extra is non-zero, first add extra bytes and zero the first
  */
 char	*stkfreeze(register Sfio_t *stream, register size_t extra)
 {
@@ -510,10 +502,8 @@ static char *stkgrow(register Sfio_t *stream, size_t size)
 	int nn=0,add=1;
 	n += (m + sizeof(struct frame)+1);
 	if(sp->stkflags&STK_SMALL)
-#ifndef USE_REALLOC
 		n = roundof(n,STK_FSIZE/16);
 	else
-#endif /* !USE_REALLOC */
 		n = roundof(n,STK_FSIZE);
 	/* see whether current frame can be extended */
 	if(stkptr(stream,0)==sp->stkbase+sizeof(struct frame))

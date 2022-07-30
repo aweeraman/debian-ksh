@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,7 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * Glenn Fowler
  * AT&T Bell Laboratories
@@ -66,9 +65,6 @@ pathkey_20100601(const char* lang, const char* tool, const char* apath, char* ke
 	char*			env[elementsof(usr) + 3];
 	char*			ver[2];
 	char			tmp[PATH_MAX];
-#if _UWIN
-	struct stat		st;
-#endif
 
 	static char		let[] = "ABCDEFGHIJKLMNOP";
 
@@ -123,15 +119,6 @@ pathkey_20100601(const char* lang, const char* tool, const char* apath, char* ke
 #else
 		if ((k = getenv("VIRTUAL_ROOT")) && *k == '/')
 		{
-			n = memsum(k, strlen(k), n);
-			if (attr)
-				attr = strcopy(attr, k);
-		}
-#endif
-#if _UWIN
-		if (!stat("/", &st) && st.st_ino == 64)
-		{
-			k = "/64";
 			n = memsum(k, strlen(k), n);
 			if (attr)
 				attr = strcopy(attr, k);

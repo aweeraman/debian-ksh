@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -590,10 +590,11 @@ result=$("$SHELL" -c 'echo ok > >(sed s/ok/good/); wait' 2>&1)
 [[ $result == good ]] || err_exit 'process substitution does not work with redirections' \
 				"(expected 'good', got $(printf %q "$result"))"
 
-# Process substitution in an interactive shell shouldn't print the
-# process ID of the asynchronous process.
-result=$("$SHELL" -ic 'echo >(true) >/dev/null' 2>&1)
-[[ -z $result ]] || err_exit 'interactive shells print a PID during process substitution' \
+# Process substitution in an interactive shell or profile script shouldn't
+# print the process ID of the asynchronous process.
+echo 'false >(false)' > "$tmp/procsub-envtest"
+result=$(set +x; ENV=$tmp/procsub-envtest "$SHELL" -ic 'true >(true)' 2>&1)
+[[ -z $result ]] || err_exit 'interactive shells and/or profile scripts print a PID during process substitution' \
 				"(expected '', got $(printf %q "$result"))"
 
 # ======
@@ -713,7 +714,7 @@ got=$(command -x cat <(command -x echo foo) 2>&1) || err_exit "process substitut
 	exit
 ' empty_redir_crash_test "$tmp"
 ((!(e = $?))) || err_exit 'crash on null-command redirection with DEBUG trap' \
-	"(got status $e$( ((e>128)) && print -n / && kill -l "$e"), $(printf %q "$got"))"
+	"(got status $e$( ((e>128)) && print -n /SIG && kill -l "$e"), $(printf %q "$got"))"
 
 # ======
 # stdout was misdirected if an EXIT/ERR trap handler was defined in a -c script
@@ -765,7 +766,7 @@ got=$(export tmp; "$SHELL" -ec \
 # ======
 # Redirections of the form {varname}>file stopped working if brace expansion was turned off
 ((SHOPT_BRACEPAT)) && set +B
-{ redirect {v}>$tmp/v.out && echo ok >&$v; } 2>/dev/null && redirect {v}>&-
+(redirect {v}>$tmp/v.out && echo ok >&$v && redirect {v}>&-) 2>/dev/null
 ((SHOPT_BRACEPAT)) && set -B
 [[ -r $tmp/v.out && $(<$tmp/v.out) == ok ]] || err_exit '{varname}>file not working with brace expansion turned off'
 
@@ -799,7 +800,12 @@ procsub_pid=$(
 	true >(true) <(true) >(true) <(true)
 	echo "$!"
 )
-sleep .1
+integer -s i=0
+while	kill -0 "$procsub_pid"	# on the Alpine Linux console (no GUI), these take about a second to disappear
+do	sleep .1
+	((++i > 10)) && break
+done 2>/dev/null
+unset i
 if kill -0 "$procsub_pid" 2>/dev/null; then
 	kill -TERM "$procsub_pid" # don't leave around what is effectively a zombie process
 	err_exit "process substitutions loop or linger after parent shell finishes"
@@ -903,6 +909,100 @@ then	for cmd in echo print printf
 		"$SHELL" -c "$cmd hi" >/dev/full && err_exit "'$cmd' does not detect disk full (inherited FD)"
 	done
 fi
+
+# ======
+# Command substitution hangs, writing infinite zero bytes, when redirecting standard output on a built-in that forks
+# https://github.com/ksh93/ksh/issues/416
+exp='line'
+"$SHELL" -c 'echo "$(ulimit -t unlimited >/dev/null 2>&1; echo "ok $$")"' >out 2>&1 &
+pid=$!
+(sleep 1; kill -9 "$pid") 2>/dev/null &
+if	wait "$pid" 2>/dev/null
+then	kill "$!"  # the sleep process
+	[[ $(<out) == "ok $pid" ]] || err_exit "comsub fails after fork with stdout redirection" \
+		"(expected 'ok $pid', got $(printf %q "$(<out)"))"
+else	err_exit "comsub hangs after fork with stdout redirection"
+fi
+
+# ======
+# https://github.com/ksh93/ksh/issues/161
+got=$(
+	set +x
+	redirect 2>&1 9>&1
+	( { redirect 9>&1; } 6<&2 9<&- )
+	echo "test" >&9 # => 9: cannot open [Bad file descriptor]
+)
+[[ $got == 'test' ]] || err_exit "File descriptor is unexpectedly closed after exec in subshell" \
+	"(expected 'test', got $(printf %q "$got"))"
+got=$(
+	set +x
+	exec 2>&1 9>&1
+	exec 9>&-
+	v=$( { exec 9>&1; } )
+	echo "test" >&9
+)
+exp=': 9: cannot open ['
+[[ $got == *"$exp"* ]] || err_exit "issue 161 hypothetical bug 1" \
+	"(expected match of *$(printf %q "$exp")*, got $(printf %q "$got"))"
+got=$(
+	set +x
+	exec 2>&1
+	openfd() { exec 6>&1; }
+	openfd
+	echo "test" >&6
+)
+[[ $got == 'test' ]] || err_exit "issue 161 hypothetical bug 2" \
+	"(expected 'test', got $(printf %q "$got"))"
+got=$(
+	set +x
+	exec 4>&1
+	foo=${ { redirect 4>&1; } 6<&2 4<&-; }
+	echo "test" >&4 # => 4: cannot open [Bad file descriptor]
+)
+[[ $got == 'test' ]] || err_exit "File descriptor is unexpectedly closed after exec in shared-state command substitution" \
+	"(expected 'test', got $(printf %q "$got"))"
+
+# ======
+# Test positional parameters in filescan loop
+# In 93u+, "$@" wrongly acted like "$*"; fix was backported from 93v- beta
+if ((SHOPT_FILESCAN))
+then
+	echo 'one/two/three' >foo
+	got=$(IFS=/; while <foo; do printf '[%s] ' "$REPLY" "$#" "$1" "$2" "$3" "$*" "$@" $* $@; done)
+	exp='[one/two/three] [3] [one] [two] [three] [one/two/three] [one] [two] [three] [one] [two] [three] [one] [two] [three] '
+	[[ $got == "$exp" ]] || err_exit '$REPLY or positional parameters incorrect in filescan loop' \
+		"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+fi
+
+# ======
+# A process substitution should be valid after a redirection
+# https://github.com/ksh93/ksh/issues/418
+got=$(set +x; eval ': </dev/null <(true)' 2>&1)
+[[ e=$? -eq 0 && -z $got ]] || err_exit "spurious syntax error on process substitution following redirection" \
+	"(expected status 0 and '', got status $e and $(printf %q "$got"))"
+got=$(set +x; eval ': <&1 <(/dev/null' 2>&1)
+exp='*: syntax error at line *: `end of file'\'' unexpected'
+[[ $got == $exp ]] || err_exit "': <&1 <(/dev/null' fails to throw a syntax error" \
+	"(expected match of $(printf %q "$exp"), got $(printf %q "$got"))"
+got=$(set +x; eval '{ :; } <(: wrong)' 2>&1)
+exp='*: syntax error at line *: `<('\'' unexpected'
+[[ $got == $exp ]] || err_exit "'{ :; } <(: wrong)' throws incorrect syntax error" \
+	"(expected match of $(printf %q "$exp"), got $(printf %q "$got"))"
+got=$(set +x; eval ': >/dev/null >(true)' 2>&1)
+[[ e=$? -eq 0 && -z $got ]] || err_exit "spurious syntax error on process substitution following redirection" \
+	"(expected status 0 and '', got status $e and $(printf %q "$got"))"
+got=$(set +x; eval ': >&1 >(/dev/null' 2>&1)
+exp='*: syntax error at line *: `end of file'\'' unexpected'
+[[ $got == $exp ]] || err_exit "': >&1 >(/dev/null' fails to throw a syntax error" \
+	"(expected match of $(printf %q "$exp"), got $(printf %q "$got"))"
+got=$(set +x; eval '{ :; } >(: wrong)' 2>&1)
+exp='*: syntax error at line *: `>('\'' unexpected'
+[[ $got == $exp ]] || err_exit "'{ :; } >(: wrong)' throws incorrect syntax error" \
+	"(expected match of $(printf %q "$exp"), got $(printf %q "$got"))"
+got=$(set +x; eval 'cat >out <(echo OK)' 2>&1; echo ===; cat out)
+exp=$'===\nOK'
+[[ $got == "$exp" ]] || err_exit "process substitution nixes output redirection" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
 
 # ======
 exit $((Errors<125?Errors:125))

@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -19,7 +19,6 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * David Korn
  * Glenn Fowler
@@ -128,11 +127,7 @@ static const char usage[] =
 ;
 
 
-#if defined(__STDPP__directive) && defined(__STDPP__hide)
-__STDPP__directive pragma pp:hide lchmod
-#else
 #define lchmod		______lchmod
-#endif
 
 #include <cmd.h>
 #include <ls.h>
@@ -140,11 +135,7 @@ __STDPP__directive pragma pp:hide lchmod
 
 #include "FEATURE/symlink"
 
-#if defined(__STDPP__directive) && defined(__STDPP__hide)
-__STDPP__directive pragma pp:nohide lchmod
-#else
 #undef	lchmod
-#endif
 
 extern int	lchmod(const char*, mode_t);
 

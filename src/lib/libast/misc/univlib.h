@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,7 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * Glenn Fowler
  * AT&T Research
@@ -37,15 +36,11 @@
 #ifndef _UNIVLIB_H
 #define _UNIVLIB_H
 
-#if defined(__STDPP__directive) && defined(__STDPP__hide)
-__STDPP__directive pragma pp:hide getuniverse readlink setuniverse symlink universe
-#else
 #define getuniverse	______getuniverse
 #define readlink	______readlink
 #define setuniverse	______setuniverse
 #define symlink		______symlink
 #define universe	______universe
-#endif
 
 #include <ast.h>
 #include <ls.h>
@@ -57,15 +52,11 @@ __STDPP__directive pragma pp:hide getuniverse readlink setuniverse symlink unive
 #include <sys/universe.h>
 #endif
 
-#if defined(__STDPP__directive) && defined(__STDPP__hide)
-__STDPP__directive pragma pp:nohide getuniverse readlink setuniverse symlink universe
-#else
 #undef	getuniverse
 #undef	readlink
 #undef	setuniverse
 #undef	symlink
 #undef	universe
-#endif
 
 #if _cmd_universe
 #ifdef NUMUNIV

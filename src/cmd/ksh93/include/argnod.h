@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,7 +18,6 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 #ifndef ARG_RAW
 /*
  *	struct to hold a word argument
@@ -114,13 +113,13 @@ struct argnod
 /* legal argument flags */
 #define ARG_RAW		0x1	/* string needs no processing */
 #define ARG_MAKE	0x2	/* bit set during argument expansion */
-#define ARG_COMSUB	0x2	/* command sub */
 #define ARG_MAC		0x4	/* string needs macro expansion */
 #define	ARG_EXP		0x8	/* string needs file expansion */
 #define ARG_ASSIGN	0x10	/* argument is an assignment */
 #define ARG_QUOTED	0x20	/* word contained quote characters */
 #define ARG_MESSAGE	0x40	/* contains international string */
 #define ARG_APPEND	0x80	/* for += assignment */
+#define ARG_ARRAY	0x2	/* for typeset -a */
 /* The following can be passed as options to sh_macexpand() */
 #define ARG_ARITH	0x100	/* arithmetic expansion */
 #define ARG_OPTIMIZE	0x200	/* try to optimize */
@@ -129,13 +128,11 @@ struct argnod
 
 extern struct dolnod	*sh_argcreate(char*[]);
 extern char 		*sh_argdolminus(void*);
-extern int		sh_argopts(int,char*[],void*);
+extern int		sh_argopts(int,char*[]);
 
 
 extern const char	e_heading[];
-extern const char	e_sptbnl[];
 extern const char	e_subst[];
-extern const char	e_option[];
 extern const char	e_exec[];
 extern const char	e_devfdNN[];
 extern const char	e_devfdstd[];

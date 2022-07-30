@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,8 +18,8 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 
+#include	"shopt.h"
 #include	"defs.h"
 /*
  *  This installs a hook to allow the processing of events when
@@ -27,29 +27,10 @@
  *  waiting for job completion.
  *  The previous waitevent hook function is returned
  */
-
-
 void	*sh_waitnotify(int(*newevent)(int,long,int))
 {
 	int (*old)(int,long,int);
-	old = shgd->waitevent;
-	shgd->waitevent = newevent;
+	old = sh.waitevent;
+	sh.waitevent = newevent;
 	return((void*)old);
 }
-
-#if __OBSOLETE__ < 20080101
-/*
- * this used to be a private symbol
- * retain the old name for a bit for a smooth transition
- */
-
-#if defined(__EXPORT__)
-#define extern		__EXPORT__
-#endif
-
-extern void	*_sh_waitnotify(int(*newevent)(int,long,int))
-{
-	return sh_waitnotify(newevent);
-}
-
-#endif

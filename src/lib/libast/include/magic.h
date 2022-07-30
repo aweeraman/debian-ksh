@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,7 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * Glenn Fowler
  * AT&T Research
@@ -64,7 +63,7 @@ typedef struct Magicdisc_s
 
 typedef struct Magic_s
 {
-	const char*	id;		/* library id string		*/
+	const char*	id;		/* library ID string		*/
 
 #ifdef _MAGIC_PRIVATE_
 	_MAGIC_PRIVATE_
@@ -72,16 +71,10 @@ typedef struct Magic_s
 
 } Magic_t;
 
-#if _BLD_ast && defined(__EXPORT__)
-#define extern		__EXPORT__
-#endif
-
 extern Magic_t*		magicopen(Magicdisc_t*);
 extern int		magicload(Magic_t*, const char*, unsigned long);
 extern int		magiclist(Magic_t*, Sfio_t*);
 extern char*		magictype(Magic_t*, Sfio_t*, const char*, struct stat*);
 extern int		magicclose(Magic_t*);
-
-#undef	extern
 
 #endif

@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -234,19 +234,21 @@ do	exp=$1
 	shift 4
 done
 
-# setocale(LC_ALL,"") after setlocale() initialization
+# setlocale(LC_ALL,"") after setlocale() initialization
 
-printf 'f1\357\274\240f2\n' > input1
-printf 't2\357\274\240f1\n' > input2
-printf '\357\274\240\n' > delim
-print "export LC_ALL=$locale
-builtin cut || exit
-cut -f 1 -d \$(cat delim) input1 input2 > out" > script
-$SHELL -c 'unset LANG ${!LC_*}; $SHELL ./script' ||
-err_exit "'cut' builtin failed -- exit code $?"
-exp=$'f1\nt2'
-got="$(<out)"
-[[ $got == "$exp" ]] || err_exit "LC_ALL test script failed -- expected '$exp', got '$got'"
+if builtin cut 2> /dev/null; then
+	printf 'f1\357\274\240f2\n' > input1
+	printf 't2\357\274\240f1\n' > input2
+	printf '\357\274\240\n' > delim
+	print "export LC_ALL=$locale
+	builtin cut
+	cut -f 1 -d \$(cat delim) input1 input2 > out" > script
+	$SHELL -c 'unset LANG ${!LC_*}; $SHELL ./script' || err_exit "'cut' builtin failed -- exit code $?"
+	exp=$'f1\nt2'
+	got="$(<out)"
+	[[ $got == "$exp" ]] || err_exit "LC_ALL test script failed" \
+		"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+fi
 
 # multibyte identifiers
 
@@ -398,7 +400,6 @@ then	LC_ALL=en_US.UTF-8
 			== "$got" ]] \
 		|| err_exit "incorrect string from printf %q"
 	fi
-	
 fi
 
 # ======
@@ -413,6 +414,15 @@ then
 	[[ $got == "$exp" ]] || err_exit "locale is not restored properly upon leaving virtual subshell" \
 		"(expected $(printf %q "$exp"); got $(printf %q "$got"))"
 fi
+
+# ======
+unset LANG "${!LC_@}"
+(LANG=C_EU && LC_NUMERIC=C && let .5) || err_exit "radix point not updated by LC_NUMERIC"
+(LANG=C && LC_NUMERIC=C_EU && let ,5) || err_exit "radix point not updated by LC_NUMERIC"
+(LC_NUMERIC=C_EU && LC_ALL=C && let .5) || err_exit "radix point not updated by LC_ALL"
+(LC_NUMERIC=C  && LC_ALL=C_EU && let ,5) || err_exit "radix point not updated by LC_ALL"
+(LC_ALL=C_EU && unset LC_ALL && LANG=C && let .5) || err_exit "radix point not updated by LANG"
+(LC_ALL=C && unset LC_ALL && LANG=C_EU && let ,5) || err_exit "radix point not updated by LANG"
 
 # ======
 exit $((Errors<125?Errors:125))

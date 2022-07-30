@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,29 +20,20 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * Glenn Fowler
  * AT&T Bell Laboratories
  *
- * cached gid number -> name
+ * cached GID number -> group name
  */
 
-#if defined(__STDPP__directive) && defined(__STDPP__hide)
-__STDPP__directive pragma pp:hide getgrgid
-#else
 #define getgrgid	______getgrgid
-#endif
 
 #include <ast.h>
 #include <cdt.h>
 #include <grp.h>
 
-#if defined(__STDPP__directive) && defined(__STDPP__hide)
-__STDPP__directive pragma pp:nohide getgrgid
-#else
 #undef	getgrgid
-#endif
 
 extern struct group*	getgrgid(gid_t);
 
@@ -54,7 +45,7 @@ typedef struct Id_s
 } Id_t;
 
 /*
- * return gid name given gid number
+ * return group name for given GID number
  */
 
 char*

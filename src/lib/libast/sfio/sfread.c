@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -27,55 +27,50 @@
 **	Written by Kiem-Phong Vo.
 */
 
-#if __STD_C
-ssize_t sfread(Sfio_t* f, Void_t* buf, size_t n)
-#else
-ssize_t sfread(f,buf,n)
-Sfio_t*		f;	/* read from this stream. 	*/
-Void_t*		buf;	/* buffer to read into		*/
-size_t		n;	/* number of bytes to be read. 	*/
-#endif
+ssize_t sfread(Sfio_t*	f,	/* read from this stream. 	*/
+	       void*	buf,	/* buffer to read into		*/
+	       size_t	n)	/* number of bytes to be read. 	*/
 {
 	reg uchar	*s, *begs;
 	reg ssize_t	r;
 	reg int		local, justseek;
-	SFMTXDECL(f);
 
-	SFMTXENTER(f, (ssize_t)(-1));
+	if(!f)
+		return (ssize_t)(-1);
 
 	GETLOCAL(f,local);
 	justseek = f->bits&SF_JUSTSEEK; f->bits &= ~SF_JUSTSEEK;
 
 	if(!buf)
-		SFMTXRETURN(f, (ssize_t)(n == 0 ? 0 : -1) );
+		return (ssize_t)(n == 0 ? 0 : -1) ;
 
 	/* release peek lock */
 	if(f->mode&SF_PEEK)
 	{	if(!(f->mode&SF_READ) )
-			SFMTXRETURN(f, (ssize_t)(-1));
+			return (ssize_t)(-1);
 
 		if(f->mode&SF_GETR)
 		{	if(((uchar*)buf + f->val) != f->next &&
 			   (!f->rsrv || f->rsrv->data != (uchar*)buf) )
-				SFMTXRETURN(f, (ssize_t)(-1));
+				return (ssize_t)(-1);
 			f->mode &= ~SF_PEEK;
-			SFMTXRETURN(f, 0);
+			return 0;
 		}
 		else
 		{	if((uchar*)buf != f->next)
-				SFMTXRETURN(f, (ssize_t)(-1));
+				return (ssize_t)(-1);
 			f->mode &= ~SF_PEEK;
 			if(f->mode&SF_PKRD)
 			{	/* actually read the data now */
 				f->mode &= ~SF_PKRD;
 				if(n > 0)
-					n = (r = sysreadf(f->file,f->data,n)) < 0 ? 0 : r;
+					n = (r = read(f->file,f->data,n)) < 0 ? 0 : r;
 				f->endb = f->data+n;
 				f->here += n;
 			}
 			f->next += n;
 			f->endr = f->endb;
-			SFMTXRETURN(f, n);
+			return n;
 		}
 	}
 
@@ -84,7 +79,7 @@ size_t		n;	/* number of bytes to be read. 	*/
 	{	/* check stream mode */
 		if(SFMODE(f,local) != SF_READ && _sfmode(f,SF_READ,local) < 0)
 		{	n = s > begs ? s-begs : (size_t)(-1);
-			SFMTXRETURN(f, (ssize_t)n);
+			return (ssize_t)n;
 		}
 
 		SFLOCK(f,local);
@@ -137,5 +132,5 @@ size_t		n;	/* number of bytes to be read. 	*/
 
 	SFOPEN(f,local);
 	r = s-begs;
-	SFMTXRETURN(f, r);
+	return r;
 }

@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,7 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * AT&T Research
  *
@@ -31,14 +30,10 @@
 #ifndef _DIRLIB_H
 #define _DIRLIB_H
 
-#if defined(__STDPP__directive) && defined(__STDPP__hide)
-__STDPP__directive pragma pp:hide getdents getdirentries
-#else
 #undef	getdents
 #define getdents	______getdents
 #undef	getdirentries
 #define getdirentries	______getdirentries
-#endif
 
 #include <ast.h>
 #include <errno.h>
@@ -51,13 +46,7 @@ __STDPP__directive pragma pp:hide getdents getdirentries
 
 #ifndef _DIRENT_H
 #if _hdr_dirent
-#if _typ_off64_t
-#undef	off_t
-#endif
 #include <dirent.h>
-#if _typ_off64_t
-#define off_t	off64_t
-#endif
 #else
 #if _hdr_ndir
 #include <ndir.h>
@@ -76,9 +65,6 @@ __STDPP__directive pragma pp:hide getdents getdirentries
 
 #define dirent	DIRdirent
 
-#if defined(__STDPP__directive) && defined(__STDPP__hide)
-__STDPP__directive pragma pp:hide DIR closedir opendir readdir seekdir telldir
-#else
 #undef	DIR
 #define DIR		______DIR
 #undef	closedir
@@ -91,7 +77,6 @@ __STDPP__directive pragma pp:hide DIR closedir opendir readdir seekdir telldir
 #define seekdir		______seekdir
 #undef	telldir
 #define telldir		______telldir
-#endif
 
 #include <ast_param.h>
 
@@ -100,13 +85,7 @@ __STDPP__directive pragma pp:hide DIR closedir opendir readdir seekdir telldir
 
 #ifndef _DIRENT_H
 #if _hdr_dirent
-#if _typ_off64_t
-#undef	off_t
-#endif
 #include <dirent.h>
-#if _typ_off64_t
-#define off_t	off64_t
-#endif
 #else
 #if _hdr_direntry
 #include <direntry.h>
@@ -117,16 +96,12 @@ __STDPP__directive pragma pp:hide DIR closedir opendir readdir seekdir telldir
 #endif
 
 #undef	dirent
-#if defined(__STDPP__directive) && defined(__STDPP__hide)
-__STDPP__directive pragma pp:nohide DIR closedir opendir readdir seekdir telldir
-#else
 #undef	DIR
 #undef	closedir
 #undef	opendir
 #undef	readdir
 #undef	seekdir
 #undef	telldir
-#endif
 
 #define _DIR_PRIVATE_ \
 	int		dd_loc;		/* offset in block		*/ \
@@ -153,12 +128,8 @@ __STDPP__directive pragma pp:nohide DIR closedir opendir readdir seekdir telldir
 
 #endif
 
-#if defined(__STDPP__directive) && defined(__STDPP__hide)
-__STDPP__directive pragma pp:nohide getdents getdirentries
-#else
 #undef	getdents
 #undef	getdirentries
-#endif
 
 #ifndef errno
 extern int	errno;

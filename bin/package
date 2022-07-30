@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1994-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -23,10 +23,10 @@
 #    based on AST 'package' by Glenn Fowler <gsf@research.att.com>     #
 #    simplified and rewritten by Martijn Dekker <martijn@inlv.org>     #
 ########################################################################
-command=package
 
 # Escape from a non-POSIX shell
-min_posix='path=Bad && case $PATH in (Bad) exit 1;; esac && '\
+# ('test X -ef Y' is technically non-POSIX, but practically universal)
+min_posix='test / -ef / && path=Bad && case $PATH in (Bad) exit 1;; esac && '\
 'PWD=Bad && cd -P -- / && case $PWD in (/) ;; (*) exit 1;; esac && '\
 '! { ! case x in ( x ) : ${0##*/} || : $( : ) ;; esac; } && '\
 'trap "exit 0" 0 && exit 1'
@@ -95,27 +95,26 @@ lib="" # need /usr/local/lib /usr/local/shlib
 ccs="/usr/kvm /usr/ccs/bin"
 org="gnu GNU"
 makefiles="Mamfile"  # ksh 93u+m no longer uses these: Nmakefile nmakefile Makefile makefile
-env="HOSTTYPE NPROC PACKAGEROOT INSTALLROOT PATH"
+env="HOSTTYPE PACKAGEROOT INSTALLROOT PATH"
 
 package_use='=$HOSTTYPE=$PACKAGEROOT=$INSTALLROOT=$EXECROOT=$CC='
 
 CROSS=0
 
 MAKESKIP=${MAKESKIP:-"*[-.]*"}
-SED=
-TR=
 
 all_types='*.*|sun4'		# all but sun4 match *.*
 
+command=${0##*/}
 case $(getopts '[-][123:xyz]' opt --xyz 2>/dev/null; echo 0$opt) in
 0123)	USAGE=$'
 [-?
-@(#)$Id: '$command$' (ksh 93u+m) 2021-12-15 $
+@(#)$Id: '$command$' (ksh 93u+m) 2022-07-22 $
 ]
 [-author?Glenn Fowler <gsf@research.att.com>]
 [-author?Contributors to https://github.com/ksh93/ksh]
 [-copyright?(c) 1994-2012 AT&T Intellectual Property]
-[-copyright?(c) 2020-2021 Contributors to https://github.com/ksh93/ksh]
+[-copyright?(c) 2020-2022 Contributors to https://github.com/ksh93/ksh]
 [-license?http://www.eclipse.org/org/documents/epl-v10.html]
 [+NAME?'$command$' - build, test and install ksh 93u+m]
 [+DESCRIPTION?The \b'$command$'\b command is the main control script
@@ -125,7 +124,7 @@ case $(getopts '[-][123:xyz]' opt --xyz 2>/dev/null; echo 0$opt) in
     All package files are in the \b$PACKAGEROOT\b directory tree.
     Binary package files are in the \b$INSTALLROOT\b
     (\b$PACKAGEROOT/arch/\b\ahosttype\a) tree, where
-    \ahosttpe\a=$(\bbin/package host type\b).
+    \ahosttype\a=$(\bbin/package host type\b).
     See \bDETAILS\b for more information.]
 [+?Note that no environment variables need be set by the user;
     \b'$command$'\b determines the environment based on the current working
@@ -142,6 +141,14 @@ case $(getopts '[-][123:xyz]' opt --xyz 2>/dev/null; echo 0$opt) in
     {
         [+debug|environment?Show environment and actions but do not
             execute.]
+	[+flat?With the \bmake\b action, create a flat view by linking all
+	    files from \b$INSTALLROOT\b, minus \b*.old\b files,
+	    onto their corresponding path under \b$PACKAGEROOT\b.
+	    Subsequent \bmake\b actions will update an existing flat view
+	    whether or not \bflat\b is specified.
+	    Only one architecture can have a flat view.
+	    If \bflat\b is specified with the \bclean\b action, then
+	    only clean up this flat view and do not delete \b$INSTALLROOT\b.]
         [+force?Force the action to override saved state.]
         [+never?Run make -N and show other actions.]
         [+only?Only operate on the specified packages.]
@@ -152,7 +159,9 @@ case $(getopts '[-][123:xyz]' opt --xyz 2>/dev/null; echo 0$opt) in
     }
 [+?The actions are:]
     {
-	[+clean | clobber?Delete the \barch/\b\aHOSTTYPE\a hierarchy; this
+	[+clean | clobber?Clean up the flat view, if any.
+	    Then, unless \bflat\b was given,
+	    delete the \barch/\b\aHOSTTYPE\a hierarchy; this
 	    deletes all generated files and directories for \aHOSTTYPE\a.
 	    The hierarchy can be rebuilt by \b'$command$' make\b.]
         [+export\b [ \avariable\a ...]]?List \aname\a=\avalue\a for
@@ -206,11 +215,14 @@ case $(getopts '[-][123:xyz]' opt --xyz 2>/dev/null; echo 0$opt) in
             must contain an \begrep\b(1) expression of result lines to be
             ignored. \bfailed\b lists failures only and \bpath\b lists the
             results file path name only.]
-        [+test\b [ \aargument\a ... ]]?Run the regression tests for
-            \bksh\b. If the standard output is a terminal then the
+        [+test\b [ \b\adir\a\b ]]\b?Run all available default regression tests.
+            If the optional \adir\a argument (such as \bsrc/cmd/ksh93\b) is given,
+            only the tests in that directory are run.
+            If the standard output is a terminal then the
             output is also captured in \b$INSTALLROOT/lib/package/gen/test.out\b.
-            \bksh\b must be made before it can be tested.
-            All \aargument\as following \atest\a are passed to \bbin/shtests\b.
+            Programs must be made before they can be tested.
+            For \bksh\b, a separate \bshtests\b command is available that allows
+            passing arguments to select and tune the regression tests.
             See \bbin/shtests --man\b for more information.]
         [+use\b [ \auid\a | \apackage\a | . [ 32 | 64 ]] | 32 | 64 | - ]] [ command ...]]?Run
             \acommand\a, or an interactive shell if \acommand\a is omitted,
@@ -237,7 +249,7 @@ case $(getopts '[-][123:xyz]' opt --xyz 2>/dev/null; echo 0$opt) in
 [+?Independent \b$PACKAGEROOT\b hierarchies can be combined by
     appending \b$INSTALLROOT:$PACKAGEROOT\b pairs to \bVPATH\b. The
     \bVPATH\b viewing order is from left to right.]
-[+?\b$HOSTYPE\b names the current binary architecture and is determined
+[+?\b$HOSTTYPE\b names the current binary architecture and is determined
     by the output of \b'$command$'\b (no arguments). The \b$HOSTTYPE\b naming
     scheme is used to separate incompatible executable and object formats.
     All architecture specific binaries are placed under \b$INSTALLROOT\b
@@ -246,7 +258,7 @@ case $(getopts '[-][123:xyz]' opt --xyz 2>/dev/null; echo 0$opt) in
     makefile compiler workarounds, e.g., if \b$HOSTTYPE\b matches \bhp.*\b
     then turn off the optimizer for these objects. All other architecture
     dependent logic is handled either by the \bAST\b \biffe\b(1) command or
-    by component specific configure scripts. Explicit \b$HOSTYPE\b
+    by component specific configure scripts. Explicit \b$HOSTTYPE\b
     values matching *,*cc*[,-*,...]] optionally set the default \bCC\b and
     \bCCFLAGS\b. This is handy for build farms that support different
     compilers on the same architecture.]
@@ -254,13 +266,6 @@ case $(getopts '[-][123:xyz]' opt --xyz 2>/dev/null; echo 0$opt) in
     file (\bMamfile\b). A Mamfile contains a portable makefile description
     written in a simple dependency tree language using indented
     \bmake\b...\bdone\b blocks.]
-[+?Most component C source is prototyped. If \b$CC\b (default value
-    \bcc\b) is not a prototyping C compiler then \b'$command$' make\b runs
-    \bproto\b(1) on portions of the \b$PACKAGEROOT/src\b tree and places
-    the converted output files in the \b$PACKAGEROOT/proto/src\b tree.
-    Converted files are then viewpathed over the original source.
-    \bproto\b(1) converts an ANSI C subset to code that is compatible with
-    K&R, ANSI, and C++ dialects.]
 [+?All scripts and commands under \b$PACKAGEROOT\b use \b$PATH\b
     relative pathnames (via the \bAST\b \bpathpath\b(3) function); there
     are no embedded absolute pathnames. This means that binaries generated
@@ -273,7 +278,7 @@ case $(getopts '[-][123:xyz]' opt --xyz 2>/dev/null; echo 0$opt) in
 
 [+SEE ALSO?\bautoconfig\b(1), \bcksum\b(1), \bexecrate\b(1), \bexpmake\b(1),
 	\bgzip\b(1), \bmake\b(1), \bmamake\b(1), \bpax\b(1),
-	\bpkgadd\b(1), \bpkgmk\b(1), \bproto\b(1), \bratz\b(1), \brpm\b(1),
+	\bpkgadd\b(1), \bpkgmk\b(1), \brpm\b(1),
 	\bsh\b(1), \btar\b(1), \boptget\b(3)]
 '
 	case $* in
@@ -304,6 +309,7 @@ esac
 action=
 bit=
 exec=
+flat=0
 force=0
 global=
 hi=
@@ -323,7 +329,6 @@ tab="        "
 verbose=0
 AUTHORIZE=
 DEBUG=
-PROTOROOT=-
 SHELLMAGIC=-
 
 unset FIGNORE BINDIR DLLDIR ETCDIR FUNDIR INCLUDEDIR LIBDIR LOCALEDIR MANDIR SHAREDIR 2>/dev/null || true
@@ -340,6 +345,8 @@ do	case $# in
 		;;
 	debug|environment)
 		exec=echo make=echo show=echo
+		;;
+	flat)	flat=1
 		;;
 	force)	force=1
 		;;
@@ -371,6 +378,8 @@ do	case $# in
 			exec 1>&2
 			;;
 		esac
+		# Plain-text fallback. Regenerate with:
+		# ksh -c 'COLUMNS=80 bin/package --man' 2>&1 | sed "s/'/'\\\\''/g; 1s/^/echo '/; \$s/\$/'/"
 		echo 'NAME
   package - build, test and install ksh 93u+m
 
@@ -383,7 +392,7 @@ DESCRIPTION
   POSIX shell and C compiler installation are the only requirements. All
   package files are in the $PACKAGEROOT directory tree. Binary package files
   are in the $INSTALLROOT ($PACKAGEROOT/arch/hosttype) tree, where
-  hosttpe=$(bin/package host type). See DETAILS for more information.
+  hosttype=$(bin/package host type). See DETAILS for more information.
 
   Note that no environment variables need be set by the user; package
   determines the environment based on the current working directory. The use
@@ -400,6 +409,12 @@ DESCRIPTION
   The qualifiers are:
     debug|environment
           Show environment and actions but do not execute.
+    flat  With the make action, create a flat view by linking all files from
+          $INSTALLROOT, minus *.old files, onto their corresponding path under
+          $PACKAGEROOT. Subsequent make actions will update an existing flat
+          view whether or not flat is specified. Only one architecture can have
+          a flat view. If flat is specified with the clean action, then only
+          clean up this flat view and do not delete $INSTALLROOT.
     force Force the action to override saved state.
     never Run make -N and show other actions.
     only  Only operate on the specified packages.
@@ -411,14 +426,14 @@ DESCRIPTION
 
   The actions are:
     clean | clobber
-          Delete the arch/HOSTTYPE hierarchy; this deletes all generated files
-          and directories for HOSTTYPE. The hierarchy can be rebuilt by package
+          Clean up the flat view, if any. Then, unless flat was given, delete
+          the arch/HOSTTYPE hierarchy; this deletes all generated files and
+          directories for HOSTTYPE. The hierarchy can be rebuilt by package
           make.
     export [ variable ...]
           List name=value for variable, one per line. If the only attribute is
           specified then only the variable values are listed. If no variables
-          are specified then HOSTTYPE NPROC PACKAGEROOT INSTALLROOT PATH are
-          assumed.
+          are specified then HOSTTYPE PACKAGEROOT INSTALLROOT PATH are assumed.
     help [ action ]
           Display help text on the standard error (standard output for action).
     host [ attribute ... ]
@@ -459,12 +474,15 @@ DESCRIPTION
           $HOME/.pkgresults, if it exists, must contain an egrep(1) expression
           of result lines to be ignored. failed lists failures only and path
           lists the results file path name only.
-    test [ argument ... ]
-          Run the regression tests for ksh. If the standard output is a
-          terminal then the output is also captured in
-          $INSTALLROOT/lib/package/gen/test.out. ksh must be made before it can
-          be tested. All arguments following test are passed to bin/shtests.
-          See bin/shtests --man for more information.
+    test [ dir ]
+          Run all available default regression tests. If the optional dir
+          argument (such as src/cmd/ksh93) is given, only the tests in that
+          directory are run. If the standard output is a terminal then the
+          output is also captured in $INSTALLROOT/lib/package/gen/test.out.
+          Programs must be made before they can be tested. For ksh, a separate
+          shtests command is available that allows passing arguments to select
+          and tune the regression tests. See bin/shtests --man for more
+          information.
     use [ uid | package | . [ 32 | 64 ] | 32 | 64 | - ] [ command ...]
           Run command, or an interactive shell if command is omitted, with the
           environment initialized for using the package (can you say shared
@@ -491,7 +509,7 @@ DETAILS
   $INSTALLROOT:$PACKAGEROOT pairs to VPATH. The VPATH viewing order is from
   left to right.
 
-  $HOSTYPE names the current binary architecture and is determined by the
+  $HOSTTYPE names the current binary architecture and is determined by the
   output of package (no arguments). The $HOSTTYPE naming scheme is used to
   separate incompatible executable and object formats. All architecture
   specific binaries are placed under $INSTALLROOT
@@ -500,20 +518,13 @@ DETAILS
   workarounds, e.g., if $HOSTTYPE matches hp.* then turn off the optimizer for
   these objects. All other architecture dependent logic is handled either by
   the AST iffe(1) command or by component specific configure scripts. Explicit
-  $HOSTYPE values matching *,*cc*[,-*,...] optionally set the default CC and
+  $HOSTTYPE values matching *,*cc*[,-*,...] optionally set the default CC and
   CCFLAGS. This is handy for build farms that support different compilers on
   the same architecture.
 
   Each component contains a MAM (make abstract machine) file (Mamfile). A
   Mamfile contains a portable makefile description written in a simple
   dependency tree language using indented make...done blocks.
-
-  Most component C source is prototyped. If $CC (default value cc) is not a
-  prototyping C compiler then package make runs proto(1) on portions of the
-  $PACKAGEROOT/src tree and places the converted output files in the
-  $PACKAGEROOT/proto/src tree. Converted files are then viewpathed over the
-  original source. proto(1) converts an ANSI C subset to code that is
-  compatible with K&R, ANSI, and C++ dialects.
 
   All scripts and commands under $PACKAGEROOT use $PATH relative pathnames (via
   the AST pathpath(3) function); there are no embedded absolute pathnames. This
@@ -524,15 +535,14 @@ DETAILS
 
 SEE ALSO
   autoconfig(1), cksum(1), execrate(1), expmake(1), gzip(1), make(1),
-  mamake(1), pax(1), pkgadd(1), pkgmk(1), proto(1), ratz(1), rpm(1), sh(1),
-  tar(1), optget(3)
+  mamake(1), pax(1), pkgadd(1), pkgmk(1), rpm(1), sh(1), tar(1), optget(3)
 
 IMPLEMENTATION
-  version         package (ksh 93u+m) 2021-12-15
+  version         package (ksh 93u+m) 2022-02-24
   author          Glenn Fowler <gsf@research.att.com>
   author          Contributors to https://github.com/ksh93/ksh
   copyright       (c) 1994-2012 AT&T Intellectual Property
-  copyright       (c) 2020-2021 Contributors to https://github.com/ksh93/ksh
+  copyright       (c) 2020-2022 Contributors to https://github.com/ksh93/ksh
   license         http://www.eclipse.org/org/documents/epl-v10.html'
 		case $1 in
 		html)	echo "</pre></body></html>" ;;
@@ -598,7 +608,7 @@ case $_PACKAGE_HOSTTYPE_ in
 	;;
 esac
 KEEP_PACKAGEROOT=0
-KEEP_SHELL=0
+KEEP_SHELL=0	# set to 1 if SHELL is a known-good system shell, 2 if SHELL supplied by user
 USER_VPATH=
 args=
 assign=
@@ -608,7 +618,7 @@ do	case $i in
 	*:*=*)	args="$args $i"
 		continue
 		;;
-	*=*)	eval $(echo ' ' "$i" | sed 's,^[ 	]*\([^=]*\)=\(.*\),n=\1 v='\''\2'\'',')
+	*=*)	n=${i%%=*} v=${i#*=}
 		;;
 	esac
 	case $i in
@@ -636,7 +646,7 @@ do	case $i in
 		;;
 	SHELL=*)eval $n='$'v
 		case $SHELL in
-		?*)	KEEP_SHELL=1 ;;
+		?*)	KEEP_SHELL=2 ;;
 		esac
 		;;
 	VPATH=*)eval USER_$n='$'v
@@ -664,45 +674,6 @@ case $CC in
 *)	export CC ;;
 esac
 
-# Add build type flags via KSH_RELFLAGS, which is used in src/cmd/ksh93/Mamfile.
-# (Avoid using CCFLAGS; setting it would overwrite autodetected optimization flags.)
-ksh_relflags=
-case $(git branch 2>/dev/null) in
-'' | *\*\ [0-9]*.[0-9]*)
-	# If we're not on a git branch (tarball) or on a branch that starts
-	# with a number (release branch), then compile as a release version
-	ksh_relflags="${ksh_relflags:+$ksh_relflags }-D_AST_ksh_release" ;;
-*)	# Otherwise, add 8-character git commit hash if available, and if the working dir is clean
-	git_commit=$(git status >/dev/null 2>&1 && git diff-index --quiet HEAD && git rev-parse --short=8 HEAD)
-	case $git_commit in
-	????????)
-		ksh_relflags="${ksh_relflags:+$ksh_relflags }-D_AST_git_commit=\\\"$git_commit\\\"" ;;
-	esac
-	unset git_commit ;;
-esac
-case $ksh_relflags in
-?*)	# add the extra flags as an argument to mamake
-	assign="${assign:+$assign }KSH_RELFLAGS=\"\$ksh_relflags\"" ;;
-esac
-
-# Add ksh compile-options via KSH_SHOPTFLAGS.
-SHOPT()
-{
-	case $1 in
-	*=?*)	ksh_shoptflags="${ksh_shoptflags:+$ksh_shoptflags }-DSHOPT_$1" ;;
-	esac
-}
-ksh_shoptflags=
-shopt_sh='src/cmd/ksh93/SHOPT.sh'	# this script calls SHOPT() to set options
-if	test -f "$shopt_sh"
-then	. "$shopt_sh"
-else	echo "WARNING: $shopt_sh is missing" >&2
-fi
-case $ksh_shoptflags in
-?*)	# add the extra flags as an argument to mamake
-	assign="${assign:+$assign }KSH_SHOPTFLAGS=\"\$ksh_shoptflags\"" ;;
-esac
-
 # grab action specific args
 
 case $action in
@@ -711,64 +682,6 @@ use)	case $1 in
 		32|64)	bit=$1 ;;
 		esac
 		shift
-
-		# HOSTTYPE specific setup
-
-		case $HOSTTYPE in
-		win32.*)sys=uwin
-			wow=$(uname -i)
-			case $bit in
-			32)	case $HOSTTYPE in
-				*-64)	HOSTTYPE=${HOSTTYPE%-64} ;;
-				esac
-				;;
-			64)	case $HOSTTYPE in
-				*-64)	;;
-				*)	HOSTTYPE=$HOSTTYPE-64 ;;
-				esac
-				case $wow in
-				*/32)	echo $command: cannot build $bit-bit on $wow $sys >&2; exit 2 ;;
-				esac
-				;;
-			esac
-			case $bit in
-			'')	PS1="($sys) " ;;
-			*)	PS1="($sys-$bit) " ;;
-			esac
-
-			$exec umask 002
-			$exec unset MAKESKIP
-
-			$exec export P=$PWD
-			$exec export A=$P/arch/$HOSTTYPE
-
-			$exec export CDPATH=:..:$A/src/cmd:$A/src/lib:$A/src/uwin:$P/lib/package
-			$exec export INSTALLROOT=$A
-			$exec export PACKAGEROOT=$P
-			$exec export PATH=$A/bin:$P/bin:$PATH
-			$exec export PS1="$PS1"
-			$exec export VPATH=$A:$P
-			$exec export nativepp=/usr/lib
-
-			if	test '' != "$INSTALLROOT" -a -d $INSTALLROOT/include/ast
-			then	$exec export PACKAGE_ast=$INSTALLROOT
-			elif	test -d ${PWD%/*}/ast/arch/$HOSTTYPE
-			then	$exec export PACKAGE_ast=${PWD%/*}/ast/arch/$HOSTTYPE
-			fi
-
-			# run the command
-
-			case $# in
-			0)	case $show in
-				':')	$exec exec $SHELL ;;
-				esac
-				;;
-			*)	$exec exec $SHELL -c "$@"
-				;;
-			esac
-			exit
-			;;
-		esac
 		PACKAGEROOT=$PWD
 		$show export PACKAGEROOT
 	esac
@@ -779,7 +692,7 @@ esac
 
 packageroot() # dir
 {
-	test -d $1/lib/$command -o -x $1/bin/$command
+	test -d "$1/lib/$command" || test -x "$1/bin/$command"
 }
 
 # true if arg is executable
@@ -787,8 +700,8 @@ packageroot() # dir
 executable() # [!] command
 {
 	case $1 in
-	'!')	test ! -x "$2" -a ! -x "$2.exe"; return ;;
-	*)	test -x "$1" -o -x "$1.exe"; return ;;
+	'!')	test ! -x "$2" && test ! -x "$2.exe" ;;
+	*)	test -x "$1" || test -x "$1.exe" ;;
 	esac
 }
 
@@ -857,28 +770,8 @@ hostinfo() # attribute ...
 		done
 		PATH=$PATH:$i/bin
 	done
-	# LD_LIBRARY_PATH may be out of sync with PATH here
-	case $SED in
-	'')	SED=sed
-		$SED 1d < /dev/null > /dev/null 2>&1 ||
-		for dir in /bin /usr/bin
-		do	if	test -x $dir/$SED
-			then	SED=$dir/$SED
-				break
-			fi
-		done
-		TR=tr
-		$TR < /dev/null > /dev/null 2>&1 ||
-		for dir in /bin /usr/bin
-		do	if	test -x $dir/$TR
-			then	TR=$dir/$TR
-				break
-			fi
-		done
-		;;
-	esac
 	case $PACKAGE_PATH in
-	?*)	for i in $(echo "$PACKAGE_PATH" | "$SED" 's,:, ,g')
+	?*)	for i in $(echo "$PACKAGE_PATH" | sed 's,:, ,g')
 		do	PATH=$PATH:$i/bin
 		done
 		;;
@@ -902,16 +795,14 @@ hostinfo() # attribute ...
 			cpu|name|rating|type)
 				something=1
 				;;
-			*)	echo "$command: $action: $info: unknown attribute" >&2
-				exit 1
+			*)	err_out "$action: $info: unknown attribute"
 				;;
 			esac
 			;;
 		esac
 	done
 	case $canon in
-	-)	echo "$command: $action: canon: host type name expected" >&2
-		exit 1
+	-)	err_out "$action: canon: host type name expected"
 		;;
 	esac
 	case $something in
@@ -929,13 +820,7 @@ hostinfo() # attribute ...
 	for info
 	do
 	case $info in
-	cpu)	case $NPROC in
-		[123456789]*)
-			_hostinfo_="$_hostinfo_ $NPROC"
-			continue
-			;;
-		esac
-		cpu=$(sysctl -n hw.ncpu)
+	cpu)	cpu=$(sysctl -n hw.ncpu)
 		case $cpu in
 		[123456789]*)
 			_hostinfo_="$_hostinfo_ $cpu"
@@ -1002,7 +887,7 @@ hostinfo() # attribute ...
 			do	case $# in
 				0)	break ;;
 				esac
-				i=$($1 2>/dev/null | $TR ' 	' '
+				i=$($1 2>/dev/null | tr ' 	' '
 
 ' | grep -c "^$2")
 				case $i in
@@ -1031,7 +916,7 @@ hostinfo() # attribute ...
 			do	case $# in
 				0)	break ;;
 				esac
-				i=$($1 2>/dev/null | $SED -e "${2}!d" -e "s${3}")
+				i=$($1 2>/dev/null | sed -e "${2}!d" -e "s${3}")
 				case $i in
 				[123456789]*)
 					cpu=$i
@@ -1075,7 +960,7 @@ int main()
 	name)	_name_=$(hostname || uname -n || cat /etc/whoami || echo local)
 		_hostinfo_="$_hostinfo_ $_name_"
 		;;
-	rating)	for rating in $(grep -i ^bogomips /proc/cpuinfo 2>/dev/null | $SED -e 's,.*:[ 	]*,,' -e 's,\(...*\)\..*,\1,' -e 's,\(\..\).*,\1,')
+	rating)	for rating in $(grep -i ^bogomips /proc/cpuinfo 2>/dev/null | sed -e 's,.*:[ 	]*,,' -e 's,\(...*\)\..*,\1,' -e 's,\(\..\).*,\1,')
 		do	case $rating in
 			[0123456789]*)	break ;;
 			esac
@@ -1267,14 +1152,14 @@ int main()
 			esac
 			a=$(arch || uname -m || att uname -m || uname -s || att uname -s)
 			case $a in
-			*[\ \	]*)	a=$(echo $a | $SED "s/[ 	]/-/g") ;;
+			*[\ \	]*)	a=$(echo $a | sed "s/[ 	]/-/g") ;;
 			esac
 			case $a in
 			'')	a=unknown ;;
 			esac
 			m=$(mach || machine || uname -p || att uname -p)
 			case $m in
-			*[\ \	]*)	m=$(echo $m | $SED "s/[ 	]/-/g") ;;
+			*[\ \	]*)	m=$(echo $m | sed "s/[ 	]/-/g") ;;
 			esac
 			case $m in
 			'')	m=unknown ;;
@@ -1297,7 +1182,7 @@ int main()
 				esac
 				case $os in
 				[abcdefghijklmnopqrstuvwxyz]*[0123456789])
-					eval $(echo $os | $SED -e 's/^\([^0123456789.]*\)\.*\(.*\)/os=\1 rel=\2/')
+					eval $(echo $os | sed -e 's/^\([^0123456789.]*\)\.*\(.*\)/os=\1 rel=\2/')
 					;;
 				esac
 				;;
@@ -1308,7 +1193,7 @@ int main()
 		esac
 		type=unknown
 		case $host in
-		*.*)	host=$(echo $host | $SED -e 's/\..*//') ;;
+		*.*)	host=$(echo $host | sed -e 's/\..*//') ;;
 		esac
 		case $mach in
 		unknown)
@@ -1368,14 +1253,14 @@ int main()
 			9000/[78]*)
 				type=hp.pa
 				;;
-			*/*)	type=hp.$(echo $arch | $SED 's,/,_,g')
+			*/*)	type=hp.$(echo $arch | sed 's,/,_,g')
 				;;
 			*)	type=hp.$arch
 				;;
 			esac
 			;;
 		[Ii][Rr][Ii][Xx]*)
-			set xx $(hinv | $SED -e '/^CPU:/!d' -e 's/CPU:[ 	]*\([^ 	]*\)[ 	]*\([^ 	]*\).*/\1 \2/' -e q | $TR ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz)
+			set xx $(hinv | sed -e '/^CPU:/!d' -e 's/CPU:[ 	]*\([^ 	]*\)[ 	]*\([^ 	]*\).*/\1 \2/' -e q | tr ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz)
 			shift
 			type=$1
 			n=
@@ -1420,7 +1305,7 @@ int main()
 			fi
 			split='
 '
-			a=$(strings $a < /dev/null | $SED -e 's/[^abcdefghijklmnopqrstuvwxyz0123456789]/ /g' -e 's/[ 	][ 	]*/\'"$split"'/g' | $SED -e "/^${type}[0123456789]$/!d" -e "s/^${type}//" -e q)
+			a=$(strings $a < /dev/null | sed -e 's/[^abcdefghijklmnopqrstuvwxyz0123456789]/ /g' -e 's/[ 	][ 	]*/\'"$split"'/g' | sed -e "/^${type}[0123456789]$/!d" -e "s/^${type}//" -e q)
 			case $a in
 			[0123456789])	n=$a ;;
 			esac
@@ -1456,7 +1341,7 @@ int main()
 			type=sco
 			;;
 		[Ss]ol*)
-			v=$(echo $rel | $SED -e 's/^[25]\.//' -e 's/\.[^.]*$//')
+			v=$(echo $rel | sed -e 's/^[25]\.//' -e 's/\.[^.]*$//')
 			case $v in
 			[6789]|[1-9][0-9])
 				;;
@@ -1475,7 +1360,7 @@ int main()
 			esac
 			type=sol$v.$arch
 			;;
-		[Ss]un*)type=$(echo $arch | $SED -e 's/\(sun.\).*/\1/')
+		[Ss]un*)type=$(echo $arch | sed -e 's/\(sun.\).*/\1/')
 			case $type in
 			sparc)	type=sun4 ;;
 			esac
@@ -1496,7 +1381,7 @@ int main()
 					esac
 					;;
 				esac
-				v=$(echo $rel | $SED -e 's/^[25]\.//' -e 's/\.[^.]*$//')
+				v=$(echo $rel | sed -e 's/^[25]\.//' -e 's/\.[^.]*$//')
 				case $v in
 				[6789]|[1-9][0-9])
 					;;
@@ -1517,7 +1402,7 @@ int main()
 			type=unixware
 			;;
 		UTS*|uts*)
-			if	test -x /bin/u370 -o -x /bin/u390
+			if	test -x /bin/u370 || test -x /bin/u390
 			then	type=uts.390
 			else	case $arch in
 				'')	arch=$mach ;;
@@ -1553,7 +1438,7 @@ int main()
 			FTX*|ftx*)
 				case $mach in
 				*[0123456789][abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ]*)
-					mach=$(echo $mach | $SED -e 's/[abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ]*$//')
+					mach=$(echo $mach | sed -e 's/[abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ]*$//')
 					;;
 				esac
 				type=stratus.$mach
@@ -1563,7 +1448,7 @@ int main()
 					type=os2
 					arch=$rel
 					;;
-				*)	type=$(echo $os | $SED -e 's/[0123456789].*//' -e 's/[^ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_0123456789.].*//')
+				*)	type=$(echo $os | sed -e 's/[0123456789].*//' -e 's/[^ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_0123456789.].*//')
 					;;
 				esac
 				case $type in
@@ -1572,7 +1457,7 @@ int main()
 					;;
 				[Uu][Ww][Ii][Nn]*|[Ww]indows_[0123456789][0123456789]|[Ww]indows_[Nn][Tt])
 					type=win32
-					arch=$(echo $arch | $SED -e 's/_[^_]*$//')
+					arch=$(echo $arch | sed -e 's/_[^_]*$//')
 					;;
 				esac
 				case $arch in
@@ -1621,16 +1506,16 @@ int main()
 		esac
 		case $type in
 		*[-_]32|*[-_]64|*[-_]128)
-			bits=$(echo $type | $SED 's,.*[-_],,')
-			type=$(echo $type | $SED 's,[-_][0-9]*$,,')
+			bits=$(echo $type | sed 's,.*[-_],,')
+			type=$(echo $type | sed 's,[-_][0-9]*$,,')
 			;;
 		*)	bits=
 			;;
 		esac
-		type=$(echo $type | $SED -e 's%[-+/].*%%' | $TR ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz)
+		type=$(echo $type | sed -e 's%[-+/].*%%' | tr ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz)
 		case $type in
-		*.*)	lhs=$(echo $type | $SED -e 's/\..*//')
-			rhs=$(echo $type | $SED -e 's/.*\.//')
+		*.*)	lhs=$(echo $type | sed -e 's/\..*//')
+			rhs=$(echo $type | sed -e 's/.*\.//')
 			case $rhs in
 			[x0123456789]*86)	rhs=i$rhs ;;
 			68*)			rhs=m$rhs ;;
@@ -1640,7 +1525,7 @@ int main()
 						rhs=i386 ;;
 			powerpc)		rhs=ppc ;;
 			s[0123456789]*[0123456789]x)
-						rhs=$(echo $rhs | $SED -e 's/x$/-64/') ;;
+						rhs=$(echo $rhs | sed -e 's/x$/-64/') ;;
 			esac
 			case $rhs in
 			arm[abcdefghijklmnopqrstuvwxyz_][0123456789]*)
@@ -1654,7 +1539,7 @@ int main()
 				?*dwarf)x=coff ;;
 				?*elf)	x=elf ;;
 				esac
-				lhs=$(echo ${lhs}XXX | $SED -e "s/${x}XXX//")
+				lhs=$(echo ${lhs}XXX | sed -e "s/${x}XXX//")
 				;;
 			esac
 			case $lhs in
@@ -1668,7 +1553,7 @@ int main()
 						;;
 			freebsd)		case $rel in
 						[01234].*)	lhs=${lhs}4 ;;
-						[123456789]*.*)	lhs=${lhs}$(echo $rel | $SED -e 's/\..*//') ;;
+						[123456789]*.*)	lhs=${lhs}$(echo $rel | sed -e 's/\..*//') ;;
 						esac
 						;;
 			hpux)			lhs=hp ;;
@@ -1722,7 +1607,7 @@ int b() { return 0; }
 								esac
 								if	$cc $abi -mips$i -c $tmp.b.c &&
 									$cc -o $tmp.exe $tmp.a.o $tmp.b.o
-								then	type=$(echo $type | $SED -e 's/.$//')$i
+								then	type=$(echo $type | sed -e 's/.$//')$i
 									break
 								fi
 							done
@@ -1753,12 +1638,12 @@ int b() { return 0; }
 			esac
 			;;
 		*)	case $bits in
-			'')	bits=$(	cd "$TMPDIR"
-					LC_ALL=C
-					export LC_ALL
+			'')	bits=$(	set -e
+					cd "$TMPDIR"
 					tmp=hi$$
-					trap 'rm -f $tmp.*' 0 1 2
+					trap 'rm -rf "$tmp".*' 0 1 2
 					echo 'int main() { return 0; }' > $tmp.a.c
+					checkcc
 					$cc $CCFLAGS -o $tmp.a.exe $tmp.a.c </dev/null >/dev/null 2>&1
 					file $tmp.a.exe 2>/dev/null | sed "s/$tmp\.a\.exe//g"  )
 				case $bits in
@@ -1814,7 +1699,13 @@ int b() { return 0; }
 
 note() # message ...
 {
-	echo $command: "$@" >&2
+	printf "$command: %s\\n" "$@" >&2
+}
+
+err_out()
+{
+	note "$@"
+	exit 1
 }
 
 # cc checks
@@ -1828,7 +1719,10 @@ checkcc()
 	if	onpath $CC
 	then	cc=$_onpath_
 	else	case $CC in
-		cc)	if	onpath gcc
+		cc)	if	onpath clang
+			then	CC=clang
+				cc=$_onpath_
+			elif	onpath gcc
 			then	CC=gcc
 				cc=$_onpath_
 			fi
@@ -1837,7 +1731,7 @@ checkcc()
 	fi
 	case $cc in
 	'')	case $action in
-		make|test)	note "$CC: not found"; exit 1 ;;
+		make|test)	err_out "$CC: not found" ;;
 		*)		note "warning: $CC: not found" ;;
 		esac
 		;;
@@ -1894,12 +1788,6 @@ esac
 run=-
 case $x in
 1)	: accept the current package use environment
-
-	OK=ok
-	KSH=$EXECROOT/bin/ksh
-	MAKE=mamake
-	SUM=$EXECROOT/bin/sum
-	TEE=$EXECROOT/bin/tee
 	INITROOT=$PACKAGEROOT/src/cmd/INIT
 	checkcc
 	;;
@@ -2022,16 +1910,12 @@ case $x in
 
 	case $action in
 	export|use)
-		packageroot $PACKAGEROOT || {
-			echo "$command: $PACKAGEROOT: invalid package root directory" >&2
-			exit 1
-		}
+		packageroot $PACKAGEROOT || err_out "$PACKAGEROOT: invalid package root directory"
 		case $KEEP_HOSTTYPE:$hosttype in
 		0:?*)	if	test -d ${PACKAGEROOT:-.}/arch/$hosttype
 			then	KEEP_HOSTTYPE=1
 				HOSTTYPE=$hosttype
-			else	echo "$command: $hosttype: package root not found" >&2
-				exit 1
+			else	err_out "$hosttype: package root not found"
 			fi
 			;;
 		esac
@@ -2039,8 +1923,7 @@ case $x in
 	*)	packageroot $PACKAGEROOT || {
 			case $KEEP_PACKAGEROOT in
 			1)	;;
-			*)	echo "$command: $PACKAGEROOT: must be in the package root directory tree" >&2
-				exit 1
+			*)	err_out "$PACKAGEROOT: must be in the package root directory tree"
 				;;
 			esac
 		}
@@ -2062,7 +1945,7 @@ case $x in
 			do	test -h $PACKAGEROOT/bin/$i 2>/dev/null ||
 				case $(ls -t $INITROOT/$i.sh $PACKAGEROOT/bin/$i 2>/dev/null) in
 				"$INITROOT/$i.sh"*)
-					note update $PACKAGEROOT/bin/$i
+					note "update $PACKAGEROOT/bin/$i"
 					shellmagic
 					case $SHELLMAGIC in
 					'')	$exec cp $INITROOT/$i.sh $PACKAGEROOT/bin/$i || exit
@@ -2102,11 +1985,10 @@ cat $INITROOT/$i.sh
 				cp $INITROOT/hello.c pkg$$.c || exit 3
 				$cc -o pkg$$.exe pkg$$.c > pkg$$.e 2>&1 || {
 					if $cc -Dnew=old -o pkg$$.exe pkg$$.c > /dev/null 2>&1
-					then	echo "$command: ${warn}$CC: must be a C compiler (not C++)" >&2
+					then	err_out "${warn}$CC: must be a C compiler (not C++)"
 					else	cat pkg$$.e
-						echo "$command: ${warn}$CC: failed to compile and link $INITROOT/hello.c -- is it a C compiler?" >&2
+						err_out "${warn}$CC: failed to compile and link $INITROOT/hello.c -- is it a C compiler?"
 					fi
-					exit 2
 				}
 				if ./pkg$$.exe >/dev/null 2>&1
 				then	code=0
@@ -2283,7 +2165,7 @@ cat $INITROOT/$i.sh
 		$show export PATH
 		export PATH
 		;;
-	*)	for i in package proto
+	*)	for i in package
 		do	if	onpath $i
 			then	EXECROOT=$(echo $_onpath_ | sed -e 's,//*[^/]*//*[^/]*$,,')
 				EXECTYPE=$(echo $EXECROOT | sed -e 's,.*/,,')
@@ -2298,11 +2180,10 @@ cat $INITROOT/$i.sh
 			EXECTYPE=$_hostinfo_
 			case $HOSTTYPE in
 			$EXECTYPE)
-				echo "$command: $CC: seems to be a cross-compiler" >&2
-				echo "$command: set HOSTTYPE to something other than the native $EXECTYPE" >&2
-				echo "$command: If not, your $TMPDIR directory may be mounted without execute permission." >&2
-				echo "$command: Try exporting TMPDIR as a directory where you can execute binary files." >&2
-				exit 1
+				err_out "$CC seems to be a cross-compiler." \
+					"Set HOSTTYPE to something other than the native $EXECTYPE." \
+					"If not, your $TMPDIR directory may be mounted without execute permission." \
+					"Try exporting TMPDIR as a directory where you can execute binary files."
 				;;
 			esac
 			;;
@@ -2316,17 +2197,8 @@ cat $INITROOT/$i.sh
 	$show export EXECROOT
 	export EXECROOT
 
-	# use these if possible
-
-	OK=ok
-	KSH=$EXECROOT/bin/ksh
-	MAKE=mamake
-	SUM=$EXECROOT/bin/sum
-	TEE=$EXECROOT/bin/tee
-
 	# grab a decent default shell
 
-	checksh "$SHELL" || KEEP_SHELL=0
 	case $KEEP_SHELL in
 	0)	save_PATH=$PATH
 		if	PATH=$(getconf PATH 2>/dev/null)
@@ -2343,8 +2215,8 @@ cat $INITROOT/$i.sh
 		PATH=$save_PATH
 		unset save_PATH
 		case $KEEP_SHELL in
-		0)	echo "Cannot find good default shell, please supply SHELL=/path/to/shell" >&2
-			exit 1 ;;
+		0)	err_out "Cannot find a good default shell; please supply SHELL=/path/to/shell"
+			;;
 		esac
 		;;
 	esac
@@ -2402,9 +2274,6 @@ cat $INITROOT/$i.sh
 			?*)	USER_VPATH=$USER_VPATH:$i
 				USER_VPATH_CHAIN="$USER_VPATH_CHAIN $p $i"
 				p=$i
-				case $PROTOROOT in
-				-)	executable $i/bin/mamake && PROTOROOT= ;;
-				esac
 				;;
 			esac
 		done
@@ -2458,8 +2327,7 @@ cygwin.*)
 		;;
 	esac
 	case $lose in
-	?*)	echo "$command: $HOSTTYPE: export '$lose' in CYGWIN or languish in Windows" >&2
-		exit 1
+	?*)	err_out "$HOSTTYPE: export '$lose' in CYGWIN or languish in Windows"
 		;;
 	esac
 	;;
@@ -2526,7 +2394,7 @@ view() # [test] [-|type] [src|bin|all] file
 	esac
 	_view_=
 	case $_view_t_ in
-	?*)	echo $command: $1: $_view_t_ not found >&2 ;;
+	?*)	note "$1: $_view_t_ not found" ;;
 	esac
 	return 1
 }
@@ -2561,87 +2429,18 @@ esac
 
 checkaout()	# cmd ...
 {
-	case $PROTOROOT in
-	-)	PROTOROOT=
-		case $* in
-		ratz)	if	test -f $INITROOT/ratz.c -a -w $PACKAGEROOT
-			then	test -f $INITROOT/hello.c || {
-					cat > $INITROOT/hello.c <<'!'
-#ifndef printf
-#include <stdio.h>
-#endif
-int main() { int new = 0; printf("hello world\n"); return new;}
-!
-				}
-				test -f $INITROOT/p.c || {
-					cat > $INITROOT/p.c <<'!'
-/*
- * small test for prototyping cc
- */
-
-int main(int argc, char** argv) { return argc || argv; }
-!
-				}
-			fi
-			;;
-		esac
-		test -f $INITROOT/hello.c -a -f $INITROOT/p.c -a -w $PACKAGEROOT || {
-			for i
-			do	onpath $i || {
-					echo "$command: $i: command not found" >&2
-					return 1
-				}
-			done
-			return 0
+	case $cc in
+	'')	_PACKAGE_cc=0
+		;;
+	*)	_PACKAGE_cc=1
+		test -f "$INITROOT/hello.c" && test -f "$INITROOT/p.c" || {
+			note "$INITROOT: INIT package source not found"
+			return 1
 		}
-		case $cc in
-		'')	_PACKAGE_cc=0
-			;;
-		*)	_PACKAGE_cc=1
-			test -f $INITROOT/hello.c -a -f $INITROOT/p.c || {
-				echo "$command: $INITROOT: INIT package source not found" >&2
-				return 1
-			}
 
-			# check for prototyping cc
-			# NOTE: proto.c must be K&R compatible
-
-			$CC -c $INITROOT/p.c >/dev/null 2>&1
-			c=$?
-			rm -f p.*
-			test 0 != "$c" && {
-				checkaout proto || return
-				PROTOROOT=$PACKAGEROOT/proto
-				$show PROTOROOT=$PACKAGEROOT/proto
-				export PROTOROOT
-				INITPROTO=$PROTOROOT/src/cmd/INIT
-				note proto convert $PACKAGEROOT/src into $PROTOROOT/src
-				dirs="src"
-				(
-					if	test -f $PROTOROOT/UPDATE
-					then	newer="-newer $PROTOROOT/UPDATE"
-					else	newer=""
-					fi
-					case $exec in
-					'')	cd $PACKAGEROOT
-						find $dirs -name '*.[CcHh]' $newer -print | proto -v -L - -C proto
-						;;
-					*)	$exec cd $PACKAGEROOT
-						$exec "find $dirs -name '*.[CcHh]' $newer -print | proto -L - -C proto"
-						;;
-					esac
-					$exec touch $PROTOROOT/UPDATE
-				)
-				VPATH=$INSTALLROOT:$PROTOROOT:$PACKAGEROOT$USER_VPATH
-				$show VPATH=$VPATH
-				export VPATH
-			}
-
-			for i in arch arch/$HOSTTYPE arch/$HOSTTYPE/bin
-			do	test -d $PACKAGEROOT/$i || $exec mkdir $PACKAGEROOT/$i || return
-			done
-			;;
-		esac
+		for i in arch arch/$HOSTTYPE arch/$HOSTTYPE/bin
+		do	test -d $PACKAGEROOT/$i || $exec mkdir $PACKAGEROOT/$i || return
+		done
 		;;
 	esac
 	case $_PACKAGE_cc in
@@ -2671,17 +2470,17 @@ int main(int argc, char** argv) { return argc || argv; }
 		*00)	view - bin/$i && continue ;;
 		esac
 		case $k in
-		000)	echo "$command: $i: not found: download the INIT package $HOSTTYPE binary to continue" >&2
+		000)	note "$i: not found: download the INIT package $HOSTTYPE binary to continue"
 			return 1
 			;;
-		010)	echo "$command: $i: not found: set CC=C-compiler or download the INIT package $HOSTTYPE binary to continue" >&2
+		010)	note "$i: not found: set CC=C-compiler or download the INIT package $HOSTTYPE binary to continue"
 			return 1
 			;;
-		100)	echo "$command: $i: not found: download the INIT package source or $HOSTTYPE binary to continue" >&2
+		100)	note "$i: not found: download the INIT package source or $HOSTTYPE binary to continue"
 			return 1
 			;;
 		110)	case $CROSS in
-			1)	echo "$command: $i: not found: make the local $EXECTYPE binary package before $HOSTTYPE" >&2
+			1)	note "$i: not found: make the local $EXECTYPE binary package before $HOSTTYPE"
 				return 1
 				;;
 			esac
@@ -2699,31 +2498,13 @@ int main(int argc, char** argv) { return argc || argv; }
 		esac
 		case $(ls -t $INITROOT/$i.c $INSTALLROOT/bin/$i 2>/dev/null) in
 		"$INITROOT/$i.c"*)
-			note update $INSTALLROOT/bin/$i
-			if	test proto != "$i" && executable $INSTALLROOT/bin/proto
-			then	case $exec in
-				'')	$INSTALLROOT/bin/proto -p $INITROOT/$i.c > $i.c || return ;;
-				*)	$exec "$INSTALLROOT/bin/proto -p $INITROOT/$i.c > $i.c" ;;
-				esac
-				$exec $CC $CCFLAGS -o $INSTALLROOT/bin/$i $i.c || return
-				$exec rm -f $i.c
-			else	if	test ! -d $INSTALLROOT/bin
-				then	for j in arch arch/$HOSTTYPE arch/$HOSTTYPE/bin
-					do	test -d $PACKAGEROOT/$j || $exec mkdir $PACKAGEROOT/$j || return
-					done
-				fi
-				if	test '' != "$PROTOROOT" -a -f $INITPROTO/$i.c
-				then	$exec $CC $CCFLAGS -o $INSTALLROOT/bin/$i $INITPROTO/$i.c || return
-				else	$exec $CC $CCFLAGS -o $INSTALLROOT/bin/$i $INITROOT/$i.c || return
-				fi
-				case $i:$exec in
-				proto:)	test -d $INSTALLROOT/include || mkdir $INSTALLROOT/include
-					$INSTALLROOT/bin/proto -f /dev/null > $i.c
-					cmp -s $i.c $INSTALLROOT/include/prototyped.h 2>/dev/null || cp $i.c $INSTALLROOT/include/prototyped.h
-					rm $i.c
-					;;
-				esac
+			note "update $INSTALLROOT/bin/$i"
+			if	test ! -d $INSTALLROOT/bin
+			then	for j in arch arch/$HOSTTYPE arch/$HOSTTYPE/bin
+				do	test -d $PACKAGEROOT/$j || $exec mkdir $PACKAGEROOT/$j || return
+				done
 			fi
+			$exec $CC $CCFLAGS -o $INSTALLROOT/bin/$i $INITROOT/$i.c || return
 			test -f $i.o && $exec rm -f $i.o
 			i=$PATH
 			PATH=/bin
@@ -2797,22 +2578,21 @@ capture() # file command ...
 			fi
 			o=$o.out
 			: > $o
-			note $action output captured in $o
+			note "$action output captured in $o"
 			s="$command: $action start at $(date) in $INSTALLROOT"
+			cmd='case $error_status in 0) r=done;; *) r=failed;; esac;'
+			cmd=$cmd' echo "$command: $action $r at $(date) in $INSTALLROOT"'
 			case $quiet in
-			0)	cmd="echo \"$command: $action done  at \$(date)\" in $INSTALLROOT 2>&1 | \$TEE -a $o" ;;
-			*)	cmd="echo \"$command: $action done  at \$(date)\" in $INSTALLROOT >> $o" ;;
+			0)	cmd="$cmd 2>&1 | tee -a $o" ;;
+			*)	cmd="$cmd >> $o" ;;
 			esac
 			trap "$cmd" 0
-			trap "$cmd; trap 1 0; kill -1 $$" 1
-			trap "$cmd; trap 2 0; kill -2 $$" 2
+			trap "error_status=1; $cmd; trap 1 0; kill -1 $$" 1
+			trap "error_status=1; $cmd; trap 2 0; kill -2 $$" 2
 			;;
 		esac
 		case $quiet in
-		0)	if	executable ! $TEE
-			then	TEE=tee
-			fi
-			# Connect 'tee' to a FIFO instead of a pipe, so that we can obtain
+		0)	# Connect 'tee' to a FIFO instead of a pipe, so that we can obtain
 			# the build's exit status and use it for $error_status
 			rm -f $o.fifo
 			mkfifo -m 600 $o.fifo || exit
@@ -2821,7 +2601,7 @@ capture() # file command ...
 				# unlink early
 				exec rm $o.fifo
 			) &
-			$TEE -a $o < $o.fifo &
+			tee -a $o < $o.fifo &
 			tee_pid=$!
 			o=$o.fifo
 			;;
@@ -2877,9 +2657,30 @@ error_status=0
 case $action in
 
 clean|clobber)
-	cd $PACKAGEROOT
-	$exec rm -rf arch/$HOSTTYPE
-	exit
+	cd "$PACKAGEROOT" || exit
+	note "cleaning up flat view"
+	# clean up all links with arch dir except bin/package
+	$exec find "arch/$HOSTTYPE" -path "arch/$HOSTTYPE/bin/package" -o -type f -exec "$SHELL" -c '
+		first=y
+		for h					# loop through the PPs
+		do	case $first in
+			y)	set --			# clear PPs ("for" uses a copy)
+				first=n ;;
+			esac
+			p=${h#"arch/$HOSTTYPE/"}	# get flat view path
+			if	test "$p" -ef "$h"	# is it part of the flat view?
+			then	set -- "$@" "$p"	# add to new PPs
+			fi
+		done
+		exec rm -f -- "$@"			# rm all at once: fast
+	' "$0" {} +
+	case $flat in
+	0)	note "deleting arch/$HOSTTYPE"
+		$exec rm -rf arch/$HOSTTYPE
+		;;
+	esac
+	note "removing empty directories"
+	$exec find . -depth -type d -exec rmdir {} + 2>/dev/null
 	;;
 
 export)	case $INSTALLROOT in
@@ -2955,10 +2756,9 @@ make|view)
 			;;
 		*)	case " $must " in
 			*" $t "*)
-				echo "$command: $t: not found -- must be on PATH to $action" >&2
-				exit 1
+				err_out "$t: not found -- must be on PATH to $action"
 				;;
-			*)	echo "$command: warning: $t: not found -- some $action actions may fail" >&2
+			*)	note "warning: $t: not found -- some $action actions may fail"
 				;;
 			esac
 			;;
@@ -2968,15 +2768,15 @@ make|view)
 	# verify the top view
 
 	if	test ! -d $PACKAGEROOT/src
-	then	note no source packages to make
+	then	note "no source packages to make"
 		exit 0
 	elif	test ! -d $INSTALLROOT/src
-	then	note initialize the $INSTALLROOT view
+	then	note "initialize the $INSTALLROOT view"
 	fi
 	for i in arch arch/$HOSTTYPE
 	do	test -d $PACKAGEROOT/$i || $exec mkdir $PACKAGEROOT/$i || exit
 	done
-	for i in bin bin/$OK bin/$OK/lib fun include lib lib/package lib/package/gen src man man/man1 man/man3 man/man8
+	for i in bin bin/ok bin/ok/lib fun include lib lib/package lib/package/gen src man man/man1 man/man3 man/man8
 	do	test -d $INSTALLROOT/$i || $exec mkdir $INSTALLROOT/$i || exit
 	done
 	make_recurse src
@@ -3049,7 +2849,7 @@ make|view)
 							$exec chmod +x "$b" || exit
 							cc=$b
 							intercept=1
-							note update $b
+							note "update $b"
 							;;
 						esac
 					fi
@@ -3070,7 +2870,7 @@ make|view)
 					case $(ls -t "$b" "$s" 2>/dev/null) in
 					$b*)	;;
 					$s*)	$exec cp "$s" "$b"
-						note update $b
+						note "update $b"
 						;;
 					esac
 				done
@@ -3088,7 +2888,7 @@ make|view)
 		case $(ls -t "$b" "$s" 2>/dev/null) in
 		$b*)	;;
 		$s*)	$exec cp "$s" "$b"
-			note update $b
+			note "update $b"
 			;;
 		esac
 	done
@@ -3100,14 +2900,13 @@ make|view)
 		case $(ls -t "$b" "$s" 2>/dev/null) in
 		$b*)	;;
 		$s*)	$exec cp "$s" "$b"
-			note update $b
+			note "update $b"
 			;;
 		esac
 	done
 	case $cc in
 	/*)	;;
-	*)	echo "$command: $CC: not found -- set CC=C-compiler" >&2
-		exit 1
+	*)	err_out "$CC: not found -- set CC=C-compiler"
 		;;
 	esac
 	case $exec in
@@ -3117,11 +2916,11 @@ make|view)
 		if	$CC -o $tmp.exe $tmp.c > /dev/null 2> $tmp.err &&
 			test -x $tmp.exe
 		then	: ok
-		else	echo "$command: $CC: failed to compile this program:" >&2
+		else	note "$CC: failed to compile this program:"
 			cat $tmp.c >&2
 			if	test -s $tmp.err
 			then	cat $tmp.err >&2
-			else	echo "$command: $CC: not a C compiler" >&2
+			else	note "$CC: not a C compiler"
 			fi
 			rm -f $tmp.*
 			exit 1
@@ -3154,7 +2953,7 @@ make|view)
 					} > $INSTALLROOT/bin/cc
 					chmod +x $INSTALLROOT/bin/cc
 					;;
-				*)	note generate a $INSTALLROOT/bin/cc wrapper for $CC
+				*)	note "generate a $INSTALLROOT/bin/cc wrapper for $CC"
 					;;
 				esac
 				CC=cc
@@ -3179,8 +2978,8 @@ make|view)
 		k=$INITROOT/make.probe
 		case $(ls -t $i $j $k 2>/dev/null) in
 		$i*)	;;
-		*)	if	test -f $j -a -f $k
-			then	note update $i
+		*)	if	test -f "$j" && test -f "$k"
+			then	note "update $i"
 				shellmagic
 				case $exec in
 				'')	{
@@ -3202,9 +3001,9 @@ cat $j $k
 		esac
 	fi
 
-	# initialize a few mamake related commands
+	# initialize mamake
 
-	checkaout mamake proto ratz || exit
+	checkaout mamake || exit
 
 	# execrate if necessary
 
@@ -3212,19 +3011,19 @@ cat $j $k
 	then	execrate=execrate
 		$make cd $INSTALLROOT/bin
 		for i in chmod chgrp cmp cp ln mv rm
-		do	if	test ! -x $OK/$i -a -x /bin/$i.exe
+		do	if	test ! -x "ok/$i" && test -x "/bin/$i.exe"
 			then	shellmagic
 				case $exec in
-				'')	echo "$SHELLMAGIC"'execrate /bin/'$i' "$@"' > $OK/$i
-					chmod +x $OK/$i
+				'')	echo "$SHELLMAGIC"'execrate /bin/'$i' "$@"' > ok/$i
+					chmod +x ok/$i
 					;;
-				*)	$exec echo \'"$SHELLMAGIC"'execrate /bin/'$i' "$@"'\'' >' $OK/$i
-					$exec chmod +x $OK/$i
+				*)	$exec echo \'"$SHELLMAGIC"'execrate /bin/'$i' "$@"'\'' >' ok/$i
+					$exec chmod +x ok/$i
 					;;
 				esac
 			fi
 		done
-		PATH=$INSTALLROOT/bin/$OK:$PATH
+		PATH=$INSTALLROOT/bin/ok:$PATH
 		export PATH
 	else	execrate=
 	fi
@@ -3235,7 +3034,7 @@ cat $j $k
 	# check against previous compiler and flags
 
 	err=
-	for	var in CC CCFLAGS CCLDFLAGS LDFLAGS KSH_RELFLAGS
+	for	var in CC CCFLAGS CCLDFLAGS LDFLAGS
 	do	store=$INSTALLROOT/lib/package/gen/$var
 		eval "new=\$$var"
 		if	test -f $store
@@ -3250,7 +3049,7 @@ cat $j $k
 				'')	new="(none)" ;;
 				*)	new="'$new'" ;;
 				esac
-				echo "$command: $var changed from $old to $new" >&2
+				note "$var changed from $old to $new"
 				err=y ;;
 			esac
 		else	test -d $INSTALLROOT/lib/package/gen && case $new in
@@ -3260,9 +3059,9 @@ cat $j $k
 		fi
 	done
 	case $err,${FORCE_FLAGS+f} in
-	y,)	echo "$command: This would likely break the build. Restore the flag(s)," >&2
-		echo "$command: or delete the build directory and rebuild from scratch." >&2
-		exit 1 ;;
+	y,)	err_out "This would likely break the build. Restore the flag(s)," \
+			"or delete the build directory and rebuild from scratch."
+		;;
 	esac
 	unset err var store old new
 
@@ -3275,21 +3074,6 @@ cat $j $k
 	case $exec in
 	'')	hostinfo name
 		echo "$_hostinfo_" | sed 's,\..*,,' > $PACKAGEBIN/gen/host
-		;;
-	esac
-
-	# make in parallel if possible
-
-	case $NPROC in
-	'')	hostinfo cpu
-		case $_hostinfo_ in
-		0|1)	;;
-		*)	NPROC=$_hostinfo_
-			$show NPROC=$NPROC
-			$show export NPROC
-			export NPROC
-			;;
-		esac
 		;;
 	esac
 
@@ -3312,7 +3096,7 @@ cat $j $k
 	# mamprobe data should have been generated by this point
 
 	case $exec in
-	'')	if	test ! -f $INSTALLROOT/bin/.paths -o -w $INSTALLROOT/bin/.paths
+	'')	if	test ! -f "$INSTALLROOT/bin/.paths" || test -w "$INSTALLROOT/bin/.paths"
 		then	N='
 '
 			b= f= h= n= p= u= B= L=
@@ -3404,33 +3188,29 @@ cat $j $k
 			ksh tee cp ln mv rm \
 			*ast*.dll *cmd*.dll *dll*.dll *shell*.dll
 		do	executable $i && {
-				cmp -s $i $OK/$i 2>/dev/null || {
-					test -f $OK/$i &&
-					$exec $execrate $rm $OK/$i </dev/null
-					test -f $OK/$i &&
-					$exec $execrate $mv $OK/$i $OK/$i.old </dev/null
-					test -f $OK/$i &&
+				cmp -s $i ok/$i 2>/dev/null || {
+					test -f ok/$i &&
+					$exec $execrate $rm ok/$i </dev/null
+					test -f ok/$i &&
+					$exec $execrate $mv ok/$i ok/$i.old </dev/null
+					test -f ok/$i &&
 					case $exec:$i in
 					:ksh)
-						echo "$command: $OK/$i: cannot update [may be in use by a running process] remove manually and try again" >&2
-						exit 1
+						err_out "ok/$i: cannot update [may be in use by a running process] remove manually and try again"
 						;;
 					esac
-					$exec $execrate $cp $i $OK/$i
+					$exec $execrate $cp $i ok/$i
 				}
 			}
 		done
-		if	executable $OK/tee
-		then	TEE=$INSTALLROOT/bin/$OK/tee
-		fi
-		if	test "$KEEP_SHELL" != 1 && executable $OK/ksh
-		then	SHELL=$INSTALLROOT/bin/$OK/ksh
+		if	test "$KEEP_SHELL" -eq 0 && executable ok/ksh
+		then	SHELL=$INSTALLROOT/bin/ok/ksh
 			export SHELL
 		fi
 		case :$PATH: in
-		*:$INSTALLROOT/bin/$OK:*)
+		*:$INSTALLROOT/bin/ok:*)
 			;;
-		*)	PATH=$INSTALLROOT/bin/$OK:$PATH
+		*)	PATH=$INSTALLROOT/bin/ok:$PATH
 			export PATH
 			;;
 		esac
@@ -3440,15 +3220,52 @@ cat $j $k
 
 	# build with mamake
 
-	note make with mamake
+	note "make with mamake"
 	case $target in
 	'')	target="install" ;;
 	esac
 	eval capture mamake \$makeflags \$noexec \$target $assign
-	;;
 
-remove)	echo "$command: $action: not implemented yet" >&2
-	exit 1
+	case $HOSTTYPE in
+	darwin.*)
+		# clean up macOS .dSYM bundles belonging to deleted temps
+		cd "$PACKAGEROOT" || exit
+		$exec find "arch/$HOSTTYPE" -type d -name '*.dSYM' -exec "$SHELL" -c '
+			first=y
+			for d					# loop through the PPs
+			do	case $first in
+				y)	set --			# clear PPs ("for" uses a copy)
+					first=n ;;
+				esac
+				e=${d%.dSYM}			# get exe name
+				if	! test -f "$e"		# nonexistent?
+				then	set -- "$@" "$d"	# add to new PPs
+				fi
+			done
+			exec rm -rf -- "$@"			# rm all at once: fast
+		' "$0" {} +
+		;;
+	esac
+
+	if	test -d "$PACKAGEROOT/lib/package/gen"
+	then	a='updating'
+		flat=1
+	else	a='creating'
+	fi
+	case $flat in
+	1)	note "$a flat view"
+		cd "$PACKAGEROOT" || exit
+		$exec find "arch/$HOSTTYPE" -type f ! -name '*.old' -exec "$SHELL" -c '
+			for h
+			do	p=${h#"arch/$HOSTTYPE/"}
+				test "$h" -ef "$p" && continue	# already created
+				d=${p%/*}
+				test -d "$d" || mkdir -p "$d" || exit
+				ln -f "$h" "$p" 2>/dev/null || ln -sf "$INSTALLROOT/$p" "$p" || exit
+			done
+		' "$0" {} +
+		;;
+	esac
 	;;
 
 results)set '' $target
@@ -3475,16 +3292,11 @@ results)set '' $target
 			;;
 		make|test|view)
 			def=$1
-			case $filter:$1:$SHELL in
-			errors:*:*)	;;
-			*:test:*/ksh*)	filter=rt ;;
-			esac
 			;;
 		old)	suf=old
 			;;
 		on)	case $# in
-			1)	echo $command: $action: $1: host pattern argument expected >&2
-				exit 1
+			1)	err_out "$action: $1: host pattern argument expected"
 				;;
 			esac
 			shift
@@ -3496,7 +3308,6 @@ results)set '' $target
 		path)	path=1
 			;;
 		test)	def=test
-			filter=rt
 			;;
 		*)	break
 			;;
@@ -3536,8 +3347,7 @@ results)set '' $target
 				;;
 			esac
 		done
-		echo "$command: $i action output not found" >&2
-		exit 1
+		err_out "$i action output not found"
 	done
 	sep=
 	case $t in
@@ -3549,8 +3359,6 @@ results)set '' $target
 				cat)	$exec cat $j
 					;;
 				errors)	$exec egrep -i '\*\*\*|FAIL[ES]|^TEST.* [123456789][0123456789]* error|core.*dump' $j | sed -e '/^TEST.\//s,/[^ ]*/,,'
-					;;
-				rt)	$exec $KSH rt - $j
 					;;
 				*)	$exec egrep -i '^TEST|FAIL' $j
 					;;
@@ -3581,7 +3389,7 @@ results)set '' $target
 					case $filter in
 					errors)	$exeg egrep '^pax:|\*\*\*' $j
 						;;
-					*)	$exec egrep -iv '^($||[\+\[]|cc[^-:]|kill |make.*(file system time|has been replaced)|so|[0123456789]+ error|uncrate |[0123456789]+ block|ar: creat|iffe: test: |conf: (check|generate|test)|[abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_][abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789]*=|gsf@research|ar:.*warning|cpio:|ld:.*(duplicate symbol|to obtain more information)|[0123456789]*$|(checking|creating|touch) [/abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789])| obsolete predefined symbol | is (almost always misused|dangerous|deprecated|not implemented)| trigraph| assigned to | cast .* different size| integer overflow .*<<| optimization may be attained | passed as |::__builtin|pragma.*prototyped|^creating.*\.a$|warning.*not optimized|exceeds size thresh|ld:.*preempts|is unchanged|with value >=|(-l|lib)\*|/(ast|sys)/(dir|limits|param|stropts)\.h.*redefined|usage|base registers|`\.\.\.` obsolete'"$i" $j |
+					*)	$exec egrep -iv '^($||[\+\[]|cc[^-:]|kill |make.*(file system time|has been replaced)|so|[0123456789]+ error|uncrate |[0123456789]+ block|ar: creat|iffe: test: |conf: (check|generate|test)|[abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_][abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789]*=|gsf@research|ar:.*warning|cpio:|ld:.*(duplicate symbol|to obtain more information)|[0123456789]*$|(checking|creating|touch) [/abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789])| obsolete predefined symbol | is (almost always misused|dangerous|deprecated|not implemented)| trigraph| assigned to | cast .* different size| integer overflow .*<<| optimization may be attained | passed as |::__builtin|^creating.*\.a$|warning.*not optimized|exceeds size thresh|ld:.*preempts|is unchanged|with value >=|(-l|lib)\*|/(ast|sys)/(dir|limits|param|stropts)\.h.*redefined|usage|base registers|`\.\.\.` obsolete'"$i" $j |
 						$exec grep :
 						;;
 					esac
@@ -3595,8 +3403,18 @@ results)set '' $target
 	esac
 	;;
 
-test)	# pass control to ksh 93u+m test script
-	capture "$PACKAGEROOT/bin/shtests" $args
+test)	# run all available default regression tests, using our newly compiled shell unless overridden
+
+	cd "$INSTALLROOT" || err_out "run '$0 make' first"
+	if	test "$KEEP_SHELL" -lt 2
+	then	executable bin/ksh || err_out "build ksh first, or supply a SHELL=/path/to/ksh argument"
+		SHELL=$INSTALLROOT/bin/ksh
+	fi
+	export SHELL
+	set -f
+	set -- ${args:-src}
+	cd "$1" || exit
+	capture mamake test
 	;;
 
 use)	# finalize the environment
@@ -3614,33 +3432,19 @@ use)	# finalize the environment
 		export CDPATH
 		;;
 	esac
-	P=$PACKAGEROOT
-	$show P=$P
-	$show export P
-	export P
-	A=$INSTALLROOT
-	$show A=$A
-	$show export A
-	export A
-	case $NPROC in
-	'')	hostinfo cpu
-		case $_hostinfo_ in
-		0|1)	;;
-		*)	NPROC=$_hostinfo_
-			$show NPROC=$NPROC
-			$show export NPROC
-			export NPROC
-			;;
-		esac
-		;;
-	esac
 	eval PACKAGE_USE=$package_use
 	export PACKAGE_USE
+	unset LC_ALL  # respect the user's locale again; avoids multibyte corruption
 
 	# run the command
 
 	case $run in
-	'')	case $show in
+	'')	note	"You are now entering a new environment set up to use the package in:" \
+			"    $INSTALLROOT" \
+			"You're using the shell:" \
+			"    $SHELL" \
+			"Type 'exit' to leave and go back to normal."
+		case $show in
 		':')	$exec exec $SHELL ;;
 		esac
 		;;
@@ -3649,8 +3453,7 @@ use)	# finalize the environment
 	esac
 	;;
 
-*)	echo "$command: $action: internal error" >&2
-	exit 1
+*)	err_out "$action: internal error"
 	;;
 
 esac

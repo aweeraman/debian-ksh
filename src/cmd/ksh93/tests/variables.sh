@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -20,6 +20,7 @@
 ########################################################################
 
 . "${SHTESTS_COMMON:-${0%/*}/_common}"
+((!.sh.level))||err_exit ".sh.level should be 0 after dot script, is ${.sh.level}"
 
 [[ ${.sh.version} == "$KSH_VERSION" ]] || err_exit '.sh.version != KSH_VERSION'
 unset ss
@@ -35,7 +36,7 @@ fi
 # use the same pseudorandom seed as the main shell.
 # https://github.com/ksh93/ksh/issues/285
 # These tests sometimes fail as duplicate numbers can occur randomly, so try up to $N times.
-integer N=3 i rand1 rand2
+integer N=5 i rand1 rand2
 RANDOM=123
 function rand_print {
 	ulimit -t unlimited 2> /dev/null
@@ -69,6 +70,7 @@ done
 (( rand1 == rand2 )) && err_exit "Test 3: \$RANDOM seed in subshell doesn't change" \
 	"(both results are $rand1)"
 # $RANDOM should be reseeded for the ( simple_command & ) optimization
+# (which was removed on 2022-06-13, but let's keep the test)
 for((i=0; i<N; i++))
 do	( echo $RANDOM & ) >|r1
 	( echo $RANDOM & ) >|r2
@@ -79,7 +81,7 @@ do	( echo $RANDOM & ) >|r1
 	do	((giveup)) && break
 	done
 	if	((giveup))
-	then	err_exit "Test 4: ( echo $RANDOM & ) does not write output"
+	then	err_exit 'Test 4: ( echo $RANDOM & ) does not write output'
 	fi
 	kill $! 2>/dev/null
 	trap - USR1
@@ -100,19 +102,28 @@ done
 [[ $got == "$exp" ]] || err_exit 'Using $RANDOM in subshell influences reproducible sequence in parent environment' \
 	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
 # Forking a subshell shouldn't throw away the $RANDOM seed in the main shell
-exp=$(ulimit -t unlimited; RANDOM=123; echo $RANDOM)
+exp=$(ulimit -t unlimited 2> /dev/null; RANDOM=123; echo $RANDOM)
 RANDOM=123
-(ulimit -t unlimited; true)
+(ulimit -t unlimited 2> /dev/null; true)
 got=${ echo $RANDOM ;}
 [[ $got == "$exp" ]] || err_exit "Forking a subshell resets the parent shell's \$RANDOM seed" \
 	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
 # Similarly, forking a subshell shouldn't throw away a seed
 # previously set inside of the subshell
-exp=$(ulimit -t unlimited; RANDOM=789; echo $RANDOM)
-got=$(RANDOM=789; ulimit -t unlimited; echo $RANDOM)
+exp=$(ulimit -t unlimited 2> /dev/null; RANDOM=789; echo $RANDOM)
+got=$(RANDOM=789; ulimit -t unlimited 2> /dev/null; echo $RANDOM)
 [[ $got == "$exp" ]] || err_exit "Forking a subshell resets the subshell's \$RANDOM seed" \
 	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
 unset N i rand1 rand2
+
+# Running an external command or background job should not influence the sequence
+exp=$(RANDOM=1; print $RANDOM; print $RANDOM)
+got=$(RANDOM=1; print $RANDOM; /dev/null/x 2>/dev/null; print $RANDOM)
+[[ $got == "$exp" ]] || err_exit "External command influences reproducible $RANDOM sequence" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+got=$(RANDOM=1; print $RANDOM; :& print $RANDOM)
+[[ $got == "$exp" ]] || err_exit "Background job influences reproducible $RANDOM sequence" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
 
 # SECONDS
 float secElapsed=0.0 secSleep=0.001
@@ -305,6 +316,8 @@ x=$(cd ${tmp#/})
 if	[[ $x != $tmp ]]
 then	err_exit "CDPATH ${tmp#/} does not display new directory"
 fi
+unset CDPATH
+cd "${tmp#/}" >/dev/null 2>&1 && err_exit "CDPATH not deactivated after unset"
 cd "$tmp" || exit
 TMOUT=100
 (TMOUT=20)
@@ -559,6 +572,10 @@ actual=$*
 [[ $actual == "$expect" ]] || err_exit "IFS failed with invalid multi-byte character" \
 	"(expected $(printf %q "$expect"), got $(printf %q "$actual"))"
 
+# Backported test from ksh93v- 2013-06-28 for 'unset IFS'
+unset IFS
+[[ ${IFS+abc} ]] && err_exit "testing for unset IFS not working"
+
 # ^^^ end: IFS tests ^^^
 # restore default split:
 unset IFS
@@ -617,8 +634,10 @@ chmod +x $tmp/script
     [[ $(fun .sh.subshell) == 2 ]]  || err_exit ".sh.subshell not working for functions in subshells"
     (( .sh.subshell == 1 )) || err_exit ".sh.subshell not working in a subshell"
 )
-TIMEFORMAT='this is a test'
-[[ $(set +x; { { time :;} 2>&1;}) == "$TIMEFORMAT" ]] || err_exit 'TIMEFORMAT not working'
+(
+	TIMEFORMAT='this is a test'
+	[[ $(set +x; { { time :;} 2>&1;}) == "$TIMEFORMAT" ]]
+) || err_exit 'TIMEFORMAT not working'
 alias _test_alias=true
 : ${.sh.version}
 [[ $(alias _test_alias) == *.sh.* ]] && err_exit '.sh. prefixed to alias name'
@@ -822,7 +841,7 @@ Errors=$?  # ensure error count survives subshell
 (
 	# $x must be an unknown locale.
 	for x in x x.b@d xx_XX xx_XX.b@d
-	do	errmsg=$({ LANG=$x; } 2>&1)
+	do	errmsg=$(set +x; { LANG=$x; } 2>&1)
 		[[ -n $errmsg ]] && break
 	done
 	if	[[ -z $errmsg ]]
@@ -963,75 +982,25 @@ actual=$(env SHLVL="2#11+x[\$(env echo Exploited vuln CVE-2019-14868 >&2)0]" "$S
 # ======
 # Check unset, attribute and cleanup/restore behavior of special variables.
 
-# Keep the list in sync (minus ".sh") with shtab_variables[] in src/cmd/ksh93/data/variables.c
-set -- \
-	"PATH" \
-	"PS1" \
-	"PS2" \
-	"IFS" \
-	"PWD" \
-	"HOME" \
-	"MAIL" \
-	"REPLY" \
-	"SHELL" \
-	"EDITOR" \
-	"MAILCHECK" \
-	"RANDOM" \
-	"ENV" \
-	"HISTFILE" \
-	"HISTSIZE" \
-	"HISTEDIT" \
-	"HISTCMD" \
-	"FCEDIT" \
-	"CDPATH" \
-	"MAILPATH" \
-	"PS3" \
-	"OLDPWD" \
-	"VISUAL" \
-	"COLUMNS" \
-	"LINES" \
-	"PPID" \
-	"_" \
-	"TMOUT" \
-	"SECONDS" \
-	"LINENO" \
-	"OPTARG" \
-	"OPTIND" \
-	"PS4" \
-	"FPATH" \
-	"LANG" \
-	"LC_ALL" \
-	"LC_COLLATE" \
-	"LC_CTYPE" \
-	"LC_MESSAGES" \
-	"LC_NUMERIC" \
-	"LC_TIME" \
-	"FIGNORE" \
-	"KSH_VERSION" \
-	"JOBMAX" \
-	".sh.edchar" \
-	".sh.edcol" \
-	".sh.edtext" \
-	".sh.edmode" \
-	".sh.name" \
-	".sh.subscript" \
-	".sh.value" \
-	".sh.version" \
-	".sh.dollar" \
-	".sh.match" \
-	".sh.command" \
-	".sh.file" \
-	".sh.fun" \
-	".sh.lineno" \
-	".sh.subshell" \
-	".sh.level" \
-	".sh.stats" \
-	".sh.math" \
-	".sh.pool" \
-	".sh.pid" \
-	".sh.tilde" \
-	"SHLVL" \
-	"CSWIDTH"
+# ... to avoid forgetting to keep this script synched with shtab_variables[], read from the source
+set -- $(
+	srcdir=${SHTESTS_COMMON%/tests/*}
+	redirect < $srcdir/data/variables.c || exit
+	# skip lines until finding shtab_variables struct
+	while	read -r line || exit
+	do	[[ $line == *" shtab_variables[] =" ]] && break
+	done
+	read -r line
+	[[ $line == '{' ]] || exit
+	# read variable names until '};'
+	IFS=\"
+	while	read -r first varname junk
+	do	[[ $first == '};' ]] && exit
+		[[ -z $junk || $junk == *[![:alpha:]]NV_RDONLY[![:alpha:]]* ]] && continue
+		[[ -n $varname && $varname != '.sh' ]] && print -r -- "$varname"
+	done
+)
+(($# >= 65)) || err_exit "could not read shtab_variables[]; adjust test script ($# items read)"
 
 # ... unset
 $SHELL -c '
@@ -1050,7 +1019,7 @@ $SHELL -c '
 	exit $((errors + 1))	# a possible erroneous asynchronous fork would cause exit status 0
 ' unset_test "$@"
 (((e = $?) == 1)) || err_exit "Failure in unsetting one or more special variables" \
-	"(exit status $e$( ((e>128)) && print -n / && kill -l "$e"))"
+	"(exit status $e$( ((e>128)) && print -n /SIG && kill -l "$e"))"
 
 # ... unset in virtual subshell inside of nested function
 $SHELL -c '
@@ -1080,7 +1049,7 @@ $SHELL -c '
 	exit $((errors + 1))	# a possible erroneous asynchronous fork would cause exit status 0
 ' unset_subsh_fun_test "$@"
 (((e = $?) == 1)) || err_exit "Unset of special variable(s) in a virtual subshell within a nested function fails" \
-	"(exit status $e$( ((e>128)) && print -n / && kill -l "$e"))"
+	"(exit status $e$( ((e>128)) && print -n /SIG && kill -l "$e"))"
 
 # ... readonly in subshell
 $SHELL -c '
@@ -1104,16 +1073,13 @@ $SHELL -c '
 	exit $((errors + 1))	# a possible erroneous asynchronous fork would cause exit status 0
 ' readonly_test "$@"
 (((e = $?) == 1)) || err_exit "Failure in making one or more special variables readonly in a subshell" \
-	"(exit status $e$( ((e>128)) && print -n / && kill -l "$e"))"
+	"(exit status $e$( ((e>128)) && print -n /SIG && kill -l "$e"))"
 
 # ... subshell leak test
 $SHELL -c '
 	errors=0
 	for var
-	do	if	[[ $var == .sh.level ]]
-		then	continue	# known to fail
-		fi
-		if	eval "($var=bug); [[ \${$var} == bug ]]" 2>/dev/null
+	do	if	eval "($var=bug); [[ \${$var} == bug ]]" 2>/dev/null
 		then	echo "	$0: special variable $var leaks out of subshell" >&2
 			let errors++
 		fi
@@ -1121,7 +1087,7 @@ $SHELL -c '
 	exit $((errors + 1))
 ' subshell_leak_test "$@"
 (((e = $?) == 1)) || err_exit "One or more special variables leak out of a subshell" \
-	"(exit status $e$( ((e>128)) && print -n / && kill -l "$e"))"
+	"(exit status $e$( ((e>128)) && print -n /SIG && kill -l "$e"))"
 
 # ... upper/lowercase test
 $SHELL -c '
@@ -1157,7 +1123,7 @@ $SHELL -c '
 	exit $((errors + 1))
 ' changecase_test "$@"
 (((e = $?) == 1)) || err_exit "typeset -l/-u doesn't work on special variables" \
-	"(exit status $e$( ((e>128)) && print -n / && kill -l "$e"))"
+	"(exit status $e$( ((e>128)) && print -n /SIG && kill -l "$e"))"
 
 # ... unset followed by launching a forked subshell
 $SHELL -c '
@@ -1174,7 +1140,7 @@ $SHELL -c '
 	exit $?
 ' unset_to_fork_test "$@"
 (((e = $?) == 1)) || err_exit "Failure in unsetting one or more special variables followed by launching forked subshell" \
-	"(exit status $e$( ((e>128)) && print -n / && kill -l "$e"))"
+	"(exit status $e$( ((e>128)) && print -n /SIG && kill -l "$e"))"
 
 # ======
 # ${.sh.pid} should be the forked subshell's PID
@@ -1401,6 +1367,69 @@ exp=$((SHLVL+1))$'\n'$((SHLVL+2))$'\n'$((SHLVL+1))
 got=$("$SHELL" -c 'echo $SHLVL; "$SHELL" -c "echo \$SHLVL"; exec "$SHELL" -c "echo \$SHLVL"')
 [[ $got == "$exp" ]] || err_exit "SHLVL not increased correctly" \
 	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
+# The += operator should not free variables outside of its
+# scope when used in an invocation-local assignment.
+exp='baz_foo
+baz'
+got=$("$SHELL" -c $'foo=baz; foo+=_foo "$SHELL" -c \'print $foo\'; print $foo')
+[[ $exp == "$got" ]] || err_exit "using the += operator for invocation-local assignments changes variables outside of the invocation-local scope" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
+# As of 2022-07-12, the current scope is restored after changing .sh.level in a DEBUG trap
+exp=$'a: 2 CHILD\nb: 1 PARENT\nc: 2 CHILD\nd: 1 PARENT'
+function leveltest
+{
+	typeset scope=PARENT
+	function f
+	{
+		typeset scope=CHILD
+		print "a: ${.sh.level} $scope"
+		trap 'let ".sh.level=$1"; print "b: ${.sh.level} $scope"' DEBUG
+		trap - DEBUG
+		print "c: ${.sh.level} $scope"
+	}
+	f "${.sh.level}"
+	print "d: ${.sh.level} $scope"
+}
+got=$(ulimit -t unlimited 2>/dev/null; set +x; redirect 2>&1; leveltest)
+((!(e = $?))) && [[ $got == "$exp" ]] || err_exit "DEBUG trap does not restore scope after execution" \
+	"(expected status 0 and $(printf %q "$exp")," \
+	"got status $e$( ((e>128)) && print -n /SIG && kill -l "$e") and $(printf %q "$got"))"
+unset -f leveltest
+
+cat >dotlevel <<\EOF
+echo ${.sh.level}
+trap '.sh.level=${.sh.level}; echo ${.sh.level}' DEBUG
+trap - DEBUG
+EOF
+got=$(trap "echo ${.sh.level}" DEBUG; trap - DEBUG; . ./dotlevel)
+exp=$'0\n1\n1'
+[[ $got == "$exp" ]] || err_exit '${.sh.level} in dot script not correct' \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
+# setting a .sh.value or .sh.level discipline makes no sense, but should be an error, not crash the shell
+for v in .sh.value .sh.level
+do
+	for d in get set append
+	do
+		exp=": $v.$d: invalid discipline function"
+		got=$(set +x; { "$SHELL" -c "$v.$d() { .sh.value=foo; }; $v=13; $v+=13; : \${$v}"; } 2>&1)
+		(((e = $?)==1)) && [[ $got == *"$exp" ]] || err_exit "attempt to set $v.get discipline does not fail gracefully" \
+			"(expected status 1 and match of *$(printf %q "$exp")," \
+			"got status $e$( ((e>128)) && print -n /SIG && kill -l "$e") and $(printf %q "$got"))"
+	done
+done
+
+# ======
+var1.get() { .sh.value=one; : $var2; }
+var2.get() { .sh.value=two; }
+got=$var1
+unset var1 var2
+[[ $got == one ]] || err_exit ".sh.value not restored after second .get discipline call (got $(printf %q "$got"))"
 
 # ======
 exit $((Errors<125?Errors:125))

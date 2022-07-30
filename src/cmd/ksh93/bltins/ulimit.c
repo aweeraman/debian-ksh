@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,15 +18,15 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
- * ulimit [-HSaMctdfxlqenupmrbiswTv] [limit]
+ * ulimit [-HSaMctdfkxlqenuPpmrRbiswTv] [limit]
  *
  *   David Korn
  *   AT&T Labs
  *
  */
 
+#include	"shopt.h"
 #include	<ast.h>
 #include	<sfio.h>
 #include	<error.h>
@@ -71,7 +71,6 @@ int	b_ulimit(int argc,char *argv[],Shbltin_t *context)
 	register char *limit;
 	register int mode=0, n;
 	register unsigned long hit = 0;
-	Shell_t *shp = context->shp;
 #ifdef _lib_getrlimit
 	struct rlimit rlp;
 #endif /* _lib_getrlimit */
@@ -79,8 +78,9 @@ int	b_ulimit(int argc,char *argv[],Shbltin_t *context)
 	char* conf;
 	int label, unit, nosupport;
 	rlim_t i;
-	char tmp[32];
+	char tmp[41];
         Optdisc_t disc;
+        NOT_USED(context);
         memset(&disc, 0, sizeof(disc));
         disc.version = OPT_VERSION;
         disc.infof = infof;
@@ -136,7 +136,7 @@ int	b_ulimit(int argc,char *argv[],Shbltin_t *context)
 		unit = shtab_units[tp->type];
 		if(limit)
 		{
-			if(shp->subshell && !shp->subshare)
+			if(sh.subshell && !sh.subshare)
 				sh_subfork();
 			if(strcmp(limit,e_unlimited)==0)
 				i = INFINITY;
@@ -219,7 +219,7 @@ int	b_ulimit(int argc,char *argv[],Shbltin_t *context)
 					sfsprintf(tmp,sizeof(tmp),"%s (%ss)", tp->description, e_units[tp->type]);
 				else
 					sfsprintf(tmp,sizeof(tmp),"%s", tp->name);
-				sfprintf(sfstdout,"%-30s (-%c)  ",tmp,tp->option);
+				sfprintf(sfstdout,"%-39s (-%c)  ",tmp,tp->option);
 			}
 			if(nosupport)
 			{

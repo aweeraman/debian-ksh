@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,7 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * Glenn Fowler
  * AT&T Research
@@ -33,18 +32,6 @@
  */
 
 #include <ast.h>
-
-#if _UWIN
-
-extern int	uwin_path(const char*, char*, int);
-
-size_t
-pathnative(const char* path, char* buf, size_t siz)
-{
-	return uwin_path(path, buf, siz);
-}
-
-#else
 
 #if __CYGWIN__
 
@@ -68,30 +55,7 @@ pathnative(const char* path, char* buf, size_t siz)
 	return strlen(buf);
 }
 
-#else
-
-#if __EMX__
-
-size_t
-pathnative(const char* path, char* buf, size_t siz)
-{
-	char*		s;
-	size_t		n;
-
-	if (!_fullpath(buf, path, siz))
-	{
-		for (s = buf; *s; s++)
-			if (*s == '/')
-				*s = '\\';
-	}
-	else if ((n = strlen(path)) < siz && buf)
-		memcpy(buf, path, n + 1);
-	return n;
-}
-
-#else
-
-#if __INTERIX
+#elif __INTERIX
 
 #include <interix/interix.h>
 
@@ -117,11 +81,5 @@ pathnative(const char* path, char* buf, size_t siz)
 		memcpy(buf, path, n + 1);
 	return n;
 }
-
-#endif
-
-#endif
-
-#endif
 
 #endif

@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,7 +18,6 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 #ifndef fcgetc
 /*
  * David Korn
@@ -46,6 +45,7 @@ typedef struct _fcin
 
 #if SHOPT_MULTIBYTE
 #   define fcmbget(x)	(mbwide()?_fcmbget(x):fcget())
+    extern int		_fcmbget(short*);
 #else
 #   define fcmbget(x)	(fcget())
 #endif
@@ -65,7 +65,6 @@ extern int		fcfill(void);
 extern int		fcfopen(Sfio_t*);
 extern int		fcclose(void);
 void			fcnotify(void(*)(Sfio_t*,const char*,int,void*),void*);
-extern int		_fcmbget(short*);
 
 extern Fcin_t		_Fcin;		/* used by macros */
 

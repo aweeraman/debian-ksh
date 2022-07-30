@@ -1,4 +1,3 @@
-set	prototyped
 lib	catopen,nl_langinfo
 hdr	nl_types,langinfo
 nxt	nl_types
@@ -20,6 +19,9 @@ tst	output{
 		printf("#include <%s>	/* the native nl_types.h */\n", _nxt_nl_types_str);
 	#endif
 		printf("\n");
+		printf("#ifdef __HAIKU__\n");
+		printf("typedef int	nl_item;  /* workaround system header bug */\n");
+		printf("#endif\n");
 	#ifndef NL_SETMAX
 		printf("#undef	NL_SETMAX\n");
 		printf("#define NL_SETMAX	1023\n");
@@ -49,15 +51,9 @@ tst	output{
 		printf("\n");
 		printf("typedef void* nl_catd;\n");
 		printf("\n");
-		printf("#if _BLD_ast && defined(__EXPORT__)\n");
-		printf("#define extern		__EXPORT__\n");
-		printf("#endif\n");
-		printf("\n");
 		printf("extern nl_catd		catopen(const char*, int);\n");
 		printf("extern char*		catgets(nl_catd, int, int, const char*);\n");
 		printf("extern int		catclose(nl_catd);\n");
-		printf("\n");
-		printf("#undef	extern\n");
 		printf("\n");
 		return 0;
 	}

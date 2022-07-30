@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -27,35 +27,30 @@
 **	Written by Kiem-Phong Vo.
 */
 
-#if __STD_C
-ssize_t sfwrite(Sfio_t* f, const Void_t* buf, size_t n)
-#else
-ssize_t sfwrite(f,buf,n)
-Sfio_t*		f;	/* write to this stream. 	*/
-Void_t*		buf;	/* buffer to be written.	*/
-size_t		n;	/* number of bytes. 		*/
-#endif
+ssize_t sfwrite(Sfio_t*		f,	/* write to this stream. 	*/
+		const void*	buf,	/* buffer to be written.	*/
+		size_t		n)	/* number of bytes. 		*/
 {
 	reg uchar	*s, *begs, *next;
 	reg ssize_t	w;
 	reg int		local;
-	SFMTXDECL(f);
 
-	SFMTXENTER(f, (ssize_t)(-1));
+	if(!f)
+		return (ssize_t)(-1);
 
 	GETLOCAL(f,local);
 
 	if(!buf)
-		SFMTXRETURN(f, (ssize_t)(n == 0 ? 0 : -1) );
+		return (ssize_t)(n == 0 ? 0 : -1) ;
 
 	/* release peek lock */
 	if(f->mode&SF_PEEK)
 	{	if(!(f->mode&SF_WRITE) && (f->flags&SF_RDWR) != SF_RDWR)
-			SFMTXRETURN(f, (ssize_t)(-1));
+			return (ssize_t)(-1);
 
 		if((uchar*)buf != f->next &&
 		   (!f->rsrv || f->rsrv->data != (uchar*)buf) )
-			SFMTXRETURN(f, (ssize_t)(-1));
+			return (ssize_t)(-1);
 
 		f->mode &= ~SF_PEEK;
 
@@ -67,7 +62,7 @@ size_t		n;	/* number of bytes. 		*/
 			for(w = n; w > 0; )
 			{	if((r = w) > sizeof(buf))
 					r = sizeof(buf);
-				if((r = sysreadf(f->file,buf,r)) <= 0)
+				if((r = read(f->file,buf,r)) <= 0)
 				{	n -= w;
 					break;
 				}
@@ -88,7 +83,7 @@ size_t		n;	/* number of bytes. 		*/
 	{	/* check stream mode */
 		if(SFMODE(f,local) != SF_WRITE && _sfmode(f,SF_WRITE,local) < 0 )
 		{	w = s > begs ? s-begs : -1;
-			SFMTXRETURN(f,w);
+			return w;
 		}
 
 		SFLOCK(f,local);
@@ -168,5 +163,5 @@ size_t		n;	/* number of bytes. 		*/
 	SFOPEN(f,local);
 
 	w = s-begs;
-	SFMTXRETURN(f,w);
+	return w;
 }

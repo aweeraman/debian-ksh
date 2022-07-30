@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,7 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * ftw,nftw over ftwalk
  */
@@ -49,13 +48,7 @@ struct FTW
 #define FTW_SKD		FTW_SKIP
 #define FTW_PRUNE	FTW_SKIP
 
-#if _BLD_ast && defined(__EXPORT__)
-#define extern		__EXPORT__
-#endif
-
 extern int	ftw(const char*, int(*)(const char*, const struct stat*, int), int);
 extern int	nftw(const char*, int(*)(const char*, const struct stat*, int, struct FTW*), int, int);
-
-#undef	extern
 
 #endif

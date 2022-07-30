@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -89,10 +89,6 @@
 #include <error.h>
 
 #include "sfhdr.h"
-
-#if !__STD_C && !defined(const)
-#define const
-#endif
 
 #define QL		01
 #define QU		02
@@ -187,38 +183,18 @@ static const S2I_unumber	mm[] =
 	S2I_umax / 64,
 };
 
-#if defined(__EXPORT__)
-#define extern		__EXPORT__
-#endif
 extern S2I_type
-#undef	extern
 #if S2I_size
 #if S2I_multiplier
-#if __STD_C
 S2I_function(const char* a, size_t size, char** e, char* basep, int m)
 #else
-S2I_function(a, size, e, basep, m) const char* a; size_t size; char** e; char* basep; int m;
-#endif
-#else
-#if __STD_C
 S2I_function(const char* a, size_t size, char** e, int base)
-#else
-S2I_function(a, size, e, base) const char* a; size_t size; char** e; int base;
-#endif
 #endif
 #else
 #if S2I_multiplier
-#if __STD_C
 S2I_function(const char* a, char** e, char* basep, int m)
 #else
-S2I_function(a, e, basep, m) const char* a; char** e; char* basep; int m;
-#endif
-#else
-#if __STD_C
 S2I_function(const char* a, char** e, int base)
-#else
-S2I_function(a, e, base) const char* a; char** e; int base;
-#endif
 #endif
 #endif
 {

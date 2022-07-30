@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -41,12 +41,7 @@
 static char	Meta[1<<CHAR_BIT], **Path;
 
 /* execute command directly if possible; else use the shell */
-#if __STD_C
 static void execute(const char* argcmd)
-#else
-static void execute(argcmd)
-char*	argcmd;
-#endif
 {
 	reg char	*s, *cmd, **argv, **p, *interp;
 	reg int		n;
@@ -67,9 +62,8 @@ char*	argcmd;
 			goto do_interp;
 
 	/* try to construct argv */
-	if(!(cmd = (char*)malloc(strlen(argcmd)+1)) )
+	if(!(cmd = strdup(argcmd)) )
 		goto do_interp;
-	strcpy(cmd,argcmd);
 	if(!(argv = (char**)malloc(16*sizeof(char*))) )
 		goto do_interp;
 	for(n = 0, s = cmd;; )
@@ -131,14 +125,9 @@ do_interp:
 
 #endif /*_PACKAGE_ast*/
 
-#if __STD_C
-Sfio_t*	sfpopen(Sfio_t* f, const char* command, const char* mode)
-#else
-Sfio_t*	sfpopen(f,command,mode)
-Sfio_t*	f;
-char*	command;	/* command to execute */
-char*	mode;		/* mode of the stream */
-#endif
+Sfio_t*	sfpopen(Sfio_t*		f,
+		const char*	command,	/* command to execute */
+		const char*	mode)		/* mode of the stream */
 {
 #if _PACKAGE_ast
 	reg Proc_t*	proc;
@@ -149,7 +138,7 @@ char*	mode;		/* mode of the stream */
 
 	if (!command || !command[0] || !mode)
 		return 0;
-	sflags = _sftype(mode, NIL(int*), NIL(int*), NIL(int*));
+	sflags = _sftype(mode, NIL(int*), NIL(int*));
 
 	if(f == (Sfio_t*)(-1))
 	{	/* stdio compatibility mode */
@@ -169,7 +158,7 @@ char*	mode;		/* mode of the stream */
 	av[3] = 0;
 	if (!(proc = procopen(0, av, 0, 0, flags)))
 		return 0;
-	if (!(f = sfnew(f, NIL(Void_t*), (size_t)SF_UNBOUND,
+	if (!(f = sfnew(f, NIL(void*), (size_t)SF_UNBOUND,
 	       		(sflags&SF_READ) ? proc->rfd : proc->wfd, sflags|((sflags&SF_RDWR)?0:SF_READ))) ||
 	    _sfpopen(f, (sflags&SF_READ) ? proc->wfd : -1, proc->pid, pflags) < 0)
 	{
@@ -197,14 +186,14 @@ char*	mode;		/* mode of the stream */
 	/* sanity check */
 	if(!command || !command[0] || !mode)
 		return NIL(Sfio_t*);
-	sflags = _sftype(mode,NIL(int*),NIL(int*),NIL(int*));
+	sflags = _sftype(mode,NIL(int*),NIL(int*));
 
 	/* make pipes */
 	parent[0] = parent[1] = child[0] = child[1] = -1;
 	if(sflags&SF_RDWR)
-	{	if(syspipef(parent) < 0)
+	{	if(pipe(parent) < 0)
 			goto error;
-		if((sflags&SF_RDWR) == SF_RDWR && syspipef(child) < 0)
+		if((sflags&SF_RDWR) == SF_RDWR && pipe(child) < 0)
 			goto error;
 	}
 
@@ -223,7 +212,7 @@ char*	mode;		/* mode of the stream */
 		else	stdio = 0;
 
 		/* make the streams */
-		if(!(f = sfnew(f,NIL(Void_t*),(size_t)SF_UNBOUND,parent[pkeep],sflags|((sflags&SF_RDWR)?0:SF_READ))))
+		if(!(f = sfnew(f,NIL(void*),(size_t)SF_UNBOUND,parent[pkeep],sflags|((sflags&SF_RDWR)?0:SF_READ))))
 			goto error;
 		if(sflags&SF_RDWR)
 		{	CLOSE(parent[!pkeep]);
@@ -261,7 +250,7 @@ char*	mode;		/* mode of the stream */
 
 		/* must be careful so not to close something useful */
 		if((sflags&SF_RDWR) == SF_RDWR && pkeep == child[ckeep])
-			if((child[ckeep] = sysdupf(pkeep)) < 0)
+			if((child[ckeep] = dup(pkeep)) < 0)
 				_exit(EXIT_NOTFOUND);
 
 		if(sflags&SF_RDWR)

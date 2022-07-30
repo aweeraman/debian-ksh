@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,7 +18,6 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  *	UNIX shell
  *	S. R. Bourne
@@ -28,6 +27,7 @@
  *
  */
 
+#include	"shopt.h"
 #include	<ast.h>
 #include	<errno.h>
 #include	"defs.h"
@@ -50,7 +50,6 @@ const char e_mailmsg[]		= "you have mail in $_";
 const char e_query[]		= "no query process";
 const char e_history[]		= "no history file";
 const char e_histopen[]		= "cannot open history file";
-const char e_option[]		= "%s: bad option(s)";
 const char e_optincompat1[]	= "%s cannot be used with other options";
 const char e_optincompat2[]	= "%s cannot be used with %s";
 const char e_toomany[]		= "open file limit exceeded";
@@ -68,10 +67,7 @@ const char e_subst[]		= "%s: bad substitution";
 const char e_create[]		= "%s: cannot create";
 const char e_tmpcreate[]	= "cannot create temporary file";
 const char e_restricted[]	= "%s: restricted";
-#if SHOPT_PFSH
-const char e_pfsh[]		= "%s: disabled in profile shell";
-#endif
-const char e_pexists[]		= "process already exists";
+const char e_copexists[]	= "coprocess is running; cannot create a new coprocess";
 const char e_exists[]		= "%s: file already exists";
 const char e_pipe[]		= "cannot create pipe";
 const char e_alarm[]		= "cannot set alarm";
@@ -82,7 +78,7 @@ const char e_badpattern[]	= "%s: invalid shell pattern";
 const char e_noread[]		= "%s: pattern seek requires read access";
 const char e_logout[]		= "Use 'exit' to terminate this shell";
 const char e_exec[]		= "%s: cannot execute";
-const char e_pwd[]		= "cannot access parent directories";
+const char e_pwd[]		= "cannot determine present working directory";
 const char e_found[]		= "%s: not found";
 #ifdef ENAMETOOLONG
 const char e_toolong[]		= "%s: file name too long";
@@ -116,6 +112,7 @@ const char e_nounattr[]		= "cannot unset attribute C or A or a";
 const char e_selfref[]		= "%s: invalid self reference";
 const char e_globalref[]	= "%s: global reference cannot refer to local variable";
 const char e_noalias[]		= "%s: alias not found\n";
+const char e_notrackedalias[]	= "%s: tracked alias not found\n";
 const char e_format[]		= "%s: bad format";
 const char e_redef[]		= "%s: type cannot be redefined";
 const char e_required[]		= "%s: is a required element of %s";
@@ -163,8 +160,8 @@ const char e_autoloadfrom[]	= " (autoload from %s)";
     const char e_jobsrunning[]	= "You have running jobs";
     const char e_no_job[]	= "no such job";
     const char e_no_proc[]	= "no such process";
-    const char e_badpid[]	= "%s: invalid process id";
-    const char e_jobusage[]	= "%s: Arguments must be %%job or process ids";
+    const char e_badpid[]	= "%s: invalid process ID";
+    const char e_jobusage[]	= "%s: Arguments must be %%job or process IDs";
 #endif /* JOBS */
 const char e_coredump[]		= "(coredump)";
 const char e_alphanum[]		= "[_[:alpha:]]*([_[:alnum:]])";
@@ -194,7 +191,6 @@ const char e_suidprofile[]	= "/etc/suid_profile";
 #if SHOPT_SYSRC
 const char e_sysrc[]		= "/etc/ksh.kshrc";
 #endif
-const char e_prohibited[]	= "login setuid/setgid shells prohibited";
 #ifdef BUILD_DTKSH
    const char e_suidexec[]      = SUIDEXECPATH;
 #else

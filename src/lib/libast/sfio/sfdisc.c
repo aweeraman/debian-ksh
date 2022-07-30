@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -48,30 +48,14 @@ typedef struct _dccache_s
 	uchar*		endb;
 } Dccache_t;
 
-#if __STD_C
-static int _dccaexcept(Sfio_t* f, int type, Void_t* val, Sfdisc_t* disc)
-#else
-static int _dccaexcept(f,type,val,disc)
-Sfio_t*		f;
-int		type;
-Void_t*		val;
-Sfdisc_t*	disc;
-#endif
+static int _dccaexcept(Sfio_t* f, int type, void* val, Sfdisc_t* disc)
 {
 	if(disc && type == SF_FINAL)
 		free(disc);
 	return 0;
 }
 
-#if __STD_C
-static ssize_t _dccaread(Sfio_t* f, Void_t* buf, size_t size, Sfdisc_t* disc)
-#else
-static ssize_t _dccaread(f, buf, size, disc)
-Sfio_t*		f;
-Void_t*		buf;
-size_t		size;
-Sfdisc_t*	disc;
-#endif
+static ssize_t _dccaread(Sfio_t* f, void* buf, size_t size, Sfdisc_t* disc)
 {
 	ssize_t		sz;
 	Sfdisc_t	*prev;
@@ -104,13 +88,7 @@ Sfdisc_t*	disc;
 	return sz;
 }
 
-#if __STD_C
 Sfdisc_t* sfdisc(Sfio_t* f, Sfdisc_t* disc)
-#else
-Sfdisc_t* sfdisc(f,disc)
-Sfio_t*		f;
-Sfdisc_t*	disc;
-#endif
 {
 	Sfdisc_t	*d, *rdisc;
 	Sfread_f	oreadf;
@@ -118,21 +96,21 @@ Sfdisc_t*	disc;
 	Sfseek_f	oseekf;
 	ssize_t		n;
 	Dccache_t	*dcca = NIL(Dccache_t*);
-	SFMTXDECL(f); /* declare a local stream variable for multithreading */
 
-	SFMTXENTER(f, NIL(Sfdisc_t*));
+	if(!f)
+		return NIL(Sfdisc_t*);
 
 	if((Sfio_t*)disc == f) /* special case to get the top discipline */
-		SFMTXRETURN(f,f->disc);
+		return f->disc;
 
 	if((f->flags&SF_READ) && f->proc && (f->mode&SF_WRITE) )
 	{	/* make sure in read mode to check for read-ahead data */
 		if(_sfmode(f,SF_READ,0) < 0)
-			SFMTXRETURN(f, NIL(Sfdisc_t*));
+			return NIL(Sfdisc_t*);
 	}
 	else
 	{	if((f->mode&SF_RDWR) != f->mode && _sfmode(f,0,0) < 0)
-			SFMTXRETURN(f, NIL(Sfdisc_t*));
+			return NIL(Sfdisc_t*);
 	}
 
 	SFLOCK(f,0);
@@ -201,7 +179,7 @@ Sfdisc_t*	disc;
 		disc = d->disc;
 		if(d->exceptf)
 		{	SFOPEN(f,0);
-			if((*(d->exceptf))(f,SF_DPOP,(Void_t*)disc,d) < 0 )
+			if((*(d->exceptf))(f,SF_DPOP,(void*)disc,d) < 0 )
 				goto done;
 			SFLOCK(f,0);
 		}
@@ -215,7 +193,7 @@ Sfdisc_t*	disc;
 			d = f->disc;
 			if(d && d->exceptf)
 			{	SFOPEN(f,0);
-				if( (*(d->exceptf))(f,SF_DPUSH,(Void_t*)disc,d) < 0 )
+				if( (*(d->exceptf))(f,SF_DPUSH,(void*)disc,d) < 0 )
 					goto done;
 				SFLOCK(f,0);
 			}
@@ -255,12 +233,12 @@ Sfdisc_t*	disc;
 		{	SETLOCAL(f);
 			f->bits &= ~SF_NULL;	/* turn off /dev/null handling */
 			if((f->bits&SF_MMAP) || (f->mode&SF_INIT))
-				sfsetbuf(f,NIL(Void_t*),(size_t)SF_UNBOUND);
+				sfsetbuf(f,NIL(void*),(size_t)SF_UNBOUND);
 			else if(f->data == f->tiny)
-				sfsetbuf(f,NIL(Void_t*),0);
+				sfsetbuf(f,NIL(void*),0);
 			else
 			{	int	flags = f->flags;
-				sfsetbuf(f,(Void_t*)f->data,f->size);
+				sfsetbuf(f,(void*)f->data,f->size);
 				f->flags |= (flags&SF_MALLOC);
 			}
 		}
@@ -268,5 +246,5 @@ Sfdisc_t*	disc;
 
 done :
 	SFOPEN(f,0);
-	SFMTXRETURN(f, rdisc);
+	return rdisc;
 }

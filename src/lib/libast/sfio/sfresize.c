@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -26,21 +26,12 @@
 	Written by Kiem-Phong Vo.
 */
 
-#if __STD_C
 int sfresize(Sfio_t* f, Sfoff_t size)
-#else
-int sfresize(f, size)
-Sfio_t*		f;
-Sfoff_t		size;
-#endif
 {
-	SFMTXDECL(f);
-
-	SFMTXENTER(f, -1);
 
 	if(size < 0 || f->extent < 0 ||
-	   (f->mode != SF_WRITE && _sfmode(f,SF_WRITE,0) < 0) )
-		SFMTXRETURN(f, -1);
+	   !f || (f->mode != SF_WRITE && _sfmode(f,SF_WRITE,0) < 0))
+		return -1;
 
 	SFLOCK(f,0);
 
@@ -50,7 +41,7 @@ Sfoff_t		size;
 		if(f->extent >= size)
 		{	if((f->flags&SF_MALLOC) && (f->next - f->data) <= size)
 			{	size_t	s = (((size_t)size + 1023)/1024)*1024;
-				Void_t*	d;
+				void*	d;
 				if(s < f->size && (d = realloc(f->data, s)) )
 				{	f->data = d;
 					f->size = s;
@@ -61,7 +52,7 @@ Sfoff_t		size;
 		}
 		else
 		{	if(SFSK(f, size, SEEK_SET, f->disc) != size)
-				SFMTXRETURN(f, -1);
+				return -1;
 			memclear((char*)(f->data+f->extent), (int)(size-f->extent));
 		}
 	}
@@ -69,10 +60,10 @@ Sfoff_t		size;
 	{	if(f->next > f->data)
 			SFSYNC(f);
 #if _lib_ftruncate
-		if(ftruncate(f->file, (sfoff_t)size) < 0)
-			SFMTXRETURN(f, -1);
+		if(ftruncate(f->file, (off_t)size) < 0)
+			return -1;
 #else
-		SFMTXRETURN(f, -1);
+		return -1;
 #endif
 	}
 
@@ -80,5 +71,5 @@ Sfoff_t		size;
 
 	SFOPEN(f, 0);
 
-	SFMTXRETURN(f, 0);
+	return 0;
 }

@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,7 +18,6 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  *   Routines to implement fast character input
  *
@@ -27,6 +26,7 @@
  *
  */
 
+#include	"shopt.h"
 #include	<ast.h>
 #include	<sfio.h>
 #include	<error.h>
@@ -135,10 +135,6 @@ void fcnotify(void (*fun)(Sfio_t*,const char*,int,void*),void* context)
 	_Fcin.context = context;
 }
 
-#ifdef __EXPORT__
-#   define extern __EXPORT__
-#endif
-
 #undef fcsave
 extern void fcsave(Fcin_t *fp)
 {
@@ -151,6 +147,7 @@ extern void fcrestore(Fcin_t *fp)
 	_Fcin = *fp;
 }
 
+#if SHOPT_MULTIBYTE
 int _fcmbget(short *len)
 {
 	register int		c;
@@ -168,3 +165,4 @@ int _fcmbget(short *len)
 	}
 	return(c);
 } 
+#endif /* SHOPT_MULTIBYTE */

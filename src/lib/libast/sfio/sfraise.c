@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -27,13 +27,8 @@
 **	Written by Kiem-Phong Vo.
 */
 
-#if __STD_C
-static int _sfraiseall(int type, Void_t* data)
-#else
-static int _sfraiseall(type, data)
-int	type;	/* type of event	*/
-Void_t*	data;	/* associated data	*/
-#endif
+static int _sfraiseall(int	type,	/* type of event	*/
+		       void*	data)	/* associated data	*/
 {
 	Sfio_t		*f;
 	Sfpool_t	*p, *next;
@@ -54,23 +49,15 @@ Void_t*	data;	/* associated data	*/
 	return rv;
 }
 
-#if __STD_C
-int sfraise(Sfio_t* f, int type, Void_t* data)
-#else
-int sfraise(f, type, data)
-Sfio_t*	f;	/* stream		*/
-int	type;	/* type of event	*/
-Void_t*	data;	/* associated data	*/
-#endif
+int sfraise(Sfio_t*	f,	/* stream		*/
+	    int		type,	/* type of event	*/
+	    void*	data)	/* associated data	*/
 {
 	reg Sfdisc_t	*disc, *next, *d;
 	reg int		local, rv;
-	SFMTXDECL(f);
 
 	if(!f)
 		return _sfraiseall(type,data);
-
-	SFMTXENTER(f, -1);
 
 	GETLOCAL(f,local);
 	if(!SFKILLED(f) &&
@@ -78,7 +65,7 @@ Void_t*	data;	/* associated data	*/
 	     (type == SF_NEW || type == SF_CLOSING ||
 	      type == SF_FINAL || type == SF_ATEXIT)) &&
 	   SFMODE(f,local) != (f->mode&SF_RDWR) && _sfmode(f,0,local) < 0)
-		SFMTXRETURN(f, -1);
+		return -1;
 	SFLOCK(f,local);
 
 	for(disc = f->disc; disc; )
@@ -89,7 +76,7 @@ Void_t*	data;	/* associated data	*/
 		if(disc->exceptf)
 		{	SFOPEN(f,0);
 			if((rv = (*disc->exceptf)(f,type,data,disc)) != 0 )
-				SFMTXRETURN(f, rv);
+				return rv;
 			SFLOCK(f,0);
 		}
 
@@ -104,5 +91,5 @@ Void_t*	data;	/* associated data	*/
 	}
 
 	SFOPEN(f,local);
-	SFMTXRETURN(f, 0);
+	return 0;
 }

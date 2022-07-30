@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -42,9 +42,8 @@
 	struct _sfdisc_s*	disc;	/* discipline			*/ \
 	struct _sfpool_s*	pool;	/* the pool containing this	*/ \
 	struct _sfrsrv_s*	rsrv;	/* reserved buffer		*/ \
-	struct _sfproc_s*	proc;	/* coprocess id, etc.		*/ \
-	Void_t*			mutex;	/* mutex for thread-safety	*/ \
-	Void_t*			stdio;	/* stdio FILE if any		*/ \
+	struct _sfproc_s*	proc;	/* coprocess ID, etc.		*/ \
+	void*			stdio;	/* stdio FILE if any		*/ \
 	Sfoff_t			lpos;	/* last seek position		*/ \
 	size_t			iosz;	/* preferred size for I/O	*/ \
 	size_t			blksz;	/* preferred block size		*/ \
@@ -70,7 +69,7 @@
 #define SF_RDWRSTR	(SF_RDWR|SF_STRING)
 
 /* for static initialization of an Sfio_t structure */
-#define SFNEW(data,size,file,type,disc,mutex)	\
+#define SFNEW(data,size,file,type,disc)	\
 	{ (unsigned char*)(data),			/* next		*/ \
 	  (unsigned char*)(data),			/* endw		*/ \
 	  (unsigned char*)(data),			/* endr		*/ \
@@ -91,15 +90,14 @@
 	  (struct _sfpool_s*)0,				/* pool		*/ \
 	  (struct _sfrsrv_s*)0,				/* rsrv		*/ \
 	  (struct _sfproc_s*)0,				/* proc		*/ \
-	  (mutex),					/* mutex	*/ \
-	  (Void_t*)0,					/* stdio	*/ \
+	  (void*)0,					/* stdio	*/ \
 	  (Sfoff_t)0,					/* lpos		*/ \
 	  (size_t)0,					/* iosz		*/ \
 	  0						/* getr		*/ \
 	}
 
 /* function to clear an Sfio_t structure */
-#define SFCLEAR(f,mtx) \
+#define SFCLEAR(f) \
 	( (f)->next = (unsigned char*)0,		/* next		*/ \
 	  (f)->endw = (unsigned char*)0,		/* endw		*/ \
 	  (f)->endr = (unsigned char*)0,		/* endr		*/ \
@@ -120,8 +118,7 @@
 	  (f)->pool = (struct _sfpool_s*)0,		/* pool		*/ \
 	  (f)->rsrv = (struct _sfrsrv_s*)0,		/* rsrv		*/ \
 	  (f)->proc = (struct _sfproc_s*)0,		/* proc		*/ \
-	  (f)->mutex = (mtx),				/* mutex	*/ \
-	  (f)->stdio = (Void_t*)0,			/* stdio	*/ \
+	  (f)->stdio = (void*)0,			/* stdio	*/ \
 	  (f)->lpos = (Sfoff_t)0,			/* lpos		*/ \
 	  (f)->iosz = (size_t)0,			/* iosz		*/ \
 	  (f)->getr = 0					/* getr		*/ \

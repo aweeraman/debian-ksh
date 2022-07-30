@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,15 +18,16 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 
+#include	"shopt.h"
 #include	"defs.h"
 #include	"name.h"
 #include	"shtable.h"
 
 /*
- * This is the list of invocation and set options
- * This list must be in ASCII sorted order
+ * This is the list of invocation and 'set' options.
+ * It must be sorted in ASCII order except for the no- prefix.
+ * See sh_lookopt() in string.c.
  */
 
 const Shtable_t shtab_options[] =
@@ -43,6 +44,7 @@ const Shtable_t shtab_options[] =
 #endif
 	"errexit",			SH_ERREXIT,
 	"noexec",			SH_NOEXEC,
+	"functrace",			SH_FUNCTRACE,
 	"noglob",			SH_NOGLOB,
 #if SHOPT_GLOBCASEDET
 	"globcasedetect",		SH_GLOBCASEDET,
@@ -53,6 +55,10 @@ const Shtable_t shtab_options[] =
 #endif
 #if SHOPT_HISTEXPAND
 	"histexpand",			SH_HISTEXPAND,
+#if SHOPT_ESH || SHOPT_VSH
+	"histreedit",			SH_HISTREEDIT,
+	"histverify",			SH_HISTVERIFY,
+#endif
 #endif
 	"ignoreeof",			SH_IGNOREEOF,
 	"interactive",			SH_INTERACTIVE|SH_COMMANDLINE,
@@ -62,14 +68,13 @@ const Shtable_t shtab_options[] =
 	"login_shell",			SH_LOGIN_SHELL|SH_COMMANDLINE,
 	"markdirs",			SH_MARKDIRS,
 	"monitor",			SH_MONITOR,
+#if SHOPT_ESH || SHOPT_VSH
 	"multiline",			SH_MULTILINE,
+#endif
 	"notify",			SH_NOTIFY,
 	"pipefail",			SH_PIPEFAIL,
 	"posix",			SH_POSIX,
 	"privileged",			SH_PRIVILEGED,
-#if SHOPT_PFSH
-	"profile",			SH_PFSH|SH_COMMANDLINE,
-#endif
 	"rc",				SH_RC|SH_COMMANDLINE,
 	"restricted",			SH_RESTRICTED,
 	"showme",			SH_SHOWME,

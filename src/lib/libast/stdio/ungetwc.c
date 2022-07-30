@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,7 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 
 #include "stdhdr.h"
 
@@ -29,8 +28,6 @@ ungetwc(wint_t c, Sfio_t* f)
 {
 	register unsigned char*	s = (unsigned char*)&c;
 	register unsigned char*	e = s + sizeof(c);
-
-	STDIO_INT(f, "ungetwc", wint_t, (wint_t, Sfio_t*), (c, f))
 
 	FWIDE(f, WEOF);
 	while (s < e)

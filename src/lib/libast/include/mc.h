@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,7 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 
 /*
  * machine independent binary message catalog interface
@@ -80,10 +79,6 @@ typedef struct Mc_s
 #endif
 } Mc_t;
 
-#if _BLD_ast && defined(__EXPORT__)
-#define extern		__EXPORT__
-#endif
-
 extern char*		mcfind(const char*, const char*, int, int, char*, size_t);
 extern Mc_t*		mcopen(Sfio_t*);
 extern char*		mcget(Mc_t*, int, int, const char*);
@@ -91,7 +86,5 @@ extern int		mcput(Mc_t*, int, int, const char*);
 extern int		mcdump(Mc_t*, Sfio_t*);
 extern int		mcindex(const char*, char**, int*, int*);
 extern int		mcclose(Mc_t*);
-
-#undef	extern
 
 #endif

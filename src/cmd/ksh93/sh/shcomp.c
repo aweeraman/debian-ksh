@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,7 +18,6 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * David Korn
  * AT&T Labs
@@ -27,6 +26,7 @@
  *
  */
 
+#include "shopt.h"
 #include "version.h"
 
 static const char usage[] =
@@ -83,7 +83,6 @@ static const char header[6] = { CNTL('k'),CNTL('s'),CNTL('h'),0,SHCOMP_HDR_VERSI
 int main(int argc, char *argv[])
 {
 	Sfio_t *in, *out;
-	Shell_t	*shp;
 	Namval_t *np;
 	Shnode_t *t;
 	char *cp, *shcomp_id, *script_id;
@@ -107,10 +106,10 @@ int main(int argc, char *argv[])
 		errormsg(SH_DICT,ERROR_usage(2),"%s",opt_info.arg);
 		UNREACHABLE();
 	}
-	shp = sh_init(argc,argv,(Shinit_f)0);
+	sh_init(argc,argv,(Shinit_f)0);
 	script_id = error_info.id;  /* set by sh_init() */
 	error_info.id = shcomp_id;
-	shp->shcomp = 1;
+	sh.shcomp = 1;
 	argv += opt_info.index;
 	argc -= opt_info.index;
 	if(argc==0 && tty_check(0))
@@ -162,8 +161,10 @@ int main(int argc, char *argv[])
 		sh_onoption(SH_VERBOSE);
 	if(!dflag)
 		sfwrite(out,header,sizeof(header));  /* write binary shcomp header */
+#if SHOPT_ESH || SHOPT_VSH
 	sh_offoption(SH_MULTILINE);
-	shp->inlineno = 1;
+#endif
+	sh.inlineno = 1;
 #if SHOPT_BRACEPAT
         sh_onoption(SH_BRACEEXPAND);
 #endif
@@ -171,7 +172,7 @@ int main(int argc, char *argv[])
 	while(1)
 	{
 		stakset((char*)0,0);
-		if(t = (Shnode_t*)sh_parse(shp,in,0))
+		if(t = (Shnode_t*)sh_parse(in,0))
 		{
 			if((t->tre.tretyp&(COMMSK|COMSCAN))==0 && t->com.comnamp && strcmp(nv_name((Namval_t*)t->com.comnamp),"alias")==0)
 				/* Create aliases found in the script to prevent syntax errors */

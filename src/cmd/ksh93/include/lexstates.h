@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,7 +18,6 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 #ifndef S_BREAK
 #define S_BREAK	1	/* end of token */
 #define S_EOF	2	/* end of buffer */
@@ -108,14 +107,17 @@
 #endif
 
 #undef LEN
+#undef SETLEN
 #if SHOPT_MULTIBYTE
 #   define LEN		_Fcin.fclen
+#   define SETLEN(x)	(_Fcin.fclen = x)
 #   define isaname(c)	((c)>0x7f?isalpha(c): sh_lexstates[ST_NAME][(c)]==0)
 #   define isaletter(c)	((c)>0x7f?isalpha(c): sh_lexstates[ST_DOL][(c)]==S_ALP && (c)!='.')
 #else
 #   undef mbwide
 #   define mbwide()	(0)
 #   define LEN		1
+#   define SETLEN(x)	(x)
 #   define isaname(c)	(sh_lexstates[ST_NAME][c]==0)
 #   define isaletter(c)	(sh_lexstates[ST_DOL][c]==S_ALP && (c)!='.')
 #endif

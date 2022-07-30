@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -27,22 +27,17 @@
 **	Written by Kiem-Phong Vo.
 */
 
-#if __STD_C
-Void_t* sfreserve(Sfio_t* f, ssize_t size, int type)
-#else
-Void_t* sfreserve(f,size,type)
-Sfio_t*		f;	/* file to peek */
-ssize_t		size;	/* size of peek */
-int		type;	/* LOCKR: lock stream, LASTR: last record */
-#endif
+void* sfreserve(Sfio_t*	f,	/* file to peek */
+		ssize_t	size,	/* size of peek */
+		int	type)	/* LOCKR: lock stream, LASTR: last record */
 {
 	reg ssize_t	n, now, sz, iosz;
 	reg Sfrsrv_t*	rsrv;
-	reg Void_t*	data;
+	reg void*	data;
 	reg int		mode, local;
-	SFMTXDECL(f);
 
-	SFMTXENTER(f,NIL(Void_t*));
+	if(!f)
+		return NIL(void*);
 
 	sz = size < 0 ? -size : size;
 
@@ -55,32 +50,32 @@ int		type;	/* LOCKR: lock stream, LASTR: last record */
 	/* return the last record */
 	if(type == SF_LASTR )
 	{	if((n = f->endb - f->next) > 0 && n == f->val )
-		{	data = (Void_t*)f->next;
+		{	data = (void*)f->next;
 			f->next += n;
 		}
 		else if((rsrv = f->rsrv) && (n = -rsrv->slen) > 0)
 		{	rsrv->slen = 0;
 			_Sfi = f->val = n;
-			data = (Void_t*)rsrv->data;
+			data = (void*)rsrv->data;
 		}
 		else
 		{	_Sfi = f->val = -1;
-			data = NIL(Void_t*);
+			data = NIL(void*);
 		}
 
-		SFMTXRETURN(f, data);
+		return data;
 	}
 
 	if(type > 0)
 	{	if(type == 1 ) /* upward compatibility mode */
 			type = SF_LOCKR;
 		else if(type != SF_LOCKR)
-			SFMTXRETURN(f, NIL(Void_t*));
+			return NIL(void*);
 	}
 
 	if(size == 0 && (type < 0 || type == SF_LOCKR) )
 	{	if((f->mode&SF_RDWR) != f->mode && _sfmode(f,0,0) < 0)
-			SFMTXRETURN(f, NIL(Void_t*));
+			return NIL(void*);
 
 		SFLOCK(f,0);
 		if((n = f->endb - f->next) < 0)
@@ -97,7 +92,7 @@ int		type;	/* LOCKR: lock stream, LASTR: last record */
 			mode = SF_WRITE;
 		if((int)f->mode != mode && _sfmode(f,mode,local) < 0)
 		{	SFOPEN(f,0);
-			SFMTXRETURN(f, NIL(Void_t*));
+			return NIL(void*);
 		}
 
 		SFLOCK(f,local);
@@ -164,29 +159,29 @@ int		type;	/* LOCKR: lock stream, LASTR: last record */
 	}
 
 done:	/* compute the buffer to be returned */
-	data = NIL(Void_t*);
+	data = NIL(void*);
 	if(size == 0 || n == 0)
 	{	if(n > 0) /* got data */
-			data = (Void_t*)f->next;
+			data = (void*)f->next;
 		else if(type == SF_LOCKR && size == 0 && (rsrv = _sfrsrv(f,0)) )
-			data = (Void_t*)rsrv->data;
+			data = (void*)rsrv->data;
 	}
 	else if(n >= sz) /* got data */
-		data = (Void_t*)f->next;
+		data = (void*)f->next;
 	else if(f->flags&SF_STRING) /* try extending string buffer */
 	{	if((f->mode&SF_WRITE) && (f->flags&SF_MALLOC) )
 		{	(void)SFWR(f,f->next,sz,f->disc);
 			if((n = f->endb - f->next) >= sz )
-				data = (Void_t*)f->next;
+				data = (void*)f->next;
 		}
 	}
 	else if(f->mode&SF_WRITE) /* allocate side buffer */
 	{	if(type == SF_LOCKR && (rsrv = _sfrsrv(f, sz)) )
-			data = (Void_t*)rsrv->data;
+			data = (void*)rsrv->data;
 	}
 	else if(type != SF_LOCKR && sz > f->size && (rsrv = _sfrsrv(f,sz)) )
-	{	if((n = SFREAD(f,(Void_t*)rsrv->data,sz)) >= sz) /* read side buffer */
-			data = (Void_t*)rsrv->data;
+	{	if((n = SFREAD(f,(void*)rsrv->data,sz)) >= sz) /* read side buffer */
+			data = (void*)rsrv->data;
 		else	rsrv->slen = -n;
 	}
 
@@ -200,12 +195,12 @@ done:	/* compute the buffer to be returned */
 			f->endr = f->endw = f->data;
 		}
 		else
-		{	if(data == (Void_t*)f->next)
+		{	if(data == (void*)f->next)
 				f->next += (size >= 0 ? size : n);
 		}
 	}
 
 	_Sfi = f->val = n; /* return true buffer size */
 
-	SFMTXRETURN(f, data);
+	return data;
 }

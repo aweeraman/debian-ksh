@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,7 +18,6 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 
 #ifndef _terminal_
 #define _terminal_	1
@@ -197,6 +196,7 @@ extern int	tty_raw(int,int);
 extern int	tty_check(int);
 extern int	tty_set(int, int, struct termios*);
 extern int	sh_ioctl(int,int,void*,int);
+#undef ioctl
 #define ioctl(a,b,c)	sh_ioctl(a,b,c,sizeof(c))
 #ifdef _lib_tcgetattr
     extern int	sh_tcgetattr(int,struct termios*);

@@ -8,12 +8,12 @@ valgrindflags='--xml=yes --log-file=/dev/null --track-origins=yes --read-var-inf
 
 USAGE=$'
 [-s8?
-@(#)$Id: shtests (ksh 93u+m) 2021-12-16 $
+@(#)$Id: shtests (ksh 93u+m) 2021-12-28 $
 ]
 [-author?David Korn <dgk@research.att.com>]
 [-author?Glenn Fowler <gsf@research.att.com>]
 [-copyright?(c) 2000-2012 AT&T Intellectual Property]
-[-copyright?(c) 2020-2021 Contributors to https://github.com/ksh93/ksh]
+[-copyright?(c) 2020-2022 Contributors to https://github.com/ksh93/ksh]
 [-license?http://www.eclipse.org/org/documents/epl-v10.html]
 [+NAME?shtests - ksh regression test harness]
 [+DESCRIPTION?\bshtests\b is the \bksh\b(1) regression test harness for
@@ -172,7 +172,7 @@ function valxml
 command set +o posix 2>/dev/null
 unset DISPLAY FIGNORE HISTFILE POSIXLY_CORRECT _AST_FEATURES
 export ENV=/./dev/null SHTESTS_COMMON=$PWD/_common
-trap + CONT PIPE	# unadvertised -- set SIGCONT and SIGPIPE to SIG_DFL
+trap + $(kill -l)	# unadvertised -- set all signals to SIG_DFL
 
 integer compile=-1 posix=-1 utf8=-1
 integer debug=0 keep=0 locale=0 time=1
@@ -244,8 +244,7 @@ then	utf8=0
 	if	! let 1.0 2>/dev/null
 	then	export LC_NUMERIC=C
 	fi
-else	unset LANG LC_ALL
-	export LC_NUMERIC=C
+else	unset LANG ${!LC_*}
 fi
 if	[[ $VMALLOC_OPTIONS ]]
 then	vmalloc_options=$VMALLOC_OPTIONS
@@ -313,8 +312,9 @@ SHOPT()
 }
 . "${SHOPTFILE:-../SHOPT.sh}"
 unset -f SHOPT
+[[ -n $SHOPT_MULTIBYTE ]] || SHOPT_MULTIBYTE=$( LC_ALL=C.UTF-8; x=$'\xc3\xa9'; print $(( ${#x}==1 )) )
 if	(( !SHOPT_MULTIBYTE && utf8 && !posix && !compile ))
-then	echo "The -u/--utf8 option is unavailable as SHOPT_MULTIBYTE is turned off in ${SHOPTFILE:-SHOPT.sh}." >&2
+then	echo "-u/--utf8 is unavailable because multibyte support was not compiled in." >&2
 	exit 1
 fi
 
@@ -345,6 +345,8 @@ do	[[ $i == *.sh ]] || i+='.sh'
 	fi
 	t=$(	case $i in
 		glob.sh)	grep -c '^[[:blank:]]*test_[a-z]\{3,\}' $i ;;
+		leaks.sh)	grep -c ^TEST $i ;;
+		pty.sh)		grep -c 'tst ' $i ;;
 		*)		grep -c err_exit $i ;;
 		esac	)
 	tests[$i]=$t
@@ -408,11 +410,10 @@ do	[[ $i == *.sh ]] || i+='.sh'
 		echo test $o begins ${time:+"at $(date +%Y-%m-%d+%H:%M:%S)"}
 		tmp_s=$tmp/$u.shcomp
 		mkdir -m700 "$tmp_s" || exit
-		# must incorporate _common in script itself so the aliases are expanded at compile time
-		sed '/^\. .*\/_common/ {
-			r _common
-			d
-		}' < $i > $c.orig
+		# Must define aliases from _common in script itself so they are expanded at compile time.
+		# Replace the first few lines with those to avoid affecting $LINENO; they are comments anyway.
+		num_alias=$(grep -c '^alias [[:alnum:]_]\{2,\}=' _common)
+		{ grep '^alias [[:alnum:]_]\{2,\}=' _common; sed "1,$num_alias d" "$i"; } >$c.orig
 		cd "$tmp_s" || exit
 		if	"$SHCOMP" "$c.orig" > $c
 		then	if	tmp=$tmp_s $valgrind $SHELL $trace $c

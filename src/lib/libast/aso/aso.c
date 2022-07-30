@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,16 +20,9 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 
 #include "asohdr.h"
 #include "FEATURE/aso"
-
-#if defined(_UWIN) && defined(_BLD_ast)
-
-NoN(aso)
-
-#else
 
 /*
  * AST atomic scalar operations
@@ -46,17 +39,9 @@ NoN(aso)
 
 #if !_PACKAGE_ast
 
-#if _UWIN
-
-extern ssize_t		sfsprintf(char*, size_t, const char*, ...);
-
-#else
-
 #include <stdio.h>
 
 #define sfsprintf	snprintf
-
-#endif
 
 #endif
 
@@ -864,5 +849,3 @@ asocasptr(void volatile* p, void* o, void* n)
 	lock(state.data, k, p);
 	return o;
 }
-
-#endif

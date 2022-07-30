@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,7 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 
 /*
  * some systems may pull in <ast_common.h> and its <ast_map.h>
@@ -43,17 +42,11 @@
 int
 main()
 {
-	printf("#pragma prototyped\n");
-	printf("\n");
 	printf("/*\n");
 	printf(" * prototypes provided for standard interfaces hijacked\n");
 	printf(" * by AST and mapped to _ast_* but already prototyped\n");
 	printf(" * unmapped in native headers included by <ast_std.h>\n");
 	printf(" */\n");
-	printf("\n");
-	printf("#if _BLD_ast && defined(__EXPORT__)\n");
-	printf("#define extern		__EXPORT__\n");
-	printf("#endif\n");
 	printf("\n");
 #if __MVS__
 #undef	_map_libc
@@ -325,6 +318,8 @@ main()
 	printf("#define strgid		_ast_strgid\n");
 	printf("#undef	strgrpmatch\n");
 	printf("#define strgrpmatch	_ast_strgrpmatch\n");
+	printf("#undef	strngrpmatch\n");
+	printf("#define strngrpmatch	_ast_strngrpmatch\n");
 	printf("#undef	strhash\n");
 	printf("#define strhash		_ast_strhash\n");
 	printf("#undef	strkey\n");
@@ -519,9 +514,7 @@ main()
 	printf("#endif\n");
 #endif
 #endif
-	printf("#if !_UWIN\n");
 	printf("#undef	extern\n");
-	printf("#endif\n");
 #if _npt_strtold || _map_libc || _std_strtold
 #if _npt_strtold && !_map_libc && !_std_strtold
 	printf("#ifndef _ISOC99_SOURCE\n");

@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -20,11 +20,6 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                                                                      *
 ***********************************************************************/
-#if defined(_UWIN) && defined(_BLD_ast)
-
-void _STUB_vmprivate(){}
-
-#else
 
 #include	"vmhdr.h"
 
@@ -37,14 +32,9 @@ static char*	Version = "\n@(#)$Id: Vmalloc (AT&T Labs - Research) 2011-08-08 $\0
 */
 
 /* Get more memory for a region */
-#if __STD_C
-static Block_t* _vmextend(reg Vmalloc_t* vm, size_t size, Vmsearch_f searchf )
-#else
-static Block_t* _vmextend(vm, size, searchf )
-reg Vmalloc_t*	vm;		/* region to increase in size	*/
-size_t		size;		/* desired amount of space	*/
-Vmsearch_f	searchf;	/* tree search function		*/
-#endif
+static Block_t* _vmextend(reg Vmalloc_t*	vm,		/* region to increase in size	*/
+			  size_t		size,		/* desired amount of space	*/
+			  Vmsearch_f		searchf)	/* tree search function		*/
 {
 	reg size_t	s;
 	reg Seg_t*	seg;
@@ -55,7 +45,7 @@ Vmsearch_f	searchf;	/* tree search function		*/
 	GETPAGESIZE(_Vmpagesize);
 
 	if(vd->incr <= 0) /* this is just _Vmheap on the first call */
-		vd->incr = _Vmpagesize*sizeof(Void_t*);
+		vd->incr = _Vmpagesize*sizeof(void*);
 
 	/* Get slightly more for administrative data */
 	s = size + sizeof(Seg_t) + sizeof(Block_t) + sizeof(Head_t) + 2*ALIGN;
@@ -79,11 +69,11 @@ Vmsearch_f	searchf;	/* tree search function		*/
 	}
 
 	if(!addr) /* create a new segment */
-	{	if(!(addr = (Vmuchar_t*)(*vm->disc->memoryf)(vm, NIL(Void_t*), 0, size, vm->disc)) )
+	{	if(!(addr = (Vmuchar_t*)(*vm->disc->memoryf)(vm, NIL(void*), 0, size, vm->disc)) )
 		{	if(vm->disc->exceptf) /* announce that no more memory is available */
 			{
 				CLRLOCK(vm, 0);
-				(void)(*vm->disc->exceptf)(vm, VM_NOMEM, (Void_t*)size, vm->disc);
+				(void)(*vm->disc->exceptf)(vm, VM_NOMEM, (void*)size, vm->disc);
 				SETLOCK(vm, 0);
 			}
 			return NIL(Block_t*);
@@ -134,7 +124,7 @@ Vmsearch_f	searchf;	/* tree search function		*/
 
 		seg = (Seg_t*)addr;
 		seg->vmdt = vd;
-		seg->addr = (Void_t*)(addr - (s ? ALIGN-s : 0));
+		seg->addr = (void*)(addr - (s ? ALIGN-s : 0));
 		seg->extent = size;
 		seg->baddr = addr + size - (s ? 2*ALIGN : 0);
 		seg->free = NIL(Block_t*);
@@ -183,17 +173,12 @@ Vmsearch_f	searchf;	/* tree search function		*/
 }
 
 /* Truncate a segment if possible */
-#if __STD_C
-static ssize_t _vmtruncate(Vmalloc_t* vm, Seg_t* seg, size_t size, int exact)
-#else
-static ssize_t _vmtruncate(vm, seg, size, exact)
-Vmalloc_t*	vm;	/* containing region		*/
-Seg_t*		seg;	/* the one to be truncated	*/
-size_t		size;	/* amount of free space		*/
-int		exact;
-#endif
+static ssize_t _vmtruncate(Vmalloc_t*	vm,	/* containing region		*/
+			   Seg_t*	seg,	/* the one to be truncated	*/
+			   size_t	size,	/* amount of free space		*/
+			   int		exact)
 {
-	reg Void_t*	caddr;
+	reg void*	caddr;
 	reg Seg_t*	last;
 	reg Vmdata_t*	vd = vm->data;
 	reg Vmemory_f	memoryf = vm->disc->memoryf;
@@ -281,11 +266,9 @@ Vmextern_t	_Vmextern =
 {	_vmextend,						/* _Vmextend	*/
 	_vmtruncate,						/* _Vmtruncate	*/
 	0,							/* _Vmpagesize	*/
-	NIL(char*(*)_ARG_((char*,const char*,int))),		/* _Vmstrcpy	*/
-	NIL(char*(*)_ARG_((Vmulong_t,int))),			/* _Vmitoa	*/
-	NIL(void(*)_ARG_((Vmalloc_t*,
-			  Vmuchar_t*,Vmuchar_t*,size_t,size_t))), /* _Vmtrace	*/
-	NIL(void(*)_ARG_((Vmalloc_t*)))				/* _Vmpfclose	*/
+	NIL(char*(*)(char*,const char*,int)),			/* _Vmstrcpy	*/
+	NIL(char*(*)(Vmulong_t,int)),				/* _Vmitoa	*/
+	NIL(void(*)(Vmalloc_t*,Vmuchar_t*,Vmuchar_t*,
+					size_t,size_t)),	/* _Vmtrace	*/
+	NIL(void(*)(Vmalloc_t*))				/* _Vmpfclose	*/
 };
-
-#endif

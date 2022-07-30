@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,12 +18,12 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  * AT&T Labs
  *
  */
 
+#include	"shopt.h"
 #include        "defs.h"
 #include        "variables.h"
 #include        "builtins.h"
@@ -33,7 +33,7 @@
 
 static void assign(Namval_t*,const char*,int,Namfun_t*);
 
-int nv_compare(Dt_t* dict, Void_t *sp, Void_t *dp, Dtdisc_t *disc)
+int nv_compare(Dt_t* dict, void *sp, void *dp, Dtdisc_t *disc)
 {
 	if(sp==dp)
 		return(0);
@@ -79,7 +79,6 @@ Sfdouble_t nv_getn(Namval_t *np, register Namfun_t *nfp)
 {
 	register Namfun_t	*fp;
 	register Sfdouble_t	d=0;
-	Shell_t			*shp = sh_getinterp();
 	char *str;
 	if((fp = nfp) != NIL(Namfun_t*) && !nv_local)
 		fp = nfp = nfp->next;
@@ -107,7 +106,7 @@ Sfdouble_t nv_getn(Namval_t *np, register Namfun_t *nfp)
 		else
 			str = nv_getv(np,fp?fp:nfp);
 		if(str && *str)
-			d = sh_arith(shp,str);
+			d = sh_arith(str);
 	}
 	return(d);
 }
@@ -155,17 +154,15 @@ void nv_putv(Namval_t *np, const char *value, int flags, register Namfun_t *nfp)
 	}
 }
 
-#define	LOOKUPS		0
+#define	LOOKUP		0
 #define	ASSIGN		1
 #define	APPEND		2
 #define	UNASSIGN	3
-#define	LOOKUPN		4
-#define BLOCKED		((Namval_t*)&nv_local)
 
 struct	vardisc
 {
 	Namfun_t	fun;
-	Namval_t	*disc[5];
+	Namval_t	*disc[4];
 };
 
 struct blocked
@@ -248,8 +245,7 @@ static void	assign(Namval_t *np,const char* val,int flags,Namfun_t *handle)
 	struct blocked	block, *bp = block_info(np, &block);
 	Namval_t	node;
 	union Value	*up = np->nvalue.up;
-#if SHOPT_TYPEDEF
-	Namval_t	*tp, *nr;
+	Namval_t	*tp, *nr;  /* for 'typeset -T' types */
 	if(val && (tp=nv_type(np)) && (nr=nv_open(val,sh.var_tree,NV_VARNAME|NV_ARRAY|NV_NOADD|NV_NOFAIL)) && tp==nv_type(nr)) 
 	{
 		char *sub = nv_getsub(np);
@@ -263,7 +259,6 @@ static void	assign(Namval_t *np,const char* val,int flags,Namfun_t *handle)
 			nv_clone(nr,np,0);
 		goto done;
 	}
-#endif /* SHOPT_TYPEDEF */
 	if(val || isblocked(bp,type))
 	{
 		if(!nq || isblocked(bp,type))
@@ -292,20 +287,20 @@ static void	assign(Namval_t *np,const char* val,int flags,Namfun_t *handle)
 		int		bflag;
 		/* disciplines like PS2 may run at parse time; save, reinit and restore the lexer state */
 		savelex = *lexp;
-		sh_lexopen(lexp, &sh, 0);   /* needs full init (0), not what it calls reinit (1) */
+		sh_lexopen(lexp, 0);   /* needs full init (0), not what it calls reinit (1) */
 		block(bp,type);
-		if(bflag = (type==APPEND && !isblocked(bp,LOOKUPS)))
-			block(bp,LOOKUPS);
-		sh_pushcontext(&sh, &checkpoint, 1);
+		if(bflag = (type==APPEND && !isblocked(bp,LOOKUP)))
+			block(bp,LOOKUP);
+		sh_pushcontext(&checkpoint, 1);
 		jmpval = sigsetjmp(checkpoint.buff, 0);
 		if(!jmpval)
 			sh_fun(nq,np,(char**)0);
-		sh_popcontext(&sh, &checkpoint);
+		sh_popcontext(&checkpoint);
 		if(sh.topfd != checkpoint.topfd)
-			sh_iorestore(&sh, checkpoint.topfd, jmpval);
+			sh_iorestore(checkpoint.topfd, jmpval);
 		unblock(bp,type);
 		if(bflag)
-			unblock(bp,LOOKUPS);
+			unblock(bp,LOOKUP);
 		if(!vp->disc[type])
 			chktfree(np,vp);
 		*lexp = savelex;
@@ -371,7 +366,7 @@ static void	assign(Namval_t *np,const char* val,int flags,Namfun_t *handle)
 done:
 	if(bp== &block)
 		block_done(bp);
-	if(nq && nq->nvalue.rp->running==1)
+	if(nq && nq->nvalue.rp && nq->nvalue.rp->running==1)
 	{
 		nq->nvalue.rp->running=0;
 		_nv_unset(nq,0);
@@ -382,15 +377,15 @@ done:
  * This function executes a lookup disc and then performs
  * the lookup on the given node <np>
  */
-static char*	lookup(Namval_t *np, int type, Sfdouble_t *dp,Namfun_t *handle)
+static char*	lookup(Namval_t *np, Namfun_t *handle)
 {
 	register struct vardisc	*vp = (struct vardisc*)handle;
 	struct blocked		block, *bp = block_info(np, &block);
-	register Namval_t	*nq = vp->disc[type];
+	register Namval_t	*nq = vp->disc[LOOKUP];
 	register char		*cp=0;
 	Namval_t		node;
 	union Value		*up = np->nvalue.up;
-	if(nq && !isblocked(bp,type))
+	if(nq && !isblocked(bp,LOOKUP))
 	{
 		struct checkpt	checkpoint;
 		int		jmpval;
@@ -398,35 +393,27 @@ static char*	lookup(Namval_t *np, int type, Sfdouble_t *dp,Namfun_t *handle)
 		Lex_t		*lexp = (Lex_t*)sh.lex_context, savelex;
 		/* disciplines like PS2 may run at parse time; save, reinit and restore the lexer state */
 		savelex = *lexp;
-		sh_lexopen(lexp, &sh, 0);   /* needs full init (0), not what it calls reinit (1) */
+		sh_lexopen(lexp, 0);   /* needs full init (0), not what it calls reinit (1) */
 		node = *SH_VALNOD;
 		if(!nv_isnull(SH_VALNOD))
 		{
 			nv_onattr(SH_VALNOD,NV_NOFREE);
 			_nv_unset(SH_VALNOD,0);
 		}
-		if(type==LOOKUPN)
-		{
-			nv_onattr(SH_VALNOD,NV_DOUBLE|NV_INTEGER);
-			nv_setsize(SH_VALNOD,10);
-		}
-		block(bp,type);
-		sh_pushcontext(&sh, &checkpoint, 1);
+		block(bp,LOOKUP);
+		block(bp, UNASSIGN);   /* make sure nv_setdisc doesn't invalidate 'vp' by freeing it */
+		sh_pushcontext(&checkpoint, 1);
 		jmpval = sigsetjmp(checkpoint.buff, 0);
 		if(!jmpval)
 			sh_fun(nq,np,(char**)0);
-		sh_popcontext(&sh, &checkpoint);
+		sh_popcontext(&checkpoint);
 		if(sh.topfd != checkpoint.topfd)
-			sh_iorestore(&sh, checkpoint.topfd, jmpval);
-		unblock(bp,type);
-		if(!vp->disc[type])
+			sh_iorestore(checkpoint.topfd, jmpval);
+		unblock(bp,UNASSIGN);
+		unblock(bp,LOOKUP);
+		if(!vp->disc[LOOKUP])
 			chktfree(np,vp);
-		if(type==LOOKUPN)
-		{
-			cp = (char*)(SH_VALNOD->nvalue.cp);
-			*dp = nv_getnum(SH_VALNOD);
-		}
-		else if(cp = nv_getval(SH_VALNOD))
+		if(cp = nv_getval(SH_VALNOD))
 			cp = stkcopy(stkstd,cp);
 		_nv_unset(SH_VALNOD,NV_RDONLY);
 		if(!nv_isnull(&node))
@@ -440,12 +427,7 @@ static char*	lookup(Namval_t *np, int type, Sfdouble_t *dp,Namfun_t *handle)
 	if(nv_isarray(np))
 		np->nvalue.up = up;
 	if(!cp)
-	{
-		if(type==LOOKUPS)
-			cp = nv_getv(np,handle);
-		else
-			*dp = nv_getn(np,handle);
-	}
+		cp = nv_getv(np,handle);
 	if(bp== &block)
 		block_done(bp);
 	if(nq && nq->nvalue.rp && nq->nvalue.rp->running==1)
@@ -455,19 +437,6 @@ static char*	lookup(Namval_t *np, int type, Sfdouble_t *dp,Namfun_t *handle)
 	}
 	return(cp);
 }
-
-static char*	lookups(Namval_t *np, Namfun_t *handle)
-{
-	return(lookup(np,LOOKUPS,(Sfdouble_t*)0,handle));
-}
-
-static Sfdouble_t lookupn(Namval_t *np, Namfun_t *handle)
-{
-	Sfdouble_t	d;
-	lookup(np,LOOKUPN, &d ,handle);
-	return(d);
-}
-
 
 /*
  * Set disc on given <event> to <action>
@@ -538,6 +507,8 @@ char *nv_setdisc(register Namval_t* np,register const char *event,Namval_t *acti
 	if (type < 0)
 		return(NIL(char*));
 	/* Handle GET/SET/APPEND/UNSET disc */
+	if(np==SH_VALNOD || np==SH_LEVELNOD)
+		return(0);
 	if(vp && vp->fun.disc->putval!=assign)
 		vp = 0;
 	if(!vp)
@@ -563,10 +534,7 @@ char *nv_setdisc(register Namval_t* np,register const char *event,Namval_t *acti
 	else if(action)
 	{
 		Namdisc_t *dp = (Namdisc_t*)vp->fun.disc;
-		if(type==LOOKUPS)
-			dp->getval = lookups;
-		else if(type==LOOKUPN)
-			dp->getnum = lookupn;
+		dp->getval = lookup;
 		vp->disc[type] = action;
 	}
 	else
@@ -661,7 +629,6 @@ static void putdisc(Namval_t* np, const char* val, int flag, Namfun_t* fp)
 		nv_disc(np,fp,NV_POP);
 		if(!(fp->nofree&1))
 			free((void*)fp);
-			
 	}
 }
 
@@ -812,51 +779,6 @@ Namfun_t *nv_hasdisc(Namval_t *np, const Namdisc_t *dp)
 	return(0);
 }
 
-struct notify
-{
-	Namfun_t	hdr;
-	char		**ptr;
-};
-
-static void put_notify(Namval_t* np,const char *val,int flags,Namfun_t *fp)
-{
-	struct notify *pp = (struct notify*)fp;
-	nv_putv(np,val,flags,fp);
-	nv_stack(np,fp);
-	nv_stack(np,(Namfun_t*)0);
-	*pp->ptr = 0;
-	if(!(fp->nofree&1))
-		free((void*)fp);
-}
-
-static const Namdisc_t notify_disc  = {  0, put_notify };
-
-int nv_unsetnotify(Namval_t *np, char **addr)
-{
-	register Namfun_t *fp;
-	for(fp=np->nvfun;fp;fp=fp->next)
-	{
-		if(fp->disc->putval==put_notify && ((struct notify*)fp)->ptr==addr)
-		{
-			nv_stack(np,fp);
-			nv_stack(np,(Namfun_t*)0);
-			if(!(fp->nofree&1))
-				free((void*)fp);
-			return(1);
-		}
-	}
-	return(0);
-}
-
-int nv_setnotify(Namval_t *np, char **addr)
-{
-	struct notify *pp = sh_newof(0,struct notify, 1,0);
-	pp->ptr = addr;
-	pp->hdr.disc = &notify_disc;
-	nv_stack(np,&pp->hdr);
-	return(1);
-}
-
 static void *newnode(const char *name)
 {
 	register int s;
@@ -974,7 +896,7 @@ int nv_clone(Namval_t *np, Namval_t *mp, int flags)
 		mp->nvflag |= (np->nvflag&NV_MINIMAL);
 	if(mp->nvalue.cp==val && !nv_isattr(np,NV_INTEGER))
 	{
-		if(np->nvalue.cp && np->nvalue.cp!=Empty && (flags&NV_COMVAR) && !(flags&NV_MOVE))
+		if(np->nvalue.cp && np->nvalue.cp!=Empty && (!flags || ((flags&NV_COMVAR) && !(flags&NV_MOVE))))
 		{
 			if(size)
 				mp->nvalue.cp = (char*)sh_memdup(np->nvalue.cp,size);
@@ -1009,7 +931,7 @@ int nv_clone(Namval_t *np, Namval_t *mp, int flags)
 	}
 	else if((flags&NV_ARRAY) && !nv_isattr(np,NV_MINIMAL))
 		mp->nvenv = np->nvenv;
-	if(nv_isattr(np,NV_INTEGER) && mp->nvalue.ip!=np->nvalue.ip && np->nvalue.cp!=Empty)
+	if(nv_isattr(np,NV_INTEGER) && !nv_isarray(np) && mp->nvalue.ip!=np->nvalue.ip && np->nvalue.cp!=Empty)
 	{
 		mp->nvalue.ip = (int*)num_clone(np,(void*)np->nvalue.ip);
 		nv_offattr(mp,NV_NOFREE);
@@ -1020,62 +942,23 @@ int nv_clone(Namval_t *np, Namval_t *mp, int flags)
 }
 
 /*
- *  The following discipline is for copy-on-write semantics
+ * Low-level function to look up <name> in <root>. Returns a pointer to the
+ * name-value node found, or NULL if not found. <mode> is an options bitmask:
+ * - If NV_NOSCOPE is set, the search is only done in <root> itself and
+ *   not in any trees it has a view to (i.e. is connected to through scoping).
+ * - If NV_ADD is set and <name> is not fond, a node by that name is created
+ *   in <root> and a pointer to the newly created node is returned.
+ * - If NV_REF is set, <name> is a pointer to a name-value node, and that
+ *   node's name is used.
+ * Note: The mode bitmask is NOT compatible with nv_open's flags bitmask.
  */
-static char* clone_getv(Namval_t *np, Namfun_t *handle)
-{
-	return(np->nvalue.np?nv_getval(np->nvalue.np):0);
-}
-
-static Sfdouble_t clone_getn(Namval_t *np, Namfun_t *handle)
-{
-	return(np->nvalue.np?nv_getnum(np->nvalue.np):0);
-}
-
-static void clone_putv(Namval_t *np,const char* val,int flags,Namfun_t *handle)
-{
-	Namfun_t *dp = nv_stack(np,(Namfun_t*)0);
-	Namval_t *mp = np->nvalue.np;
-	if(!sh.subshell)
-		free((void*)dp);
-	if(val)
-		nv_clone(mp,np,NV_NOFREE);
-	np->nvalue.cp = 0;
-	nv_putval(np,val,flags);
-}
-
-static const Namdisc_t clone_disc =
-{
-	0,
-	clone_putv,
-	clone_getv,
-	clone_getn
-};
-
-Namval_t *nv_mkclone(Namval_t *mp)
-{
-	Namval_t *np;
-	Namfun_t *dp;
-	np = sh_newof(0,Namval_t,1,0);
-	np->nvflag = mp->nvflag;
-	np->nvsize = mp->nvsize;
-	np->nvname = mp->nvname;
-	np->nvalue.np = mp;
-	np->nvflag = mp->nvflag;
-	dp = sh_newof(0,Namfun_t,1,0);
-	dp->disc = &clone_disc;
-	nv_stack(np,dp);
-	dtinsert(nv_dict(sh.namespace),np);
-	return(np);
-}
-
 Namval_t *nv_search(const char *name, Dt_t *root, int mode)
 {
 	register Namval_t *np;
 	register Dt_t *dp = 0;
-	if(mode&HASH_NOSCOPE)
+	if(mode&NV_NOSCOPE)
 		dp = dtview(root,0);
-	if(mode&HASH_BUCKET)
+	if(mode&NV_REF)
 	{
 		Namval_t *mp = (void*)name;
 		if(!(np = dtsearch(root,mp)) && (mode&NV_ADD))
@@ -1089,9 +972,9 @@ Namval_t *nv_search(const char *name, Dt_t *root, int mode)
 	}
 	if(!np && (mode&NV_ADD))
 	{
-		if(sh.namespace && !(mode&HASH_NOSCOPE) && root==sh.var_tree)
+		if(sh.namespace && !(mode&NV_NOSCOPE) && root==sh.var_tree)
 			root = nv_dict(sh.namespace);
-		else if(!dp && !(mode&HASH_NOSCOPE))
+		else if(!dp && !(mode&NV_NOSCOPE))
 		{
 			register Dt_t *next;
 			while(next=dtvnext(root))
@@ -1115,7 +998,6 @@ Namval_t *nv_search(const char *name, Dt_t *root, int mode)
  */ 
 Namval_t *nv_bfsearch(const char *name, Dt_t *root, Namval_t **var, char **last)
 {
-	Shell_t		*shp = sh_getinterp();
 	int		c,offset = staktell();
 	register char	*sp, *cp=0;
 	Namval_t	*np, *nq;
@@ -1154,7 +1036,7 @@ Namval_t *nv_bfsearch(const char *name, Dt_t *root, Namval_t **var, char **last)
 		*last = cp;
 	c = *cp;
 	*cp = 0;
-	nq=nv_open(stakptr(offset),0,NV_VARNAME|NV_NOASSIGN|NV_NOADD|NV_NOFAIL);
+	nq=nv_open(stakptr(offset),0,NV_VARNAME|NV_NOADD|NV_NOFAIL);
 	*cp = c;
 	if(!nq)
 	{
@@ -1173,12 +1055,12 @@ Namval_t *nv_bfsearch(const char *name, Dt_t *root, Namval_t **var, char **last)
 #if SHOPT_NAMESPACE
 	if(nv_istable(nq))
 	{
-		Namval_t *nsp = shp->namespace;
+		Namval_t *nsp = sh.namespace;
 		if(last==0)
 			return(nv_search(name,root,0));
-		shp->namespace = 0;
+		sh.namespace = 0;
 		stakputs(nv_name(nq));
-		shp->namespace = nsp;
+		sh.namespace = nsp;
 		stakputs(dname-1);
 		stakputc(0);
 		np = nv_search(stakptr(offset),root,0);
@@ -1211,7 +1093,7 @@ Namval_t *sh_addbuiltin(const char *path, Shbltin_f bltin, void *extra)
 	int			offset=staktell();
 	if(extra==(void*)1)
 		name = path;
-	else if((name = path_basename(path))==path && bltin!=(Shbltin_f)SYSTYPESET->nvalue.bfp && (nq=nv_bfsearch(name,sh.bltin_tree,(Namval_t**)0,&cp)))
+	else if((name = path_basename(path))==path && bltin!=b_typeset && (nq=nv_bfsearch(name,sh.bltin_tree,(Namval_t**)0,&cp)))
 		path = name = stakptr(offset);
 	else if(sh.bltin_dir && extra!=(void*)1)
 	{
@@ -1250,7 +1132,7 @@ Namval_t *sh_addbuiltin(const char *path, Shbltin_f bltin, void *extra)
 			if(nv_isattr(np,BLT_SPC))
 				return(np);
 			if(!bltin)
-				bltin = (Shbltin_f)np->nvalue.bfp;
+				bltin = funptr(np);
 			if(np->nvenv)
 				dtdelete(sh.bltin_tree,np);
 			if(extra == (void*)1)
@@ -1272,14 +1154,13 @@ Namval_t *sh_addbuiltin(const char *path, Shbltin_f bltin, void *extra)
 	np->nvfun = 0;
 	if(bltin)
 	{
-		np->nvalue.bfp = (Nambfp_f)bltin;
+		np->nvalue.bfp = (void*)bltin;
 		nv_onattr(np,NV_BLTIN|NV_NOFREE);
 		np->nvfun = (Namfun_t*)extra;
 	}
 	if(nq)
 	{
 		cp=nv_setdisc(nq,cp+1,np,(Namfun_t*)nq);
-		nv_close(nq);
 		if(!cp)
 		{
 			errormsg(SH_DICT,ERROR_exit(1),e_baddisc,name);
@@ -1301,7 +1182,6 @@ struct table
 {
 	Namfun_t	fun;
 	Namval_t	*parent;
-	Shell_t		*shp;
 	Dt_t		*dict;
 };
 
@@ -1317,7 +1197,7 @@ static Namval_t *next_table(register Namval_t* np, Dt_t *root,Namfun_t *fp)
 static Namval_t *create_table(Namval_t *np,const char *name,int flags,Namfun_t *fp)
 {
 	struct table *tp = (struct table *)fp;
-	tp->shp->last_table = np;
+	sh.last_table = np;
 	return(nv_create(name, tp->dict, flags, fp));
 }
 
@@ -1328,7 +1208,6 @@ static Namfun_t *clone_table(Namval_t* np, Namval_t *mp, int flags, Namfun_t *fp
 	Dt_t		*oroot=tp->dict,*nroot=dtopen(&_Nvdisc,Dtoset);
 	if(!nroot)
 		return(0);
-	dtuserdata(nroot,dtuserdata(oroot,0,0),1);
 	memcpy((void*)ntp,(void*)fp,sizeof(struct table));
 	ntp->dict = nroot;
 	ntp->parent = nv_lastdict();
@@ -1340,9 +1219,12 @@ static Namfun_t *clone_table(Namval_t* np, Namval_t *mp, int flags, Namfun_t *fp
 	return(&ntp->fun);
 }
 
+/*
+ * The first two fields must correspond with those in 'struct adata' in name.c and 'struct tdata' in typeset.c
+ * (those fields are used via a type conversion in scanfilter() in name.c)
+ */
 struct adata
 {
-	Shell_t		*sh;
 	Namval_t	*tp;
 	char		*mapname;
 	char		**argnam;
@@ -1352,8 +1234,7 @@ struct adata
 
 static void delete_fun(Namval_t *np, void *data)
 {
-	Shell_t *shp = ((struct adata*)data)->sh;
-	nv_delete(np,shp->fun_tree,NV_NOFREE);
+	nv_delete(np,sh.fun_tree,NV_NOFREE);
 }
 
 static void put_table(register Namval_t* np, const char* val, int flags, Namfun_t* fp)
@@ -1371,8 +1252,7 @@ static void put_table(register Namval_t* np, const char* val, int flags, Namfun_
 		return;
 	memset(&data,0,sizeof(data));
 	data.mapname = nv_name(np);
-	data.sh = ((struct table*)fp)->shp;
-	nv_scan(data.sh->fun_tree,delete_fun,(void*)&data,NV_FUNCTION,NV_FUNCTION|NV_NOSCOPE);
+	nv_scan(sh.fun_tree,delete_fun,(void*)&data,NV_FUNCTION,NV_FUNCTION|NV_NOSCOPE);
 	dtview(root,0);
 	for(mp=(Namval_t*)dtfirst(root);mp;mp=nq)
 	{
@@ -1440,14 +1320,13 @@ Namval_t *nv_parent(Namval_t *np)
 
 Dt_t *nv_dict(Namval_t* np)
 {
-	Shell_t 	*shp=sh_getinterp();
 	struct table *tp = (struct table*)nv_hasdisc(np,&table_disc);
 	if(tp)
 		return(tp->dict);
-	np = shp->last_table;
+	np = sh.last_table;
 	if(np && (tp = (struct table*)nv_hasdisc(np,&table_disc)))
 		return(tp->dict);
-	return(shp->var_tree);
+	return(sh.var_tree);
 }
 
 int nv_istable(Namval_t *np)
@@ -1477,7 +1356,6 @@ Namval_t *nv_mount(Namval_t *np, const char *name, Dt_t *dict)
 	nv_offattr(mp,NV_TABLE);
 	if(!nv_isnull(mp))
 		_nv_unset(mp,NV_RDONLY);
-	tp->shp = sh_getinterp();
 	tp->dict = dict;
 	tp->parent = pp;
 	tp->fun.disc = &table_disc;
@@ -1497,9 +1375,15 @@ const Namdisc_t *nv_discfun(int which)
 	return(0);
 }
 
+/*
+ * Check if a variable node has a 'get' discipline.
+ * Used by the nv_isnull() macro (see include/name.h).
+ */
 int nv_hasget(Namval_t *np)
 {
 	register Namfun_t	*fp;
+	if(np==sh_scoped(IFSNOD))
+		return(0);	/* avoid BUG_IFSISSET: always return false for IFS */
 	for(fp=np->nvfun; fp; fp=fp->next)
 	{
 		if(!fp->disc || (!fp->disc->getnum && !fp->disc->getval))
@@ -1510,13 +1394,12 @@ int nv_hasget(Namval_t *np)
 }
 
 #if SHOPT_NAMESPACE
-Namval_t *sh_fsearch(Shell_t *shp, const char *fname, int add)
+Namval_t *sh_fsearch(const char *fname, int add)
 {
-	Stk_t	*stkp = shp->stk;
-	int	offset = stktell(stkp);
-	sfputr(stkp,nv_name(shp->namespace),'.');
-	sfputr(stkp,fname,0);
-	fname = stkptr(stkp,offset);
+	int	offset = stktell(sh.stk);
+	sfputr(sh.stk,nv_name(sh.namespace),'.');
+	sfputr(sh.stk,fname,0);
+	fname = stkptr(sh.stk,offset);
 	return(nv_search(fname,sh_subfuntree(add&NV_ADD),add));
 }
 #endif /* SHOPT_NAMESPACE */

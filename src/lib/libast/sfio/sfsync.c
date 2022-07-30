@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -28,11 +28,7 @@
 **	Written by Kiem-Phong Vo.
 */
 
-#if __STD_C
 static int _sfall(void)
-#else
-static int _sfall()
-#endif
 {
 	reg Sfpool_t	*p, *next;
 	reg Sfio_t*	f;
@@ -80,21 +76,15 @@ static int _sfall()
 	return rv;
 }
 
-#if __STD_C
 int sfsync(reg Sfio_t* f)
-#else
-int sfsync(f)
-reg Sfio_t*	f;	/* stream to be synchronized */
-#endif
 {
 	int	local, rv, mode, lock;
 	Sfio_t*	origf;
-	SFMTXDECL(f);
 
 	if(!(origf = f) )
 		return _sfall();
 
-	SFMTXENTER(origf,-1);
+	if(!(origf)) return -1;
 
 	GETLOCAL(origf,local);
 
@@ -115,7 +105,7 @@ reg Sfio_t*	f;	/* stream to be synchronized */
 	for(; f; f = f->push)
 	{	
 		if((f->flags&SF_IOCHECK) && f->disc && f->disc->exceptf)
-			(void)(*f->disc->exceptf)(f,SF_SYNC,(Void_t*)((int)1),f->disc);
+			(void)(*f->disc->exceptf)(f,SF_SYNC,(void*)((int)1),f->disc);
 
 		SFLOCK(f,local);
 
@@ -162,12 +152,12 @@ reg Sfio_t*	f;	/* stream to be synchronized */
 		SFOPEN(f,local);
 
 		if((f->flags&SF_IOCHECK) && f->disc && f->disc->exceptf)
-			(void)(*f->disc->exceptf)(f,SF_SYNC,(Void_t*)((int)0),f->disc);
+			(void)(*f->disc->exceptf)(f,SF_SYNC,(void*)((int)0),f->disc);
 	}
 
 done:
 	if(!local && f && (f->mode&SF_POOL) && f->pool && f != f->pool->sf[0])
 		SFSYNC(f->pool->sf[0]);
 
-	SFMTXRETURN(origf, rv);
+	return rv;
 }

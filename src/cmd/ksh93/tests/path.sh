@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2021 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 1.0                  #
 #                    by AT&T Intellectual Property                     #
@@ -288,7 +288,7 @@ typeset foo=$(PATH=/xyz:/abc :)
 y=$(whence rm)
 [[ $x != "$y" ]] && err_exit 'PATH not restored after command substitution'
 whence getconf > /dev/null  &&  err_exit 'getconf should not be found'
-builtin /bin/getconf
+builtin /bin/getconf 2> /dev/null
 PATH=/bin
 PATH=$(getconf PATH)
 x=$(whence ls)
@@ -309,11 +309,12 @@ status=$($SHELL -c $'trap \'print $?\' ERR;/dev/null 2> /dev/null')
 
 # universe via PATH
 
-builtin getconf
-getconf UNIVERSE - att # override sticky default 'UNIVERSE = foo'
+if builtin getconf 2> /dev/null; then
+	getconf UNIVERSE - att # override sticky default 'UNIVERSE = foo'
 
-[[ $(PATH=/usr/ucb/bin:/usr/bin echo -n ucb) == 'ucb' ]] || err_exit "ucb universe echo ignores -n option"
-[[ $(PATH=/usr/xpg/bin:/usr/bin echo -n att) == '-n att' ]] || err_exit "att universe echo does not ignore -n option"
+	[[ $(PATH=/usr/ucb/bin:/usr/bin echo -n ucb) == 'ucb' ]] || err_exit "ucb universe echo ignores -n option"
+	[[ $(PATH=/usr/xpg/bin:/usr/bin echo -n att) == '-n att' ]] || err_exit "att universe echo does not ignore -n option"
+fi
 
 PATH=$path
 
@@ -435,7 +436,7 @@ x=$(whence -p echo 2> /dev/null)
 [[ $x == "$tmp/new/bin/echo" ]] ||  err_exit 'nonexistent FPATH directory in .paths file causes path search to fail'
 
 $SHELL 2> /dev/null <<- \EOF || err_exit 'path search problem with non-existent directories in PATH'
-	builtin getconf
+	builtin getconf 2> /dev/null
 	PATH=$(getconf PATH)
 	PATH=/dev/null/nogood1/bin:/dev/null/nogood2/bin:$PATH
 	tail /dev/null && tail /dev/null
@@ -476,7 +477,7 @@ e=$?
 trap - TERM INT
 [[ $sleep_pid ]] && kill $sleep_pid
 ((!e)) && [[ $(<$ofile) == ok ]] || err_exit "PATH containing .paths directory:" \
-	"got status $e$( ((e>128)) && print -n / && kill -l "$e"), $(printf %q "$(<$ofile)")"
+	"got status $e$( ((e>128)) && print -n /SIG && kill -l "$e"), $(printf %q "$(<$ofile)")"
 
 # ======
 # Check that 'command -p' and 'command -p -v' do not use the hash table (a.k.a. tracked aliases).
@@ -489,7 +490,7 @@ actual=$(set +x; PATH=$tmp; redirect 2>&1; hash ls; command -p ls /dev/null)
 actual=$(set +x; PATH=$tmp; redirect 2>&1; hash ls; command -p ls /dev/null; exit)  # the 'exit' disables subshell optimization
 [[ $actual == "$expect" ]] || err_exit "'command -p' fails to search default path if tracked alias exists" \
 	"(expected $(printf %q "$expect"), got $(printf %q "$actual"))"
-expect=$(builtin getconf; PATH=$(getconf PATH); whence -p ls)
+expect=$(builtin getconf 2> /dev/null; PATH=$(getconf PATH); whence -p ls)
 actual=$(set +x; PATH=$tmp; redirect 2>&1; hash ls; command -p -v ls)
 [[ $actual == "$expect" ]] || err_exit "'command -p -v' fails to search default path if tracked alias exists" \
 	"(expected $(printf %q "$expect"), got $(printf %q "$actual"))"
@@ -517,6 +518,15 @@ then
 		"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
 fi
 
+# Check that adding '-x' runs an external command, also bypassing path-bound builtins
+if	! test -x /opt/ast/bin/cat	# a physical external utility here would invalidate these tests
+then
+	got=$( PATH=/opt/ast/bin; command -x cat --about 2>&1 )
+	[[ $got == *version*'cat ('* ]] && err_exit 'command -x fails to bypass path-bound built-in found in PATH search'
+	got=$( command -x /opt/ast/bin/cat --about 2>&1 )
+	[[ $got == *version*'cat ('* ]] && err_exit 'command -x fails to bypass path-bound built-in by direct pathname'
+fi
+
 # ======
 # 'command -x' used to hang in an endless E2BIG loop on Linux and macOS
 ofile=$tmp/command_x_chunks.sh
@@ -527,7 +537,8 @@ sleep_pid=$!
 (
 	export LC_ALL=C
 	unset IFS; set +f
-	builtin getconf && arg_max=$(getconf ARG_MAX) && let arg_max || { err_exit "getconf ARG_MAX not working"; exit 1; }
+	builtin getconf 2> /dev/null
+	arg_max=$(getconf ARG_MAX) && let arg_max || { err_exit "getconf ARG_MAX not working"; exit 1; }
 	set +x	# trust me, you don't want to xtrace what follows
 	# let's try to use a good variety of argument lengths
 	set -- $(typeset -p) $(functions) /dev/* /tmp/* /* *
@@ -558,7 +569,7 @@ trap - TERM INT
 if	[[ ${ kill -l "$e"; } == KILL ]]
 then	warning "'command -x' test killed, probably due to lack of memory; skipping test"
 else	if	let "e > 0"
-	then	err_exit "'command -x' test yielded exit status $e$( let "e>128" && print -n / && kill -l "$e")"
+	then	err_exit "'command -x' test yielded exit status $e$( let "e>128" && print -n /SIG && kill -l "$e")"
 	fi
 	if	[[ ! -s $ofile ]]
 	then	err_exit "'command -x' test failed to produce output"
@@ -576,14 +587,16 @@ fi
 # whence -a/-v tests
 
 # wrong path to tracked aliases after loading builtin: https://github.com/ksh93/ksh/pull/25
-actual=$("$SHELL" -c '
-	hash cat
-	builtin cat
-	whence -a cat
-')
-expect=$'cat is a shell builtin\n'$(all_paths cat | sed '1 s/^/cat is a tracked alias for /; 2,$ s/^/cat is /')
-[[ $actual == "$expect" ]] || err_exit "'whence -a' does not work correctly with tracked aliases" \
-	"(expected $(printf %q "$expect"), got $(printf %q "$actual"))"
+if (builtin cat) 2> /dev/null; then
+	actual=$("$SHELL" -c '
+		hash cat
+		builtin cat
+		whence -a cat
+	')
+	expect=$'cat is a shell builtin\n'$(all_paths cat | sed '1 s/^/cat is a tracked alias for /; 2,$ s/^/cat is /')
+	[[ $actual == "$expect" ]] || err_exit "'whence -a' does not work correctly with tracked aliases" \
+		"(expected $(printf %q "$expect"), got $(printf %q "$actual"))"
+fi
 
 # spurious 'undefined function' message: https://github.com/ksh93/ksh/issues/26
 actual=$("$SHELL" -c 'whence -a printf')
@@ -694,7 +707,7 @@ e=$?
 trap - TERM INT
 [[ $sleep_pid ]] && kill $sleep_pid
 ((e == 127)) || err_exit "Long nonexistent command name:" \
-	"got status $e$( ((e>128)) && print -n / && kill -l "$e"), $(printf %q "$(<$ofile)")"
+	"got status $e$( ((e>128)) && print -n /SIG && kill -l "$e"), $(printf %q "$(<$ofile)")"
 
 # ======
 # A function autoload recursion loop used to crash
@@ -712,7 +725,7 @@ $SHELL: function, built-in or type definition for self2 not found in $tmp/fun.$$
 $SHELL: function, built-in or type definition for self not found in $tmp/fun.$$/self"
 got=$({ FPATH=$tmp/fun.$$ "$SHELL" -c self; } 2>&1)
 (((e = $?) == 126)) || err_exit 'Function autoload recursion loop:' \
-	"got status $e$( ((e>128)) && print -n / && kill -l "$e"), $(printf %q "$got")"
+	"got status $e$( ((e>128)) && print -n /SIG && kill -l "$e"), $(printf %q "$got")"
 
 # ======
 # If a shared-state ${ command substitution; } changed the value of $PATH, the variable
@@ -791,10 +804,17 @@ PATH=$PWD:$PWD/cmddir $SHELL -c 'noexecute; exit $?'
 got=$?
 [[ $exp == $got ]] || err_exit "Test 3B: failed to run executable command after encountering non-executable command" \
 	"(expected $exp, got $got)"
-PATH=$PWD:$PWD/cmddir $SHELL -ic 'noexecute; exit $?'
-got=$?
-[[ $exp == $got ]] || err_exit "Test 3C: failed to run executable command after encountering non-executable command" \
-	"(expected $exp, got $got)"
+case $(uname -s) in
+AIX)
+	# ksh -ic hangs on AIX
+	;;
+*)
+	PATH=$PWD:$PWD/cmddir $SHELL -ic 'noexecute; exit $?'
+	got=$?
+	[[ $exp == $got ]] || err_exit "Test 3C: failed to run executable command after encountering non-executable command" \
+		"(expected $exp, got $got)"
+	;;
+esac
 PATH=$PWD:$PWD/cmddir $SHELL -c 'command -x noexecute; exit $?'
 got=$?
 [[ $exp == $got ]] || err_exit "Test 3D: failed to run executable command after encountering non-executable command" \
@@ -919,6 +939,42 @@ then	(
 		source dottest
 	) 2>/dev/null || err_exit "'source' in POSIX mode does not find ksh function"
 fi
+
+# ======
+# Crash after unsetting PWD
+(unset PWD; (cd /); :) &	# the : avoids optimizing out the subshell
+wait "$!" 2>/dev/null
+((!(e = $?))) || err_exit "shell crashes on 'cd' in subshell exit with unset PWD" \
+	"(got status $e$( ((e>128)) && print -n /SIG && kill -l "$e"))"
+mkdir "$tmp/testdir"
+cd "$tmp/testdir"
+"$SHELL" -c 'cd /; rmdir "$1"' x "$tmp/testdir"
+(unset PWD; exec "$SHELL" -c '(cd /); :') &
+wait "$!" 2>/dev/null
+((!(e = $?))) || err_exit 'shell crashes on failure obtain the PWD on init' \
+	"(got status $e$( ((e>128)) && print -n /SIG && kill -l "$e"))"
+cd "$tmp"
+
+# ======
+# https://github.com/ksh93/ksh/issues/467
+[[ -d emptydir ]] || mkdir emptydir
+got=$(unset PWD; "$SHELL" -c 'echo "$PWD"; pwd; cd emptydir' 2>&1)
+exp=$PWD$'\n'$PWD
+[[ $got == "$exp" ]] || err_exit "child shell failed to obtain PWD" \
+        "(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
+# Test backported from ksh93v- 2013-06-28 for deleting
+# a loaded libcmd builtin.
+if builtin cat 2> /dev/null
+then	path=$PATH
+	PATH=/bin:/usr/bin
+	if [[ $(type -t cat) == builtin ]]
+	then	builtin -d cat
+		[[ $(type -t cat) == builtin ]] && err_exit 'builtin -d does not delete builtin libcmd builtin'
+	fi
+fi
+PATH=$path
 
 # ======
 exit $((Errors<125?Errors:125))

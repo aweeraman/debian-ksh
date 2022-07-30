@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -27,26 +27,21 @@
 **	Written by Kiem-Phong Vo.
 */
 
-#if __STD_C
-ssize_t sfnputc(Sfio_t* f, int c, size_t n)
-#else
-ssize_t sfnputc(f,c,n)
-Sfio_t*		f;	/* file to write */
-int		c;	/* char to be written */
-size_t		n;	/* number of time to repeat */
-#endif
+ssize_t sfnputc(Sfio_t*		f,	/* file to write */
+		int		c,	/* char to be written */
+		size_t		n)	/* number of time to repeat */
 {
 	reg uchar*	ps;
 	reg ssize_t	p, w;
 	uchar		buf[128];
 	reg int		local;
-	SFMTXDECL(f); /* declare a local stream variable for multithreading */
 
-	SFMTXENTER(f,-1);
+	if(!f)
+		return -1;
 
 	GETLOCAL(f,local);
 	if(SFMODE(f,local) != SF_WRITE && _sfmode(f,SF_WRITE,local) < 0)
-		SFMTXRETURN(f, -1);
+		return -1;
 
 	SFLOCK(f,local);
 
@@ -69,7 +64,7 @@ size_t		n;	/* number of time to repeat */
 
 	for(;;)
 	{	/* hard write of data */
-		if((p = SFWRITE(f,(Void_t*)ps,p)) <= 0 || (n -= p) <= 0)
+		if((p = SFWRITE(f,(void*)ps,p)) <= 0 || (n -= p) <= 0)
 		{	w -= n;
 			goto done;
 		}
@@ -78,5 +73,5 @@ size_t		n;	/* number of time to repeat */
 	}
 done :
 	SFOPEN(f,local);
-	SFMTXRETURN(f, w);
+	return w;
 }

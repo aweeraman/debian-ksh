@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -36,13 +36,7 @@
 #include "sfstrtof.h"
 
 /* refresh stream buffer - taking care of unseekable/share streams too */
-#if __STD_C
 static void _sfbuf(Sfio_t* f, int* peek)
-#else
-static void _sfbuf(f, peek)
-Sfio_t*	f;
-int*	peek;
-#endif
 {
 	if(f->next >= f->endb)
 	{	if(*peek) 	/* try peeking for a share stream if possible */
@@ -79,13 +73,7 @@ typedef struct _scan_s
 			 d = (sc)->d, endd = (sc)->endd, data = (sc)->data, \
 			 peek = (sc)->peek, n_input = (sc)->n_input)
 
-#if __STD_C
 static int _scgetc(void* arg, int flag)
-#else
-static int _scgetc(arg, flag)
-void*	arg;
-int	flag;
-#endif
 {
 	Scan_t	*sc = (Scan_t*)arg;
 
@@ -131,14 +119,9 @@ typedef struct _accept_s
 #endif
 } Accept_t;
 
-#if __STD_C
-static char* _sfsetclass(const char* form, Accept_t* ac, int flags)
-#else
-static char* _sfsetclass(form, ac, flags)
-char*		form;	/* format string			*/
-Accept_t*	ac;	/* values of accepted characters	*/
-int		flags;	/* SFFMT_LONG for wchar_t		*/
-#endif
+static char* _sfsetclass(const char*	form,	/* format string			*/
+			 Accept_t*	ac,	/* values of accepted characters	*/
+			 int		flags)	/* SFFMT_LONG for wchar_t		*/
 {
 	int		c, endc, n;
 	SFMBDCL(mbs)
@@ -190,13 +173,7 @@ int		flags;	/* SFFMT_LONG for wchar_t		*/
 }
 
 #if _has_multibyte
-#if __STD_C
 static int _sfwaccept(wchar_t wc, Accept_t* ac)
-#else
-static int _sfwaccept(wc, ac)
-wchar_t		wc;
-Accept_t*	ac;
-#endif
 {
 	int		endc, c, n;
 	wchar_t		fwc;
@@ -226,21 +203,16 @@ Accept_t*	ac;
 }
 
 #if _has_multibyte == 1
-#define SFgetwc(sc,wc,fmt,ac,mbs)	_sfgetwc(sc,wc,fmt,ac,(Void_t*)(mbs))
+#define SFgetwc(sc,wc,fmt,ac,mbs)	_sfgetwc(sc,wc,fmt,ac,(void*)(mbs))
 #else
-#define SFgetwc(sc,wc,fmt,ac,mbs)	_sfgetwc(sc,wc,fmt,ac,NIL(Void_t*))
+#define SFgetwc(sc,wc,fmt,ac,mbs)	_sfgetwc(sc,wc,fmt,ac,NIL(void*))
 #endif
 
-#if __STD_C
-static int _sfgetwc(Scan_t* sc, wchar_t* wc, int fmt, Accept_t* ac, Void_t *mbs)
-#else
-static int _sfgetwc(sc, wc, fmt, ac, mbs)
-Scan_t*		sc;	/* the scanning handle		*/
-wchar_t*	wc;	/* to return a scanned wchar_t	*/
-int		fmt;	/* %s, %c, %[			*/
-Accept_t*	ac;	/* accept handle for %[		*/
-Void_t*		mbs;	/* multibyte parsing state	*/
-#endif
+static int _sfgetwc(Scan_t*	sc,	/* the scanning handle		*/
+		    wchar_t*	wc,	/* to return a scanned wchar_t	*/
+		    int		fmt,	/* %s, %c, %[			*/
+		    Accept_t*	ac,	/* accept handle for %[		*/
+		    void*	mbs)	/* multibyte parsing state	*/
 {
 	int	n, v;
 	char	b[16]; /* assuming that SFMBMAX <= 16! */
@@ -260,7 +232,7 @@ Void_t*		mbs;	/* multibyte parsing state	*/
 	}
 
 	for(n = 0; n < SFMBMAX; )
-	{	if((v = _scgetc((Void_t*)sc, 0)) <= 0)
+	{	if((v = _scgetc((void*)sc, 0)) <= 0)
 			goto no_match;
 		else	b[n++] = v;
 
@@ -297,14 +269,9 @@ no_match: /* this unget is lossy on a stream with small buffer */
 #endif /*_has_multibyte*/
 
 
-#if __STD_C
-int sfvscanf(Sfio_t* f, reg const char* form, va_list args)
-#else
-int sfvscanf(f,form,args)
-Sfio_t*		f;		/* file to be scanned */
-reg char*	form;		/* scanning format */
-va_list		args;
-#endif
+int sfvscanf(Sfio_t*		f,		/* file to be scanned */
+	     reg const char*	form,		/* scanning format */
+	     va_list		args)
 {
 	reg int		inp, shift, base, width;
 	ssize_t		size;
@@ -330,7 +297,7 @@ va_list		args;
 	SFMBDCL(mbs)
 #endif
 
-	Void_t*		value;	/* location to assign scanned value */
+	void*		value;	/* location to assign scanned value */
 	char*		t_str;
 	ssize_t		n_str;
 
@@ -342,19 +309,16 @@ va_list		args;
 #define SFlen(f)	(d - data)
 #define SFinit(f)	((peek = f->extent < 0 && (f->flags&SF_SHARE)), SFbuf(f) )
 #define SFend(f)	((n_input += SFlen(f)), \
-			 (peek ? SFREAD(f,(Void_t*)data,SFlen(f)) : ((f->next = d),0)) )
+			 (peek ? SFREAD(f,(void*)data,SFlen(f)) : ((f->next = d),0)) )
 #define SFgetc(f,c)	((c) = (d < endd || (SFend(f), SFbuf(f), d < endd)) ? \
 				(int)(*d++) : -1 )
 #define SFungetc(f,c)	(d -= 1)
 
-	SFMTXDECL(f);
 
 	SFCVINIT();	/* initialize conversion tables */
 
-	SFMTXENTER(f,-1);
-
-	if(!form || f->mode != SF_READ && _sfmode(f,SF_READ,0) < 0)
-		SFMTXRETURN(f, -1);
+	if(!f || !form || (f->mode != SF_READ && _sfmode(f,SF_READ,0) < 0))
+		return -1;
 	SFLOCK(f,0);
 
 	SFinit(f); /* initialize local buffering system */
@@ -433,7 +397,7 @@ loop_fmt:
 		base = 10; size = -1;
 		width = dot = 0;
 		t_str = NIL(char*); n_str = 0;
-		value = NIL(Void_t*);
+		value = NIL(void*);
 		argp = -1;
 
 	loop_flags:	/* LOOP FOR FLAGS, WIDTH, BASE, TYPE */
@@ -476,7 +440,7 @@ loop_fmt:
 								LEFTP, 0, 0, 0,0,0,
 								NIL(char*),0);
 							n = (*ft->extf)
-							      (f,(Void_t*)&argv,ft);
+							      (f,(void*)&argv,ft);
 							if(n < 0)
 								goto pop_fmt;
 							if(!(ft->flags&SFFMT_VALUE) )
@@ -521,7 +485,7 @@ loop_fmt:
 				else if(ft && ft->extf )
 				{	FMTSET(ft, form,args, '.',dot, 0, 0,0,0,
 						NIL(char*), 0);
-					if((*ft->extf)(f, (Void_t*)(&argv), ft) < 0)
+					if((*ft->extf)(f, (void*)(&argv), ft) < 0)
 						goto pop_fmt;
 					if(ft->flags&SFFMT_VALUE)
 						v = argv.i;
@@ -574,7 +538,7 @@ loop_fmt:
 				else if(ft && ft->extf )
 				{	FMTSET(ft, form,args, 'I',sizeof(int), 0, 0,0,0,
 						NIL(char*), 0);
-					if((*ft->extf)(f, (Void_t*)(&argv), ft) < 0)
+					if((*ft->extf)(f, (void*)(&argv), ft) < 0)
 						goto pop_fmt;
 					if(ft->flags&SFFMT_VALUE)
 						size = argv.i;
@@ -682,7 +646,7 @@ loop_fmt:
 		else if(ft && ft->extf)
 		{	FMTSET(ft, form,args, fmt, size,flags, width,0,base, t_str,n_str);
 			SFend(f); SFOPEN(f,0);
-			v = (*ft->extf)(f, (Void_t*)&argv, ft);
+			v = (*ft->extf)(f, (void*)&argv, ft);
 			SFLOCK(f,0); SFbuf(f);
 
 			if(v < 0)
@@ -713,7 +677,7 @@ loop_fmt:
 				continue;
 			if(!argv.ft->form && ft ) /* change extension functions */
 			{	if(ft->eventf &&
-				   (*ft->eventf)(f,SF_DPOP,(Void_t*)form,ft) < 0)
+				   (*ft->eventf)(f,SF_DPOP,(void*)form,ft) < 0)
 					continue;
 				fmstk->ft = ft = argv.ft;
 			}
@@ -750,7 +714,7 @@ loop_fmt:
 
 		/* get the address to assign value */
 		if(!value && !(flags&SFFMT_SKIP) )
-			value = va_arg(args,Void_t*);
+			value = va_arg(args,void*);
 
 		if(fmt == 'n') /* return length of consumed input */
 		{
@@ -785,7 +749,7 @@ loop_fmt:
 
 		if(_Sftype[fmt] == SFFMT_FLOAT)
 		{	SFungetc(f,inp); SCinit(&scd,1);
-			argv.ld = _sfdscan((Void_t*)(&scd), _scgetc);
+			argv.ld = _sfdscan((void*)(&scd), _scgetc);
 			SCend(&scd,1);
 
 			if(scd.error >= 0)
@@ -931,9 +895,9 @@ loop_fmt:
 
 				if(fmt == 'p')
 #if _more_void_int
-					*((Void_t**)value) = (Void_t*)((ulong)argv.lu);
+					*((void**)value) = (void*)((ulong)argv.lu);
 #else
-					*((Void_t**)value) = (Void_t*)((uint)argv.lu);
+					*((void**)value) = (void*)((uint)argv.lu);
 #endif
 #if !_ast_intmax_long
 				else if(size == sizeof(Sflong_t))
@@ -1057,8 +1021,8 @@ pop_fmt:
 	while((fm = fmstk) ) /* pop the format stack and continue */
 	{	if(fm->eventf)
 		{	if(!form || !form[0])
-				(*fm->eventf)(f,SF_FINAL,NIL(Void_t*),ft);
-			else if((*fm->eventf)(f,SF_DPOP,(Void_t*)form,ft) < 0)
+				(*fm->eventf)(f,SF_FINAL,NIL(void*),ft);
+			else if((*fm->eventf)(f,SF_DPOP,(void*)form,ft) < 0)
 				goto loop_fmt;
 		}
 
@@ -1082,7 +1046,7 @@ done:
 		free(fp);
 	while((fm = fmstk) )
 	{	if(fm->eventf)
-			(*fm->eventf)(f,SF_FINAL,NIL(Void_t*),fm->ft);
+			(*fm->eventf)(f,SF_FINAL,NIL(void*),fm->ft);
 		fmstk = fm->next;
 		free(fm);
 	}
@@ -1094,5 +1058,5 @@ done:
 	if(n_assign == 0 && inp < 0)
 		n_assign = -1;
 
-	SFMTXRETURN(f,n_assign);
+	return n_assign;
 }

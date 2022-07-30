@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,7 +18,6 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 #ifndef SH_SIGBITS
 /*
  *	UNIX shell
@@ -63,7 +62,6 @@ typedef void (*SH_SIGTYPE)(int,void(*)(int));
 #define SH_SIGIGNORE		040	/* default is ignore signal */
 #define SH_SIGINTERACTIVE	0100	/* handle interactive specially */
 #define SH_SIGTSTP		0200	/* tstp signal received */
-#define SH_SIGALRM		0200	/* timer alarm received */
 #define SH_SIGTERM		SH_SIGOFF /* term signal received */
 #define SH_SIGRUNTIME		0400	/* runtime value */
 
@@ -102,22 +100,31 @@ struct checkpt
 	Error_context_t err;
 };
 
-#define sh_pushcontext(shp,bp,n)( (bp)->mode=(n) , (bp)->olist=0,  \
-				  (bp)->topfd=(shp)->topfd, (bp)->prev=(shp)->jmplist, \
-				  (bp)->err = *ERROR_CONTEXT_BASE, \
-					(shp)->jmplist = (sigjmp_buf*)(&(bp)->buff) \
-				)
-#define sh_popcontext(shp,bp)	((shp)->jmplist=(bp)->prev, errorpop(&((bp)->err)))
+#define sh_pushcontext(bp,n) \
+( \
+	(bp)->mode = (n), \
+	(bp)->olist = 0, \
+	(bp)->topfd = sh.topfd, \
+	(bp)->prev = sh.jmplist, \
+	(bp)->err = *ERROR_CONTEXT_BASE, \
+	sh.jmplist = (sigjmp_buf*)(&(bp)->buff) \
+)
+#define sh_popcontext(bp) \
+( \
+	sh.jmplist = (bp)->prev, \
+	errorpop(&((bp)->err)) \
+)
 
-extern noreturn void 	sh_done(void*,int);
+extern noreturn void 	sh_done(int);
 extern void 	sh_fault(int);
+extern void	sh_winsize(int*,int*);
 extern void 	sh_sigclear(int);
 extern void 	sh_sigdone(void);
-extern void	sh_siginit(void*);
+extern void	sh_siginit(void);
 extern void 	sh_sigtrap(int);
 extern void 	sh_sigreset(int);
 extern void 	*sh_timeradd(unsigned long,int ,void (*)(void*),void*);
-extern void	timerdel(void*);
+extern void	sh_timerdel(void*);
 
 extern const char e_alarm[];
 

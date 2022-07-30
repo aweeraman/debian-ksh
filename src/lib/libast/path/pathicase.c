@@ -40,11 +40,7 @@
 int
 pathicase(const char *path)
 {
-#ifdef _PC_PATH_ATTRIBUTES
-	/* AT&T mystery system (AST UWIN?) */
-	char *a = astconf("PATH_ATTRIBUTES", path, (char*)0);
-	return a ? strchr(a,'c') != 0 : -1;
-#elif _lib_pathconf && defined(_PC_CASE_SENSITIVE)
+#if _lib_pathconf && defined(_PC_CASE_SENSITIVE)
 	/* macOS; QNX 7.0+ */
 	long r = pathconf(path, _PC_CASE_SENSITIVE);
 	return r < 0L ? -1 : r == 0L;

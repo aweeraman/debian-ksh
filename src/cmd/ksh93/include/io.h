@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2021 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 1.0                  *
 *                    by AT&T Intellectual Property                     *
@@ -18,7 +18,6 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma prototyped
 /*
  *	UNIX shell
  *	David Korn
@@ -53,32 +52,42 @@
     struct ionod;
 #endif /* !ARG_RAW */
 
-extern int	sh_iocheckfd(Shell_t*,int);
-extern void 	sh_ioinit(Shell_t*);
+/*
+ * Check if there is an editor active while avoiding repetitive #if flaggery.
+ * The 0 definition is used to optimize out code if no editor is compiled in.
+ * (This is here and not in edit.h because io.h is far more widely included.)
+ */
+#if SHOPT_ESH && SHOPT_VSH
+#define sh_editor_active()	(sh_isoption(SH_VI) || sh_isoption(SH_EMACS) || sh_isoption(SH_GMACS))
+#elif SHOPT_ESH
+#define sh_editor_active()	(sh_isoption(SH_EMACS) || sh_isoption(SH_GMACS))
+#elif SHOPT_VSH
+#define sh_editor_active()	(sh_isoption(SH_VI)!=0)
+#else
+#define sh_editor_active()	0
+#endif
+
+extern int	sh_iocheckfd(int);
+extern void 	sh_ioinit(void);
 extern int 	sh_iomovefd(int);
-extern int	sh_iorenumber(Shell_t*,int,int);
+extern int	sh_iorenumber(int,int);
 extern void 	sh_pclose(int[]);
 extern int	sh_rpipe(int[]);
-extern void 	sh_iorestore(Shell_t*,int,int);
-#if defined(__EXPORT__) && defined(_BLD_DLL)
-   __EXPORT__
-#endif
-extern Sfio_t 	*sh_iostream(Shell_t*,int);
-extern int	sh_redirect(Shell_t*,struct ionod*,int);
-extern void 	sh_iosave(Shell_t *, int,int,char*);
-extern int 	sh_iovalidfd(Shell_t*, int);
-extern int	sh_iosafefd(Shell_t*, int);
-extern int 	sh_inuse(Shell_t*, int);
-extern void 	sh_iounsave(Shell_t*);
-extern void	sh_iounpipe(Shell_t*);
+extern void 	sh_iorestore(int,int);
+extern Sfio_t 	*sh_iostream(int);
+extern int	sh_redirect(struct ionod*,int);
+extern void 	sh_iosave(int,int,char*);
+extern int 	sh_iovalidfd(int);
+extern int	sh_iosafefd(int);
+extern int 	sh_inuse(int);
+extern void 	sh_iounsave(void);
+extern void	sh_iounpipe(void);
 extern int	sh_chkopen(const char*);
 extern int	sh_ioaccess(int,int);
-extern int	sh_devtofd(const char*);
 extern int	sh_isdevfd(const char*);
-extern int	sh_source(Shell_t*, Sfio_t*, const char*);
 
 /* the following are readonly */
-extern const char	e_pexists[];
+extern const char	e_copexists[];
 extern const char	e_query[];
 extern const char	e_history[];
 extern const char	e_argtype[];
