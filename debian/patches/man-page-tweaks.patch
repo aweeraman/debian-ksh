@@ -4,11 +4,11 @@ Forwarded: not-needed
 
 --- a/src/cmd/ksh93/sh.1
 +++ b/src/cmd/ksh93/sh.1
-@@ -8662,7 +8662,6 @@ wait(2),
- strftime(3),
- wctrans(3),
- rand(3),
--a.out(5),
- profile(5),
- environ(7).
+@@ -9185,7 +9185,6 @@ NULL device
+ .IR strftime (3),
+ .IR wctrans (3),
+ .IR rand (3),
+-.IR a.out (5),
+ .IR profile (5),
+ .IR environ (7).
  .PP
