@@ -1,7 +1,8 @@
 ksh93u+m (1.0.0~rc.1-1) unstable; urgency=high
 
-  * New upstream release.
+  * New upstream release. (Closes: #1012964)
   * Bumped up standards version.
+  * Lintian fixes.
 
  -- Anuradha Weeraman <anuradha@debian.org>  Sat, 30 Jul 2022 15:28:13 +0530
 
