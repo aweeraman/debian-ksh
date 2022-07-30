@@ -14,32 +14,6 @@ Copyright:
  2020, Anuradha Weeraman <anuradha@debian.org>
 License: BSD-3-clause
 
-Files: src/lib/libsum/sum-sha2.c
-Copyright: 2000-2001, Aaron D. Gifford
-License: BSD-3-clause
-
-Files: 
- src/lib/libast/uwin/log__L.c
- src/lib/libast/uwin/crypt.c
- src/lib/libast/uwin/asinh.c
- src/lib/libast/uwin/atanh.c
- src/lib/libast/uwin/log.c
- src/lib/libast/uwin/exp.c
- src/lib/libast/uwin/log1p.c
- src/lib/libast/uwin/expm1.c
- src/lib/libast/uwin/acosh.c
- src/lib/libast/uwin/rcmd.c
- src/lib/libast/uwin/random.c
- src/lib/libast/uwin/gamma.c
- src/lib/libast/uwin/exp__E.c
- src/lib/libast/uwin/mathimpl.h
- src/lib/libast/uwin/lgamma.c
- src/lib/libast/uwin/support.c
- src/lib/libast/misc/fastfind.c
- src/lib/libast/uwin/erf.c
-Copyright: 1983, 1985, 1988-1989, 1992-1993, 1999, The Regents of the University of California.
-License: BSD-3-clause
-
 Files: src/lib/libsum/sum-md5.c
 Copyright: 1991-1992, RSA Data Security, Inc.
 License: RSA
