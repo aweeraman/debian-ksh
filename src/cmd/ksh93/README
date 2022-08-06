@@ -198,19 +198,24 @@ character locales and really want to save some memory and CPU cycles, add
 '-DAST_NOMULTIBYTE' to CCFLAGS to compile out all multibyte character
 handling in ksh and supporting libraries. Not recommended for most users.
 
+To install, use: bin/package install DESTINATION_DIRECTORY [ COMMAND ... ]
+
+Any command from the arch directory can be installed. If no COMMAND is
+specified, ksh and shcomp are assumed.
+
+The DESTINATION_DIRECTORY is created if it does not exist. Commands are
+installed in its bin subdirectory and each command's manual page, if
+available, is installed in share/man.
+
+Destination directories with whitespace or shell pattern characters in their
+pathnames are not yet supported.
+
 For more information, run:
 
 	bin/package help
 
 Many other commands in this repo self-document via the --help, --man and
 --html options; those that do have no separate manual page.
-
-Automated installation is not supported yet. To install manually:
-
-	cp arch/$(bin/package host type)/bin/ksh /usr/local/bin/
-	cp src/cmd/ksh93/sh.1 /usr/local/share/man/man1/ksh.1
-
-(adapting the destination directories as required).
 
 The build should also generate shcomp, a program that will precompile
 a script.  ksh93 is able to recognize files in this format and process
@@ -277,8 +282,10 @@ failures (crashes, and/or important functionality does not work).
 	GNU/Linux: Ubuntu 18.04 on armv7l (32-bit)
 	GNU/Linux: Ubuntu 20.04 on arm64
 	GNU/Linux: Void Linux (musl C library) on x86_64
+***	Haiku R1/beta3 on x86_64
 ***	HP-UX B.11.11 on pa-risc
 *	illumos: OmniOS 2020-08-19 (gcc) on x86_64
+	illumos: OmniOS r151040 (gcc) on x86_64
 	macOS 10.13.6 (High Sierra) on x86_64
 	macOS 10.14.6 (Mojave) on x86_64
 *	macOS 12.0.1 (Monterey) on arm64
@@ -293,8 +300,7 @@ failures (crashes, and/or important functionality does not work).
 ***	Windows 7 using Cygwin on x86
 ***	Windows 10 using Cygwin on x86_64
 ***	Windows 11 using Cygwin on x86_64
-*	Windows 11 using WSL 2 with Ubuntu 20.04 on x86_64
-***	Haiku R1/beta3 on x86_64
+	Windows 11 using WSL 2 with Ubuntu 20.04 on x86_64
 
 #### REPORTING BUGS ####
 

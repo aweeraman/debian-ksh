@@ -1,7 +1,46 @@
 This documents significant changes in the 1.0 branch of ksh 93u+m.
 For full details, see the git log at: https://github.com/ksh93/ksh/tree/1.0
+Uppercase BUG_* IDs are shell bug IDs as used by the Modernish shell library.
 
-Any uppercase BUG_* names are modernish shell bug IDs.
+2022-08-05:
+
+- Reverted a buggy exec optimisation introduced on 2022-06-18. It is known
+  to make the build scripts of GNU binutils produce corrupted results.
+
+- Release 1.0.1.
+
+2022-08-01:
+   _        _        ___ _____                          ___   ___   ___
+  | | _____| |__    / _ \___ / _   _   _   _ __ ___    / / | / _ \ / _ \
+  | |/ / __| '_ \  | (_) ||_ \| | | |_| |_| '_ ` _ \  / /| || | | | | | |
+  |   <\__ \ | | |  \__, |__) | |_| |_   _| | | | | |/ / | || |_| | |_| |
+  |_|\_\___/_| |_|    /_/____/ \__,_| |_| |_| |_| |_/_/  |_(_)___(_)___/
+
+- Exactly ten years after ksh 93u+ 2012-08-01, we now have a new ksh release.
+  Many thanks to all the direct and indirect contributors for their hard work!
+
+2022-07-28:
+
+- Fixed BUG_IFSGLOBS ("$*" does pattern matching if the first character of
+  $IFS is a wildcard).
+
+2022-07-27:
+
+- Fixed a bug introduced on 2022-02-08 where $PPID was incorrect when a script
+  without a #! path was executed.
+
+- Fixed a completion bug in the vi line editor. It now correctly completes
+  the sole member of a directory when tab is pressed immediately after /.
+  Thanks to K. Eugene Carlson for the report and the fix.
+
+2022-07-26:
+
+- Fixed incorrect handling of initial zeros in test/[ and [[ arithmetic
+  comparison operators. For example, [[ 0x0A -eq 10 ]] yielded false but
+  [[ 1+0x0A -eq 11 ]] yielded true.
+
+- Fixed comparing long floating point (typeset -lF) values in test/[ and [[;
+  the values were reduced to standard floating point before comparing.
 
 2022-07-25:
 
@@ -70,7 +109,7 @@ Any uppercase BUG_* names are modernish shell bug IDs.
   For example, this now writes 'OK' to standard error: cat >&2 <(echo OK)
 
 - Fixed the detection of a syntax error in compound assignments to
-  associative arays.
+  associative arrays.
 
 2022-07-02:
 
@@ -1711,8 +1750,8 @@ Any uppercase BUG_* names are modernish shell bug IDs.
 - Four of the date formats accepted by 'printf %()T' have had their
   functionality altered to the common behavior of date(1):
   - '%k' and '%l' print the current hour with blank padding, the former
-    based on a 24-hour clock and the latter a twelve hour clock. These
-    are common extensions present on Linux and *BSD.
+    based on a 24-hour clock and the latter a 12-hour clock. These are
+    common extensions present on Linux and *BSD.
   - '%f' prints a date with the format string '%Y.%m.%d-%H:%M:%S' (BusyBox).
   - '%q' prints the quarter of the year (GNU).
 
@@ -2105,3 +2144,7 @@ Any uppercase BUG_* names are modernish shell bug IDs.
   for reading and writing, you now need '1<>'.
   Ref.:	https://github.com/att/ast/issues/75
 	http://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_07_07
+
+2020-05-12:
+
+- ksh development rebooted based on 93u+ 2012-08-01.

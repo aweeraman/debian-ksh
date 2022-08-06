@@ -377,6 +377,9 @@ make install
 					make include/jobs.h implicit
 						prev ${PACKAGE_ast_INCLUDE}/vmalloc.h implicit
 						prev include/terminal.h implicit
+						make ${PACKAGE_ast_INCLUDE}/aso.h implicit
+							prev ${PACKAGE_ast_INCLUDE}/ast_common.h implicit
+						done ${PACKAGE_ast_INCLUDE}/aso.h implicit
 						prev FEATURE/options implicit
 						prev ${PACKAGE_ast_INCLUDE}/sfio.h implicit
 						prev ${PACKAGE_ast_INCLUDE}/ast.h implicit

@@ -4,18 +4,15 @@
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
 *          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
-*                 Eclipse Public License, Version 1.0                  *
-*                    by AT&T Intellectual Property                     *
+*                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
 *                A copy of the License is available at                 *
-*          http://www.eclipse.org/org/documents/epl-v10.html           *
-*         (with md5 checksum b35adb5213ca9657e911e9befb180842)         *
-*                                                                      *
-*              Information and Software Systems Research               *
-*                            AT&T Research                             *
-*                           Florham Park NJ                            *
+*      https://www.eclipse.org/org/documents/epl-2.0/EPL-2.0.html      *
+*         (with md5 checksum 84283fa8859daf213bdda5a9f8d1be1d)         *
 *                                                                      *
 *                  David Korn <dgk@research.att.com>                   *
+*                  Martijn Dekker <martijn@inlv.org>                   *
+*            Johnothan King <johnothanking@protonmail.com>             *
 *                                                                      *
 ***********************************************************************/
 /*
@@ -1930,11 +1927,7 @@ int sh_exec(register const Shnode_t *t, int flags)
 				t = t->lst.lstrit;
 			}
 			while(t->tre.tretyp == TLST);
-			/*
-			 * if sh_state(SH_FORKED) was turned on in the meantime, mix it in to the flags to allow a last-command
-			 * no_fork optimization via execflg2 -- this happens when a subshell forks mid-execution (sh_subfork())
-			 */
-			sh_exec(t,flags|sh_isstate(SH_FORKED));
+			sh_exec(t,flags);
 			break;
 		    }
 
@@ -2124,7 +2117,7 @@ int sh_exec(register const Shnode_t *t, int flags)
 			&& tt->com.comio				/* ...and one I/O redirection... */
 			&& !tt->com.comio->ionxt			/* ...but not more than one... */
 			&& !(tt->com.comio->iofile & (IOPUT|IOAPP))	/* ...and not > or >> */
-			&& !sh_isoption(SH_POSIX))			/* not in POSIX compilance mode */
+			&& !sh_isoption(SH_POSIX))			/* not in POSIX compliance mode */
 			{
 				iop = openstream(tt->com.comio,&savein);
 			}
@@ -2852,6 +2845,7 @@ pid_t _sh_fork(register pid_t parent,int flags,int *jobid)
 	vmtrace(-1);
 #endif
 	/* This is the child process */
+	sh.current_ppid = sh.current_pid;
 	sh.current_pid = getpid();  /* ${.sh.pid} */
 	sh.outpipepid = ((flags&FPOU)?sh.current_pid:0);
 	if(sh.trapnote&SH_SIGTERM)

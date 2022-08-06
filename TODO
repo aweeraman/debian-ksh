@@ -66,11 +66,5 @@ https://github.com/ksh93/ksh/issues/460
 $LINENO incorrect after compound assignment
 https://github.com/ksh93/ksh/issues/484
 
-Tab completion can cause vi mode to switch to "control"
-https://github.com/ksh93/ksh/issues/485
-
 Shell quoting within bracket patterns has no effect
 https://github.com/ksh93/ksh/issues/488
-
-"$*" does pattern matching if the first char of $IFS is a wildcard
-https://github.com/ksh93/ksh/issues/489

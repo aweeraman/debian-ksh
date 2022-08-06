@@ -29,9 +29,15 @@ make install
 					exec -		'' | *\*\ [0-9]*.[0-9]*)
 					exec -			# If we're not on a git branch (tarball) or on a branch that starts
 					exec -			# with a number (release branch), then compile as a release version
-					exec -			echo "#ifndef _AST_release"
-					exec -			echo "#    define _AST_release	1"
-					exec -			echo "#endif"
+					exec -			if	git diff --quiet	# WD clean?
+					exec -			then	echo "#ifndef _AST_release"
+					exec -				echo "#    define _AST_release	1"
+					exec -				echo "#endif"
+					exec -			else	echo "/*"
+					exec -				echo " * on a git release branch, but changes were made;"
+					exec -				echo " * _AST_release not defined by default"
+					exec -				echo " */"
+					exec -			fi
 					exec -			;;
 					exec -		*)
 					exec -			echo "/* not on a git release branch; _AST_release not defined by default */"

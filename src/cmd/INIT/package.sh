@@ -4,18 +4,15 @@
 #          Copyright (c) 1994-2012 AT&T Intellectual Property          #
 #          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
-#                 Eclipse Public License, Version 1.0                  #
-#                    by AT&T Intellectual Property                     #
+#                 Eclipse Public License, Version 2.0                  #
 #                                                                      #
 #                A copy of the License is available at                 #
-#          http://www.eclipse.org/org/documents/epl-v10.html           #
-#         (with md5 checksum b35adb5213ca9657e911e9befb180842)         #
-#                                                                      #
-#              Information and Software Systems Research               #
-#                            AT&T Research                             #
-#                           Florham Park NJ                            #
+#      https://www.eclipse.org/org/documents/epl-2.0/EPL-2.0.html      #
+#         (with md5 checksum 84283fa8859daf213bdda5a9f8d1be1d)         #
 #                                                                      #
 #                 Glenn Fowler <gsf@research.att.com>                  #
+#                  Martijn Dekker <martijn@inlv.org>                   #
+#                      Trey Valenta <t@trey.net>                       #
 #                                                                      #
 ########################################################################
 ### this sh script is POSIX compliant and compatible with shell bugs ###
@@ -109,13 +106,13 @@ command=${0##*/}
 case $(getopts '[-][123:xyz]' opt --xyz 2>/dev/null; echo 0$opt) in
 0123)	USAGE=$'
 [-?
-@(#)$Id: '$command$' (ksh 93u+m) 2022-07-22 $
+@(#)$Id: '$command$' (ksh 93u+m) 2022-08-01 $
 ]
 [-author?Glenn Fowler <gsf@research.att.com>]
 [-author?Contributors to https://github.com/ksh93/ksh]
 [-copyright?(c) 1994-2012 AT&T Intellectual Property]
 [-copyright?(c) 2020-2022 Contributors to https://github.com/ksh93/ksh]
-[-license?http://www.eclipse.org/org/documents/epl-v10.html]
+[-license?https://www.eclipse.org/org/documents/epl-2.0/EPL-2.0.html]
 [+NAME?'$command$' - build, test and install ksh 93u+m]
 [+DESCRIPTION?The \b'$command$'\b command is the main control script
     for building and installing KornShell 93u+m.
@@ -196,7 +193,17 @@ case $(getopts '[-][123:xyz]' opt --xyz 2>/dev/null; echo 0$opt) in
                     release incompatibilities has for the most part been
                     futile.]
             }
-        [+install\b To be reimplemented.]
+        [+install\b [ \adest_dir\a ]] [ \acommand\a ... ]]?Install commands
+            from the \b$INSTALLROOT\b tree
+            into appropriate subdirectories of \adest_dir\a.
+            If \adest_dir\a does not exist,
+            then it and any necessary subdirectories are created.
+            \adest_dir\a can be a directory like \a/usr/local\a
+            to install the \acommand\as directly,
+            or a temporary directory like \a/tmp/pkgtree/usr\a
+            to prepare for packaging with operating system-specific tools.
+            If no \acommand\a is specified,
+            then \aksh\a and \ashcomp\a are assumed.]
         [+make\b [ \apackage\a ]] [ \aoption\a ... ]] [ \atarget\a ... ]]?Build
 	    and install. The default \atarget\a is \binstall\b, which makes
 	    and installs \apackage\a. If the standard output is a terminal
@@ -457,7 +464,14 @@ DESCRIPTION
                   similar, predictable style. OS point release information is
                   avoided as much as possible, but vendor resistance to release
                   incompatibilities has for the most part been futile.
-    install To be reimplemented.
+    install [ dest_dir ] [ command ... ]
+          Install commands from the $INSTALLROOT tree into appropriate
+          subdirectories of dest_dir. If dest_dir does not exist, then it and
+          any necessary subdirectories are created. dest_dir can be a directory
+          like /usr/local to install the commands directly, or a temporary
+          directory like /tmp/pkgtree/usr to prepare for packaging with
+          operating system-specific tools. If no command is specified, then ksh
+          and shcomp are assumed.
     make [ package ] [ option ... ] [ target ... ]
           Build and install. The default target is install, which makes and
           installs package. If the standard output is a terminal then the
@@ -538,12 +552,12 @@ SEE ALSO
   mamake(1), pax(1), pkgadd(1), pkgmk(1), rpm(1), sh(1), tar(1), optget(3)
 
 IMPLEMENTATION
-  version         package (ksh 93u+m) 2022-02-24
+  version         package (ksh 93u+m) 2022-08-01
   author          Glenn Fowler <gsf@research.att.com>
   author          Contributors to https://github.com/ksh93/ksh
   copyright       (c) 1994-2012 AT&T Intellectual Property
   copyright       (c) 2020-2022 Contributors to https://github.com/ksh93/ksh
-  license         http://www.eclipse.org/org/documents/epl-v10.html'
+  license         https://www.eclipse.org/org/documents/epl-2.0/EPL-2.0.html'
 		case $1 in
 		html)	echo "</pre></body></html>" ;;
 		esac
@@ -1708,6 +1722,14 @@ err_out()
 	exit 1
 }
 
+trace()
+(
+	PS4="${action}: executing: "
+	exec 2>&1  # trace to standard output
+	set -o xtrace
+	"$@"
+)
+
 # cc checks
 #
 #	CC: compiler base name name
@@ -2637,6 +2659,48 @@ make_recurse() # dir
 	done
 }
 
+do_install() # dir [ command ... ]
+{
+	cd "$INSTALLROOT"
+	printf 'install: installing from %s\n' "$PWD"
+	set -o errexit
+	dd=$1
+	shift
+	case $dd in
+	'' | [!/]*)
+		err_out "ERROR: destination directory '$dd' must begin with a /" ;;
+	esac
+	# commands to install by default
+	test "$#" -eq 0 && set -- ksh shcomp  # pty suid_exec
+	for f
+	do	test -f "bin/$f" || err_out "Not found: $f" "Build first? Run $0 make"
+	done
+	# set install directories
+	bindir=$dd/bin
+	mandir=$dd/share/man
+	man1dir=$mandir/man1
+	# and off we go
+	trace mkdir -p "$bindir" "$man1dir"
+	for f
+	do	# install executable
+		trace cp "bin/$f" "$bindir/"
+		# install manual
+		case $f in
+		ksh)	trace cp "$PACKAGEROOT/src/cmd/ksh93/sh.1" "$man1dir/ksh.1"
+			;;
+		*)	# AT&T --man, etc. is a glorified error message: writes to stderr and exits with status 2 :-/
+			manfile=$man1dir/${f##*/}.1
+			bin/ksh -c '"$@" 2>&1; exit 0' _ "bin/$f" --nroff >$manfile
+			# ...so we cannot check for success; instead, check the result.
+			if	grep -q '^.TH .* 1' "$manfile"
+			then	printf "install: wrote '%s --nroff' output into %s\n" "bin/$f" "$manfile"
+			else	rm "$manfile"
+			fi
+			;;
+		esac
+	done
+}
+
 # check for native ASCII 0:yes 1:no
 
 __isascii__=
@@ -2707,9 +2771,9 @@ export)	case $INSTALLROOT in
 	;;
 
 install)cd $PACKAGEROOT
-	echo "A proper installation command is coming back soon, sorry." >&2
-	echo "Meanwhile, copy ksh and shcomp from: $INSTALLROOT/arch/$HOSTTYPE/bin" >&2
-	exit 1
+	# TODO: breaks on directories with spaces or glob characters; make arguments handling robust
+	test -n "$args" || err_out "Usage: $0 install ROOTDIR [ COMMANDNAME ... ]"
+	capture do_install $args
 	;;
 
 make|view)
@@ -2718,7 +2782,7 @@ make|view)
 	# check for some required commands
 
 	must="$AR"
-	warn="$NM yacc bison"
+	warn="$NM"
 	test="$must $warn"
 	have=
 	IFS=:
@@ -2742,14 +2806,6 @@ make|view)
 			esac
 		done
 	done
-	case " $have " in
-	*" bison "*)	;;
-	*" yacc "*)	have="$have bison" ;;
-	esac
-	case " $have " in
-	*" yacc "*)	;;
-	*" bison "*)	have="$have yacc" ;;
-	esac
 	for t in $test
 	do	case " $have " in
 		*" $t "*)

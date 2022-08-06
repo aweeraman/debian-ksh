@@ -4,18 +4,15 @@
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
 *          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
-*                 Eclipse Public License, Version 1.0                  *
-*                    by AT&T Intellectual Property                     *
+*                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
 *                A copy of the License is available at                 *
-*          http://www.eclipse.org/org/documents/epl-v10.html           *
-*         (with md5 checksum b35adb5213ca9657e911e9befb180842)         *
-*                                                                      *
-*              Information and Software Systems Research               *
-*                            AT&T Research                             *
-*                           Florham Park NJ                            *
+*      https://www.eclipse.org/org/documents/epl-2.0/EPL-2.0.html      *
+*         (with md5 checksum 84283fa8859daf213bdda5a9f8d1be1d)         *
 *                                                                      *
 *                  David Korn <dgk@research.att.com>                   *
+*                  Martijn Dekker <martijn@inlv.org>                   *
+*            Johnothan King <johnothanking@protonmail.com>             *
 *                                                                      *
 ***********************************************************************/
 /*
@@ -498,15 +495,48 @@ int test_unop(register int op,register const char *arg)
  */
 int test_binop(register int op,const char *left,const char *right)
 {
-	register double lnum = 0, rnum = 0;
 	if(op&TEST_ARITH)
 	{
-		while(*left=='0')
-			left++;
-		while(*right=='0')
-			right++;
-		lnum = sh_arith(left);
-		rnum = sh_arith(right);
+		Sfdouble_t lnum, rnum;
+		if(sh.bltinfun==b_test && sh_isoption(SH_POSIX))
+		{
+			/* for test/[ in POSIX, only accept simple decimal numbers */
+			char *l = (char*)left, *r = (char*)right;
+			while(*l=='0')
+				l++;
+			while(*r=='0')
+				r++;
+			lnum = strtold(l,&l);
+			rnum = strtold(r,&r);
+			if(*l || *r)
+			{
+				errormsg(SH_DICT, ERROR_exit(2), e_number, *l ? left : right);
+				UNREACHABLE();
+			}
+		}
+		else
+		{
+			/* numeric operands are arithmetic expressions */
+			lnum = sh_arith(left);
+			rnum = sh_arith(right);
+		}
+		switch(op)
+		{
+			case TEST_EQ:
+				return(lnum==rnum);
+			case TEST_NE:
+				return(lnum!=rnum);
+			case TEST_GT:
+				return(lnum>rnum);
+			case TEST_LT:
+				return(lnum<rnum);
+			case TEST_GE:
+				return(lnum>=rnum);
+			case TEST_LE:
+				return(lnum<=rnum);
+		}
+		/* all arithmetic binary operators should be covered above */
+		UNREACHABLE();
 	}
 	switch(op)
 	{
@@ -534,20 +564,8 @@ int test_binop(register int op,const char *left,const char *right)
 			return(test_time(left,right)>0);
 		case TEST_OT:
 			return(test_time(left,right)<0);
-		case TEST_EQ:
-			return(lnum==rnum);
-		case TEST_NE:
-			return(lnum!=rnum);
-		case TEST_GT:
-			return(lnum>rnum);
-		case TEST_LT:
-			return(lnum<rnum);
-		case TEST_GE:
-			return(lnum>=rnum);
-		case TEST_LE:
-			return(lnum<=rnum);
 	}
-	/* all possible binary operators should be covered above */
+	/* all non-arithmetic binary operators should be covered above */
 	UNREACHABLE();
 }
 
