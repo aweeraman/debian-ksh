@@ -1,19 +1,10 @@
-Description: Remove a.out reference and fix typo in the man page
+Description: Remove a.out reference
 Author: Anuradha Weeraman <anuradha@debian.org>
 Forwarded: not-needed
 
 --- a/src/cmd/ksh93/sh.1
 +++ b/src/cmd/ksh93/sh.1
-@@ -2086,7 +2086,7 @@ and the
- .B posix
- shell option is not on,
- this character is treated as if it were not in the \f2isspace\^\fP
--class - for exmaple, if
-+class - for example, if
- .BR IFS
- consists of two
- .B tab
-@@ -9185,7 +9185,6 @@ NULL device
+@@ -9304,7 +9304,6 @@ NULL device
  .IR strftime (3),
  .IR wctrans (3),
  .IR rand (3),
