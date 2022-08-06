@@ -1,19 +1,16 @@
 iff	AST_COMMON
-hdr	pthread,stdarg,stddef,stdint,stdnoreturn,inttypes,types,unistd
+hdr	pthread,stdarg,stddef,stdint,inttypes,types,unistd
 sys	types
 typ	long.double,size_t,ssize_t
 typ	__va_list stdio.h
 
 mac	SF_APPEND,SF_CLOSE	sys/stat.h sys/socket.h
 
-std	proto note{ standard C prototypes ok }end compile{
-	extern int foo(int, int);
-	bar() { foo(1, 1); }
-}end
-
-tst	ptr_void note{ standard C void* ok }end compile{
-	extern void* foo();
-	void* bar() { return foo(); }
+std	noreturn note{ noreturn ok }end compile{
+	#include <stdlib.h>
+	#include <stdnoreturn.h>
+	noreturn void foo(void) { exit(0); }
+	int main(void) { foo(); }
 }end
 
 cat{
@@ -70,7 +67,7 @@ cat{
 	#	endif
 	#endif
 
-	#if !_hdr_stdnoreturn
+	#if !_std_noreturn
 	#if defined(__GNUC__) && (__GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ > 4))
 	#define noreturn __attribute__((noreturn))
 	#else
@@ -78,7 +75,7 @@ cat{
 	#endif /* __GNUC__ */
 	#else
 	#include <stdnoreturn.h>
-	#endif /* _hdr_stdnoreturn */
+	#endif /* _std_noreturn */
 }end
 
 if	tst - note{ <stdarg.h>+<wchar.h> works }end compile{

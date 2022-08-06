@@ -80,13 +80,17 @@ bin/shtests --man
 
 ### Install
 
-Automated installation is not supported yet.
-To install manually:
-```sh
-cp arch/$(bin/package host type)/bin/ksh /usr/local/bin/
-cp src/cmd/ksh93/sh.1 /usr/local/share/man/man1/ksh.1
-```
-(adapting the destination directories as required).
+Usage: `bin/package install` *destination_directory* [ *command* ... ]
+
+Any command from the `arch` directory can be installed. If no *command* is
+specified, `ksh` and `shcomp` are assumed.
+
+The *destination_directory* is created if it does not exist. Commands are
+installed in its `bin` subdirectory and each command's manual page, if
+available, is installed in `share/man`.
+
+Destination directories with whitespace or shell pattern characters in their
+pathnames are not yet supported.
 
 ## What is ksh93?
 

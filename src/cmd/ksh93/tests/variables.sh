@@ -4,18 +4,15 @@
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
 #          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
-#                 Eclipse Public License, Version 1.0                  #
-#                    by AT&T Intellectual Property                     #
+#                 Eclipse Public License, Version 2.0                  #
 #                                                                      #
 #                A copy of the License is available at                 #
-#          http://www.eclipse.org/org/documents/epl-v10.html           #
-#         (with md5 checksum b35adb5213ca9657e911e9befb180842)         #
-#                                                                      #
-#              Information and Software Systems Research               #
-#                            AT&T Research                             #
-#                           Florham Park NJ                            #
+#      https://www.eclipse.org/org/documents/epl-2.0/EPL-2.0.html      #
+#         (with md5 checksum 84283fa8859daf213bdda5a9f8d1be1d)         #
 #                                                                      #
 #                  David Korn <dgk@research.att.com>                   #
+#                  Martijn Dekker <martijn@inlv.org>                   #
+#            Johnothan King <johnothanking@protonmail.com>             #
 #                                                                      #
 ########################################################################
 
@@ -147,9 +144,16 @@ fi
 # PPID
 exp=$$
 got=${ $SHELL -c 'print $PPID'; }
-if	[[ ${ $SHELL -c 'print $PPID'; } != $$ ]]
-then	err_exit "PPID variable failed -- expected '$exp', got '$got'"
-fi
+[[ $got == $$ ]] || err_exit "PPID variable failed in -c script -- expected '$exp', got '$got'"
+print 'print $PPID' >ppid.sh
+chmod +x ppid.sh
+./ppid.sh >|out
+got=$(<out)
+[[ $got == $$ ]] || err_exit "PPID variable failed in script without #! -- expected '$exp', got '$got'"
+print -r "#!$SHELL"$'\nprint $PPID' >|ppid.sh
+./ppid.sh >|out
+got=$(<out)
+[[ $got == $$ ]] || err_exit "PPID variable failed in script with #! -- expected '$exp', got '$got'"
 # OLDPWD
 old=$PWD
 cd /
@@ -1095,10 +1099,10 @@ $SHELL -c '
 	typeset -l lower
 	errors=0
 	PS1=/dev/null/test_my_case_too
-	PS2=$PS1 PS3=$PS1 PS4=$PS1 OPTARG=$PS1 IFS=$PS1 FPATH=$PS1 FIGNORE=$PS1 CSWIDTH=$PS1
+	PS2=$PS1 PS3=$PS1 PS4=$PS1 OPTARG=$PS1 IFS=$PS1 FPATH=$PS1 FIGNORE=$PS1
 	for var
 	do	case $var in
-		RANDOM | HISTCMD | _ | SECONDS | LINENO | JOBMAX | .sh.stats)
+		RANDOM | HISTCMD | _ | SECONDS | LINENO | JOBMAX | .sh.stats | .sh.match)
 			# these are expected to fail below as their values change; just test against crashing
 			typeset -u "$var"
 			typeset -l "$var"

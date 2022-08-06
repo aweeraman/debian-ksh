@@ -1,14 +1,14 @@
 ########################################################################
 #                                                                      #
 #              This file is part of the ksh 93u+m package              #
-#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
+#          Copyright (c) 2022-2022 Contributors to ksh 93u+m           #
 #                    <https://github.com/ksh93/ksh>                    #
 #                      and is licensed under the                       #
-#                 Eclipse Public License, Version 1.0                  #
+#                 Eclipse Public License, Version 2.0                  #
 #                                                                      #
 #                A copy of the License is available at                 #
-#          http://www.eclipse.org/org/documents/epl-v10.html           #
-#         (with md5 checksum b35adb5213ca9657e911e9befb180842)         #
+#      https://www.eclipse.org/org/documents/epl-2.0/EPL-2.0.html      #
+#         (with md5 checksum 84283fa8859daf213bdda5a9f8d1be1d)         #
 #                                                                      #
 #                  Martijn Dekker <martijn@inlv.org>                   #
 #                                                                      #
@@ -196,9 +196,16 @@ let "017 == 15" || err_exit "leading octal zero not recognised in 'let' in --pos
 (set --noposix; let "017 == 17") || err_exit "leading octal zero erroneously recognised in --noposix"
 (set --noposix --letoctal; let "017 == 15") || err_exit "leading octal zero not recognised in --noposix --letoctal (1)"
 (set --noposix; set --letoctal; let "017 == 15") || err_exit "leading octal zero not recognised in --noposix --letoctal (2)"
+test 010 -eq 10 || err_exit "'test' not ignoring leading octal zero in --posix"
+[ 010 -eq 10 ] || err_exit "'[' not ignoring leading octal zero in --posix"
+[[ 010 -eq 8 ]] || err_exit "'[[' ignoring leading octal zero in --posix"
+(set --noposix; [[ 010 -eq 10 ]]) || err_exit "'[[' not ignoring leading octal zero in --noposix"
 
 # disables zero-padding of seconds in the output of the time and times built-ins;
-exp=$'^user\t0m0.[0-9]{2}s\nsys\t0m0.[0-9]{2}s\n0m0.[0-9]{3}s 0m0.[0-9]{3}s\n0m0.000s 0m0.000s$'
+case ${.sh.version} in
+*93u+m/1.0.*)	exp=$'^user\t0m0.[0-9]{2}s\nsys\t0m0.[0-9]{2}s\n0m0.[0-9]{3}s 0m0.[0-9]{3}s\n0m0.000s 0m0.000s$' ;;
+*)		exp=$'^user\t0m0.[0-9]{3}s\nsys\t0m0.[0-9]{3}s\n0m0.[0-9]{3}s 0m0.[0-9]{3}s\n0m0.000s 0m0.000s$' ;;
+esac
 got=$("$SHELL" --posix -c '{ time; } 2>&1; times')
 [[ $got =~ $exp ]] || err_exit "POSIX time/times output: expected match of $(printf %q "$exp"), got $(printf %q "$got")"
 

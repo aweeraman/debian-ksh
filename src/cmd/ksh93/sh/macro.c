@@ -4,18 +4,15 @@
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
 *          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
-*                 Eclipse Public License, Version 1.0                  *
-*                    by AT&T Intellectual Property                     *
+*                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
 *                A copy of the License is available at                 *
-*          http://www.eclipse.org/org/documents/epl-v10.html           *
-*         (with md5 checksum b35adb5213ca9657e911e9befb180842)         *
-*                                                                      *
-*              Information and Software Systems Research               *
-*                            AT&T Research                             *
-*                           Florham Park NJ                            *
+*      https://www.eclipse.org/org/documents/epl-2.0/EPL-2.0.html      *
+*         (with md5 checksum 84283fa8859daf213bdda5a9f8d1be1d)         *
 *                                                                      *
 *                  David Korn <dgk@research.att.com>                   *
+*                  Martijn Dekker <martijn@inlv.org>                   *
+*            Johnothan King <johnothanking@protonmail.com>             *
 *                                                                      *
 ***********************************************************************/
 /*
@@ -64,7 +61,7 @@ typedef struct  _mac_
 	char		quote;		/* set within double quoted contexts */
 	char		lit;		/* set within single quotes */
 	char		split;		/* set when word splitting is possible */
-	char		pattern;	/* set when file expansion follows */
+	char		pattern;	/* set when glob pattern expansion or matching follows */
 	char		patfound;	/* set if pattern character found */
 	char		assign;		/* set for assignments */
 	char		arith;		/* set for ((...)) */
@@ -80,7 +77,7 @@ typedef struct  _mac_
 #define isescchar(s)	((s)>S_QUOTE)
 #define isqescchar(s)	((s)>=S_QUOTE)
 #define isbracechar(c)	((c)==RBRACE || (_c_=sh_lexstates[ST_BRACE][c])==S_MOD1 ||_c_==S_MOD2)
-#define ltos(x)		fmtbase((long)(x),0,0)
+#define ltos(x)		fmtbase((intmax_t)(x),0,0)
 
 /* type of macro expansions */
 #define M_BRACE		1	/* ${var}	*/
@@ -1990,6 +1987,8 @@ retry2:
 				 * We're joining fields into one; write the output field separator, which may be multi-byte.
 				 * For "$@" it's a space, for "$*" it's the 1st char of IFS (space if unset, none if empty).
 				 */
+				if(mp->pattern)				/* avoid BUG_IFSGLOBS */
+					sfputc(sfio_ptr, '\\');
 				if(mode == '@' || !mp->ifsp)		/* if expanding $@ or if IFS is unset... */
 					sfputc(sfio_ptr, ' ');
 				else if(mp->ifs)			/* else if IFS is non-empty... */
@@ -2785,9 +2784,7 @@ static char *special(register int c)
 			return(ltos(sh.bckpid));
 		break;
 	    case '$':
-		if(nv_isnull(SH_DOLLARNOD))
-			return(ltos(sh.pid));
-		return(nv_getval(SH_DOLLARNOD));
+		return(ltos(sh.pid));
 	    case '-':
 		return(sh_argdolminus(sh.arg_context));
 	    case '?':

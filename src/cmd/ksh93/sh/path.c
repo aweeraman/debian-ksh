@@ -4,18 +4,15 @@
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
 *          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
-*                 Eclipse Public License, Version 1.0                  *
-*                    by AT&T Intellectual Property                     *
+*                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
 *                A copy of the License is available at                 *
-*          http://www.eclipse.org/org/documents/epl-v10.html           *
-*         (with md5 checksum b35adb5213ca9657e911e9befb180842)         *
-*                                                                      *
-*              Information and Software Systems Research               *
-*                            AT&T Research                             *
-*                           Florham Park NJ                            *
+*      https://www.eclipse.org/org/documents/epl-2.0/EPL-2.0.html      *
+*         (with md5 checksum 84283fa8859daf213bdda5a9f8d1be1d)         *
 *                                                                      *
 *                  David Korn <dgk@research.att.com>                   *
+*                  Martijn Dekker <martijn@inlv.org>                   *
+*            Johnothan King <johnothanking@protonmail.com>             *
 *                                                                      *
 ***********************************************************************/
 /*
@@ -1073,7 +1070,7 @@ pid_t path_spawn(const char *opath,register char **argv, char **envp, Pathcomp_t
 #if _lib_readlink
 	/* save original pathname */
 	stakseek(PATH_OFFSET);
-	pidsize = sfprintf(stkstd,"*%d*",spawn?sh.current_pid:getppid());
+	pidsize = sfprintf(stkstd, "*%lld*", (Sflong_t)(spawn ? sh.current_pid : sh.current_ppid));
 	stakputs(opath);
 	opath = stakfreeze(1)+PATH_OFFSET+pidsize;
 	/* only use tracked alias if we're not searching default path */
@@ -1336,7 +1333,7 @@ static noreturn void exscript(register char *path,register char *argv[],char **e
 		}
 		if((euserid=geteuid()) != sh.userid)
 		{
-			strncpy(name+9,fmtbase((long)sh.current_pid,10,0),sizeof(name)-10);
+			strncpy(name+9,fmtbase((intmax_t)sh.current_pid,10,0),sizeof(name)-10);
 			/* create an SUID open file with owner equal to effective UID */
 			if((n=open(name,O_CREAT|O_TRUNC|O_WRONLY,S_ISUID|S_IXUSR)) < 0)
 				goto fail;
