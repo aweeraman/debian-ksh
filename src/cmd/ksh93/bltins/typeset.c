@@ -1286,7 +1286,7 @@ static int unall(int argc, char **argv, register Dt_t *troot)
 	register const char *name;
 	volatile int r;
 	Dt_t	*dp;
-	int nflag=0,all=0,isfun,jmpval,nofree_attr;
+	int nflag=0,all=0,isfun,jmpval;
 	struct checkpt buff;
 	NOT_USED(argc);
 	if(troot==sh.alias_tree)
@@ -1388,13 +1388,6 @@ static int unall(int argc, char **argv, register Dt_t *troot)
 					sh_assignok(np, !nv_isattr(np,NV_NODISC|NV_ARRAY) && !nv_isvtree(np));
 				}
 			}
-			/*
-			 * Preset aliases have the NV_NOFREE attribute and cannot be safely freed from memory.
-			 * _nv_unset discards this flag so it's obtained now to prevent an invalid free crash.
-			 */
-			if(troot==sh.alias_tree)
-				nofree_attr = nv_isattr(np,NV_NOFREE);	/* note: returns bitmask, not boolean */
-
 			if(!nv_isnull(np) || nv_size(np) || nv_isattr(np,~(NV_MINIMAL|NV_NOFREE)))
 				_nv_unset(np,0);
 			if(troot==sh.var_tree && sh.st.real_fun && (dp=sh.var_tree->walk) && dp==sh.st.real_fun->sdict)
@@ -1411,7 +1404,8 @@ static int unall(int argc, char **argv, register Dt_t *troot)
 			{
 				if(sh.subshell && !sh.subshare)
 					sh_subfork();	/* avoid affecting the parent shell's alias table */
-				nv_delete(np,troot,nofree_attr);
+				_nv_unset(np,nv_isattr(np,NV_NOFREE));
+				nv_delete(np,troot,0);
 			}
 		}
 		else if(troot==sh.alias_tree)

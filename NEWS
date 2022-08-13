@@ -2,6 +2,18 @@ This documents significant changes in the 1.0 branch of ksh 93u+m.
 For full details, see the git log at: https://github.com/ksh93/ksh/tree/1.0
 Uppercase BUG_* IDs are shell bug IDs as used by the Modernish shell library.
 
+2022-08-08:
+
+- Release 1.0.2.
+
+2022-08-06:
+
+- Fixed an interactive shell crashing on redefining, then unsetting one of
+  the predefined aliases.
+
+- Fixed an interactive shell crashing on redefining one of the predefined
+  aliases, then executing a shell script that does not start with a #! path.
+
 2022-08-05:
 
 - Reverted a buggy exec optimisation introduced on 2022-06-18. It is known

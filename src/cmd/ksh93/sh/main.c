@@ -158,11 +158,18 @@ int sh_main(int ac, char *av[], Shinit_f userinit)
 			sh_onoption(SH_INTERACTIVE);
 		if(sh_isoption(SH_INTERACTIVE))
 		{
+			const struct shtable2 *tp;
 			sh_onoption(SH_BGNICE);
 			sh_onoption(SH_RC);
 			/* preset aliases for interactive ksh/sh */
-			dtclose(sh.alias_tree);
-			sh.alias_tree = sh_inittree(shtab_aliases);
+			for(tp = shtab_aliases; *tp->sh_name; tp++)
+			{
+				Namval_t *np = sh_calloc(1,sizeof(Namval_t));
+				np->nvname = (char*)tp->sh_name;	/* alias name */
+				np->nvflag = tp->sh_number;		/* attributes (must include NV_NOFREE) */
+				np->nvalue.cp = (char*)tp->sh_value;	/* non-freeable value */
+				dtinstall(sh.alias_tree,np);
+			}
 		}
 #if SHOPT_REMOTE
 		/*

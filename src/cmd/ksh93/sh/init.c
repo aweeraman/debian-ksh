@@ -1627,9 +1627,8 @@ int sh_reinit(char *argv[])
 		if((dp = sh.alias_tree)->walk)
 			dp = dp->walk;
 		npnext = (Namval_t*)dtnext(sh.alias_tree,np);
-		nofree = nv_isattr(np,NV_NOFREE);			/* note: returns bitmask, not boolean */
-		_nv_unset(np,NV_RDONLY);				/* also clears NV_NOFREE attr, if any */
-		nv_delete(np,dp,nofree);
+		_nv_unset(np,nv_isattr(np,NV_NOFREE));
+		nv_delete(np,dp,0);
 	}
 	/* Delete hash table entries */
 	for(np = dtfirst(sh.track_tree); np; np = npnext)
