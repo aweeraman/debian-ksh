@@ -1004,7 +1004,7 @@ set -- $(
 		[[ -n $varname && $varname != '.sh' ]] && print -r -- "$varname"
 	done
 )
-(($# >= 65)) || err_exit "could not read shtab_variables[]; adjust test script ($# items read)"
+(($# >= 64)) || err_exit "could not read shtab_variables[]; adjust test script ($# items read)"
 
 # ... unset
 $SHELL -c '

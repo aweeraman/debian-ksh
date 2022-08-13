@@ -291,4 +291,14 @@ got=$(unalias foo; echo "$? $$")
 unalias foo
 
 # ======
+# Redefining a predefined alias, then unsetting it, caused a crash on trying to free a non-allocated pointer
+# https://github.com/ksh93/ksh/discussions/503#discussioncomment-3337172
+got=$({ "$SHELL" -i -c 'alias r=foo; unalias r'; } 2>&1) \
+|| err_exit "crash on redefining and unsetting predefined alias (got $(printf %q "$got"))"
+echo : >|script
+chmod +x script
+got=$({ "$SHELL" -i -c 'alias r=foo; ./script'; } 2>&1) \
+|| err_exit "crash on running script after redefining predefined alias (got $(printf %q "$got"))"
+
+# ======
 exit $((Errors<125?Errors:125))
