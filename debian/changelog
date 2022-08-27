@@ -1,6 +1,6 @@
-ksh93u+m (1.0.2-1) UNRELEASED; urgency=high
+ksh93u+m (1.0.3-1) UNRELEASED; urgency=high
 
-  * New upstream release.
+  * New upstream release. (Closes: #742803)
 
  -- Anuradha Weeraman <anuradha@debian.org>  Sat, 13 Aug 2022 12:45:08 +0530
 
