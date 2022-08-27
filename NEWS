@@ -2,6 +2,44 @@ This documents significant changes in the 1.0 branch of ksh 93u+m.
 For full details, see the git log at: https://github.com/ksh93/ksh/tree/1.0
 Uppercase BUG_* IDs are shell bug IDs as used by the Modernish shell library.
 
+2022-08-25:
+
+- Release 1.0.3.
+
+- In the vi line editor, a bug was fixed that caused erratic behaviour after
+  using the 0 or ^ commands when already at the beginning of the command line.
+
+2022-08-24:
+
+- Fixed a bug that caused ksh in the vi editor mode to crash or produce
+  invalid completions if ESC = was used at the beginning of a line. Both
+  tab and = completions are now disabled at the start of the command line.
+
+- Fixed ksh freezing or using excessive memory if HISTSIZE is assigned a
+  pathologically large value. A new bounds check makes the theoretical
+  maximum number of history lines equal to the number of bytes kept in the
+  history file at cleanup time. On 64-bit systems, that maximum is 16384.
+
+2022-08-20:
+
+- Fixed a bug in command line options processing that caused short-form
+  option equivalents on some built-in commands to be ignored after one use,
+  e.g., the new read -a equivalent of read -A (introduced on 2022-02-16).
+
+- Fixed a bug in the /opt/ast/bin/cp built-in command that caused the -r and
+  -R options to sometimes ignore -P, -L and -H. Additionally, the -r and -R
+  options no longer follow symlinks by default.
+
+2022-08-16:
+
+- Fixed an old bug in history expansion (set -H) where any use of the history
+  comment character caused processing to be aborted as if it were an invalid
+  history expansion. (On 2022-01-24 the history comment character was set to
+  '#' instead of being disabled by default, which exposed this bug.)
+
+- Fixed a bug introduced on 2022-02-12 that would cause the optional head
+  builtin's -s option to fail.
+
 2022-08-08:
 
 - Release 1.0.2.

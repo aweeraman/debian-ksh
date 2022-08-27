@@ -24,7 +24,7 @@
  */
 
 static const char usage[] =
-"[-?\n@(#)$Id: rm (AT&T Research) 2013-12-01 $\n]"
+"[-?\n@(#)$Id: rm (ksh 93u+m) 2022-08-20 $\n]"
 "[--catalog?" ERROR_CATALOG "]"
 "[+NAME?rm - remove files]"
 "[+DESCRIPTION?\brm\b removes the named \afile\a arguments. By default it"
@@ -347,10 +347,9 @@ b_rm(int argc, register char** argv, Shbltin_t* context)
 			state.force = 0;
 			continue;
 		case 'r':
-		case 'R':
 			state.recursive = 1;
 			continue;
-		case 'F':
+		case 'c':
 #if _lib_fsync
 			state.clobber = 1;
 #else

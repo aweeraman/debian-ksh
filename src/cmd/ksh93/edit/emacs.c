@@ -13,6 +13,7 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                  Martijn Dekker <martijn@inlv.org>                   *
 *            Johnothan King <johnothanking@protonmail.com>             *
+*               K. Eugene Carlson <kvngncrlsn@gmail.com>               *
 *                                                                      *
 ***********************************************************************/
 /* Original version by Michael T. Veach 
@@ -1001,8 +1002,19 @@ static int escape(register Emacs_t* ep,register genchar *out,int count)
 			/* FALLTHROUGH */
 		case '*':		/* filename expansion */
 		case '=':	/* escape = - list all matching file names */
+		{
+			char allempty = 1;
+			int x;
 			ep->mark = cur;
-			if(cur<1)
+			for(x=0; x < cur; x++)
+			{
+				if(!isspace(out[x]))
+				{
+					allempty = 0;
+					break;
+				}
+			}
+			if(cur<1 || allempty)
 			{
 				beep();
 				return(-1);
@@ -1040,6 +1052,7 @@ static int escape(register Emacs_t* ep,register genchar *out,int count)
 				draw(ep,UPDATE);
 			}
 			return(-1);
+		}
 
 		/* search back for character */
 		case cntl(']'):	/* feature not in book */

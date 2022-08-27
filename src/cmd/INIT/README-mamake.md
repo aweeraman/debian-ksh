@@ -90,8 +90,6 @@ by appending them to the `make` or `done` command:
   By convention, a virtual rule named `all` makes everything,
   and a virtual rule named `install` performs installation.
 
-Unrecognized attributes produce a warning and are then ignored.
-
 ### Referencing previously defined rules ###
 
 `prev` *rule* [ *attribute* ... ]

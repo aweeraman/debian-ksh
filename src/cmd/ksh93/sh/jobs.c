@@ -540,29 +540,27 @@ void job_init(int lflag)
 #   endif
 	if(njob_savelist < NJOB_SAVELIST)
 		init_savelist();
+	if(!sh_isoption(SH_INTERACTIVE))
+		return;
 	/* use new line discipline when available */
-	if(sh_isoption(SH_INTERACTIVE))
-	{
 #ifdef NTTYDISC
 #   ifdef FIOLOOKLD
-		if((job.linedisc = ioctl(JOBTTY, FIOLOOKLD, 0)) <0)
+	if((job.linedisc = ioctl(JOBTTY, FIOLOOKLD, 0)) <0)
 #   else
-		if(ioctl(JOBTTY,TIOCGETD,&job.linedisc) !=0)
+	if(ioctl(JOBTTY,TIOCGETD,&job.linedisc) !=0)
 #   endif /* FIOLOOKLD */
-			return;
-		if(job.linedisc!=NTTYDISC && job.linedisc!=OTTYDISC)
-		{
-			/* no job control when running with MPX */
+		return;
+	if(job.linedisc!=NTTYDISC && job.linedisc!=OTTYDISC)
+	{
+		/* no job control when running with MPX */
 #   if SHOPT_VSH
-			sh_onoption(SH_VIRAW);
+		sh_onoption(SH_VIRAW);
 #   endif /* SHOPT_VSH */
-			return;
-		}
-		if(job.linedisc==NTTYDISC)
-			job.linedisc = -1;
+		return;
 	}
+	if(job.linedisc==NTTYDISC)
+		job.linedisc = -1;
 #endif /* NTTYDISC */
-
 	job.mypgid = getpgrp();
 	/* some systems have job control, but not initialized */
 	if(job.mypgid<=0)
@@ -574,25 +572,22 @@ void job_init(int lflag)
 #ifndef SIGTSTP
                 setpgid(0,sh.pid);
 #endif /*SIGTSTP */
-		if(sh_isoption(SH_INTERACTIVE))
-		{
-			if(job.mypgid<0 || !(ttynam=ttyname(JOBTTY)))
-				return;
-			while(close(JOBTTY)<0 && errno==EINTR)
-				;
-			if((fd = open(ttynam,O_RDWR)) <0)
-				return;
-			if(fd!=JOBTTY)
-				sh_iorenumber(fd,JOBTTY);
+		if(job.mypgid<0 || !(ttynam=ttyname(JOBTTY)))
+			return;
+		while(close(JOBTTY)<0 && errno==EINTR)
+			;
+		if((fd = open(ttynam,O_RDWR)) <0)
+			return;
+		if(fd!=JOBTTY)
+			sh_iorenumber(fd,JOBTTY);
 #ifdef SIGTSTP
-			tcsetpgrp(JOBTTY,sh.pid);
+		tcsetpgrp(JOBTTY,sh.pid);
 #endif /* SIGTSTP */
-		}
                 job.mypgid = sh.pid;
         }
 #ifdef SIGTSTP
 	possible = (setpgid(0,job.mypgid) >= 0) || errno==EPERM;
-	if(sh_isoption(SH_INTERACTIVE) && possible)
+	if(possible)
 	{
 		/* wait until we are in the foreground */
 		while((job.mytgid=tcgetpgrp(JOBTTY)) != job.mypgid)
@@ -611,10 +606,9 @@ void job_init(int lflag)
 		}
 	}
 #endif /* SIGTTIN */
-
 #ifdef NTTYDISC
 	/* set the line discipline */
-	if(sh_isoption(SH_INTERACTIVE) && job.linedisc>=0)
+	if(job.linedisc>=0)
 	{
 		int linedisc = NTTYDISC;
 #   ifdef FIOPUSHLD
@@ -635,17 +629,14 @@ void job_init(int lflag)
 			errormsg(SH_DICT,0,e_newtty);
 		else
 			job.linedisc = -1;
-#endif /* NTTYDISC */
 	}
+#endif /* NTTYDISC */
 	if(!possible)
 		return;
-
 #ifdef SIGTSTP
 	/* make sure that we are a process group leader */
 	setpgid(0,sh.pid);
 	job.mypid = sh.pid;
-	if(!sh_isoption(SH_INTERACTIVE))
-		return;
 #   if defined(SA_NOCLDSTOP) || defined(SA_NOCLDWAIT)
 #   	if !defined(SA_NOCLDSTOP)
 #	    define SA_NOCLDSTOP	0
