@@ -1,18 +1,10 @@
-Announcing: KornShell 93u+m/1.0.0
+Announcing: KornShell 93u+m/1.0.3
 https://github.com/ksh93/ksh
- _        _        ___ _____                          ___   ___   ___
-| | _____| |__    / _ \___ / _   _   _   _ __ ___    / / | / _ \ / _ \
-| |/ / __| '_ \  | (_) ||_ \| | | |_| |_| '_ ` _ \  / /| || | | | | | |
-|   <\__ \ | | |  \__, |__) | |_| |_   _| | | | | |/ / | || |_| | |_| |
-|_|\_\___/_| |_|    /_/____/ \__,_| |_| |_| |_| |_/_/  |_(_)___(_)___/
 
-It may have been exactly a decade since the last one, but here it is at last:
-a proper new ksh release. :)  Many thanks to all contributors for their hard
-work! Compared to an unpatched ksh 93u+ 2012-08-01, this release has roughly
-a thousand bugs fixed. It incorporates a fair number of enhancements as well.
-
-This being an initial release, not all known bugs have been worked out yet.
-Let's hope this release will rekindle interest and attract more bug hunters.
+This is the third bugfix release in the ksh 93u+m/1.0 series. Many thanks to
+all contributors for their hard work! Compared to an unpatched ksh 93u+
+2012-08-01, this release has roughly a thousand bugs fixed. It incorporates
+a fair number of enhancements as well.
 
 ### CONTRIBUTORS ###
 
@@ -27,7 +19,7 @@ Also includes backported contributions by: David Korn, Glenn Fowler,
 Lefteris Koutsofios, Siteshwar Vashisht, Kurtis Rader, Roland Mainz,
 Finnbarr P. Murphy, Lijo George, OpenSUSE ksh 93u+ patch authors, Red Hat
 ksh 93u+ path authors, Solaris ksh 93u+ patch authors, Debian ksh 93u+
-patch authors, Apple ksh 93u+ patch authors
+patch authors, Apple ksh 93u+ patch authors, Graphviz maintainers
 
 Many fixes have also been backported from the AT&T 93v- beta as well as
 the former ksh2020 project lead by Kurtis Rader and Siteshwar Vashisht;
@@ -49,6 +41,37 @@ Alternatively, email me at martijn@inlv.org with your report.
 To get involved in development, read the brief policy information in
 README.md and then jump right in with a pull request or email a patch.
 See the TODO file in the top-level directory for a to-do list.
+
+### MAIN CHANGES between ksh 93u+m 1.0.2 and 1.0.3 ###
+
+This point release fixes the following:
+- An old bug in history expansion (set -H) where any use of the history
+  comment character caused processing to be aborted as if it were an invalid
+  history expansion.
+- A bug in command line options processing that caused short-form
+  option equivalents on some built-in commands to be ignored after one use,
+  e.g., the new read -a equivalent of read -A.
+- Ksh freezing or using excessive memory if HISTSIZE is assigned a
+  pathologically large value.
+- A bug that caused ksh in the vi editor mode to crash or produce invalid
+  completions if ESC = was used at the beginning of a line.
+
+### MAIN CHANGES between ksh 93u+m 1.0.1 and 1.0.2 ###
+
+This bugfix release fixes the interactive shell crashing when one of the
+predefined aliases (currently 'history' and 'r') is redefined, whether from
+a profile/kshrc script or manually. This crash occurred in two scenarios:
+1. when redefining and then unsetting a predefined alias;
+2. when redefining a predefined alias and then executing a shell script that
+   does not begin with a #! path.
+
+### MAIN CHANGES between ksh 93u+m 1.0.0 and 1.0.1 ###
+
+This is an urgent bugfix release that removes an incorrect exec
+optimization that was capable of terminating the execution of scripts
+prematurely in certain corner cases. It is known to make the build scripts
+of GNU binutils produce corrupted results if ksh is used as /bin/sh.
+See https://github.com/ksh93/ksh/issues/507 for more information.
 
 ### MAIN CHANGES between ksh 93u+ 2012-08-01 and 93u+m/1.0.0 ###
 

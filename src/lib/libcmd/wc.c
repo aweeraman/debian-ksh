@@ -13,6 +13,7 @@
 *                 Glenn Fowler <gsf@research.att.com>                  *
 *                  David Korn <dgk@research.att.com>                   *
 *                  Martijn Dekker <martijn@inlv.org>                   *
+*            Johnothan King <johnothanking@protonmail.com>             *
 *                                                                      *
 ***********************************************************************/
 /*
@@ -23,7 +24,7 @@
  */
 
 static const char usage[] =
-"[-?\n@(#)$Id: wc (AT&T Research) 2009-11-28 $\n]"
+"[-?\n@(#)$Id: wc (ksh 93u+m) 2022-08-20 $\n]"
 "[--catalog?" ERROR_CATALOG "]"
 "[+NAME?wc - print the number of bytes, words, and lines in files]"
 "[+DESCRIPTION?\bwc\b reads one or more input files and, by default, "
@@ -111,7 +112,6 @@ b_wc(int argc,register char **argv, Shbltin_t* context)
 				mode |= WC_NOUTF8;
 			continue;
 		case 'm':
-		case 'C':
 			mode |= WC_MBYTE;
 			continue;
 		case 'q':

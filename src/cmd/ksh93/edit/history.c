@@ -257,7 +257,14 @@ retry:
 	/* set the file to close-on-exec */
 	fcntl(fd,F_SETFD,FD_CLOEXEC);
 	if(cp=nv_getval(HISTSIZE))
-		maxlines = (unsigned)strtol(cp, (char**)0, 10);
+	{
+		intmax_t m = strtoll(cp, (char**)0, 10);
+		if(m>HIST_MAX)
+			m = HIST_MAX;
+		else if(m<0)
+			m = HIST_DFLT;
+		maxlines = (int)m;
+	}
 	else
 		maxlines = HIST_DFLT;
 	for(histmask=16;histmask <= maxlines; histmask <<=1 );

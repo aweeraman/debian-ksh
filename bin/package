@@ -106,7 +106,7 @@ command=${0##*/}
 case $(getopts '[-][123:xyz]' opt --xyz 2>/dev/null; echo 0$opt) in
 0123)	USAGE=$'
 [-?
-@(#)$Id: '$command$' (ksh 93u+m) 2022-08-01 $
+@(#)$Id: '$command$' (ksh 93u+m) 2022-08-20 $
 ]
 [-author?Glenn Fowler <gsf@research.att.com>]
 [-author?Contributors to https://github.com/ksh93/ksh]
@@ -231,18 +231,15 @@ case $(getopts '[-][123:xyz]' opt --xyz 2>/dev/null; echo 0$opt) in
             For \bksh\b, a separate \bshtests\b command is available that allows
             passing arguments to select and tune the regression tests.
             See \bbin/shtests --man\b for more information.]
-        [+use\b [ \auid\a | \apackage\a | . [ 32 | 64 ]] | 32 | 64 | - ]] [ command ...]]?Run
+        [+use\b [ \auid\a | \apackage\a | . | - [ command ... ]] ]]?Run
             \acommand\a, or an interactive shell if \acommand\a is omitted,
-            with the environment initialized for using the package (can you
-            say \ashared\a \alibrary\a or \adll\a without cussing?) If
+            with the environment initialized for using the package. If
             \auid\a or \apackage\a or \a.\a is specified then it is used
 	    to determine a \b$PACKAGEROOT\b, possibly different from
 	    the current directory. For example, to try out bozo'\'$'s package:
             \bpackage use bozo\b. The \buse\b action may be run from any
             directory. If the file \b$INSTALLROOT/lib/package/profile\b is
-            readable then it is sourced to initialize the environment. 32 or 64
-	    implies \b$PACKAGEROOT\b of . and specifies the target architecture
-	    word size (which may be silently ignored).]
+            readable then it is sourced to initialize the environment.]
         [+view\b?Initialize the architecture specific viewpath
             hierarchy. The \bmake\b action implicitly calls this action.]
     }
@@ -497,17 +494,14 @@ DESCRIPTION
           shtests command is available that allows passing arguments to select
           and tune the regression tests. See bin/shtests --man for more
           information.
-    use [ uid | package | . [ 32 | 64 ] | 32 | 64 | - ] [ command ...]
+    use [ uid | package | . | - [ command ... ] ]
           Run command, or an interactive shell if command is omitted, with the
-          environment initialized for using the package (can you say shared
-          library or dll without cussing?) If uid or package or . is specified
-          then it is used to determine a $PACKAGEROOT, possibly different from
-          the current directory. For example, to try out bozo'\''s package:
-          package use bozo. The use action may be run from any directory. If
-          the file $INSTALLROOT/lib/package/profile is readable then it is
-          sourced to initialize the environment. 32 or 64 implies $PACKAGEROOT
-          of . and specifies the target architecture word size (which may be
-          silently ignored).
+          environment initialized for using the package. If uid or package or .
+          is specified then it is used to determine a $PACKAGEROOT, possibly
+          different from the current directory. For example, to try out bozo'\''s
+          package: package use bozo. The use action may be run from any
+          directory. If the file $INSTALLROOT/lib/package/profile is readable
+          then it is sourced to initialize the environment.
     view  Initialize the architecture specific viewpath hierarchy. The make
           action implicitly calls this action.
 
@@ -552,7 +546,7 @@ SEE ALSO
   mamake(1), pax(1), pkgadd(1), pkgmk(1), rpm(1), sh(1), tar(1), optget(3)
 
 IMPLEMENTATION
-  version         package (ksh 93u+m) 2022-08-01
+  version         package (ksh 93u+m) 2022-08-20
   author          Glenn Fowler <gsf@research.att.com>
   author          Contributors to https://github.com/ksh93/ksh
   copyright       (c) 1994-2012 AT&T Intellectual Property
@@ -692,10 +686,7 @@ esac
 
 case $action in
 use)	case $1 in
-	.|32|64)case $1 in
-		32|64)	bit=$1 ;;
-		esac
-		shift
+	.)	shift
 		PACKAGEROOT=$PWD
 		$show export PACKAGEROOT
 	esac
@@ -3475,6 +3466,9 @@ test)	# run all available default regression tests, using our newly compiled she
 
 use)	# finalize the environment
 
+	if	test "$KEEP_SHELL" -lt 2 && executable "$INSTALLROOT/bin/ksh"
+	then	SHELL=$INSTALLROOT/bin/ksh
+	fi
 	x=:..
 	for d in $( cd $PACKAGEROOT; ls src/*/Mamfile 2>/dev/null | sed 's,/[^/]*$,,' | sort -u )
 	do	x=$x:$INSTALLROOT/$d

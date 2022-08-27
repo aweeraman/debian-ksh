@@ -741,13 +741,8 @@ static int cntlmode(Vi_t *vp)
 	{
 		vp->repeat_set = 0;
 		was_inmacro = inmacro;
-		if( c == '0' )
-		{
-			/*** move to leftmost column ***/
-			cur_virt = 0;
-			sync_cursor(vp);
-			continue;
-		}
+
+		/*** see if it's a repeat count parameter ***/
 
 		if( digit(c) )
 		{
@@ -1537,6 +1532,22 @@ static void getline(register Vi_t* vp,register int mode)
 			return;
 
 		case '\t':		/** command completion **/
+		{
+			char allempty = 1;
+			int x;
+			for(x=0; x <= cur_virt; x++)
+			{
+				if(!isspace(virtual[x]))
+				{
+					allempty = 0;
+					break;
+				}
+			}
+			if(allempty)
+			{
+				ed_ringbell();
+				break;
+			}
 			if(sh_isoption(SH_VI) &&
 				mode != SEARCH &&
 				last_virt >= 0 &&
@@ -1560,7 +1571,13 @@ static void getline(register Vi_t* vp,register int mode)
 				}
 				vp->ed->e_tabcount = 0;
 			}
+			if(cur_virt <= 0)
+			{
+				ed_ringbell();
+				break;
+			}
 			/* FALLTHROUGH */
+		}
 		default:
 		fallback:
 			if( mode == REPLACE )
@@ -1581,7 +1598,6 @@ static void getline(register Vi_t* vp,register int mode)
 			break;
 		}
 		refresh(vp,INPUT);
-
 	}
 }
 
@@ -1606,10 +1622,14 @@ static int mvcursor(register Vi_t* vp,register int motion)
 		/***** Cursor move commands *****/
 
 	case '0':		/** First column **/
+		if(cur_virt <= 0)
+			return(ABORT);
 		tcur_virt = 0;
 		break;
 
 	case '^':		/** First nonblank character **/
+		if(cur_virt <= 0)
+			return(ABORT);
 		tcur_virt = first_virt;
 		while( tcur_virt < last_virt && isblank(tcur_virt) )
 			++tcur_virt;
@@ -2540,10 +2560,21 @@ addin:
 		/* FALLTHROUGH */
 	case '*':		/** do file name expansion in place **/
 	case '\\':		/** do file name completion in place **/
-		if( cur_virt == INVALID )
+	case '=':		/** list file name expansions **/
+	{
+		char allempty = 1;
+		int x;
+		for(x=0; x <= cur_virt; x++)
+		{
+			if(!isspace(virtual[x]))
+			{
+				allempty = 0;
+				break;
+			}
+		}
+		if(cur_virt == INVALID || allempty)
 			return(BAD);
 		/* FALLTHROUGH */
-	case '=':		/** list file name expansions **/
 		save_v(vp);
 		i = last_virt;
 		++last_virt;
@@ -2580,6 +2611,7 @@ addin:
 			return(APPEND);
 		}
 		break;
+	}
 
 	case '@':		/** macro expansion **/
 		if( mode )

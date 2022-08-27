@@ -104,7 +104,7 @@ const struct shtable2 shtab_variables[] =
 	"",	0,					(char*)0
 };
 
-const char *nv_discnames[] = { "get", "set", "append", "unset", 0 };
+const char *nv_discnames[] = { "get", "set", "append", "unset", "getn", 0 };
 
 #if SHOPT_STATS
 const Shtable_t shtab_stats[] =
