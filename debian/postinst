@@ -34,8 +34,15 @@ update-alternatives --install /usr/bin/shcomp shcomp /usr/bin/shcomp93 20 \
                             /usr/share/man/man1/shcomp93.1.gz
 
 if command -v update-binfmts >/dev/null && test -r /usr/share/binfmts/ksh; then
-	# ignore error, it probably was registered by ksh
-	update-binfmts --package ksh93u+m --import ksh || true
+        # As a remnant from the transition to ksh93u+m, remove the old binfmt
+        # manually so that the package name is correctly reflected when
+        # imported into the new package (ref #1018301).
+        if test -r /var/lib/binfmts/ksh; then
+            package=$(head -n 1 /var/lib/binfmts/ksh)
+            [ "$package" = "ksh" ] && update-binfmts --package ksh \
+                --remove ksh /bin/ksh || true
+        fi
+        update-binfmts --package ksh93u+m --import ksh || true
 fi
 
 # create compatibility symlink if necessary
