@@ -1,3 +1,9 @@
+ksh93u+m (1.0.4-1) unstable; urgency=high
+
+  * New upstream release.
+
+ -- Anuradha Weeraman <anuradha@debian.org>  Sat, 29 Oct 2022 16:12:51 +0530
+
 ksh93u+m (1.0.3-2) unstable; urgency=medium
 
   * Fixed issue with binfmt during upgrades (Closes: #1018301)
