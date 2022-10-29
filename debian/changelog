@@ -1,3 +1,9 @@
+ksh93u+m (1.0.4-2) unstable; urgency=high
+
+  * Bump up transitional package version (Closes: #1023032)
+
+ -- Anuradha Weeraman <anuradha@debian.org>  Sat, 29 Oct 2022 20:20:22 +0530
+
 ksh93u+m (1.0.4-1) unstable; urgency=high
 
   * New upstream release.

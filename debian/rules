@@ -35,7 +35,7 @@ override_dh_installchangelogs:
 
 override_dh_gencontrol:
 	dh_gencontrol --package=ksh93u+m
-	dh_gencontrol --package=ksh -- -v20220829
+	dh_gencontrol --package=ksh -- -v20221029
 
 clean:
 	dh_testdir
