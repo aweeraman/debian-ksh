@@ -776,4 +776,22 @@ let "(e=$?)==1" && [[ $got == *"$exp" ]] || err_exit "attempt to set disc for no
 	"(expected status 1, match of *$(printf %q "$exp"); got status $e, $(printf %q "$got"))"
 
 # ======
+# Crash due to incorrect alignment calculation
+# https://github.com/ksh93/ksh/issues/537
+got=$({ "$SHELL" -c '
+	typeset -T Coord_t=(
+		typeset -i x
+	)
+	typeset -T Job_t=(
+		typeset -si BUGTRIGGER
+		Coord_t pos
+		set_pos() { _.pos.x=0 ;}
+	)
+	Job_t job
+	job.set_pos
+	job.set_pos
+'; } 2>&1) || err_exit 'crash involving short int as first type member' \
+	"(got status $e$( ((e>128)) && print -n /SIG && kill -l "$e"), $(printf %q "$got"))"
+
+# ======
 exit $((Errors<125?Errors:125))

@@ -13,6 +13,7 @@
 #                  David Korn <dgk@research.att.com>                   #
 #                  Martijn Dekker <martijn@inlv.org>                   #
 #            Johnothan King <johnothanking@protonmail.com>             #
+#                  Lev Kujawski <int21h@mailbox.org>                   #
 #                                                                      #
 ########################################################################
 
@@ -145,7 +146,7 @@ then	err_exit 'cd inside nested subshell changes $PWD'
 fi
 fun() "$bin_echo" hello
 if	[[ $(fun) != hello ]]
-then	err_exit one line functions not working
+then	err_exit "'fun() simple_command' not working"
 fi
 cat > $tmp/script <<-\!
 	print -r -- "$1"
@@ -1302,7 +1303,7 @@ got=$(
 	num=3.25+4.5 f1
 	typeset -p num
 )
-[[ $got == "$exp" ]] || echo 'assignment preceding POSIX function call is not correctly exported or propagated' \
+[[ $got == "$exp" ]] || err_exit 'assignment preceding POSIX function call is not correctly exported or propagated' \
 	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
 
 # ======
@@ -1500,6 +1501,41 @@ f-----------'
 got=$(set +x; { "$SHELL" -c '. ./funcname.ksh' ;} 2>&1)
 [[ $got == "$exp" ]] || err_exit 'funcname.ksh crash (dot)' \
 	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
+# in 'funcname() simple_command' definitions, the first command word was sometimes corrupted with trailing garbage
+# https://github.com/ksh93/ksh/issues/203
+# (do not change this test; even indenting may cause the bug to fail to be triggered)
+m="command word corruption in 'fun() simple_command'"
+v2=:
+f() "$v2" hello
+f || err_exit "$m"
+v23=:
+f() "$v23" hello
+f || err_exit "$m"
+v234=:
+f() "$v234" hello
+f || err_exit "$m"
+v2345=:
+f() "$v2345" hello
+f || err_exit "$m"
+v23456=:
+f() "$v23456" hello
+f || err_exit "$m"
+v234567=:
+f() "$v234567" hello
+f || err_exit "$m"
+v2345678=:
+f() "$v2345678" hello
+f || err_exit "$m"
+v23456789=:
+f() "$v23456789" hello
+f || err_exit "$m"
+v234567890=:
+f() "$v234567890" hello
+f || err_exit "$m"
+unset -f f
+unset -v "${!v2@}"
 
 # ======
 exit $((Errors<125?Errors:125))

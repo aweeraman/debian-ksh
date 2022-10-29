@@ -14,6 +14,7 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                   Phong Vo <kpv@research.att.com>                    *
 *                  Martijn Dekker <martijn@inlv.org>                   *
+*            Johnothan King <johnothanking@protonmail.com>             *
 *                                                                      *
 ***********************************************************************/
 /*
@@ -29,8 +30,8 @@ int
 chrtoi(register const char* s)
 {
 	register int	c;
-	register int	n;
 	register int	x;
+	register size_t	n;
 	char*		p;
 
 	c = 0;

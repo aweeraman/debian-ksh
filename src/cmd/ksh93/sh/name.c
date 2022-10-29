@@ -13,6 +13,7 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                  Martijn Dekker <martijn@inlv.org>                   *
 *            Johnothan King <johnothanking@protonmail.com>             *
+*         hyenias <58673227+hyenias@users.noreply.github.com>          *
 *                                                                      *
 ***********************************************************************/
 /*
@@ -562,7 +563,7 @@ void nv_setlist(register struct argnod *arg,register int flags, Namval_t *typ)
 				mp->nvname = np->nvname;  /* put_lang() (init.c) compares nvname pointers */
 				mp->nvflag = np->nvflag;
 				mp->nvsize = np->nvsize;
-				mp->nvfun = np->nvfun;
+				mp->nvfun = nv_cover(np);
 			}
 			*eqp = '=';
 		}
@@ -773,6 +774,7 @@ Namval_t *nv_create(const char *name,  Dt_t *root, int flags, Namfun_t *dp)
 			if(top)
 			{
 				struct Ufunction *rp;
+				Namval_t *mp;
 				if((rp=sh.st.real_fun) && !rp->sdict && (flags&NV_STATIC))
 				{
 					Dt_t *dp = dtview(sh.var_tree,(Dt_t*)0);
@@ -780,7 +782,7 @@ Namval_t *nv_create(const char *name,  Dt_t *root, int flags, Namfun_t *dp)
 					dtview(rp->sdict,dp);
 					dtview(sh.var_tree,rp->sdict);
 				}
-				if(np = nv_search(name,sh.var_tree,0))
+				if(mp = nv_search(name,sh.var_tree,0))
 				{
 #if SHOPT_NAMESPACE
 					if(sh.var_tree->walk==sh.var_base || (sh.var_tree->walk!=sh.var_tree && sh.namespace &&  nv_dict(sh.namespace)==sh.var_tree->walk))
@@ -789,9 +791,9 @@ Namval_t *nv_create(const char *name,  Dt_t *root, int flags, Namfun_t *dp)
 #endif /* SHOPT_NAMESPACE */
 					{
 #if SHOPT_NAMESPACE
-						if(!(nq = nv_search((char*)np,sh.var_base,NV_REF)))
+						if(!(nq = nv_search((char*)mp,sh.var_base,NV_REF)))
 #endif /* SHOPT_NAMESPACE */
-						nq = np;
+						nq = mp;
 						sh.last_root = sh.var_tree->walk;
 						if((flags&NV_NOSCOPE) && *cp!='.')
 						{
@@ -799,17 +801,19 @@ Namval_t *nv_create(const char *name,  Dt_t *root, int flags, Namfun_t *dp)
 								root = sh.var_tree->walk;
 							else
 							{
-								nv_delete(np,(Dt_t*)0,NV_NOFREE);
-								np = 0;
+								nv_delete(mp,(Dt_t*)0,NV_NOFREE);
+								mp = 0;
 							}
 						}
+						np = mp;
 					}
-					else
+					else if(!sh.invoc_local)
 					{
 						if(sh.var_tree->walk)
 							root = sh.var_tree->walk;
 						flags |= NV_NOSCOPE;
 						noscope = 1;
+						np = mp;
 					}
 				}
 				if(rp && rp->sdict && (flags&NV_STATIC))
@@ -1560,7 +1564,7 @@ void nv_putval(register Namval_t *np, const char *string, int flags)
 	 * When we are in an invocation-local scope and we are using the
 	 * += operator, clone the variable from the previous scope.
 	 */
-	if((flags&NV_APPEND) && nv_isnull(np) && sh.var_tree->view)
+	if(sh.invoc_local && (flags&NV_APPEND) && nv_isnull(np))
 	{
 		Namval_t *mp = nv_search(np->nvname,sh.var_tree->view,0);
 		if(mp)

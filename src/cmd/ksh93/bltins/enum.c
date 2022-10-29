@@ -12,6 +12,7 @@
 *                                                                      *
 *                  David Korn <dgk@research.att.com>                   *
 *                  Martijn Dekker <martijn@inlv.org>                   *
+*            Johnothan King <johnothanking@protonmail.com>             *
 *                                                                      *
 ***********************************************************************/
 #include	"shopt.h"
@@ -20,7 +21,7 @@
 #define ENUM_ID "enum (ksh 93u+m) 2022-03-05"
 
 const char sh_optenum[] =
-"[-?@(#)$Id: " ENUM_ID " $\n]"
+"[-?\n@(#)$Id: " ENUM_ID " $\n]"
 "[--catalog?" ERROR_CATALOG "]"
 "[+NAME?enum - create an enumeration type]"
 "[+DESCRIPTION?\benum\b is a declaration command that creates one or more "
@@ -54,7 +55,7 @@ const char sh_optenum[] =
 ;
 
 static const char enum_type[] =
-"[-?@(#)$Id: " ENUM_ID " $\n]"
+"[-?\n@(#)$Id: " ENUM_ID " $\n]"
 "[--catalog?" ERROR_CATALOG "]"
 "[+NAME?\f?\f - create an instance of type \b\f?\f\b]"
 "[+DESCRIPTION?The \b\f?\f\b declaration command creates a variable for "

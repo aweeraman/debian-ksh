@@ -13,6 +13,9 @@
 #                  David Korn <dgk@research.att.com>                   #
 #                  Martijn Dekker <martijn@inlv.org>                   #
 #            Johnothan King <johnothanking@protonmail.com>             #
+#         hyenias <58673227+hyenias@users.noreply.github.com>          #
+#                  Lev Kujawski <int21h@mailbox.org>                   #
+#                      Phi <phi.debian@gmail.com>                      #
 #                                                                      #
 ########################################################################
 
@@ -1459,6 +1462,106 @@ do
 		[[ -z $got ]] || err_exit "-$type array with .$disc discipline fails to be unset (got $(printf %q "$got"))"
 	done
 done
+
+# ======
+# A regression introduced in ksh93u+ 2012-04-23 caused LINENO to have
+# the wrong value after parsing a multi-line compound assignment.
+# https://github.com/ksh93/ksh/issues/484
+exp=3
+got=$("$SHELL" <<-\EOF
+	x=(typeset -a x=(
+	                [1]=))
+	echo $LINENO
+	EOF
+)
+((exp == got)) || err_exit 'LINENO is wrong after a multi-line compound assignment' \
+	"(expected $exp, got $(printf %q "$got"))"
+
+# ======
+# The += operator shouldn't copy variables outside of a function's scope
+# https://github.com/ksh93/ksh/issues/533
+unset v foo bar
+v=outside
+function f {
+	typeset v
+	print -n "$v"
+	v+="inside"
+	print "$v"
+}
+function foo {
+	echo $bar
+}
+function bar {
+	bar=bar_
+	bar+=foo foo
+	bar+=foo "$SHELL" -c 'echo $bar'
+	bar+=foo
+	echo $bar
+}
+exp='inside
+bar_foo
+bar_foo
+bar_foo'
+got=$(f && bar)
+[[ $exp == "$got" ]] || err_exit "+= operator used in function copies variable from outside of the function's scope" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+unset var
+function three {
+        :
+}
+function two {
+	var+='wrong ' sh -c 'true'
+	var+='wrong ' true
+	var+='wrong ' three
+	echo $var
+}
+function one {
+	var=one_ two
+}
+exp=one_
+got=$(one)
+[[ $exp == "$got" ]] || err_exit "+= operator in a nested function appends variable in the wrong scope" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
+# https://github.com/ksh93/ksh/issues/543
+got=$("$SHELL" -c $':\nLINENO=$LINENO true\nprint "Line 3 is $LINENO"')
+exp='Line 3 is 3'
+[[ $got == "$exp" ]] || err_exit "LINENO is wrong after being set in an invocation-local scope" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
+# https://github.com/ksh93/ksh/issues/545
+got=$({ "$SHELL" -uc $'a=A; function a.get { : $z; }\necho $a'; } 2>&1)
+let "(e=$?)==0" || err_exit "unset variable access in discipline function" \
+	"(got status $e$( ((e>128)) && print -n /SIG && kill -l "$e"), $(printf %q "$got"))"
+
+# ======
+# https://github.com/ksh93/ksh/issues/553
+unset NOTSET
+IFS=' '
+set -- ${NOTSET:-echo -e foo}
+IFS=/
+got=$#,$*
+exp=3,echo/-e/foo
+[[ $got == "$exp" ]] || err_exit "Field-split fallback string containing dash (1)" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+IFS=' '
+set -- ${NOTSET:-a b c xxx-xxx d e f}
+IFS=/
+got=$#,$*
+exp=7,a/b/c/xxx-xxx/d/e/f
+[[ $got == "$exp" ]] || err_exit "Field-split fallback string containing dash (2)" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+IFS=' '
+set -- ${NOTSET:-[a - b]}
+IFS=/
+got=$#,$*
+exp=3,[a/-/b]
+[[ $got == "$exp" ]] || err_exit "Field-split fallback string containing brackets and a dash" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+IFS=$' \t\n'  # restore default
 
 # ======
 exit $((Errors<125?Errors:125))

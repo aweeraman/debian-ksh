@@ -13,6 +13,8 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                  Martijn Dekker <martijn@inlv.org>                   *
 *            Johnothan King <johnothanking@protonmail.com>             *
+*         hyenias <58673227+hyenias@users.noreply.github.com>          *
+*                 Harald van Dijk <harald@gigawatt.nl>                 *
 *                                                                      *
 ***********************************************************************/
 /*
@@ -1252,7 +1254,7 @@ int sh_type(register const char *path)
 Shell_t *sh_init(register int argc,register char *argv[], Shinit_f userinit)
 {
 	static int beenhere;
-	register int n;
+	register size_t n;
 	int type = 0;
 	char *save_envmarker;
 	static char *login_files[2];
@@ -1707,7 +1709,7 @@ int sh_reinit(char *argv[])
  */
 Namfun_t *nv_cover(register Namval_t *np)
 {
-	if(np==IFSNOD || np==PATHNOD || np==SHELLNOD || np==FPATHNOD || np==CDPNOD || np==SECONDS || np==ENVNOD || np==LINENO)
+	if(np==IFSNOD || np==PATHNOD || np==SHELLNOD || np==FPATHNOD || np==CDPNOD || np==SECONDS || np==ENVNOD)
 		return(np->nvfun);
 #ifdef _hdr_locale
 	if(np==LCALLNOD || np==LCTYPENOD || np==LCMSGNOD || np==LCCOLLNOD || np==LCNUMNOD || np==LCTIMENOD || np==LANGNOD)
@@ -2178,7 +2180,8 @@ Namfun_t	*nv_mapchar(Namval_t *np,const char *name)
 {
 	wctrans_t	trans = name?wctrans(name):0;
 	struct Mapchar	*mp=0;
-	int		n=0,low;
+	int		low;
+	size_t		n=0;
 	if(np)
 		mp = (struct Mapchar*)nv_hasdisc(np,&TRANS_disc);
 	if(!name)

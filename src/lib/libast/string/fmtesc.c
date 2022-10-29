@@ -14,6 +14,7 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                   Phong Vo <kpv@research.att.com>                    *
 *                  Martijn Dekker <martijn@inlv.org>                   *
+*            Johnothan King <johnothanking@protonmail.com>             *
 *                                                                      *
 ***********************************************************************/
 /*
@@ -53,15 +54,16 @@ fmtquote(const char* as, const char* qb, const char* qe, size_t n, int flags)
 	register int		doublequote;
 	register int		singlequote;
 	int			shell;
+	size_t			len;
 	char*			f;
 	char*			buf;
 
-	c = 4 * (n + 1);
+	len = 4 * (n + 1);
 	if (qb)
-		c += strlen((char*)qb);
+		len += strlen((char*)qb);
 	if (qe)
-		c += strlen((char*)qe);
-	b = buf = fmtbuf(c);
+		len += strlen((char*)qe);
+	b = buf = fmtbuf(len);
 	shell = 0;
 	doublequote = 0;
 	singlequote = 0;
@@ -134,8 +136,8 @@ fmtquote(const char* as, const char* qb, const char* qe, size_t n, int flags)
 				default:
 					if (!(flags & FMT_WIDE) || !(c & 0200))
 					{
-						*b++ = '0' + ((c >> 6) & 07);
-						*b++ = '0' + ((c >> 3) & 07);
+						*b++ = (char)('0' + ((c >> 6) & 07));
+						*b++ = (char)('0' + ((c >> 3) & 07));
 						c = '0' + (c & 07);
 					}
 					else
@@ -146,7 +148,7 @@ fmtquote(const char* as, const char* qb, const char* qe, size_t n, int flags)
 			else if (c == '\\')
 			{
 				escaped = 1;
-				*b++ = c;
+				*b++ = (char)c;
 				if (*s)
 					c = *s++;
 			}
@@ -197,7 +199,7 @@ fmtquote(const char* as, const char* qb, const char* qe, size_t n, int flags)
 			}
 			else if (!spaced && !escaped && (isspace(c) || ((flags & FMT_SHELL) || shell) && (strchr("\";~&|()<>[]*?", c) || c == '#' && (b == f || isspace(*(b - 1))))))
 				spaced = 1;
-			*b++ = c;
+			*b++ = (char)c;
 		}
 	}
 	if (qb)

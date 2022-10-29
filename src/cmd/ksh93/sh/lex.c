@@ -14,6 +14,7 @@
 *                  Martijn Dekker <martijn@inlv.org>                   *
 *          atheik <14833674+atheik@users.noreply.github.com>           *
 *            Johnothan King <johnothanking@protonmail.com>             *
+*         hyenias <58673227+hyenias@users.noreply.github.com>          *
 *                                                                      *
 ***********************************************************************/
 /*
@@ -258,7 +259,9 @@ int sh_lex(Lex_t* lp)
 	if(lp->noreserv)
 	{
 		lp->lex.reservok = 0;
-		while((fcgetc(c)) && c==' ' || c== '\t' || c=='\n');
+		while((fcgetc(c)) && (c==' ' || c== '\t' || c=='\n'))
+			if(c=='\n')
+				sh.inlineno++;
 		fcseek(-LEN);
 		if(c=='[')
 			lp->assignok = SH_ASSIGN;

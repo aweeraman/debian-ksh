@@ -23,7 +23,7 @@
  * AT&T Research
  *
  * command line option parser and usage formatter
- * its a monster but its all in one place
+ * it's a monster but it's all in one place
  * widen your window while you're at it
  */
 
@@ -1246,6 +1246,7 @@ localize(Push_t* psp, char* s, char* e, int term, int n, Sfio_t* ip, int version
 static int
 label(register Sfio_t* sp, int sep, register char* s, int about, int z, int level, int style, int f, Sfio_t* ip, int version, char* id, char* catalog)
 {
+	char* const	save_s = s;
 	register int	c;
 	register char*	t;
 	register char*	e;
@@ -1311,7 +1312,7 @@ label(register Sfio_t* sp, int sep, register char* s, int about, int z, int leve
 		if (*(p = next(p, version)) == '[')
 			y = p + 1;
 	}
-	if (X(catalog) && (!level || *s == '\a' || *(s - 1) != '+') &&
+	if (X(catalog) && (!level || *s == '\a' || s <= save_s || *(s - 1) != '+') &&
 	    (tsp = localize(psp, s, e, (sep || level) ? '?' : 0, sep || level, ip, version, id, catalog)))
 	{
 		psp = tsp;

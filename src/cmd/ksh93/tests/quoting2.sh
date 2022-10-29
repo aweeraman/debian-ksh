@@ -13,6 +13,7 @@
 #                  David Korn <dgk@research.att.com>                   #
 #                  Martijn Dekker <martijn@inlv.org>                   #
 #          atheik <14833674+atheik@users.noreply.github.com>           #
+#            Johnothan King <johnothanking@protonmail.com>             #
 #                                                                      #
 ########################################################################
 
@@ -325,10 +326,19 @@ exp=BUGFREE
 got=${exp%"$*"}		# the quoted "*" in "F*" should not act as a wildcard
 [[ $got == "$exp" ]] || err_exit 'BUG_IGSGLOBS reproducer 1' \
 	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+got=${exp%$*}		# the unquoted * in F* should act as a wildcard
+exp=BUG
+[[ $got == "$exp" ]] || err_exit 'BUG_IGSGLOBS reproducer 1b' \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
 case BUGFREE in
 BUG"$*")	err_exit 'BUG_IFSGLOBS reproducer 2' ;;
 BUGFREE)	;;
 *)		err_exit 'BUG_IFSGLOBS reproducer 2 fails badly' ;;
+esac
+case BUGFAIL in
+BUG$*)		;;
+BUGFAIL)	err_exit 'BUG_IFSGLOBS reproducer 2b' ;;
+*)		err_exit 'BUG_IFSGLOBS reproducer 2b fails badly' ;;
 esac
 
 IFS=?

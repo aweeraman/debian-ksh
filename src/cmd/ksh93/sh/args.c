@@ -12,6 +12,8 @@
 *                                                                      *
 *                  David Korn <dgk@research.att.com>                   *
 *                  Martijn Dekker <martijn@inlv.org>                   *
+*            Johnothan King <johnothanking@protonmail.com>             *
+*                      Phi <phi.debian@gmail.com>                      *
 *                                                                      *
 ***********************************************************************/
 /*
@@ -471,7 +473,8 @@ struct dolnod *sh_argcreate(register char *argv[])
 {
 	register struct dolnod *dp;
 	register char **pp=argv, *sp;
-	register int 	size=0,n;
+	register int 	n;
+	register size_t	size=0;
 	/* count args and number of bytes of arglist */
 	while(sp= *pp++)
 		size += strlen(sp);
@@ -667,12 +670,16 @@ char **sh_argbuild(int *nargs, const struct comnod *comptr,int flag)
 	}
 	{
 		register char	**comargn;
-		register int	argn;
+		register int	argn, argi;
 		register char	**comargm;
-		argn = *nargs;
-		/* allow room to prepend args */
-		argn += 1;
-
+		/*
+		 * When argbuild is aborted (longjmp) from a discipline function (unset
+		 * var access in discipline), we count an arg that is unset at the end of
+		 * the list, generating a double NULL at the end. To avoid a potential
+		 * null pointer dereference later on, use argi to recount the arguments.
+		 * TODO: find/fix root cause, eliminate argi
+		 */
+		argn = *nargs + 1;	/* allow room to prepend args */
 		comargn=(char**)stkalloc(sh.stk,(unsigned)(argn+1)*sizeof(char*));
 		comargm = comargn += argn;
 		*comargn = NIL(char*);
@@ -682,6 +689,7 @@ char **sh_argbuild(int *nargs, const struct comnod *comptr,int flag)
 			*--comargn = 0;
 			return(comargn);
 		}
+		argi = 0;
 		while(argp)
 		{
 			struct argnod *nextarg = argp->argchn.ap;
@@ -695,8 +703,10 @@ char **sh_argbuild(int *nargs, const struct comnod *comptr,int flag)
 					strsort(comargn,argn,strcoll);
 				comargm = comargn;
 			}
+			argi++;
 		}
 		sh.last_table = 0;
+		*nargs=argi;
 		return(comargn);
 	}
 }

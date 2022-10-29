@@ -12,6 +12,8 @@
 *                                                                      *
 *                  David Korn <dgk@research.att.com>                   *
 *                  Martijn Dekker <martijn@inlv.org>                   *
+*            Johnothan King <johnothanking@protonmail.com>             *
+*                  Lev Kujawski <int21h@mailbox.org>                   *
 *                                                                      *
 ***********************************************************************/
 /*

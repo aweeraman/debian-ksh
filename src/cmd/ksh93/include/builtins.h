@@ -12,6 +12,7 @@
 *                                                                      *
 *                  David Korn <dgk@research.att.com>                   *
 *                  Martijn Dekker <martijn@inlv.org>                   *
+*            Johnothan King <johnothanking@protonmail.com>             *
 *                                                                      *
 ***********************************************************************/
 
@@ -121,8 +122,6 @@ extern int b_times(int, char*[],Shbltin_t*);
 
 extern short		b_enum_nelem(Namfun_t*);
 
-extern const char	e_alrm1[];
-extern const char	e_alrm2[];
 extern const char	e_badfun[];
 extern const char	e_baddisc[];
 extern const char	e_nofork[];
@@ -131,6 +130,7 @@ extern const char	e_nolabels[];
 extern const char	e_notimp[];
 extern const char	e_nosupport[];
 extern const char	e_badbase[];
+extern const char	e_limit[];
 extern const char	e_overlimit[];
 
 extern const char	e_eneedsarg[];

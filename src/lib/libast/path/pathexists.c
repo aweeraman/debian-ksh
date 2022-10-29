@@ -14,6 +14,7 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                   Phong Vo <kpv@research.att.com>                    *
 *                  Martijn Dekker <martijn@inlv.org>                   *
+*            Johnothan King <johnothanking@protonmail.com>             *
 *                                                                      *
 ***********************************************************************/
 /*
@@ -48,9 +49,9 @@ pathexists(char* path, int mode)
 	register char*		e;
 	register Tree_t*	p;
 	register Tree_t*	t;
-	register int		c;
+	register char		c;
 	char*			ee;
-	int			cc;
+	char			cc;
 	int			x;
 	struct stat		st;
 	int			(*cmp)(const char*, const char*);

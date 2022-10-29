@@ -13,6 +13,7 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                  Martijn Dekker <martijn@inlv.org>                   *
 *            Johnothan King <johnothanking@protonmail.com>             *
+*               Anuradha Weeraman <anuradha@debian.org>                *
 *                                                                      *
 ***********************************************************************/
 /*
@@ -588,7 +589,8 @@ void	ed_setup(register Edit_t *ep, int fd, int reedit)
 	register char *pp;
 	register char *last, *prev;
 	char *ppmax;
-	int myquote = 0, n;
+	int myquote = 0;
+	size_t n;
 	register int qlen = 1, qwid;
 	char inquote = 0;
 	ep->e_fd = fd;
@@ -949,7 +951,7 @@ done:
 
 /*
  * put <string> of length <nbyte> onto lookahead stack
- * if <type> is non-zero,  the negation of the character is put
+ * if <type> is non-zero, the negation of the character is put
  *    onto the stack so that it can be checked for KEYTRAP
  * putstack() returns 1 except when in the middle of a multi-byte char
  */

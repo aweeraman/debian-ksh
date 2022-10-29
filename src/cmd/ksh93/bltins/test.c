@@ -442,8 +442,6 @@ int test_unop(register int op,register const char *arg)
 		return(statb.st_gid==sh.groupid);
 	    case 'a':
 	    case 'e':
-		if(strncmp(arg,"/dev/",5)==0 && sh_open(arg,O_NONBLOCK))
-			return(1);
 		return(permission(arg, F_OK));
 	    case 'o':
 		f=1;

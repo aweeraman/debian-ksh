@@ -1,9 +1,9 @@
-Announcing: KornShell 93u+m/1.0.3
+Announcing: KornShell 93u+m/1.0.4
 https://github.com/ksh93/ksh
 
-This is the third bugfix release in the ksh 93u+m/1.0 series. Many thanks to
-all contributors for their hard work! Compared to an unpatched ksh 93u+
-2012-08-01, this release has roughly a thousand bugs fixed. It incorporates
+This is the fourth bugfix release in the ksh 93u+m/1.0 series. Many thanks
+to all contributors for their hard work! Compared to an unpatched ksh 93u+
+2012-08-01, this release has over a thousand bugs fixed. It incorporates
 a fair number of enhancements as well.
 
 ### CONTRIBUTORS ###
@@ -41,6 +41,28 @@ Alternatively, email me at martijn@inlv.org with your report.
 To get involved in development, read the brief policy information in
 README.md and then jump right in with a pull request or email a patch.
 See the TODO file in the top-level directory for a to-do list.
+
+### MAIN CHANGES between ksh 93u+m 1.0.3 and 1.0.4 ###
+
+- Fixed multiple scoping-related bugs in the += additive assignment operator.
+- A number of crashing bugs have been fixed.
+- Various fixes for the Haiku operating system, notably 'ulimit -a' now works.
+- Fixed the expansion of out-of-range \n back references in the string part of
+  ${parameter//pattern/string}. For example:  v=AB; echo "${v/@(A)B/\0:\1:\2}"
+  now yields 'AB:A:' instead of 'AB:A:\2'.
+- Fixed quoted '!', '^' and '-' within [bracket] expressions in glob patterns;
+  single or double quotes failed to disable their operator behaviour.
+- Fixed a bug introduced on 2021-04-04 that incorrectly allowed 'typeset' to
+  turn off the readonly and export attributes on a readonly variable.
+- In the emacs line editor, the Ctrl+R reverse-search prompt is now visually
+  distinct from a literal control character ("^R: " instead of "^R").
+- In the vi line editor, fixed the behaviour of 'C', 'c$' and 'I' to be
+  consistent with standard vi(1) and with Bolsky & Korn (1995, p. 121).
+- Aliases for many GNU long options have been added to the /opt/ast/bin
+  built-in commands. Additionally, 'kill -s' now has a --signal long option
+  alias compatible with the util-linux option.
+- Backported support for 'print -u p' from ksh 93v- for compatibility with
+  scripts written for 93v-/ksh2020 (this is equivalent to 'print -p').
 
 ### MAIN CHANGES between ksh 93u+m 1.0.2 and 1.0.3 ###
 

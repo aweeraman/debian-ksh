@@ -13,6 +13,8 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                  Martijn Dekker <martijn@inlv.org>                   *
 *            Johnothan King <johnothanking@protonmail.com>             *
+*         hyenias <58673227+hyenias@users.noreply.github.com>          *
+*                  Lev Kujawski <int21h@mailbox.org>                   *
 *                                                                      *
 ***********************************************************************/
 /*
@@ -185,12 +187,17 @@ int    b_alias(int argc,register char *argv[],Shbltin_t *context)
 	{
 		if(xflag)
 			return(0);		/* do nothing for 'alias -tx' */
-		troot = sh_subtracktree(1);	/* use hash table */
 		if(tdata.pflag)
-			tdata.aflag = '+';	/* for 'alias -pt', don't add anything to the hash table */
+		{
+			troot = sh_subtracktree(0);	/* use existing hash table */
+			tdata.aflag = '+';		/* for 'alias -pt', don't add anything to the hash table */
+		}
 		else
-			tdata.aflag = '-';	/* make setall() treat 'hash' like 'alias -t' */
-		if(rflag)			/* hash -r: clear hash table */
+		{
+			troot = sh_subtracktree(1);	/* use hash table, creating a new one if needed */
+			tdata.aflag = '-';		/* make setall() treat 'hash' like 'alias -t' */
+		}
+		if(rflag)				/* hash -r: clear hash table */
 			nv_scan(troot,nv_rehash,(void*)0,NV_TAGGED,NV_TAGGED);
 	}
 	return(setall(argv,flag,troot,&tdata));
@@ -776,7 +783,7 @@ static int     setall(char **argv,register int flag,Dt_t *troot,struct tdata *tp
 				continue;
 			}
 			if(np->nvflag&NV_RDONLY && !tp->pflag
-			&& (flag & ~(NV_ASSIGN|NV_RDONLY|NV_EXPORT)))	/* allow readonly/export on readonly vars */
+			&& (tp->aflag=='+' || flag & ~(NV_ASSIGN|NV_RDONLY|NV_EXPORT)))	/* allow readonly/export on readonly vars */
 			{
 				errormsg(SH_DICT,ERROR_exit(1),e_readonly,nv_name(np));
 				UNREACHABLE();

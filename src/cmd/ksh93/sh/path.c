@@ -13,6 +13,7 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                  Martijn Dekker <martijn@inlv.org>                   *
 *            Johnothan King <johnothanking@protonmail.com>             *
+*               Anuradha Weeraman <anuradha@debian.org>                *
 *                                                                      *
 ***********************************************************************/
 /*
@@ -702,7 +703,7 @@ int	path_search(register const char *name,Pathcomp_t **oldpp, int flag)
 		*stakptr(PATH_OFFSET) = 0;
 		return(0);
 	}
-	else if(pp && !sh_isstate(SH_DEFPATH) && *name!='/' && flag<3)
+	else if(pp && !sh_isstate(SH_DEFPATH) && !sh_isstate(SH_XARG) && *name!='/' && flag<3)
 	{
 		if(np=nv_search(name,sh_subtracktree(1),NV_ADD|NV_NOSCOPE))
 			path_alias(np,pp);

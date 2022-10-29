@@ -12,6 +12,7 @@
 #                                                                      #
 #                 Glenn Fowler <gsf@research.att.com>                  #
 #                  Martijn Dekker <martijn@inlv.org>                   #
+#            Johnothan King <johnothanking@protonmail.com>             #
 #                                                                      #
 ########################################################################
 : wrapper for .exe challenged Win32 systems/commands
