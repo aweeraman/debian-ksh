@@ -1670,7 +1670,10 @@ static int mvcursor(register Vi_t* vp,register int motion)
 			else if(cur_virt==0 && vp->direction == -2)
 				ed_ungetchar(vp->ed,'n');
 			else
+			{
+				vp->direction = -1;  /* cancel active reverse search if necessary */
 				ed_ungetchar(vp->ed,'k');
+			}
 			return(1);
 		    case 'B':
 			/* VT220 down arrow */
@@ -2676,8 +2679,10 @@ addin:
 		}
 		return(APPEND);
 
-	case 'I':		/** insert at beginning of line **/
+	case 'I':		/** insert to the left of the first non-blank character **/
 		cur_virt = first_virt;
+		while( cur_virt < last_virt && isblank(cur_virt) )
+			++cur_virt;
 		sync_cursor(vp);
 		/* FALLTHROUGH */
 
@@ -2695,7 +2700,7 @@ addin:
   		}
 		return(INSERT);
 
-	case 'C':		/** change to eol **/
+	case 'C':		/** change to eol and insert **/
 		c = '$';
 		goto chgeol;
 
@@ -2706,6 +2711,8 @@ addin:
 			c = getcount(vp,ed_getchar(vp->ed,-1));
 chgeol:
 		vp->lastmotion = c;
+		if( cur_virt == INVALID )
+			return(INSERT);
 		if( c == 'c' )
 		{
 			del_line(vp,GOOD);

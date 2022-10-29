@@ -24,33 +24,6 @@
 bincat=$(whence -p cat)
 
 # ======
-# These are regression tests for the getconf builtin.
-if builtin getconf 2> /dev/null; then
-	bingetconf=$(getconf GETCONF)
-	bad_result=$(getconf --version 2>&1)
-
-	# The -l option should convert all variable names to lowercase.
-	# https://github.com/att/ast/issues/1171
-	got=$(getconf -lq | LC_ALL=C sed -n -e 's/=.*//' -e '/[A-Z]/p')
-	[[ -n $got ]] && err_exit "'getconf -l' doesn't convert all variable names to lowercase" \
-		"(got $(printf %q "$got"))"
-
-	# The -q option should quote all string values.
-	# https://github.com/att/ast/issues/1173
-	exp="GETCONF=\"$bingetconf\""
-	got=$(getconf -q | grep 'GETCONF=')
-	[[ $exp == "$got" ]] || err_exit "'getconf -q' fails to quote string values" \
-		"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
-
-	# The -n option should only return matching names.
-	# https://github.com/ksh93/ksh/issues/279
-	exp="GETCONF=$bingetconf"
-	got=$(getconf -n GETCONF)
-	[[ $exp == "$got" ]] || err_exit "'getconf -n' doesn't match names correctly" \
-		"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
-fi
-
-# ======
 # Test shell builtin commands
 : ${foo=bar} || err_exit ": failed"
 [[ $foo == bar ]] || err_exit ": side effects failed"
@@ -602,7 +575,7 @@ then	err_exit "read -t in pipe taking $total_t secs - $(( reps * delay )) minimu
 elif	(( total_t < reps * delay ))
 then	err_exit "read -t in pipe taking $total_t secs - $(( reps * delay )) minimum - too fast"
 fi
-$SHELL -c 'sleep $(printf "%a" .95)' 2> /dev/null || err_exit "sleep doesn't except %a format constants"
+$SHELL -c 'sleep $(printf "%a" .95)' 2> /dev/null || err_exit "sleep doesn't accept %a format constants"
 $SHELL -c 'test \( ! -e \)' 2> /dev/null ; [[ $? == 1 ]] || err_exit 'test \( ! -e \) not working'
 [[ $(ulimit) == "$(ulimit -fS)" ]] || err_exit 'ulimit is not the same as ulimit -fS'
 tmpfile=$tmp/file.2
@@ -648,7 +621,8 @@ fi
 
 [[ $($SHELL -c '{ printf %R "["; print ok;}' 2> /dev/null) == ok ]] || err_exit $'\'printf %R "["\' causes shell to abort'
 
-v=$( $SHELL -c $'
+exp=$'usr1\ndone'
+got=$( $SHELL -c $'
 	trap \'print "usr1"\' USR1
 	trap exit USR2
 	sleep 1 && {
@@ -657,8 +631,9 @@ v=$( $SHELL -c $'
 	} &
 	sleep 2 | read
 	echo done
-' ) 2> /dev/null
-[[ $v == $'usr1\ndone' ]] ||  err_exit 'read not terminating when receiving USR1 signal'
+' )
+[[ $got == $exp ]] || err_exit 'read not terminating when receiving USR1 signal' \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
 
 mkdir $tmp/tmpdir1
 cd $tmp/tmpdir1
@@ -689,12 +664,17 @@ cd ../..
 cd /etc
 cd .././..
 [[ $(pwd) == / ]] || err_exit 'cd /etc;cd .././..;pwd is not /'
-cd /usr/bin
+if [[ ! -d /usr/bin ]]; then
+	dir=/system  # For Haiku, fallback to /system
+else
+	dir=/usr
+fi
+cd "$dir/bin"
 cd ../..
-[[ $(pwd) == / ]] || err_exit 'cd /usr/bin;cd ../..;pwd is not /'
-cd /usr/bin
+[[ $(pwd) == / ]] || err_exit "'cd $dir/bin; cd ../..; pwd' is not /"
+cd "$dir/bin"
 cd ..
-[[ $(pwd) == /usr ]] || err_exit 'cd /usr/bin;cd ..;pwd is not /usr'
+[[ $(pwd) == "$dir" ]] || err_exit "cd '$dir/bin; cd ..; pwd' is not $dir"
 cd "$tmp"
 if	mkdir $tmp/t1
 then	(
@@ -1147,6 +1127,74 @@ EOF
 "$SHELL" -i "$sleepsig" 2> /dev/null || err_exit "'sleep -s' doesn't work with intervals of more than 30 seconds"
 
 # ======
+# floating point
+# The number of seconds to sleep. The got granularity depends on the
+# underlying system, normally around 1 millisecond.
+SECONDS=0
+sleep 0.1
+got=$SECONDS
+exp=0.1
+(( got >= exp )) ||
+	err_exit "sleep 0.1 should sleep for at least 0.1 second (expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
+# PnYnMnDTnHnMnS
+# An ISO 8601 duration where at least one of the duration parts must be
+# specified.
+SECONDS=0
+sleep 'P0Y0M0DT0H0M0.1S'
+got=$SECONDS
+exp=0.1
+(( got >= exp )) ||
+    err_exit "sleep 'P0Y0M0DT0H0M1S' should sleep for at least 1 second (expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
+# PnW   An ISO 8601 duration specifying n weeks.
+# Sleep for 0 weeks
+sleep P0W || err_exit "sleep does not recocgnize PnW"
+
+# ======
+# pnYnMnDTnHnMnS
+# A case insensitive ISO 8601 duration except that M specifies months,
+# m before s or S specifies minutes and after specifies milliseconds, u
+# or U specifies microseconds, and n specifies nanoseconds.
+SECONDS=0
+sleep 'p0Y0M0DT0H0M0.1S'
+got=$SECONDS
+exp=0.1
+(( got >= exp )) ||
+    err_exit "sleep 'p0Y0M0DT0H0M1S' should sleep for at least 1 second (expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
+# date/time
+#       Sleep until the date(1) compatible date/time.
+today=$(date +"%Y-%m-%d")
+# This should return immediately
+sleep "$today" || err_exit "sleep does not recognize date parameter"
+
+# ======
+# -s Sleep until a signal or a timeout is received. If duration is
+#    omitted or 0 then no timeout will be used.
+SECONDS=0
+sleep -s 0.1
+got=$SECONDS
+exp=0.1
+(( got >= exp )) ||
+    err_exit "sleep -s 1 should sleep for at least 1 second (expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
+# Verify unexpected arguments result in an error.
+exp="sleep: one operand expected"
+got=$(sleep 0 .3 2>&1)
+[[ $got == $exp ]] || err_exit "unexpected arguments isn't an error (expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
+# Verify an invalid interval results in an error.
+exp="sleep: 1sx: bad number"
+got=$(sleep 1sx 2>&1)
+[[ $got == $exp ]] || err_exit "invalid interval isn't an error (expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
 # Builtins should handle unrecognized options correctly
 function test_usage
 {
@@ -1167,28 +1215,6 @@ function test_usage
 				"(expected string containing $(printf %q "$expect"), got $(printf %q "$actual"))"
 	done 3< <(builtin)
 }; test_usage
-
-# ======
-# The 'alarm' builtin could make 'read' crash due to IFS table corruption caused by unsafe asynchronous execution.
-# https://bugzilla.redhat.com/1176670
-if	(builtin alarm) 2>/dev/null
-then	got=$( { "$SHELL" -c '
-		builtin alarm
-		alarm -r alarm_handler +.005
-		i=0
-		function alarm_handler.alarm
-		{
-			let "(++i) > 20" && exit
-		}
-		while :; do
-			echo cargo,odds and ends,jetsam,junk,wreckage,castoffs,sea-drift
-		done | while IFS="," read arg1 arg2 arg3 arg4 junk; do
-			:
-		done
-	'; } 2>&1)
-	((!(e = $?))) || err_exit 'crash with alarm and IFS' \
-		"(got status $e$( ((e>128)) && print -n /SIG && kill -l "$e"), $(printf %q "$got"))"
-fi
 
 # ======
 # Verify that the POSIX 'test' builtin exits with status 2 when given an invalid binary operator.
@@ -1291,7 +1317,7 @@ got=$(
 	PWD=/dev
 	OLDPWD=/tmp
 	(
-		cd /usr; cd /bin
+		cd /etc; cd /bin
 		cd - > /dev/null
 	)
 	echo $OLDPWD $PWD
@@ -1301,12 +1327,12 @@ got=$(
 	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
 
 # $OLDPWD and $PWD should survive after being set in a subshare
-exp='/usr /bin'
+exp='/etc /bin'
 got=$(
 	PWD=/dev
 	OLDPWD=/tmp
 	foo=${
-		cd /usr; cd /bin
+		cd /etc; cd /bin
 	}
 	echo $OLDPWD $PWD
 )
@@ -1538,6 +1564,17 @@ exit $Errors
 EOF
 "$SHELL" "$read_a_test"
 let Errors+=$?
+
+# ======
+# Most built-ins should handle --version
+while IFS= read -r bltin <&3
+do	case $bltin in
+	echo | test | true | false | \[ | : | catclose | catgets | catopen | Dt* | _Dt* | X* | login | newgrp )
+		continue ;;
+	esac
+	got=$({ "$bltin" --version; } 2>&1)  # the extra { } are needed for 'redirect'
+	[[ $got == "  version  "* ]] || err_exit "$bltin does not support --version (got $(printf %q "$got"))"
+done 3< <(builtin)
 
 # ======
 exit $((Errors<125?Errors:125))

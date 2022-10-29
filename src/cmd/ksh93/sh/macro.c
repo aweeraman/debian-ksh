@@ -13,6 +13,9 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                  Martijn Dekker <martijn@inlv.org>                   *
 *            Johnothan King <johnothanking@protonmail.com>             *
+*         hyenias <58673227+hyenias@users.noreply.github.com>          *
+*                   Marc Wilson <posguy99@gmail.com>                   *
+*                      Phi <phi.debian@gmail.com>                      *
 *                                                                      *
 ***********************************************************************/
 /*
@@ -428,13 +431,14 @@ static void copyto(register Mac_t *mp,int endch, int newquote)
 	register const char	*state = sh_lexstates[ST_MACRO];
 	register char	*cp,*first;
 	Lex_t		*lp = (Lex_t*)sh.lex_context;
-	int		tilde = -1;
-	int		oldquote = mp->quote;
-	int		ansi_c = 0;
-	int		paren = 0;
-	int		ere = 0;
-	int		dotdot = 0;
-	int		brace = 0;
+	int		tilde = -1;		/* offset for tilde expansion */
+	int		dotdot = 0;		/* offset for '..' in subscript */
+	int		paren = 0;		/* level of (parentheses) */
+	int		brace = 0;		/* level of {braces} */
+	char		oldquote = mp->quote;	/* save "double quoted" state */
+	char		ansi_c = 0;		/* set when processing ANSI C escape codes */
+	char		ere = 0;		/* set when processing an extended regular expression */
+	char		bracketexpr = 0; 	/* set when in [brackets] within a non-ERE glob pattern */
 	Sfio_t		*sp = mp->sp;
 	Stk_t		*stkp = sh.stk;
 	char		*resume = 0;
@@ -528,6 +532,9 @@ static void copyto(register Mac_t *mp,int endch, int newquote)
 				n = S_PAT;
 			if(mp->pattern)
 			{
+				/* preserve \ for escaping glob pattern bracket expression operators */
+				if(bracketexpr && n==S_BRAOP)
+					break;
 				/* preserve \digit for pattern matching */
 				/* also \alpha for extended patterns */
 				if(!mp->lit && !mp->quote)
@@ -629,6 +636,8 @@ static void copyto(register Mac_t *mp,int endch, int newquote)
 				mp->pattern = c;
 			break;
 		    case S_ENDCH:
+			if(bracketexpr && cp[-1]==RBRACT && !(mp->quote || mp->lit))
+				bracketexpr--;
 			if((mp->lit || cp[-1]!=endch || mp->quote!=newquote))
 				goto pattern;
 			if(endch==RBRACE && mp->pattern && brace)
@@ -728,6 +737,13 @@ static void copyto(register Mac_t *mp,int endch, int newquote)
 				}
 				cp = first = fcseek(0);
 				break;
+			}
+			if(mp->pattern==1 && !ere && !bracketexpr)
+			{
+				bracketexpr++;
+				/* a ] following [, as in []abc], should not close the bracket expression */
+				if(cp[0]==RBRACT && cp[1])
+					bracketexpr++;
 			}
 			/* FALLTHROUGH */
 		    case S_PAT:
@@ -843,6 +859,15 @@ static void copyto(register Mac_t *mp,int endch, int newquote)
 				cp = first = fcseek(c+2);
 			}
 			break;
+		    case S_BRAOP:
+			/* escape a quoted !^- within a bracket expression */
+			if(!bracketexpr || !(mp->quote || mp->lit))
+				continue;
+			if(c)
+				sfwrite(stkp,first,c);
+			first = fcseek(c);
+			sfputc(stkp,ESCAPE);
+			break;
 		}
 	}
 done:
@@ -878,7 +903,7 @@ static void mac_substitute(Mac_t *mp, register char *cp,char *str,register int s
 		while((c= *cp++) && c!=ESCAPE);
 		if(c==0)
 			break;
-		if((n= *cp++)=='\\' || n==RBRACE || (n>='0' && n<='9' && (n-='0')<subsize))
+		if((n= *cp++)=='\\' || n==RBRACE || (n>='0' && n<='9'))
 		{
 			c = cp-first-2;
 			if(c)
@@ -889,7 +914,8 @@ static void mac_substitute(Mac_t *mp, register char *cp,char *str,register int s
 				first--;
 				continue;
 			}
-			if((c=subexp[2*n])>=0)
+			n -= '0';
+			if(n<subsize && (c=subexp[2*n])>=0)
 			{
 				if((n=subexp[2*n+1]-c)>0)
 					mac_copy(mp,str+c,n);
@@ -1987,7 +2013,7 @@ retry2:
 				 * We're joining fields into one; write the output field separator, which may be multi-byte.
 				 * For "$@" it's a space, for "$*" it's the 1st char of IFS (space if unset, none if empty).
 				 */
-				if(mp->pattern)				/* avoid BUG_IFSGLOBS */
+				if(mp->pattern && mp->quote)		/* avoid BUG_IFSGLOBS */
 					sfputc(sfio_ptr, '\\');
 				if(mode == '@' || !mp->ifsp)		/* if expanding $@ or if IFS is unset... */
 					sfputc(sfio_ptr, ' ');

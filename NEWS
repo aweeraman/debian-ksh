@@ -2,6 +2,116 @@ This documents significant changes in the 1.0 branch of ksh 93u+m.
 For full details, see the git log at: https://github.com/ksh93/ksh/tree/1.0
 Uppercase BUG_* IDs are shell bug IDs as used by the Modernish shell library.
 
+2022-10-22:
+
+- Release 1.0.4.
+
+2022-10-18:
+
+- Fixed the expansion of out-of-range \n back references in the string part of
+  ${parameter//pattern/string}. For example:  v=AB; echo "${v/@(A)B/\0:\1:\2}"
+  now yields 'AB:A:' instead of 'AB:A:\2'.
+
+- Fixed a corner case regression in the BUG_IFSGLOBS fix applied on 2022-07-28:
+  unquoted $* was affected. The fix now properly applies only to quoted "$*".
+
+2022-10-14:
+
+- Fixed: the generic --version option was not recognised for the built-in
+  commands ., bg, disown, fc, fg, hist, jobs, let, source, times, and ulimit.
+
+- Fixed a bug introduced by the 2022-10-07 BUG_BRACQUOT fix, which caused the
+  fallback string in an expansion like ${emptyvar:-fallback string} to fail to
+  split into fields correctly if the fallback string contained a !, ^ or -.
+
+- Fixed a few different build errors on Haiku that prevented ksh from compiling
+  with the mkservice and eloop builtins enabled, caused compiling with -lnetwork
+  to fail, and could interrupt the build with crash report popups.
+
+2022-10-13:
+
+- Added a -V/--novmon option to ulimit that supports setting the number of open
+  vnodes (only applies to Haiku).
+
+- Fixed a bug on Haiku that caused the ulimit command to print '(null)' in the
+  error string when 'ulimit -t' fails.
+
+- 'ulimit -a' no longer exits immediately after an error occurs when failing
+  to get the current limits for cpu time and file size on Haiku.
+
+2022-10-11:
+
+- Fixed a bug that caused inconsistent behavior when handling a dangling
+  backslash in a case statement.
+
+2022-10-07:
+
+- Fixed BUG_BRACQUOT: single and double shell quotes did not work to escape
+  the !, ^ or - operators in a bracket expression within a glob pattern.
+
+- The -e option of test/[/[[ no longer returns true for pseudodevices that are
+  only supported by the shell and do not in fact exist in the file system, such
+  as /dev/tcp/*. This reverts a change made in ksh 93u- on 2010-08-24.
+
+2022-09-28:
+
+- Fixed a bug where LINENO was reset to 1 after being temporarily changed in
+  an assignment preceding a regular command (e.g. LINENO=5 true).
+
+2022-09-27:
+
+- Fixed a parsing bug in (uncommonly used) function definitions of the
+  form 'functname() simple_command' that could cause the first word of
+  simple_command to be corrupted with trailing garbage.
+
+2022-09-25:
+
+- Backported support for 'print -u p' from ksh93v- 2014-06-06 (this is
+  equivalent to using 'print -p').
+
+- Fixed a bug introduced on 2021-04-04 that incorrectly allowed 'typeset' to
+  turn off the readonly and export attributes on a readonly variable.
+
+- Fixed multiple scoping-related bugs in the += additive assignment operator,
+  including a bug introduced on 2021-04-11 that caused it to append to the
+  value of a global variable when used on a local variable with the same name.
+
+2022-09-24:
+
+- In the emacs line editor, the Ctrl+R reverse-search prompt is now visually
+  distinct from a literal control character ("^R: " instead of "^R").
+
+- Fixed a crashing bug involving incorrect data alignment in variables of
+  types defined by 'typeset -T'.
+
+2022-09-11:
+
+- Fixed a bug introduced in ksh93u+ 2012-04-23 that caused LINENO to have the
+  wrong value after parsing a multi-line compound assignment.
+
+- Fixed a bug in vi mode that caused reverse search to remain active after
+  receiving an interrupt.
+
+2022-09-01:
+
+- Fixed a bug where 'command -x' would create a tracked alias for a command,
+  causing 'whence' not to find an /opt/ast/bin built-in command correctly.
+
+2022-08-30:
+
+- In the vi line editor, 'C' and 'c$' at the start of a line now enter insert
+  mode instead of beeping, and 'I' jumps to the first non-blank character on
+  the line instead of the start of the line. These changes are consistent
+  with standard vi(1) behavior and with Bolsky & Korn (1995, p. 121).
+
+- Aliases for many GNU long options have been added to the /opt/ast/bin
+  built-in commands. Additionally, 'kill -s' now has a --signal long option
+  alias compatible with the util-linux option.
+
+- All of the /opt/ast/bin built-ins available in src/lib/libcmd (excluding
+  vmstate if vmalloc isn't enabled) can now be enabled with the new
+  SHOPT_ALL_LIBCMD setting in src/cmd/ksh93/SHOPT.sh.
+
 2022-08-25:
 
 - Release 1.0.3.
@@ -2163,8 +2273,8 @@ Uppercase BUG_* IDs are shell bug IDs as used by the Modernish shell library.
   status on the 'print', 'printf' and 'echo' builtins and prevent possible
   infinite loops if SIGPIPE is ignored.
 
-- Add a convenient bin/run_ksh_tests script to the source tree that
-  sets up the necessary environment and runs the ksh regression tests.
+- Add a convenient bin/shtests script to the source tree that sets up the
+  necessary environment and runs the ksh regression tests.
 
 2020-05-13:
 

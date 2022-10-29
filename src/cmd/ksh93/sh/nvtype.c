@@ -106,14 +106,12 @@ typedef struct
 	float		_dfloat;
 	char		_cSflong_t;
 	Sflong_t	_dSflong_t;
-	char		_clong;
-	long		_dlong;
-	char		_cshort;
-	short		_dshort;
+	char		_cint32_t;
+	int32_t		_dint32_t;
+	char		_cint16_t;
+	int16_t		_dint16_t;
 	char		_cpointer;
 	char		*_dpointer;
-	int32_t		_cint32_t;
-	int32_t		*_dint32_t;
 } _Align_;
 
 #define alignof(t)	((char*)&((_Align_*)0)->_d##t-(char*)&((_Align_*)0)->_c##t)
@@ -169,8 +167,8 @@ size_t nv_datasize(Namval_t *np, size_t *offset)
 			}
 			else if(nv_isattr(np, NV_SHORT))
 			{
-				a = alignof(short);
-				s = sizeof(short);
+				a = alignof(int16_t);
+				s = sizeof(int16_t);
 			}
 			else
 			{

@@ -13,6 +13,7 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                  Martijn Dekker <martijn@inlv.org>                   *
 *            Johnothan King <johnothanking@protonmail.com>             *
+*                 Harald van Dijk <harald@gigawatt.nl>                 *
 *                                                                      *
 ***********************************************************************/
 
@@ -135,6 +136,41 @@ const struct shtable3 shtab_builtins[] =
 #undef	mktemp		/* undo possible map-libc mktemp => _ast_mktemp */
 #include SHOPT_CMDLIB_HDR
 #else
+#if SHOPT_ALL_LIBCMD
+	CMDLIST(chgrp)
+	CMDLIST(chmod)
+	CMDLIST(chown)
+	CMDLIST(cksum)
+	CMDLIST(cmp)
+	CMDLIST(comm)
+	CMDLIST(date)
+	CMDLIST(expr)
+	CMDLIST(fds)
+	CMDLIST(fmt)
+	CMDLIST(fold)
+	CMDLIST(head)
+	CMDLIST(id)
+	CMDLIST(join)
+	CMDLIST(logname)
+	CMDLIST(md5sum)
+	CMDLIST(mkdir)
+	CMDLIST(mkfifo)
+	CMDLIST(paste)
+	CMDLIST(pathchk)
+	CMDLIST(pids)
+	CMDLIST(rev)
+	CMDLIST(rm)
+	CMDLIST(rmdir)
+	CMDLIST(stty)
+	CMDLIST(sum)
+	CMDLIST(sync)
+	CMDLIST(tail)
+	CMDLIST(tee)
+	CMDLIST(tty)
+	CMDLIST(uname)
+	CMDLIST(uniq)
+	CMDLIST(wc)
+#endif
 	CMDLIST(basename)
 	CMDLIST(cat)
 	CMDLIST(cp)
@@ -369,11 +405,9 @@ const char sh_optalias[] =
 	"specified, the current value of the alias corresponding to "
 	"\aname\a is written to standard output.  If \b=\b\avalue\a is "
 	"specified, the alias \aname\a will be created or redefined.]" 
-"[+?\balias\b is built-in to the shell as a declaration command so that "
-	"field splitting and pathname expansion are not performed on "
-	"the arguments.  Tilde expansion occurs on \avalue\a.  An alias "
-	"definition only affects scripts read by the current shell "
-	"environment.  It does not affect scripts run by this shell.]"
+"[+?Aliasing is performed when scripts are read, not while they are executed. "
+	"So, for an alias to take effect, the alias definition command must "
+	"be executed before the command that references the alias is read.]"
 "[p?Causes the output to be in the form of alias commands that can be used "
 	"as input to the shell to recreate the current aliases.]"
 "[t?Each \aname\a is looked up as a command in \b$PATH\b and its path is "
@@ -475,7 +509,7 @@ const char sh_optcd[] =
 	"is replaced by the string \anew\a and the resulting string "
 	"is used as the directory to which to change.]"
 "[+?When invoked without operands and when the \bHOME\b environment "
-	"variable is set to a nonempty value,  the directory named by "
+	"variable is set to a nonempty value, the directory named by "
 	"the \bHOME\b environment variable will be used.  If \bHOME\b "
 	"is empty or unset, \bcd\b will fail.]"
 "[+?When \bcd\b is successful, the \bPWD\b environment variable will be set "
@@ -562,7 +596,7 @@ const char sh_optcommand[] =
 ;
 
 const char sh_optdot[]	 =
-"[-1c?@(#)$Id: \b.\b (ksh 93u+m) 2020-06-15 $\n]"
+"[-1c?\n@(#)$Id: \b.\b (ksh 93u+m) 2020-06-15 $\n]"
 "[--catalog?" SH_DICT "]"
 "[+NAME?\f?\f - execute commands in the current environment]"
 "[+DESCRIPTION?\b.\b and \bsource\b are built-in commands that execute "
@@ -677,7 +711,7 @@ const char sh_optexport[] =
 	"set to \avalue\a.]"
 "[+?If no \aname\as are specified then the names and values of all "
 	"exported variables are written to standard output.]" 
-"[+?\bexport\b is built-in to the shell as a declaration command so that "
+"[+?\bexport\b is built in to the shell as a declaration command so that "
 	"field splitting and pathname expansion are not performed on "
 	"the arguments.  Tilde expansion occurs on \avalue\a.]"
 "[p?Causes the output to be in the form of \bexport\b commands that can be "
@@ -864,7 +898,7 @@ const char sh_optgetopts[] =
 ;
 
 const char sh_optbg[] =
-"[-1c?@(#)$Id: bg (AT&T Research) 2000-04-02 $\n]"
+"[-1c?\n@(#)$Id: bg (AT&T Research) 2000-04-02 $\n]"
 "[--catalog?" SH_DICT "]"
 "[+NAME?bg - resume jobs in the background]"
 "[+DESCRIPTION?\bbg\b places the given \ajob\as into the background "
@@ -885,7 +919,7 @@ _JOB_
 ;
 
 const char sh_optfg[] =
-"[-1c?@(#)$Id: fg (AT&T Research) 2000-04-02 $\n]"
+"[-1c?\n@(#)$Id: fg (AT&T Research) 2000-04-02 $\n]"
 "[--catalog?" SH_DICT "]"
 "[+NAME?fg - move jobs to the foreground]"
 "[+DESCRIPTION?\bfg\b places the given \ajob\as into the foreground "
@@ -906,7 +940,7 @@ _JOB_
 ;
 
 const char sh_optdisown[] =
-"[-1c?@(#)$Id: disown (AT&T Research) 2000-04-02 $\n]"
+"[-1c?\n@(#)$Id: disown (AT&T Research) 2000-04-02 $\n]"
 "[--catalog?" SH_DICT "]"
 "[+NAME?disown - disassociate a job with the current shell]"
 "[+DESCRIPTION?\bdisown\b prevents the current shell from sending "
@@ -927,7 +961,7 @@ _JOB_
 ;
 
 const char sh_optjobs[] =
-"[-1c?@(#)$Id: jobs (AT&T Research) 2000-04-02 $\n]"
+"[-1c?\n@(#)$Id: jobs (AT&T Research) 2000-04-02 $\n]"
 "[--catalog?" SH_DICT "]"
 "[+NAME?jobs - display status of jobs]"
 "[+DESCRIPTION?\bjobs\b displays information about specified \ajob\as "
@@ -978,7 +1012,7 @@ const char sh_opthash[] =
 ;
 
 const char sh_opthist[]	= 
-"[-1cn?@(#)$Id: hist (AT&T Research) 2000-04-02 $\n]"
+"[-1cn?\n@(#)$Id: hist (AT&T Research) 2000-04-02 $\n]"
 "[--catalog?" SH_DICT "]"
 "[+NAME?\f?\f - process command history list]"
 "[+DESCRIPTION?\b\f?\f\b lists, edits, or re-executes, commands  "
@@ -1046,7 +1080,7 @@ const char sh_opthist[]	=
 ;
 
 const char sh_optkill[]	 = 
-"[-1c?\n@(#)$Id: kill (AT&T Research) 2012-04-13 $\n]"
+"[-1c?\n@(#)$Id: kill (ksh 93u+m) 2022-08-30 $\n]"
 "[--catalog?" SH_DICT "]"
 "[+NAME?kill - terminate or signal process]"
 "[+DESCRIPTION?With the first form in which \b-l\b is not specified, "
@@ -1066,8 +1100,8 @@ _JOB_
 "[l?List signal names or signal numbers rather than sending signals as "
 	"described above.  "
 	"The \b-n\b and \b-s\b options cannot be specified.]"
-"[L?Same as \b-l\b except that of no argument is specified the signals will "
-	"be listed in menu format as with select compound command.]"
+"[L?Same as \b-l\b except that if no argument is specified the signals will "
+	"be listed in menu format with corresponding signal numbers.]"
 "[n]#[signum?Specify a signal number to send.  Signal numbers are not "
 	"portable across platforms, except for the following:]{"
 		"[+0?No signal]"
@@ -1079,7 +1113,7 @@ _JOB_
 		"[+14?\bALRM\b]"
 		"[+15?\bTERM\b]"
 	"}"
-"[s]:[signame?Specify a signal name to send.  The signal names are derived "
+"[s:signal]:[signame?Specify a signal name to send.  The signal names are derived "
 	"from their names in \b<signal.h>\b without the \bSIG\b prefix and "
 	"are case insensitive.  \bkill -l\b will generate the list of "
 	"signals on the current platform.]"
@@ -1135,7 +1169,7 @@ const char sh_optsuspend[] =
 #endif /* defined(JOBS) && defined(SIGSTOP) */
 
 const char sh_optlet[]	=
-"[-1c?@(#)$Id: let (AT&T Research) 2000-04-02 $\n]"
+"[-1c?\n@(#)$Id: let (AT&T Research) 2000-04-02 $\n]"
 "[--catalog?" SH_DICT "]"
 "[+NAME?let - evaluate arithmetic expressions]"
 "[+DESCRIPTION?\blet\b evaluates each \aexpr\a in the current "
@@ -1158,12 +1192,12 @@ const char sh_optlet[]	=
 ;
 
 const char sh_optprint[] =
-"[-1c?\n@(#)$Id: print (AT&T Research) 2008-11-26 $\n]"
+"[-1c?\n@(#)$Id: print (ksh 93u+m) 2022-09-26 $\n]"
 "[--catalog?" SH_DICT "]"
 "[+NAME?print - write arguments to standard output]"
 "[+DESCRIPTION?By default, \bprint\b writes each \astring\a operand to "
 	"standard output and appends a newline character.]"  
-"[+?Unless, the \b-r\b or \b-f\b option is specified, each \b\\\b "
+"[+?Unless the \b-r\b or \b-f\b option is specified, each \b\\\b "
 	"character in each \astring\a operand is processed specially as "
 	"follows:]{"
 		"[+\\a?Alert character.]"
@@ -1197,7 +1231,8 @@ const char sh_optprint[] =
 	"above.]"
 "[s?Write the output as an entry in the shell history file instead of "
 	"standard output.]"
-"[u]:[fd:=1?Write to file descriptor number \afd\a instead of standard output.]"
+"[u]:[fd:=1?Write to file descriptor number \afd\a instead of standard output. "
+	"If \afd\a is \bp\b, write to the co-process; same as \b-p\b.]"
 "[v?Treat each \astring\a as a variable name and write the value in \b%B\b "
 	"format.  Cannot be used with \b-f\b.]"
 "[C?Treat each \astring\a as a variable name and write the value in \b%#B\b "
@@ -1486,7 +1521,7 @@ const char sh_optreadonly[] =
         "and the value is readonly for each instance.]"
 "[+?If no \aname\as are specified then the names and values of all "
 	"readonly variables are written to standard output.]" 
-"[+?\breadonly\b is built-in to the shell as a declaration command so that "
+"[+?\breadonly\b is built in to the shell as a declaration command so that "
 	"field splitting and pathname expansion are not performed on "
 	"the arguments.  Tilde expansion occurs on \avalue\a.]"
 "[p?Causes the output to be in a form of \breadonly\b commands that can be "
@@ -1925,7 +1960,7 @@ const char sh_opttypeset[] =
 
 #ifndef _no_ulimit
 const char sh_optulimit[] =
-"[-1c?@(#)$Id: ulimit (ksh 93u+m) 2021-12-28 $\n]"
+"[-1c?\n@(#)$Id: ulimit (ksh 93u+m) 2022-10-13 $\n]"
 "[--catalog?" SH_DICT "]"
 "[+NAME?ulimit - set or display resource limits]"
 "[+DESCRIPTION?\bulimit\b sets or displays resource limits.  These "
@@ -1962,7 +1997,7 @@ const char sh_optulimit[] =
 #endif /* !_no_ulimit */
 
 const char sh_opttimes[] =
-"[-1c?@(#)$Id: times (ksh 93u+m) 2020-07-14 $\n]"
+"[-1c?\n@(#)$Id: times (ksh 93u+m) 2020-07-14 $\n]"
 "[--catalog?" SH_DICT "]"
 "[+NAME?times - display CPU usage by the shell and child processes]"
 "[+DESCRIPTION?\btimes\b displays the accumulated user and system CPU times, "
@@ -2118,8 +2153,6 @@ const char sh_optwhence[] =
 ;
 
 
-const char e_alrm1[]		= "alarm -r %s +%.3g\n";
-const char e_alrm2[]		= "alarm %s %.3f\n";
 const char e_baddisc[]		= "%s: invalid discipline function";
 const char e_nofork[]		= "cannot fork";
 const char e_nosignal[]		= "%s: unknown signal name";

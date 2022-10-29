@@ -14,6 +14,7 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                   Phong Vo <kpv@research.att.com>                    *
 *                  Martijn Dekker <martijn@inlv.org>                   *
+*            Johnothan King <johnothanking@protonmail.com>             *
 *                                                                      *
 ***********************************************************************/
 #ifndef _VMHDR_H
@@ -83,7 +84,6 @@ typedef struct _pfobj_s	Pfobj_t;
 
 #define NIL(t)		((t)0)
 #define reg		register
-#define NOTUSED(x)	(void)(x)
 
 
 /* convert an address to an integral value */

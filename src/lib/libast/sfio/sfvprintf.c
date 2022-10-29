@@ -14,6 +14,7 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                   Phong Vo <kpv@research.att.com>                    *
 *                  Martijn Dekker <martijn@inlv.org>                   *
+*            Johnothan King <johnothanking@protonmail.com>             *
 *                                                                      *
 ***********************************************************************/
 #include	"sfhdr.h"
@@ -118,10 +119,8 @@ int sfvprintf(Sfio_t*		f,		/* file to print to	*/
 	wchar_t*	wsp = 0;
 	SFMBDCL(fmbs)			/* state of format string	*/
 	SFMBDCL(mbs)			/* state of some string		*/
-#ifdef mbwidth
 	char*		osp;
 	int		n_w, wc;
-#endif
 #endif
 
 	/* local io system */
@@ -660,7 +659,7 @@ loop_fmt :
 			flags = (flags & ~(SFFMT_TYPES|SFFMT_LDOUBLE)) | SFFMT_LONG;
 			/* FALLTHROUGH */
 		case 's':
-#if _has_multibyte && defined(mbwidth)
+#if _has_multibyte
 			wc = (flags & SFFMT_LDOUBLE) && mbwide();
 #endif
 			if(base >= 0)	/* list of strings */
@@ -686,9 +685,7 @@ loop_fmt :
 #if _has_multibyte
 				if(flags & SFFMT_LONG)
 				{	v = 0;
-#ifdef mbwidth
 					w = 0;
-#endif
 					SFMBCLR(&mbs);
 					for(n = 0, wsp = (wchar_t*)sp;; ++wsp, ++n)
 					{	if((size >= 0 && n >= size) ||
@@ -696,25 +693,22 @@ loop_fmt :
 							break;
 						if((n_s = wcrtomb(buf, *wsp, &mbs)) <= 0)
 							break;
-#ifdef mbwidth
 						if(wc)
 						{	n_w = mbwidth(*wsp);
-							if(precis >= 0 && (w+n_w) > precis )
-								break;
-							w += n_w;
+							if(n_w > 0)
+							{
+								if(precis >= 0 && (w+n_w) > precis)
+									break;
+								w += n_w;
+							}
 						}
-						else
-#endif
-						if(precis >= 0 && (v+n_s) > precis )
+						else if(precis >= 0 && (v+n_s) > precis)
 							break;
 						v += n_s;
 					}
-#ifdef mbwidth
 					if(!wc)
 						w = v;
-#endif
 				}
-#ifdef mbwidth
 				else if (wc)
 				{	w = 0;
 					SFMBCLR(&mbs);
@@ -724,16 +718,18 @@ loop_fmt :
 						   (size <  0 && *ssp == 0) )
 							break;
 						osp = ssp;
-						n = mbchar(osp);
-						n_w = mbwidth(n);
-						if(precis >= 0 && (w+n_w) > precis )
+						if((n = mbchar(osp)) == 0)
 							break;
-						w += n_w;
+						if(n > 0 && (n_w = mbwidth(n)) > 0)
+						{
+							if(precis >= 0 && (w+n_w) > precis)
+								break;
+							w += n_w;
+						}
 						ssp = osp;
 					}
 					v = ssp - sp;
 				}
-#endif
 				else
 #endif
 				{	if((v = size) < 0)
@@ -761,11 +757,9 @@ loop_fmt :
 						wsp = (wchar_t*)sp;
 						while(n < 0)
 						{	
-#ifdef mbwidth
-							n += mbwidth(*wsp);
-#else
-							n++;
-#endif
+							int	wd;
+							if ((wd = mbwidth(*wsp)) > 0)
+								n += wd;
 							wsp++;
 							w--;
 						}
@@ -775,16 +769,14 @@ loop_fmt :
 					{	SFMBCLR(&mbs);
 						osp = sp;
 						while(n < 0)
-						{	ssp = sp;
+						{	int	wd;
+							ssp = sp;
 							if ((k = mbchar(sp)) <= 0)
 							{	sp = ssp;
 								break;
 							}
-#ifdef mbwidth
-							n += mbwidth(k);
-#else
-							n++;
-#endif
+							if ((wd = mbwidth(k)) > 0)
+								n += wd;
 						}
 						v -= (sp - osp);
 					}
@@ -820,7 +812,7 @@ loop_fmt :
 			flags = (flags & ~(SFFMT_TYPES|SFFMT_LDOUBLE)) | SFFMT_LONG;
 			/* FALLTHROUGH */
 		case 'c':
-#if _has_multibyte && defined(mbwidth)
+#if _has_multibyte
 			wc = (flags & SFFMT_LDOUBLE) && mbwide();
 #endif
 			if(precis <= 0) /* # of times to repeat a character */
@@ -859,10 +851,11 @@ loop_fmt :
 				{	SFMBCLR(&mbs);
 					if((n_s = wcrtomb(buf, *wsp++, &mbs)) <= 0)
 						break;
-#ifdef mbwidth
 					if(wc)
-						n_s = mbwidth(*(wsp - 1));
-#endif
+					{
+						if((n_s = mbwidth(*(wsp - 1))) < 0)
+							n_s = 0;
+					}
 					n = width - precis*n_s; /* padding amount */
 				}
 				else
@@ -995,7 +988,7 @@ loop_fmt :
 #if _PACKAGE_ast
 				if(scale)
 				{	sp = fmtscale(lv, scale);
-#if _has_multibyte && defined(mbwidth)
+#if _has_multibyte
 					wc = 0;
 #endif
 					goto str_cvt;
@@ -1055,7 +1048,7 @@ loop_fmt :
 #if _PACKAGE_ast
 				if(scale)
 				{	sp = fmtscale(v, scale);
-#if _has_multibyte && defined(mbwidth)
+#if _has_multibyte
 					wc = 0;
 #endif
 					goto str_cvt;

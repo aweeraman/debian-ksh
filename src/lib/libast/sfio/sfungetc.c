@@ -14,6 +14,7 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                   Phong Vo <kpv@research.att.com>                    *
 *                  Martijn Dekker <martijn@inlv.org>                   *
+*            Johnothan King <johnothanking@protonmail.com>             *
 *                                                                      *
 ***********************************************************************/
 #include	"sfhdr.h"
@@ -24,7 +25,7 @@
 */
 static int _uexcept(Sfio_t* f, int type, void* val, Sfdisc_t* disc)
 {	
-	NOTUSED(val);
+	NOT_USED(val);
 
 	/* hmm! This should never happen */
 	if(disc != _Sfudisc)

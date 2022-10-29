@@ -12,6 +12,9 @@
 *                                                                      *
 *                  David Korn <dgk@research.att.com>                   *
 *                  Martijn Dekker <martijn@inlv.org>                   *
+*            Johnothan King <johnothanking@protonmail.com>             *
+*         hyenias <58673227+hyenias@users.noreply.github.com>          *
+*                   Chase <nicetrynsa@protonmail.ch>                   *
 *                                                                      *
 ***********************************************************************/
 #ifndef NV_DEFAULT

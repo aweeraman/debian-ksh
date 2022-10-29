@@ -14,6 +14,7 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                   Phong Vo <kpv@research.att.com>                    *
 *                  Martijn Dekker <martijn@inlv.org>                   *
+*            Johnothan King <johnothanking@protonmail.com>             *
 *                                                                      *
 ***********************************************************************/
 #include "sfdchdr.h"
@@ -26,9 +27,9 @@
 
 static int slowexcept(Sfio_t* f, int type, void* v, Sfdisc_t* disc)
 {
-	NOTUSED(f);
-	NOTUSED(v);
-	NOTUSED(disc);
+	NOT_USED(f);
+	NOT_USED(v);
+	NOT_USED(disc);
 
 	switch (type)
 	{
