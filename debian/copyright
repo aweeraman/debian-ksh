@@ -2,6 +2,7 @@ Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Contact:
  David Korn <dgk@research.att.com>
  Martijn Dekker <martijn@inlv.org>
+Upstream-Name: AT&T KornShell (ksh93u+m)
 
 Files: *
 Copyright: 1982-2012, AT&T Intellectual Property
