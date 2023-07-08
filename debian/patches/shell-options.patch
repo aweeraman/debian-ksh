@@ -1,16 +1,14 @@
-Description: Disable suid shell scripts and enable system-wide ksh
-Author: Nicholas Bamber
+Description: Enable system-wide ksh
+Author: Nicholas Bamber, Anuradha Weeraman
 Forwarded: not-needed
 
 --- a/src/cmd/ksh93/SHOPT.sh
 +++ b/src/cmd/ksh93/SHOPT.sh
-@@ -36,8 +36,8 @@ SHOPT REGRESS=				# enable __regress__ builtin and instrumented intercepts for t
- SHOPT REMOTE=				# enable --rc if running as a remote shell
+@@ -37,7 +37,7 @@ SHOPT REMOTE=				# enable --rc if running as a remote shell
+ SHOPT SCRIPTONLY=0			# build ksh for running scripts only; compile out the interactive shell
  SHOPT SPAWN=				# use spawnveg for fork/exec
  SHOPT STATS=1				# add .sh.stats variable
--SHOPT SUID_EXEC=1			# allow (safe) SUID/SGID shell scripts
 -SHOPT SYSRC=				# attempt . /etc/ksh.kshrc if interactive
-+SHOPT SUID_EXEC=0			# allow (safe) SUID/SGID shell scripts
 +SHOPT SYSRC=1				# attempt . /etc/ksh.kshrc if interactive
  SHOPT TEST_L=				# add 'test -l' as an alias for 'test -L'
  SHOPT TIMEOUT=				# number of seconds for shell timeout

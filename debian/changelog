@@ -1,6 +1,7 @@
 ksh93u+m (1.0.6-1) unstable; urgency=high
 
   * New upstream release.
+  * Removed SUID_EXEC deprecated option.
 
  -- Anuradha Weeraman <anuradha@debian.org>  Sun, 09 Jul 2023 00:19:35 +0530
 
