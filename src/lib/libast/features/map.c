@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -37,7 +37,7 @@
 #endif
 
 int
-main()
+main(void)
 {
 	printf("/*\n");
 	printf(" * prototypes provided for standard interfaces hijacked\n");
@@ -419,10 +419,6 @@ main()
 	printf("#undef	free\n");
 	printf("#define free		_ast_free\n");
 	printf("extern void		free(void*);\n");
-#if _lib_mallinfo
-	printf("#undef	mallinfo\n");
-	printf("#define mallinfo	_ast_mallinfo\n");
-#endif
 	printf("#undef	malloc\n");
 	printf("#define malloc		_ast_malloc\n");
 	printf("extern void*		malloc(size_t);\n");
@@ -547,8 +543,8 @@ main()
 
 #if defined(_API_ast_MAP) && _map_libc
 	{
-		register const char*	s;
-		register const char*	t;
+		const char*	s;
+		const char*	t;
 
 		static const char	map[] = _API_ast_MAP;
 

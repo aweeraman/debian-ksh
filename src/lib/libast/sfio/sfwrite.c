@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -27,9 +27,9 @@ ssize_t sfwrite(Sfio_t*		f,	/* write to this stream. 	*/
 		const void*	buf,	/* buffer to be written.	*/
 		size_t		n)	/* number of bytes. 		*/
 {
-	reg uchar	*s, *begs, *next;
-	reg ssize_t	w;
-	reg int		local;
+	uchar		*s, *begs, *next;
+	ssize_t		w;
+	int		local;
 
 	if(!f)
 		return (ssize_t)(-1);
@@ -53,7 +53,7 @@ ssize_t sfwrite(Sfio_t*		f,	/* write to this stream. 	*/
 		if(f->mode&SF_PKRD)
 		{	/* read past peeked data */
 			char		buf[16];
-			reg ssize_t	r;
+			ssize_t	r;
 
 			for(w = n; w > 0; )
 			{	if((r = w) > sizeof(buf))

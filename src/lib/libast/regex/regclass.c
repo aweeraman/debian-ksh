@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -181,24 +181,24 @@ static int Is_wc_16(int c) { return iswctype(c, ctype[CTYPES+15].wtype); }
 regclass_t
 regclass(const char* s, char** e)
 {
-	register Ctype_t*	cp;
-	register int		c;
-	register size_t		n;
-	register const char*	t;
-	Ctype_t*		lc;
-	Ctype_t*		xp;
-	Ctype_t*		zp;
+	Ctype_t*	cp;
+	int		c;
+	size_t		n;
+	const char*	t;
+	Ctype_t*	lc;
+	Ctype_t*	xp;
+	Ctype_t*	zp;
 
 	if (!(c = *s++))
-		return 0;
+		return NULL;
 	for (t = s; *t && (*t != c || *(t + 1) != ']'); t++);
 	if (*t != c || !(n = t - s))
-		return 0;
+		return NULL;
 	for (cp = ctypes; cp; cp = cp->next)
 		if (n == cp->size && strneq(s, cp->name, n))
 			goto found;
 	xp = zp = 0;
-	lc = (Ctype_t*)setlocale(LC_CTYPE, NiL);
+	lc = (Ctype_t*)setlocale(LC_CTYPE, NULL);
 	for (cp = ctype; cp < &ctype[elementsof(ctype)]; cp++)
 	{
 #if _lib_wctype
@@ -217,7 +217,7 @@ regclass(const char* s, char** e)
 	if (!(cp = zp))
 	{
 		if (!(cp = xp))
-			return 0;
+			return NULL;
 		cp->size = 0;
 		if (!streq(cp->name, s))
 		{
@@ -228,7 +228,7 @@ regclass(const char* s, char** e)
 	if (!cp->name)
 	{
 		if (!(cp->name = (const char*)memdup(s, n + 1)))
-			return 0;
+			return NULL;
 		*((char*)cp->name + n) = 0;
 	}
 	/* mvs.390 needs the (char*) cast -- barf */
@@ -236,7 +236,7 @@ regclass(const char* s, char** e)
 	{
 		free((char*)cp->name);
 		cp->name = 0;
-		return 0;
+		return NULL;
 	}
 	cp->size = n;
 	cp->next = lc;
@@ -254,9 +254,9 @@ regclass(const char* s, char** e)
 int
 regaddclass(const char* name, regclass_t fun)
 {
-	register Ctype_t*	cp;
-	register Ctype_t*	np;
-	register size_t		n;
+	Ctype_t*	cp;
+	Ctype_t*	np;
+	size_t		n;
 
 	n = strlen(name);
 	for (cp = ctypes; cp; cp = cp->next)
@@ -291,5 +291,5 @@ classfun(int type)
 	case T_SPACE:		return  Isspace;
 	case T_SPACE_NOT:	return Notspace;
 	}
-	return 0;
+	return NULL;
 }

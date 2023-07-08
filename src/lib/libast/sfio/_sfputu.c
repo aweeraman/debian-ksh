@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -28,8 +28,8 @@ int _sfputu(Sfio_t*	f,	/* write a portable ulong to this stream */
 	    Sfulong_t	v)	/* the unsigned value to be written */
 {
 #define N_ARRAY		(2*sizeof(Sfulong_t))
-	reg uchar	*s, *ps;
-	reg ssize_t	n, p;
+	uchar	*s, *ps;
+	ssize_t	n, p;
 	uchar		c[N_ARRAY];
 
 	if(!f || (f->mode != SF_WRITE && _sfmode(f,SF_WRITE,0) < 0))
@@ -44,7 +44,7 @@ int _sfputu(Sfio_t*	f,	/* write a portable ulong to this stream */
 	n = (ps-s)+1;
 
 	if(n > 8 || SFWPEEK(f,ps,p) < n)
-		n = SFWRITE(f,(void*)s,n); /* write the hard way */
+		n = SFWRITE(f,s,n); /* write the hard way */
 	else
 	{	switch(n)
 		{

@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -58,7 +58,7 @@
 #endif
 
 #define	permission(a,f)		(sh_access(a,f)==0)
-static time_t	test_time(const char*, const char*);
+static int	test_time(const char*, const char*);
 static int	test_stat(const char*, struct stat*);
 static int	test_mode(const char*);
 
@@ -81,8 +81,8 @@ static int e3(struct test*);
 static int test_strmatch(const char *str, const char *pat)
 {
 	int match[2*(MATCH_MAX+1)],n;
-	register int c, m=0;
-	register const char *cp=pat; 
+	int c, m=0;
+	const char *cp=pat; 
 	while(c = *cp++)
 	{
 		if(c=='(')
@@ -101,14 +101,14 @@ static int test_strmatch(const char *str, const char *pat)
 		match[1] = (int)strlen(str);
 	if(n)
 		sh_setmatch(str, -1, n, match, 0);
-	return(n);
+	return n;
 }
 
 int b_test(int argc, char *argv[],Shbltin_t *context)
 {
 	struct test tdata;
-	register char *cp = argv[0];
-	register int not;
+	char *cp = argv[0];
+	int not;
 	int exitval;
 
 	tdata.av = argv;
@@ -150,7 +150,7 @@ int b_test(int argc, char *argv[],Shbltin_t *context)
 			/* FALLTHROUGH */
 		case 4:
 		{
-			register int op = sh_lookup(cp=argv[2],shtab_testops);
+			int op = sh_lookup(cp=argv[2],shtab_testops);
 			if(op&TEST_ANDOR)
 				break;
 			if(!op)
@@ -213,7 +213,7 @@ int b_test(int argc, char *argv[],Shbltin_t *context)
 	tdata.ac = argc;
 	exitval = (!expr(&tdata,0));
 done:
-	return(exitval);
+	return exitval;
 }
 
 /*
@@ -223,10 +223,10 @@ done:
  * flag is 2 when evaluating -a (TEST_AND)
  * flag is 3 when evaluating -o (TEST_OR)
  */
-static int expr(struct test *tp,register int flag)
+static int expr(struct test *tp,int flag)
 {
-	register int r;
-	register char *p;
+	int r;
+	char *p;
 	r = e3(tp);
 	while(tp->ap < tp->ac)
 	{
@@ -260,7 +260,7 @@ static int expr(struct test *tp,register int flag)
 		errormsg(SH_DICT,ERROR_exit(2),e_badsyntax);
 		UNREACHABLE();
 	}
-	return(r);
+	return r;
 }
 
 static char *nxtarg(struct test *tp,int mt)
@@ -270,19 +270,19 @@ static char *nxtarg(struct test *tp,int mt)
 		if(mt)
 		{
 			tp->ap++;
-			return(0);
+			return NULL;
 		}
 		errormsg(SH_DICT,ERROR_exit(2),e_argument);
 		UNREACHABLE();
 	}
-	return(tp->av[tp->ap++]);
+	return tp->av[tp->ap++];
 }
 
 
 static int e3(struct test *tp)
 {
-	register char *arg, *cp;
-	register int op;
+	char *arg, *cp;
+	int op;
 	char *binop;
 	arg=nxtarg(tp,0);
 	if(sh_isoption(SH_POSIX) && tp->ap + 1 < tp->ac && ((op=sh_lookup(tp->av[tp->ap],shtab_testops)) & TEST_ANDOR))
@@ -292,12 +292,12 @@ static int e3(struct test *tp)
 		 */
 		tp->ap++;
 		if(op==TEST_AND)
-			return(*arg && expr(tp,2));
+			return *arg && expr(tp,2);
 		else /* TEST_OR */
-			return(*arg || expr(tp,3));
+			return *arg || expr(tp,3);
 	}
 	if(arg && c_eq(arg, '!') && tp->ap < tp->ac)
-		return(!e3(tp));
+		return !e3(tp);
 	if(c_eq(arg, '('))
 	{
 		op = expr(tp,1);
@@ -307,7 +307,7 @@ static int e3(struct test *tp)
 			errormsg(SH_DICT,ERROR_exit(2),e_missing,"')'");
 			UNREACHABLE();
 		}
-		return(op);
+		return op;
 	}
 	cp = nxtarg(tp,1);
 	if(cp!=0 && (c_eq(cp,'=') || c2_eq(cp,'!','=')))
@@ -321,26 +321,26 @@ static int e3(struct test *tp)
 		if(cp)
 		{
 			op = strtol(cp,&binop, 10);
-			return(*binop?0:tty_check(op));
+			return *binop ? 0 : tty_check(op);
 		}
 		else
 		{
 			tp->ap--;
-			return(tty_check(1));
+			return tty_check(1);
 		}
 	}
 	if(*arg=='-' && arg[2]==0)
 	{
 		op = arg[1];
 		if(!cp)					/* no further argument: */
-			return(1);			/* treat as nonempty string instead of unary op, so return true */
+			return 1;			/* treat as nonempty string instead of unary op, so return true */
 		if(strchr(test_opchars,op))
-			return(test_unop(op,cp));
+			return test_unop(op,cp);
 	}
 	if(!cp)
 	{
 		tp->ap--;
-		return(*arg!=0);
+		return *arg!=0;
 	}
 skip:
 	op = sh_lookup(binop=cp,shtab_testops);
@@ -353,38 +353,38 @@ skip:
 	}
 	if(op==TEST_AND || op==TEST_OR)
 		tp->ap--;
-	return(test_binop(op,arg,cp));
+	return test_binop(op,arg,cp);
 }
 
-int test_unop(register int op,register const char *arg)
+int test_unop(int op,const char *arg)
 {
 	struct stat statb;
 	int f;
 	switch(op)
 	{
 	    case 'r':
-		return(permission(arg, R_OK));
+		return permission(arg, R_OK);
 	    case 'w':
-		return(permission(arg, W_OK));
+		return permission(arg, W_OK);
 	    case 'x':
-		return(permission(arg, X_OK));
+		return permission(arg, X_OK);
 	    case 'd':
-		return(test_stat(arg,&statb)>=0 && S_ISDIR(statb.st_mode));
+		return test_stat(arg,&statb)>=0 && S_ISDIR(statb.st_mode);
 	    case 'c':
-		return(test_stat(arg,&statb)>=0 && S_ISCHR(statb.st_mode));
+		return test_stat(arg,&statb)>=0 && S_ISCHR(statb.st_mode);
 	    case 'b':
-		return(test_stat(arg,&statb)>=0 && S_ISBLK(statb.st_mode));
+		return test_stat(arg,&statb)>=0 && S_ISBLK(statb.st_mode);
 	    case 'f':
-		return(test_stat(arg,&statb)>=0 && S_ISREG(statb.st_mode));
+		return test_stat(arg,&statb)>=0 && S_ISREG(statb.st_mode);
 	    case 'u':
-		return(test_mode(arg)&S_ISUID);
+		return test_mode(arg) & S_ISUID;
 	    case 'g':
-		return(test_mode(arg)&S_ISGID);
+		return test_mode(arg) & S_ISGID;
 	    case 'k':
 #ifdef S_ISVTX
-		return(test_mode(arg)&S_ISVTX);
+		return test_mode(arg) & S_ISVTX;
 #else
-		return(0);
+		return 0;
 #endif /* S_ISVTX */
 #if SHOPT_TEST_L
 	    case 'l':
@@ -392,68 +392,63 @@ int test_unop(register int op,register const char *arg)
 	    case 'L':
 	    case 'h':
 		if(*arg==0 || arg[strlen(arg)-1]=='/' || lstat(arg,&statb)<0)
-			return(0);
-		return(S_ISLNK(statb.st_mode));
+			return 0;
+		return S_ISLNK(statb.st_mode);
 
 	    case 'C':
 #ifdef S_ISCTG
-		return(test_stat(arg,&statb)>=0 && S_ISCTG(statb.st_mode));
+		return test_stat(arg,&statb)>=0 && S_ISCTG(statb.st_mode);
 #else
-		return(0);
+		return 0;
 #endif	/* S_ISCTG */
 	    case 'H':
 #ifdef S_ISCDF
 	    {
-		register int offset = staktell();
 		if(test_stat(arg,&statb)>=0 && S_ISCDF(statb.st_mode))
-			return(1);
-		stakputs(arg);
-		stakputc('+');
-		stakputc(0);
-		arg = (const char*)stakptr(offset);
-		stakseek(offset);
-		return(test_stat(arg,&statb)>=0 && S_ISCDF(statb.st_mode));
+			return 1;
+		sfputr(sh.strbuf,arg,'+');
+		return test_stat(sfstruse(sh.strbuf),&statb)>=0 && S_ISCDF(statb.st_mode);
 	    }
 #else
-		return(0);
+		return 0;
 #endif	/* S_ISCDF */
 
 	    case 'S':
-		return(isasock(arg,&statb));
+		return isasock(arg,&statb);
 	    case 'N':
-		return(test_stat(arg,&statb)>=0 && tmxgetmtime(&statb) > tmxgetatime(&statb));
+		return test_stat(arg,&statb)>=0 && tmxgetmtime(&statb) > tmxgetatime(&statb);
 	    case 'p':
-		return(isapipe(arg,&statb));
+		return isapipe(arg,&statb);
 	    case 'n':
-		return(*arg != 0);
+		return *arg != 0;
 	    case 'z':
-		return(*arg == 0);
+		return *arg == 0;
 	    case 's':
 		sfsync(sfstdout);
 		/* FALLTHROUGH */
 	    case 'O':
 	    case 'G':
 		if(*arg==0 || test_stat(arg,&statb)<0)
-			return(0);
+			return 0;
 		if(op=='s')
-			return(statb.st_size>0);
+			return statb.st_size>0;
 		else if(op=='O')
-			return(statb.st_uid==sh.userid);
-		return(statb.st_gid==sh.groupid);
+			return statb.st_uid==sh.userid;
+		return statb.st_gid==sh.groupid;
 	    case 'a':
 	    case 'e':
-		return(permission(arg, F_OK));
+		return permission(arg, F_OK);
 	    case 'o':
 		f=1;
 		if(*arg=='?')
-			return(sh_lookopt(arg+1,&f)>0);
+			return sh_lookopt(arg+1,&f)>0;
 		op = sh_lookopt(arg,&f);
-		return(op>0 && (f==(sh_isoption(op)!=0)));
+		return op>0 && (f==(sh_isoption(op)!=0));
 	    case 't':
 	    {
 		char *last;
 		op = strtol(arg,&last, 10);
-		return(*last?0:tty_check(op));
+		return *last ? 0 : tty_check(op);
 	    }
 	    case 'v':
 	    case 'R':
@@ -462,20 +457,20 @@ int test_unop(register int op,register const char *arg)
 		Namarr_t *ap;
 		int isref;
 		if(!(np = nv_open(arg,sh.var_tree,NV_VARNAME|NV_NOFAIL|NV_NOADD|NV_NOREF)))
-			return(0);
+			return 0;
 		isref = nv_isref(np);
 		if(op=='R')
-			return(isref);
+			return isref;
 		if(isref)
 		{
 			if(np->nvalue.cp)
 				np = nv_refnode(np);
 			else
-				return(0);
+				return 0;
 		}
 		if(ap = nv_arrayptr(np))
-			return(nv_arrayisset(np,ap));
-		return(!nv_isnull(np));
+			return nv_arrayisset(np,ap);
+		return !nv_isnull(np);
 	    }
 	    default:
 	    {
@@ -491,7 +486,7 @@ int test_unop(register int op,register const char *arg)
  * This function handles binary operators for both the
  * test/[ built-in and the [[ ... ]] compound command
  */
-int test_binop(register int op,const char *left,const char *right)
+int test_binop(int op,const char *left,const char *right)
 {
 	if(op&TEST_ARITH)
 	{
@@ -521,17 +516,17 @@ int test_binop(register int op,const char *left,const char *right)
 		switch(op)
 		{
 			case TEST_EQ:
-				return(lnum==rnum);
+				return lnum==rnum;
 			case TEST_NE:
-				return(lnum!=rnum);
+				return lnum!=rnum;
 			case TEST_GT:
-				return(lnum>rnum);
+				return lnum>rnum;
 			case TEST_LT:
-				return(lnum<rnum);
+				return lnum<rnum;
 			case TEST_GE:
-				return(lnum>=rnum);
+				return lnum>=rnum;
 			case TEST_LE:
-				return(lnum<=rnum);
+				return lnum<=rnum;
 		}
 		/* all arithmetic binary operators should be covered above */
 		UNREACHABLE();
@@ -540,52 +535,54 @@ int test_binop(register int op,const char *left,const char *right)
 	{
 		case TEST_AND:
 		case TEST_OR:
-			return(*left!=0);
+			return *left != 0;
 		case TEST_PEQ:
-			return(test_strmatch(left, right));
+			return test_strmatch(left, right);
 		case TEST_PNE:
-			return(!test_strmatch(left, right));
+			return !test_strmatch(left, right);
 		case TEST_SGT:
-			return(strcoll(left, right)>0);
+			return strcoll(left, right) > 0;
 		case TEST_SLT:
-			return(strcoll(left, right)<0);
+			return strcoll(left, right) < 0;
 		case TEST_SEQ:
-			return(strcmp(left, right)==0);
+			return strcmp(left, right) == 0;
 		case TEST_SNE:
-			return(strcmp(left, right)!=0);
+			return strcmp(left, right) != 0;
 		case TEST_REP:
 			sfprintf(sh.strbuf, "~(E)%s", right);
-			return(test_strmatch(left, sfstruse(sh.strbuf))>0);
+			return test_strmatch(left, sfstruse(sh.strbuf)) > 0;
 		case TEST_EF:
-			return(test_inode(left,right));
+			return test_inode(left,right);
 		case TEST_NT:
-			return(test_time(left,right)>0);
+			return test_time(left,right) > 0;
 		case TEST_OT:
-			return(test_time(left,right)<0);
+			return test_time(left,right) < 0;
 	}
 	/* all non-arithmetic binary operators should be covered above */
 	UNREACHABLE();
 }
 
 /*
- * returns the modification time of f1 - modification time of f2
+ * returns 1 if file1 was modified more recently than file2, or if file1 exists and file2 does not
+ * returns -1 if file2 was modified more recently than file1, or if file2 exists and file1 does not
+ * returns 0 if file1 was modified at the same time as file2, or if neither file1 nor file2 exist
  */
-static time_t test_time(const char *file1,const char *file2)
+static int test_time(const char *file1,const char *file2)
 {
 	Time_t t1, t2;
 	struct stat statb1,statb2;
 	int r=test_stat(file2,&statb2);
 	if(test_stat(file1,&statb1)<0)
-		return(r<0?0:-1);
+		return r<0?0:-1;
 	if(r<0)
-		return(1);
+		return 1;
 	t1 = tmxgetmtime(&statb1);
 	t2 = tmxgetmtime(&statb2);
 	if (t1 > t2)
-		return(1);
+		return 1;
 	if (t1 < t2)
-		return(-1);
-	return(0);
+		return -1;
+	return 0;
 }
 
 /*
@@ -596,8 +593,8 @@ int test_inode(const char *file1,const char *file2)
 	struct stat stat1,stat2;
 	if(test_stat(file1,&stat1)>=0  && test_stat(file2,&stat2)>=0)
 		if(stat1.st_dev == stat2.st_dev && stat1.st_ino == stat2.st_ino)
-			return(1);
-	return(0);
+			return 1;
+	return 0;
 }
 
 
@@ -605,18 +602,18 @@ int test_inode(const char *file1,const char *file2)
  * This version of access checks against the effective UID/GID
  * The static buffer statb is shared with test_mode.
  */
-int sh_access(register const char *name, register int mode)
+int sh_access(const char *name, int mode)
 {
 	struct stat statb;
 	if(*name==0)
-		return(-1);
-	if(sh_isdevfd(name))
-		return(sh_ioaccess((int)strtol(name+8, (char**)0, 10),mode));
+		return -1;
+	if(!sh_isoption(SH_POSIX) && sh_isdevfd(name))
+		return sh_ioaccess((int)strtol(name+8, NULL, 10),mode);
 	/* can't use access function for execute permission with root */
 	if(mode==X_OK && sh.euserid==0)
 		goto skip;
 	if(sh.userid==sh.euserid && sh.groupid==sh.egroupid)
-		return(access(name,mode));
+		return access(name,mode);
 #ifdef _lib_setreuid
 	/* swap the real UID to effective, check access then restore */
 	/* first swap real and effective GID, if different */
@@ -631,7 +628,7 @@ int sh_access(register const char *name, register int mode)
 				setreuid(sh.userid,sh.euserid);
 			if(sh.groupid!=sh.egroupid)
 				setregid(sh.groupid,sh.egroupid);
-			return(mode);
+			return mode;
 		}
 		else if(sh.groupid!=sh.egroupid)
 			setregid(sh.groupid,sh.egroupid);
@@ -641,11 +638,11 @@ skip:
 	if(test_stat(name, &statb) == 0)
 	{
 		if(mode == F_OK)
-			return(mode);
+			return mode;
 		else if(sh.euserid == 0)
 		{
 			if(!S_ISREG(statb.st_mode) || mode!=X_OK)
-				return(0);
+				return 0;
 		    	/* root needs execute permission for someone */
 			mode = (S_IXUSR|S_IXGRP|S_IXOTH);
 		}
@@ -659,17 +656,17 @@ skip:
 		{
 			static int maxgroups;
 			gid_t *groups; 
-			register int n;
+			int n;
 			if(maxgroups==0)
 			{
 				/* first time */
-				if((maxgroups=getgroups(0,(gid_t*)0)) <= 0)
+				if((maxgroups=getgroups(0,NULL)) <= 0)
 				{
 					/* pre-POSIX system */
 					maxgroups = (int)astconf_long(CONF_NGROUPS_MAX);
 				}
 			}
-			groups = (gid_t*)stakalloc((maxgroups+1)*sizeof(gid_t));
+			groups = (gid_t*)stkalloc(sh.stk,(maxgroups+1)*sizeof(gid_t));
 			n = getgroups(maxgroups,groups);
 			while(--n >= 0)
 			{
@@ -682,9 +679,9 @@ skip:
 		}
 #endif /* _lib_getgroups */
 		if(statb.st_mode & mode)
-			return(0);
+			return 0;
 	}
-	return(-1);
+	return -1;
 }
 
 /*
@@ -692,13 +689,13 @@ skip:
  * If <file> is null, then the previous stat buffer is used.
  * The mode bits are zero if the file doesn't exist.
  */
-static int test_mode(register const char *file)
+static int test_mode(const char *file)
 {
 	struct stat statb;
 	statb.st_mode = 0;
 	if(file && (*file==0 || test_stat(file,&statb)<0))
-		return(0);
-	return(statb.st_mode);
+		return 0;
+	return statb.st_mode;
 }
 
 /*
@@ -709,10 +706,10 @@ static int test_stat(const char *name,struct stat *buff)
 	if(*name==0)
 	{
 		errno = ENOENT;
-		return(-1);
+		return -1;
 	}
 	if(sh_isdevfd(name))
-		return(fstat((int)strtol(name+8, (char**)0, 10),buff));
+		return fstat((int)strtol(name+8, NULL, 10),buff);
 	else
-		return(stat(name,buff));
+		return stat(name,buff);
 }

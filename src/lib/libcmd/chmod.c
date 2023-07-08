@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -93,7 +93,7 @@ static const char usage[] =
 	"pathname, the numeric mode, and the resulting permission bits as "
 	"would be displayed by the \bls\b command.]"
 
-"[+?For backwards compatibility, if an invalid option is given that is a valid "
+"[+?For backward compatibility, if an invalid option is given that is a valid "
 	"symbolic mode specification, \bchmod\b treats this as a mode "
 	"specification rather than as an option specification.]"
 
@@ -144,12 +144,12 @@ extern int	lchmod(const char*, mode_t);
 int
 b_chmod(int argc, char** argv, Shbltin_t* context)
 {
-	register int	mode;
-	register int	force = 0;
-	register int	flags;
-	register char*	amode = 0;
-	register FTS*	fts;
-	register FTSENT*ent;
+	int		mode;
+	int		force = 0;
+	int		flags;
+	char*		amode = 0;
+	FTS*		fts;
+	FTSENT*		ent;
 	char*		last;
 	int		(*chmodf)(const char*, mode_t);
 	int		logical = 1;
@@ -224,7 +224,7 @@ b_chmod(int argc, char** argv, Shbltin_t* context)
 	argv += opt_info.index;
 	if (error_info.errors || !*argv || !amode && !*(argv + 1))
 	{
-		error(ERROR_usage(2), "%s", optusage(NiL));
+		error(ERROR_usage(2), "%s", optusage(NULL));
 		UNREACHABLE();
 	}
 	if (chlink)
@@ -251,7 +251,7 @@ b_chmod(int argc, char** argv, Shbltin_t* context)
 			UNREACHABLE();
 		}
 	}
-	if (!(fts = fts_open(argv, flags, NiL)))
+	if (!(fts = fts_open(argv, flags, NULL)))
 	{
 		if (ignore)
 			umask(ignore);

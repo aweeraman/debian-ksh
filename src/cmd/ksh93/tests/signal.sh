@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2023 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 2.0                  #
 #                                                                      #
@@ -268,9 +268,12 @@ PATH=${PATH#:}
 # ======
 
 if	[[ ${SIG[USR1]} ]]
-then	float s=$SECONDS
+then	float s
 	exp=SIGUSR1
+	: >out
+	trap 'echo SIGUSR1 >out' USR1
 
+	s=SECONDS
 	got=$(LC_ALL=C $SHELL -c '
 		trap "print SIGUSR1 ; exit 0" USR1
 		(trap "" USR1 ; exec kill -USR1 $$ & sleep .5)
@@ -278,15 +281,13 @@ then	float s=$SECONDS
 	[[ $got == "$exp" ]] || err_exit 'subshell ignoring signal does not send signal to parent' \
 		"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
 	(( (SECONDS-s) < .4 )) && err_exit 'parent does not wait for child to complete before handling signal'
-	((s = SECONDS))
 
-	: >out
-	trap 'echo SIGUSR1 >out; exit 0' USR1
 	(trap '' USR1; kill -USR1 $$)
 	got=$(<out)
 	[[ $got == "$exp" ]] || err_exit 'subshell ignoring signal does not send signal to parent [simple case]' \
 		"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
 
+	s=SECONDS
 	got=$(LC_ALL=C $SHELL -c '
 		trap "print SIGUSR1 ; exit 0" USR1
 		(trap "exit" USR1 ; exec kill -USR1 $$ & sleep .5)
@@ -295,12 +296,13 @@ then	float s=$SECONDS
 		"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
 	(( SECONDS-s < .4 )) && err_exit 'parent completes early'
 
-	: >out
-	trap 'echo SIGUSR1 >out; exit 0' USR1
 	(trap 'echo wrong' USR1; kill -USR1 $$)
 	got=$(<out)
 	[[ $got == "$exp" ]] || err_exit 'subshell catching signal does not send signal to parent [simple case]' \
 		"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+	trap - USR1
+	unset s
 fi
 
 yes() for ((;;)); do print y; done
@@ -557,8 +559,8 @@ cat > exit267 <<-EOF  # unquoted delimiter; expansion active
 EOF
 exp="OK $((signum+256))"
 got=$( set +x; { "$SHELL" exit267; } 2>&1 )
-(( (e=$?)==signum+128 )) && [[ $got == "$exp" ]] || err_exit "'return' with status > 256:" \
-	"(expected status $((signum+128)) and $(printf %q "$exp"), got status $e and $(printf %q "$got"))"
+(( (e=$?)==signum )) && [[ $got == "$exp" ]] || err_exit "'return' with status > 256:" \
+	"(expected status $signum and $(printf %q "$exp"), got status $e and $(printf %q "$got"))"
 
 cat > bar <<-'EOF'
 	trap : EXIT

@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -30,12 +30,12 @@ NoN(strstr)
 #else
 
 extern char*
-strstr(register const char* s1, register const char* s2)
+strstr(const char* s1, const char* s2)
 {
-	register int		c1;
-	register int		c2;
-	register const char*	t1;
-	register const char*	t2;
+	int		c1;
+	int		c2;
+	const char*	t1;
+	const char*	t2;
 	
 	if (s2)
 	{
@@ -54,7 +54,7 @@ strstr(register const char* s1, register const char* s2)
 				} while (*t1++ == *t2++);
 			}
 	}
-	return 0;
+	return NULL;
 }
 
 #endif

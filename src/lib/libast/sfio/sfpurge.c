@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -26,7 +26,7 @@
 
 int sfpurge(Sfio_t* f)
 {
-	reg int	mode;
+	int	mode;
 
 	if(!f || (mode = f->mode&SF_RDWR) != (int)f->mode && _sfmode(f,mode|SF_SYNCED,0) < 0)
 		return -1;
@@ -35,7 +35,7 @@ int sfpurge(Sfio_t* f)
 		(void)(*f->disc->exceptf)(f,SF_PURGE,(void*)((int)1),f->disc);
 
 	if(f->disc == _Sfudisc)
-		(void)sfclose((*_Sfstack)(f,NIL(Sfio_t*)));
+		(void)sfclose((*_Sfstack)(f,NULL));
 
 	/* cannot purge read string streams */
 	if((f->flags&SF_STRING) && (f->mode&SF_READ) )

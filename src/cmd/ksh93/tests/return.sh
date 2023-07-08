@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2011 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2023 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 2.0                  #
 #                                                                      #
@@ -135,6 +135,8 @@ x=$( . $file)
 if	[[ $x != $0 ]]
 then	err_exit "\$0 in a dot script is $x. Should be $0"
 fi
+
+if((!SHOPT_SCRIPTONLY));then
 x=$($SHELL -i --norc 2> /dev/null <<\!
 typeset -i x=1/0
 print hello
@@ -143,6 +145,8 @@ print hello
 if	[[ $x != hello ]]
 then	err_exit "interactive shell terminates with error in bltin"
 fi
+fi # !SHOPT_SCRIPTONLY
+
 x=$( set -e
 	false
 	print bad

@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -83,11 +83,11 @@ static const char usage[] =
 #define T_SP	5
 #define T_RET	6
 
-static void fold(Sfio_t *in, Sfio_t *out, register int width, const char *cont, size_t contsize, char *cols)
+static void fold(Sfio_t *in, Sfio_t *out, int width, const char *cont, size_t contsize, char *cols)
 {
-	register char *cp, *first;
-	register int n, col=0, x=0;
-	register char *last_space=0;
+	char *cp, *first;
+	int n, col=0, x=0;
+	char *last_space=0;
 	cols[0] = 0;
 	for (;;)
 	{
@@ -166,9 +166,9 @@ static void fold(Sfio_t *in, Sfio_t *out, register int width, const char *cont, 
 int
 b_fold(int argc, char** argv, Shbltin_t* context)
 {
-	register int n, width=WIDTH;
-	register Sfio_t *fp;
-	register char *cp;
+	int n, width=WIDTH;
+	Sfio_t *fp;
+	char *cp;
 	char *cont="\n";
 	size_t contsize = 1;
 	char cols[1<<CHAR_BIT];
@@ -216,7 +216,7 @@ b_fold(int argc, char** argv, Shbltin_t* context)
 	argc -= opt_info.index;
 	if(error_info.errors)
 	{
-		error(ERROR_usage(2),"%s", optusage(NiL));
+		error(ERROR_usage(2),"%s", optusage(NULL));
 		UNREACHABLE();
 	}
 	if(cp = *argv)
@@ -225,7 +225,7 @@ b_fold(int argc, char** argv, Shbltin_t* context)
 	{
 		if(!cp || streq(cp,"-"))
 			fp = sfstdin;
-		else if(!(fp = sfopen(NiL,cp,"r")))
+		else if(!(fp = sfopen(NULL,cp,"r")))
 		{
 			error(ERROR_system(0),"%s: cannot open",cp);
 			error_info.errors = 1;
@@ -236,5 +236,5 @@ b_fold(int argc, char** argv, Shbltin_t* context)
 			sfclose(fp);
 	}
 	while(cp= *argv++);
-	return(error_info.errors);
+	return error_info.errors;
 }

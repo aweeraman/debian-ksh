@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -68,7 +68,7 @@ static const char usage[] =
 
 #define ERRORMAX	125
 
-static void printout(register Wc_t *wp, register char *name,register int mode)
+static void printout(Wc_t *wp, char *name,int mode)
 {
 	if (mode&WC_LINES)
 		sfprintf(sfstdout," %7I*d",sizeof(wp->lines),wp->lines);
@@ -84,11 +84,11 @@ static void printout(register Wc_t *wp, register char *name,register int mode)
 }
 
 int
-b_wc(int argc,register char **argv, Shbltin_t* context)
+b_wc(int argc,char **argv, Shbltin_t* context)
 {
-	register char	*cp;
-	register int	mode=0, n;
-	register Wc_t	*wp;
+	char		*cp;
+	int		mode=0, n;
+	Wc_t		*wp;
 	Sfio_t		*fp;
 	Sfoff_t		tlines=0, twords=0, tchars=0;
 	struct stat	statb;
@@ -132,7 +132,7 @@ b_wc(int argc,register char **argv, Shbltin_t* context)
 	argv += opt_info.index;
 	if (error_info.errors)
 	{
-		error(ERROR_usage(2), "%s", optusage(NiL));
+		error(ERROR_usage(2), "%s", optusage(NULL));
 		UNREACHABLE();
 	}
 	if (mode&WC_MBYTE)
@@ -154,7 +154,7 @@ b_wc(int argc,register char **argv, Shbltin_t* context)
 	{
 		if (!cp || streq(cp,"-"))
 			fp = sfstdin;
-		else if (!(fp = sfopen(NiL,cp,"r")))
+		else if (!(fp = sfopen(NULL,cp,"r")))
 		{
 			error(ERROR_system(0),"%s: cannot open",cp);
 			continue;

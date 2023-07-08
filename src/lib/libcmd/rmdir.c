@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -53,12 +53,12 @@ static const char usage[] =
 int
 b_rmdir(int argc, char** argv, Shbltin_t* context)
 {
-	register char*	dir;
-	register char*	end;
-	register int	n;
-	int		eflag = 0;
-	int		pflag = 0;
-	int		sflag = 0;
+	char*	dir;
+	char*	end;
+	int	n;
+	int	eflag = 0;
+	int	pflag = 0;
+	int	sflag = 0;
 
 	cmdinit(argc, argv, context, ERROR_CATALOG, 0);
 	for (;;)
@@ -86,7 +86,7 @@ b_rmdir(int argc, char** argv, Shbltin_t* context)
 	argv += opt_info.index;
 	if (error_info.errors || !*argv)
 	{
-		error(ERROR_usage(2), "%s", optusage(NiL));
+		error(ERROR_usage(2), "%s", optusage(NULL));
 		UNREACHABLE();
 	}
 	if (!pflag)
@@ -121,5 +121,5 @@ b_rmdir(int argc, char** argv, Shbltin_t* context)
 		}
 	next:	;
 	}
-	return(error_info.errors != 0);
+	return error_info.errors != 0;
 }

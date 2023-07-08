@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -44,13 +44,13 @@ struct stat
 #define fstat(fd,st)	(-1)
 #endif /*_sys_stat*/
 
-#if _PACKAGE_ast && !defined(SFSETLINEMODE)
+#if !defined(SFSETLINEMODE)
 #define SFSETLINEMODE		1
 #endif
 
 #if SFSETLINEMODE
 
-static int sfsetlinemode()
+static int sfsetlinemode(void)
 {	char*			astsfio;
 	char*			endw;
 
@@ -73,11 +73,7 @@ static int sfsetlinemode()
 					modes |= SF_LINE;
 				else if((endw-astsfio) > (sizeof(sf_maxr)-1) &&
 				   strncmp(astsfio,sf_maxr,sizeof(sf_maxr)-1) == 0)
-#if _PACKAGE_ast
-					_Sfmaxr = (ssize_t)strtonll(astsfio+sizeof(sf_maxr)-1,NiL,NiL,0);
-#else
-					_Sfmaxr = (ssize_t)strtol(astsfio+sizeof(sf_maxr)-1,NiL,0);
-#endif
+					_Sfmaxr = (ssize_t)strtonll(astsfio+sizeof(sf_maxr)-1,NULL,NULL,0);
 				else if((endw-astsfio) > (sizeof(sf_wcwidth)-1) &&
 				   strncmp(astsfio,sf_wcwidth,sizeof(sf_wcwidth)-1) == 0)
 					modes |= SF_WCWIDTH;
@@ -97,33 +93,33 @@ void* sfsetbuf(Sfio_t*	f,	/* stream to be buffered */
 	ssize_t		bufsize, blksz;
 	Sfdisc_t*	disc;
 	struct stat	st;
-	uchar*		obuf = NIL(uchar*);
+	uchar*		obuf = NULL;
 	ssize_t		osize = 0;
 
 
 	if(!f)
-		return NIL(void*);
+		return NULL;
 
 	GETLOCAL(f,local);
 
 	if(size == 0 && buf)
 	{	/* special case to get buffer info */
 		_Sfi = f->val = (f->bits&SF_MMAP) ? (f->endb-f->data) : f->size;
-		return (void*)f->data;
+		return f->data;
 	}
 
 	/* cleanup actions already done, don't allow write buffering any more */
 	if(_Sfexiting && !(f->flags&SF_STRING) && (f->mode&SF_WRITE))
-	{	buf = NIL(void*);
+	{	buf = NULL;
 		size = 0;
 	}
 
 	if((init = f->mode&SF_INIT) )
 	{	if(!f->pool && _sfsetpool(f) < 0)
-			return NIL(void*);
+			return NULL;
 	}
 	else if((f->mode&SF_RDWR) != SFMODE(f,local) && _sfmode(f,0,local) < 0)
-		return NIL(void*);
+		return NULL;
 
 	if(init)
 		f->mode = (f->mode&SF_RDWR)|SF_LOCK;
@@ -133,12 +129,12 @@ void* sfsetbuf(Sfio_t*	f,	/* stream to be buffered */
 		/* make sure there is no hidden read data */
 		if(f->proc && (f->flags&SF_READ) && (f->mode&SF_WRITE) &&
 		   _sfmode(f,SF_READ,local) < 0)
-			return NIL(void*);
+			return NULL;
 
 		/* synchronize first */
 		SFLOCK(f,local); rv = SFSYNC(f); SFOPEN(f,local);
 		if(rv < 0)
-			return NIL(void*);
+			return NULL;
 
 		/* turn off the SF_SYNCED bit because buffer is changing */
 		f->mode &= ~SF_SYNCED;
@@ -157,7 +153,7 @@ void* sfsetbuf(Sfio_t*	f,	/* stream to be buffered */
 			goto done;
 		}
 		else /* initialize stream as if in the default case */
-		{	buf = NIL(void*);
+		{	buf = NULL;
 			size = (size_t)SF_UNBOUND;
 		}
 	}
@@ -173,12 +169,12 @@ void* sfsetbuf(Sfio_t*	f,	/* stream to be buffered */
 	if(f->bits&SF_MMAP)
 	{	if(f->data)
 		{	SFMUNMAP(f,f->data,f->endb-f->data);
-			f->data = NIL(uchar*);
+			f->data = NULL;
 		}
 	} else
 #endif
 	if(f->data == f->tiny)
-	{	f->data = NIL(uchar*);
+	{	f->data = NULL;
 		f->size = 0;
 	}
 	obuf  = f->data;
@@ -203,11 +199,11 @@ void* sfsetbuf(Sfio_t*	f,	/* stream to be buffered */
 
 		/* if has discipline, set size by discipline if possible */
 		if(!_sys_stat || disc)
-		{	if((f->here = SFSK(f,(Sfoff_t)0,SEEK_CUR,disc)) < 0)
+		{	if((f->here = SFSK(f,0,SEEK_CUR,disc)) < 0)
 				goto unseekable;
 			else
 			{	Sfoff_t	e;
-				if((e = SFSK(f,(Sfoff_t)0,SEEK_END,disc)) >= 0)
+				if((e = SFSK(f,0,SEEK_END,disc)) >= 0)
 					f->extent = e > f->here ? e : f->here;
 				(void)SFSK(f,f->here,SEEK_SET,disc);
 				goto setbuf;
@@ -226,7 +222,7 @@ void* sfsetbuf(Sfio_t*	f,	/* stream to be buffered */
 			if(S_ISDIR(st.st_mode) || (Sfoff_t)st.st_size < (Sfoff_t)SF_GRAIN)
 				okmmap = 0;
 			if(S_ISREG(st.st_mode) || S_ISDIR(st.st_mode))
-				f->here = SFSK(f,(Sfoff_t)0,SEEK_CUR,f->disc);
+				f->here = SFSK(f,0,SEEK_CUR,f->disc);
 			else	f->here = -1;
 
 #if O_TEXT /* no memory mapping with O_TEXT because read()/write() alter data stream */
@@ -274,7 +270,7 @@ void* sfsetbuf(Sfio_t*	f,	/* stream to be buffered */
 						f->flags |= SF_LINE|SF_WCWIDTH;
 #if _sys_stat
 					else	/* special case /dev/null */
-					{	reg int	dev, ino;
+					{	int	dev, ino;
 						static int null_checked, null_dev, null_ino;
 						dev = (int)st.st_dev;	
 						ino = (int)st.st_ino;	
@@ -337,21 +333,21 @@ setbuf:
 		else if((ssize_t)(size = _Sfpage) < bufsize)
 			size = bufsize;
 
-		buf = NIL(void*);
+		buf = NULL;
 	}
 
 	sf_malloc = 0;
 	if(size > 0 && !buf && !(f->bits&SF_MMAP))
 	{	/* try to allocate a buffer */
 		if(obuf && size == (size_t)osize && init)
-		{	buf = (void*)obuf;
-			obuf = NIL(uchar*);
+		{	buf = obuf;
+			obuf = NULL;
 			sf_malloc = (oflags&SF_MALLOC);
 		}
 		if(!buf)
 		{	/* do allocation */
 			while(!buf && size > 0)
-			{	if((buf = (void*)malloc(size)) )
+			{	if((buf = malloc(size)) )
 					break;
 				else	size /= 2;
 			}
@@ -363,7 +359,7 @@ setbuf:
 	if(size == 0 && !(f->flags&SF_STRING) && !(f->bits&SF_MMAP) && (f->mode&SF_READ))
 	{	/* use the internal buffer */
 		size = sizeof(f->tiny);
-		buf = (void*)f->tiny;
+		buf = f->tiny;
 	}
 
 	/* set up new buffer */
@@ -384,8 +380,8 @@ setbuf:
 	f->flags = (f->flags & ~SF_MALLOC)|sf_malloc;
 
 	if(obuf && obuf != f->data && osize > 0 && (oflags&SF_MALLOC))
-	{	free((void*)obuf);
-		obuf = NIL(uchar*);
+	{	free(obuf);
+		obuf = NULL;
 	}
 
 done:
@@ -404,5 +400,5 @@ done:
 
 	SFOPEN(f,local);
 
-	return (void*)obuf;
+	return obuf;
 }

@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -17,7 +17,6 @@
 *            Johnothan King <johnothanking@protonmail.com>             *
 *                                                                      *
 ***********************************************************************/
-#pragma clang diagnostic ignored "-Wdeprecated-register"
 #pragma clang diagnostic ignored "-Wparentheses"
 /*
  * generate <lc.h> implementation tables from lc.tab
@@ -128,10 +127,10 @@ static struct State_s
 #define newof(p,t,n,x)	((t*)calloc(1,sizeof(t)*(n)+(x)))
 
 static Link_t*
-enter(register Table_t* tab, register Link_t* v)
+enter(Table_t* tab, Link_t* v)
 {
-	register Link_t*	x;
-	register Link_t*	p;
+	Link_t*	x;
+	Link_t*	p;
 
 	for (p = 0, x = tab->root; x; p = x, x = x->next)
 		if (!strcmp(x->code, v->code))
@@ -146,24 +145,24 @@ enter(register Table_t* tab, register Link_t* v)
 }
 
 static Link_t*
-lookup(register Table_t* tab, register char* s)
+lookup(Table_t* tab, char* s)
 {
-	register Link_t*	x;
+	Link_t*	x;
 
 	for (x = tab->root; x; x = x->next)
 		if (!strcmp(x->code, s))
 			return x;
-	return 0;
+	return NULL;
 }
 
 static char*
-copy(char** p, register char* f)
+copy(char** p, char* f)
 {
-	register char*	t;
+	char*	t;
 	char*		b;
 
 	if (!f)
-		return 0;
+		return NULL;
 	b = t = *p;
 	while (*t++ = *f++);
 	*p = t;
@@ -173,15 +172,15 @@ copy(char** p, register char* f)
 static void
 macro(FILE* f, char* p1, char* p2, char* p3)
 {
-	register int	c;
-	register char*	s;
-	register char*	b;
-	register char*	e;
-	int		i;
-	int		m;
-	int		n;
-	char*		part[4];
-	char		buf[128];
+	int	c;
+	char*	s;
+	char*	b;
+	char*	e;
+	int	i;
+	int	m;
+	int	n;
+	char*	part[4];
+	char	buf[128];
 
 	part[0] = p1;
 	part[1] = p2;
@@ -227,9 +226,9 @@ macro(FILE* f, char* p1, char* p2, char* p3)
 int
 main(int argc, char** argv)
 {
-	register char*		s;
-	register char**		vp;
-	register char**		ve;
+	char*			s;
+	char**			vp;
+	char**			ve;
 	Attribute_t*		ap;
 	Attribute_list_t*	al;
 	Attribute_list_t*	az;
@@ -689,7 +688,7 @@ main(int argc, char** argv)
 		else
 			fprintf(lf, "0,");
 		fprintf(lf, "&lc_charsets[%d],0,", lp->charset ? lp->charset->link.index : 0);
-		macro(lf, "LANG", lp->name, (char*)0);
+		macro(lf, "LANG", lp->name, NULL);
 		for (i = 0, al = lp->attributes; al; al = al->next, i++)
 			fprintf(lf, "&attribute_%s[%d],", lp->link.code, al->attribute->link.index);
 		for (; i < language_attribute_max; i++)
@@ -717,7 +716,7 @@ main(int argc, char** argv)
 			fprintf(lf, "LC_primary,");
 		else
 			fprintf(lf, "0,");
-		macro(lf, "CTRY", tp->name, (char*)0);
+		macro(lf, "CTRY", tp->name, NULL);
 		for (i = 0, ll = tp->languages; ll; ll = ll->next, i++)
 			fprintf(lf, "&lc_languages[%d],", ll->language->link.index);
 		for (; i < territory_language_max; i++)

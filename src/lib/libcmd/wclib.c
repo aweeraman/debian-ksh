@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -52,12 +52,12 @@
 
 Wc_t* wc_init(int mode)
 {
-	register int	n;
-	register int	w;
-	Wc_t*		wp;
+	int	n;
+	int	w;
+	Wc_t*	wp;
 
-	if (!(wp = (Wc_t*)stakalloc(sizeof(Wc_t))))
-		return 0;
+	if (!(wp = (Wc_t*)stkalloc(stkstd,sizeof(Wc_t))))
+		return NULL;
 	if (!mbwide())
 		wp->mb = 0;
 #if _hdr_wchar && _hdr_wctype && _lib_iswctype
@@ -109,7 +109,7 @@ static int invalid(const char *file, int nlines)
  * handle UTF space characters
  */
 
-static int chkstate(int state, register unsigned int c)
+static int chkstate(int state, unsigned int c)
 {
 	switch(state)
 	{
@@ -131,16 +131,16 @@ static int chkstate(int state, register unsigned int c)
 	case 6:
 		state = 0;
 		if(c==0xa0 || c==0xa1)
-			return(10);
+			return 10;
 		else if((c&0xf0)== 0x80)
 		{
 			if((c&=0xf)==7)
-				return(iswspace(0x2007)?10:0);
+				return iswspace(0x2007) ? 10 : 0;
 			if(c<=0xb)
-				return(10);
+				return 10;
 		}
 		else if(c==0xaf && iswspace(0x202f))
-			return(10);
+			return 10;
 		break;
 	case 7:
 		state = (c==0x9f?10:0);
@@ -157,23 +157,23 @@ static int chkstate(int state, register unsigned int c)
 
 int wc_count(Wc_t *wp, Sfio_t *fd, const char* file)
 {
-	register char*		type = wp->type;
-	register unsigned char*	cp;
-	register Sfoff_t	nbytes;
-	register Sfoff_t	nchars;
-	register Sfoff_t	nwords;
-	register Sfoff_t	nlines;
-	register Sfoff_t	eline = -1;
-	register Sfoff_t	longest = 0;
-	register ssize_t	c;
-	register unsigned char*	endbuff;
-	register int		lasttype = WC_SP;
-	unsigned int		lastchar;
-	ssize_t			n;
-	ssize_t			o;
-	unsigned char*		buff;
-	wchar_t			x;
-	unsigned char		side[32];
+	char*		type = wp->type;
+	unsigned char*	cp;
+	Sfoff_t		nbytes;
+	Sfoff_t		nchars;
+	Sfoff_t		nwords;
+	Sfoff_t		nlines;
+	Sfoff_t		eline = -1;
+	Sfoff_t		longest = 0;
+	ssize_t		c;
+	unsigned char*	endbuff;
+	int		lasttype = WC_SP;
+	unsigned int	lastchar;
+	ssize_t		n;
+	ssize_t		o;
+	unsigned char*	buff;
+	wchar_t		x;
+	unsigned char	side[32];
 
 	sfset(fd,SF_WRITE,1);
 	nlines = nwords = nchars = nbytes = 0;

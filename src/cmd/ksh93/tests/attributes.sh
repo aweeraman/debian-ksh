@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2023 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 2.0                  #
 #                                                                      #
@@ -339,11 +339,11 @@ unset foo
 typeset  -b -A foo
 read -N10 foo[4] <<< 'abcdefghijklmnop'
 [[ ${foo[4]} == "$expected" ]] || err_exit 'read -N10 foo, where foo is "typeset  -b -A" foo not working'
+[[ $(printf %B foo[4]) == abcdefghij ]] || err_exit 'printf %B for binary associative array element not working'
 unset foo
 typeset  -b -a foo
 read -N10 foo[4] <<< 'abcdefghijklmnop'
 [[ ${foo[4]} == "$expected" ]] || err_exit 'read -N10 foo, where foo is "typeset  -b -a" foo not working'
-[[ $(printf %B foo[4]) == abcdefghij ]] || err_exit 'printf %B for binary associative array element not working'
 [[ $(printf %B foo[4]) == abcdefghij ]] || err_exit 'printf %B for binary indexed array element not working'
 unset foo
 
@@ -829,6 +829,21 @@ unset foo
 	typeset -Z foo=
 	typeset -i foo
 ) || err_exit 'failed to convert from -Z to -i'
+
+# ======
+# Bug in the 'for' loop optimizer which could falsely treat 'typeset -b' variables as loop invariants
+# Fix backported from ksh 93v- 2013-03-18
+# (hint: use 'base64 -d' to decode base64-encoded values)
+unset var i
+exp='dGhyZWV0'
+typeset -bZ6 var
+for i in first second
+do	read -r -N6 var
+	set -- "$var"
+	[[ $i == first ]] && continue
+	got=$1
+	[[ $got == "$exp" ]] || err_exit "loop optimization bug with 'typeset -b' variables (expected '$exp', got '$got')"
+done <<< 'twotowthreetfourro'
 
 # ======
 exit $((Errors<125?Errors:125))

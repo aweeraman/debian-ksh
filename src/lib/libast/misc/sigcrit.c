@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -34,27 +34,13 @@ static struct
 signals[] =		/* held inside critical region	*/
 {
 	SIGINT,		SIG_REG_EXEC,
-#ifdef SIGPIPE
 	SIGPIPE,	SIG_REG_EXEC,
-#endif
-#ifdef SIGQUIT
 	SIGQUIT,	SIG_REG_EXEC,
-#endif
-#ifdef SIGHUP
 	SIGHUP,		SIG_REG_EXEC,
-#endif
-#if defined(SIGCHLD) && ( !defined(SIGCLD) || SIGCHLD != SIGCLD || _lib_sigprocmask || _lib_sigsetmask )
 	SIGCHLD,	SIG_REG_PROC,
-#endif
-#ifdef SIGTSTP
 	SIGTSTP,	SIG_REG_TERM,
-#endif
-#ifdef SIGTTIN
 	SIGTTIN,	SIG_REG_TERM,
-#endif
-#ifdef SIGTTOU
 	SIGTTOU,	SIG_REG_TERM,
-#endif
 };
 
 #ifndef SIG_SETMASK
@@ -91,7 +77,7 @@ interrupt(int sig)
 int
 sigcritical(int op)
 {
-	register int		i;
+	int			i;
 	static int		region;
 	static int		level;
 #if _lib_sigprocmask
@@ -169,7 +155,7 @@ sigcritical(int op)
 		{
 			level = 0;
 #if _lib_sigprocmask
-			sigprocmask(SIG_SETMASK, &mask, NiL);
+			sigprocmask(SIG_SETMASK, &mask, NULL);
 #else
 #if _lib_sigsetmask
 			sigsetmask(mask);

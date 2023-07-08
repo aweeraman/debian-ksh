@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -35,8 +35,8 @@ Dtmethod_t* dtmethod(Dt_t* dt, Dtmethod_t* meth)
 		return oldmt;
 
 	/* ask discipline if switching to new method is ok */
-	if(disc->eventf && (*disc->eventf)(dt,DT_METH,(void*)meth,disc) < 0)
-		return NIL(Dtmethod_t*);
+	if(disc->eventf && (*disc->eventf)(dt,DT_METH,meth,disc) < 0)
+		return NULL;
 
 	list = dtextract(dt); /* extract elements out of dictionary */
 
@@ -44,9 +44,9 @@ Dtmethod_t* dtmethod(Dt_t* dt, Dtmethod_t* meth)
 	if(dt->searchf == oldmt->searchf) /* i.e., not viewpathing */
 		dt->searchf = meth->searchf;
 	dt->meth = meth;
-	dt->data = NIL(Dtdata_t*);
-	if((*dt->meth->eventf)(dt, DT_OPEN, NIL(void*)) < 0 )
-		newdt = NIL(Dtdata_t*);
+	dt->data = NULL;
+	if((*dt->meth->eventf)(dt, DT_OPEN, NULL) < 0 )
+		newdt = NULL;
 	else	newdt = dt->data;
 
 	/* see what need to be done to data of the old method */ 
@@ -55,7 +55,7 @@ Dtmethod_t* dtmethod(Dt_t* dt, Dtmethod_t* meth)
 	dt->meth = oldmt;
 	dt->data = olddt;
 	if(newdt) /* switch was successful, remove old data */
-	{	(void)(*dt->meth->eventf)(dt, DT_CLOSE, NIL(void*));
+	{	(void)(*dt->meth->eventf)(dt, DT_CLOSE, NULL);
 
 		if(dt->searchf == oldmt->searchf)
 			dt->searchf = meth->searchf;
@@ -66,7 +66,7 @@ Dtmethod_t* dtmethod(Dt_t* dt, Dtmethod_t* meth)
 	}
 	else /* switch failed, restore dictionary to previous states */
 	{	dtrestore(dt, list); 
-		return NIL(Dtmethod_t*);
+		return NULL;
 	}
 }
 

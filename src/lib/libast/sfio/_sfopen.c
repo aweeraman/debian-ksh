@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -34,7 +34,7 @@ Sfio_t* _sfopen(Sfio_t*		f,		/* old stream structure */
 
 	/* get the control flags */
 	if((sflags = _sftype(mode,&oflags,&fflags)) == 0)
-		return NIL(Sfio_t*);
+		return NULL;
 
 	/* changing the control flags */
 	if(f && !file && !((f->flags|sflags)&SF_STRING) )
@@ -55,7 +55,7 @@ Sfio_t* _sfopen(Sfio_t*		f,		/* old stream structure */
 		}
 		else /* make sure there is no buffered data */
 		{	if(sfsync(f) < 0)
-				return NIL(Sfio_t*);
+				return NULL;
 		}
 
 		if(f->file >= 0 )
@@ -81,7 +81,7 @@ Sfio_t* _sfopen(Sfio_t*		f,		/* old stream structure */
 	}
 	else
 	{	if(!file)
-			return NIL(Sfio_t*);
+			return NULL;
 
 #if _has_oflags /* open the file */
 		while((fd = open((char*)file,oflags,SF_CREATMODE)) < 0 && errno == EINTR)
@@ -92,10 +92,10 @@ Sfio_t* _sfopen(Sfio_t*		f,		/* old stream structure */
 		if(fd >= 0)
 		{	if((oflags&(O_CREAT|O_EXCL)) == (O_CREAT|O_EXCL) )
 			{	CLOSE(fd);	/* error: file already exists */
-				return NIL(Sfio_t*);
+				return NULL;
 			}
 			if(oflags&O_TRUNC )	/* truncate file */
-			{	reg int	tf;
+			{	int	tf;
 				while((tf = creat(file,SF_CREATMODE)) < 0 &&
 				      errno == EINTR)
 					errno = 0;
@@ -115,20 +115,20 @@ Sfio_t* _sfopen(Sfio_t*		f,		/* old stream structure */
 		}
 #endif
 		if(fd < 0)
-			return NIL(Sfio_t*);
+			return NULL;
 
 		/* we may have to reset the file descriptor to its old value */
 		oldfd = f ? f->file : -1;
-		if((f = sfnew(f,NIL(char*),(size_t)SF_UNBOUND,fd,sflags)) && oldfd >= 0)
+		if((f = sfnew(f,NULL,(size_t)SF_UNBOUND,fd,sflags)) && oldfd >= 0)
 			(void)sfsetfd(f,oldfd);
 	}
 
 	return f;
 }
 
-int _sftype(reg const char* mode, int* oflagsp, int* fflagsp)
+int _sftype(const char* mode, int* oflagsp, int* fflagsp)
 {
-	reg int	sflags, oflags, fflags;
+	int	sflags, oflags, fflags;
 
 	if(!mode)
 		return 0;

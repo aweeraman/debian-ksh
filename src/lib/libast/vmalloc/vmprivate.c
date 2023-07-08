@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -28,15 +28,15 @@ static char*	Version = "\n@(#)$Id: Vmalloc (AT&T Labs - Research) 2011-08-08 $\0
 */
 
 /* Get more memory for a region */
-static Block_t* _vmextend(reg Vmalloc_t*	vm,		/* region to increase in size	*/
+static Block_t* _vmextend(Vmalloc_t*	vm,		/* region to increase in size	*/
 			  size_t		size,		/* desired amount of space	*/
 			  Vmsearch_f		searchf)	/* tree search function		*/
 {
-	reg size_t	s;
-	reg Seg_t*	seg;
-	reg Block_t	*bp, *tp, *np;
-	reg Vmuchar_t*	addr = (Vmuchar_t*)Version; /* shut compiler warning */
-	reg Vmdata_t*	vd = vm->data;
+	size_t	s;
+	Seg_t*	seg;
+	Block_t	*bp, *tp, *np;
+	Vmuchar_t*	addr = (Vmuchar_t*)Version; /* shut compiler warning */
+	Vmdata_t*	vd = vm->data;
 
 	GETPAGESIZE(_Vmpagesize);
 
@@ -46,33 +46,33 @@ static Block_t* _vmextend(reg Vmalloc_t*	vm,		/* region to increase in size	*/
 	/* Get slightly more for administrative data */
 	s = size + sizeof(Seg_t) + sizeof(Block_t) + sizeof(Head_t) + 2*ALIGN;
 	if(s <= size)	/* size was too large and we have wrapped around */
-		return NIL(Block_t*);
+		return NULL;
 	if((size = ROUND(s,vd->incr)) < s)
-		return NIL(Block_t*);
+		return NULL;
 
 	/* increase the rounding factor to reduce # of future extensions */
 	if(size > 2*vd->incr && vm->disc->round < vd->incr)
 		vd->incr *= 2;
 
 	if(!(seg = vd->seg) ) /* there is no current segment */
-		addr = NIL(Vmuchar_t*);
+		addr = NULL;
 	else /* see if we can extend the current segment */
 	{	addr = (Vmuchar_t*)(*vm->disc->memoryf)(vm,seg->addr,seg->extent,
 					  		seg->extent+size,vm->disc);
 		if(addr == (Vmuchar_t*)seg->addr)
 			addr += seg->extent; /* seg successfully extended */
-		else	seg = NIL(Seg_t*); /* a new segment was created */
+		else	seg = NULL; /* a new segment was created */
 	}
 
 	if(!addr) /* create a new segment */
-	{	if(!(addr = (Vmuchar_t*)(*vm->disc->memoryf)(vm, NIL(void*), 0, size, vm->disc)) )
+	{	if(!(addr = (Vmuchar_t*)(*vm->disc->memoryf)(vm, NULL, 0, size, vm->disc)) )
 		{	if(vm->disc->exceptf) /* announce that no more memory is available */
 			{
 				CLRLOCK(vm, 0);
 				(void)(*vm->disc->exceptf)(vm, VM_NOMEM, (void*)size, vm->disc);
 				SETLOCK(vm, 0);
 			}
-			return NIL(Block_t*);
+			return NULL;
 		}
 	}
 
@@ -90,7 +90,7 @@ static Block_t* _vmextend(reg Vmalloc_t*	vm,		/* region to increase in size	*/
 			{	/**/ ASSERT(searchf);
 				bp = LAST(bp);
 				if(bp == vd->wild)
-					vd->wild = NIL(Block_t*);
+					vd->wild = NULL;
 				else	REMOVE(vd,bp,INDEX(SIZE(bp)),tp,(*searchf));
 				SIZE(bp) += size;
 			}
@@ -98,7 +98,7 @@ static Block_t* _vmextend(reg Vmalloc_t*	vm,		/* region to increase in size	*/
 		else
 		{	if(seg->free)
 			{	bp = seg->free;
-				seg->free = NIL(Block_t*);
+				seg->free = NULL;
 				SIZE(bp) += size;
 			}
 			else
@@ -113,17 +113,17 @@ static Block_t* _vmextend(reg Vmalloc_t*	vm,		/* region to increase in size	*/
 	}
 	else
 	{	/* creating a new segment */
-		reg Seg_t	*sp, *lastsp;
+		Seg_t	*sp, *lastsp;
 
 		if((s = (size_t)(VLONG(addr)%ALIGN)) != 0)
 			addr += ALIGN-s;
 
 		seg = (Seg_t*)addr;
 		seg->vmdt = vd;
-		seg->addr = (void*)(addr - (s ? ALIGN-s : 0));
+		seg->addr = addr - (s ? ALIGN-s : 0);
 		seg->extent = size;
 		seg->baddr = addr + size - (s ? 2*ALIGN : 0);
-		seg->free = NIL(Block_t*);
+		seg->free = NULL;
 		bp = SEGBLOCK(seg);
 		SEG(bp) = seg;
 		SIZE(bp) = seg->baddr - (Vmuchar_t*)bp - 2*sizeof(Head_t);
@@ -132,7 +132,7 @@ static Block_t* _vmextend(reg Vmalloc_t*	vm,		/* region to increase in size	*/
 		   is reversely ordered by addresses. This is so that we can easily
 		   check for the wild block.
 		*/
-		lastsp = NIL(Seg_t*);
+		lastsp = NULL;
 		sp = vd->seg;
 		if(vd->mode&(VM_MTBEST|VM_MTDEBUG|VM_MTPROFILE))
 			for(; sp; lastsp = sp, sp = sp->next)
@@ -162,7 +162,7 @@ static Block_t* _vmextend(reg Vmalloc_t*	vm,		/* region to increase in size	*/
 		}
 		else	seg->free = tp;
 
-		vd->wild = NIL(Block_t*);
+		vd->wild = NULL;
 	}
 
 	return bp;
@@ -174,15 +174,15 @@ static ssize_t _vmtruncate(Vmalloc_t*	vm,	/* containing region		*/
 			   size_t	size,	/* amount of free space		*/
 			   int		exact)
 {
-	reg void*	caddr;
-	reg Seg_t*	last;
-	reg Vmdata_t*	vd = vm->data;
-	reg Vmemory_f	memoryf = vm->disc->memoryf;
+	void*	caddr;
+	Seg_t*	last;
+	Vmdata_t*	vd = vm->data;
+	Vmemory_f	memoryf = vm->disc->memoryf;
 
 	caddr = seg->addr;
 
 	if(size < seg->size)
-	{	reg ssize_t	less;
+	{	ssize_t	less;
 
 		if(exact)
 			less = size;
@@ -211,7 +211,7 @@ static ssize_t _vmtruncate(Vmalloc_t*	vm,	/* containing region		*/
 	{	/* unlink segment from region */
 		if(seg == vd->seg)
 		{	vd->seg = seg->next;
-			last = NIL(Seg_t*);
+			last = NULL;
 		}
 		else
 		{	for(last = vd->seg; last->next != seg; last = last->next)
@@ -262,9 +262,8 @@ Vmextern_t	_Vmextern =
 {	_vmextend,						/* _Vmextend	*/
 	_vmtruncate,						/* _Vmtruncate	*/
 	0,							/* _Vmpagesize	*/
-	NIL(char*(*)(char*,const char*,int)),			/* _Vmstrcpy	*/
-	NIL(char*(*)(Vmulong_t,int)),				/* _Vmitoa	*/
-	NIL(void(*)(Vmalloc_t*,Vmuchar_t*,Vmuchar_t*,
-					size_t,size_t)),	/* _Vmtrace	*/
-	NIL(void(*)(Vmalloc_t*))				/* _Vmpfclose	*/
+	NULL,							/* _Vmstrcpy	*/
+	NULL,							/* _Vmitoa	*/
+	NULL,							/* _Vmtrace	*/
+	NULL							/* _Vmpfclose	*/
 };

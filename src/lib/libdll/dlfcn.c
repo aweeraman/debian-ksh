@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1997-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -61,10 +61,10 @@ static const char id[] = "\n@(#)$Id: dll library (AT&T Research) 2010-10-20 $\0\
 		void*	dll;
 
 		if (!path)
-			return (void*)&all;
+			return &all;
 		if (mode)
 			mode = (BIND_IMMEDIATE|BIND_FIRST|BIND_NOSTART);
-		if (!(dll = (void*)shl_load(path, mode, 0L)))
+		if (!(dll = shl_load(path, mode, 0L)))
 			err = errno;
 		return dll;
 	}
@@ -79,13 +79,13 @@ static const char id[] = "\n@(#)$Id: dll library (AT&T Research) 2010-10-20 $\0\
 		shl_t	handle;
 		long	addr;
 
-		handle = dll == (void*)&all ? (shl_t)0 : (shl_t)dll;
+		handle = dll == &all ? (shl_t)0 : (shl_t)dll;
 		if (shl_findsym(&handle, name, TYPE_UNDEFINED, &addr))
 		{
 			err = errno;
-			return 0;
+			return NULL;
 		}
-		return (void*)addr;
+		return addr;
 	}
 
 	extern char* dlerror(void)
@@ -93,7 +93,7 @@ static const char id[] = "\n@(#)$Id: dll library (AT&T Research) 2010-10-20 $\0\
 		char*	msg;
 
 		if (!err)
-			return 0;
+			return NULL;
 		msg = fmterror(err);
 		err = 0;
 		return msg;
@@ -125,7 +125,7 @@ static const char id[] = "\n@(#)$Id: dll library (AT&T Research) 2010-10-20 $\0\
 	{
 		void*	dll;
 
-		if (!(dll = (void*)load((char*)path, mode, getenv("LIBPATH"))))
+		if (!(dll = load((char*)path, mode, getenv("LIBPATH"))))
 			err = errno;
 		return dll;
 	}
@@ -159,13 +159,13 @@ static const char id[] = "\n@(#)$Id: dll library (AT&T Research) 2010-10-20 $\0\
 	static struct ld_info* getinfo(void* module)
 	{
 		struct ld_info*	info = ld_info;
-		register int	n = 1;
+		int		n = 1;
 
 		if (!ld_info || module != last_module)
 		{
 			last_module = module;
 			if (getquery())
-				return 0;
+				return NULL;
 			info = ld_info;
 		}
 		while (n)
@@ -175,9 +175,9 @@ static const char id[] = "\n@(#)$Id: dll library (AT&T Research) 2010-10-20 $\0\
 				+ (unsigned)(info->ldinfo_datasize)))
 				return info;
 			if (n=info->ldinfo_next)
-				info = (void*)((char*)info + n);
+				info = ((char*)info + n);
 		}
-		return 0;
+		return NULL;
 	}
 
 	static char* getloc(struct hdr* hdr, char* data, char* name)
@@ -197,8 +197,8 @@ static const char id[] = "\n@(#)$Id: dll library (AT&T Research) 2010-10-20 $\0\
 		/* hdr is address of header, not text, so add text s_scnptr */
 		textreloc = (ulong)hdr + hdr->s[hdr->a.o_sntext-1].s_scnptr
 			- hdr->s[hdr->a.o_sntext-1].s_vaddr;
-		ldhdr = (void*)((char*)hdr+ hdr->s[hdr->a.o_snloader-1].s_scnptr);
-		ldsym = (void*) (ldhdr+1);
+		ldhdr = ((char*)hdr+ hdr->s[hdr->a.o_snloader-1].s_scnptr);
+		ldsym =  (ldhdr+1);
 		/* search the exports symbols */
 		for(i=0; i < ldhdr->l_nsyms;ldsym++,i++)
 		{
@@ -216,7 +216,7 @@ static const char id[] = "\n@(#)$Id: dll library (AT&T Research) 2010-10-20 $\0\
 				symbuf[8] = 0;
 			}
 			else
-				symname = (void*)(ldsym->l_offset + (ulong)ldhdr + ldhdr->l_stoff);
+				symname = (ldsym->l_offset + (ulong)ldhdr + ldhdr->l_stoff);
 			if (strcmp(symname,name))
 				continue;
 			loc = (char*)ldsym->l_value;
@@ -227,7 +227,7 @@ static const char id[] = "\n@(#)$Id: dll library (AT&T Research) 2010-10-20 $\0\
 				loc += textreloc;
 			return loc;
 		}
-		return 0;
+		return NULL;
 	}
 
 	extern void* dlsym(void* handle, const char* name)
@@ -238,7 +238,7 @@ static const char id[] = "\n@(#)$Id: dll library (AT&T Research) 2010-10-20 $\0\
 		if (!(info = getinfo(handle)) || !(addr = getloc(info->ldinfo_textorg,info->ldinfo_dataorg,(char*)name)))
 		{
 			err = errno;
-			return 0;
+			return NULL;
 		}
 		return addr;
 	}
@@ -248,7 +248,7 @@ static const char id[] = "\n@(#)$Id: dll library (AT&T Research) 2010-10-20 $\0\
 		char*	msg;
 
 		if (!err)
-			return 0;
+			return NULL;
 		msg = fmterror(err);
 		err = 0;
 		return msg;
@@ -269,7 +269,7 @@ static const char id[] = "\n@(#)$Id: dll library (AT&T Research) 2010-10-20 $\0\
 		void*	dll;
 
 		NoP(mode);
-		if (!(dll = (void*)dllload(path)))
+		if (!(dll = dllload(path)))
 			err = errno;
 		return dll;
 	}
@@ -283,7 +283,7 @@ static const char id[] = "\n@(#)$Id: dll library (AT&T Research) 2010-10-20 $\0\
 	{
 		void*	addr;
 
-		if (!(addr = (void*)dllqueryfn(handle, (char*)name)))
+		if (!(addr = dllqueryfn(handle, (char*)name)))
 			err = errno;
 		return addr;
 	}
@@ -293,7 +293,7 @@ static const char id[] = "\n@(#)$Id: dll library (AT&T Research) 2010-10-20 $\0\
 		char*	msg;
 
 		if (!err)
-			return 0;
+			return NULL;
 		msg = fmterror(err);
 		err = 0;
 		return msg;
@@ -360,7 +360,7 @@ static const char id[] = "\n@(#)$Id: dll library (AT&T Research) 2010-10-20 $\0\
 		if (!_dyld_present())
 		{
 			dlmessage = e_static;
-			return 0;
+			return NULL;
 		}
 		if (!init)
 		{
@@ -372,7 +372,7 @@ static const char id[] = "\n@(#)$Id: dll library (AT&T Research) 2010-10-20 $\0\
 		else if (!(dll = newof(0, Dll_t, 1, strlen(path))))
 		{
 			dlmessage = e_nomemory;
-			return 0;
+			return NULL;
 		}
 		else
 		{
@@ -384,7 +384,7 @@ static const char id[] = "\n@(#)$Id: dll library (AT&T Research) 2010-10-20 $\0\
 				if (!dll->module)
 				{
 					free(dll);
-					return 0;
+					return NULL;
 				}
 				break;
 			case NSObjectFileImageInappropriateFile:
@@ -392,17 +392,17 @@ static const char id[] = "\n@(#)$Id: dll library (AT&T Research) 2010-10-20 $\0\
 				if (!dll->image)
 				{
 					free(dll);
-					return 0;
+					return NULL;
 				}
 				break;
 			default:
 				free(dll);
-				return 0;
+				return NULL;
 			}
 			strcpy(dll->path, path);
 			dll->magic = DL_MAGIC;
 		}
-		return (void*)dll;
+		return dll;
 	}
 
 	extern int dlclose(void* handle)
@@ -429,7 +429,7 @@ static const char id[] = "\n@(#)$Id: dll library (AT&T Research) 2010-10-20 $\0\
 		if (dll == DL_NEXT)
 		{
 			if (!_dyld_func_lookup(name, &pun))
-				return 0;
+				return NULL;
 			address = (NSSymbol)pun;
 		}
 		else if (dll->module)
@@ -437,13 +437,13 @@ static const char id[] = "\n@(#)$Id: dll library (AT&T Research) 2010-10-20 $\0\
 		else if (dll->image)
 		{
 			if (!NSIsSymbolNameDefinedInImage(dll->image, name))
-				return 0;
+				return NULL;
 			address = NSLookupSymbolInImage(dll->image, name, 0);
 		}
 		else
 		{
 			if (!NSIsSymbolNameDefined(name))
-				return 0;
+				return NULL;
 			address = NSLookupAndBindSymbol(name);
 		}
 		if (address)
@@ -460,7 +460,7 @@ static const char id[] = "\n@(#)$Id: dll library (AT&T Research) 2010-10-20 $\0\
 		if (!dll || dll != DL_NEXT && (dll->magic != DL_MAGIC || !dll->image && !dll->module))
 		{
 			dlmessage = e_handle;
-			return 0;
+			return NULL;
 		}
 		if (!(address = lookup(dll, name)) && name[0] != '_' && strlen(name) < (sizeof(buf) - 1))
 		{
@@ -471,9 +471,9 @@ static const char id[] = "\n@(#)$Id: dll library (AT&T Research) 2010-10-20 $\0\
 		if (!address)
 		{
 			dlmessage = dll == DL_NEXT ? e_cover : e_undefined;
-			return 0;
+			return NULL;
 		}
-		return (void*)address;
+		return address;
 	}
 
 	extern char* dlerror(void)
@@ -495,7 +495,7 @@ static const char id[] = "\n@(#)$Id: dll library (AT&T Research) 2010-10-20 $\0\
 	extern void* dlopen(const char* path, int mode)
 	{
 		err = 1;
-		return 0;
+		return NULL;
 	}
 
 	extern int dlclose(void* dll)
@@ -507,13 +507,13 @@ static const char id[] = "\n@(#)$Id: dll library (AT&T Research) 2010-10-20 $\0\
 	extern void* dlsym(void* handle, const char* name)
 	{
 		err = 1;
-		return 0;
+		return NULL;
 	}
 
 	extern char* dlerror(void)
 	{
 		if (!err)
-			return 0;
+			return NULL;
 		err = 0;
 		return "dynamic linking not supported";
 	}

@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1996-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -115,14 +115,14 @@ Crcnum_t posix_cksum_tab[256] = {
 static Sum_t*
 crc_open(const Method_t* method, const char* name)
 {
-	register Crc_t*		sum;
-	register const char*	s;
-	register const char*	t;
-	register const char*	v;
-	register int		i;
-	register int		j;
-	Crcnum_t		polynomial;
-	Crcnum_t		x;
+	Crc_t*		sum;
+	const char*	s;
+	const char*	t;
+	const char*	v;
+	int		i;
+	int		j;
+	Crcnum_t	polynomial;
+	Crcnum_t	x;
 
 	if (sum = newof(0, Crc_t, 1, 0))
 	{
@@ -152,18 +152,18 @@ crc_open(const Method_t* method, const char* name)
 				v = s;
 		i = (v ? v : s) - t;
 		if (isdigit(*t) || v && i >= 4 && strneq(t, "poly", 4) && (t = v + 1))
-			polynomial = strtoul(t, NiL, 0);
+			polynomial = strtoul(t, NULL, 0);
 		else if (strneq(t, "done", i))
-			sum->done = v ? strtoul(v + 1, NiL, 0) : ~sum->done;
+			sum->done = v ? strtoul(v + 1, NULL, 0) : ~sum->done;
 		else if (strneq(t, "init", i))
-			sum->init = v ? strtoul(v + 1, NiL, 0) : ~sum->init;
+			sum->init = v ? strtoul(v + 1, NULL, 0) : ~sum->init;
 		else if (strneq(t, "rotate", i))
 			sum->rotate = 1;
 		else if (strneq(t, "size", i))
 		{
 			sum->addsize = 1;
 			if (v)
-				sum->xorsize = strtoul(v + 1, NiL, 0);
+				sum->xorsize = strtoul(v + 1, NULL, 0);
 		}
 		if (*s == '-')
 			s++;
@@ -234,9 +234,9 @@ static int
 crc_block(Sum_t* p, const void* s, size_t n)
 {
 	Crc_t*			sum = (Crc_t*)p;
-	register Crcnum_t	c = sum->sum;
-	register const unsigned char*	b = (const unsigned char*)s;
-	register const unsigned char*	e = b + n;
+	Crcnum_t	c = sum->sum;
+	const unsigned char*	b = (const unsigned char*)s;
+	const unsigned char*	e = b + n;
 	unsigned short i;
 
 	sum_prefetch(b);
@@ -292,9 +292,9 @@ static int
 crc_block(Sum_t* p, const void* s, size_t n)
 {
 	Crc_t*			sum = (Crc_t*)p;
-	register Crcnum_t	c = sum->sum;
-	register unsigned char*	b = (unsigned char*)s;
-	register unsigned char*	e = b + n;
+	Crcnum_t	c = sum->sum;
+	unsigned char*	b = (unsigned char*)s;
+	unsigned char*	e = b + n;
 
 	if (sum->rotate)
 		while (b < e)
@@ -310,11 +310,11 @@ crc_block(Sum_t* p, const void* s, size_t n)
 static int
 crc_done(Sum_t* p)
 {
-	register Crc_t*		sum = (Crc_t*)p;
-	register Crcnum_t	c;
-	register uintmax_t	n;
-	int			i;
-	int			j;
+	Crc_t*		sum = (Crc_t*)p;
+	Crcnum_t	c;
+	uintmax_t	n;
+	int		i;
+	int		j;
 
 	c = sum->sum;
 	if (sum->addsize)

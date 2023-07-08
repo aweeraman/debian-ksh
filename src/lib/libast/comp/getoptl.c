@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -38,10 +38,10 @@ static int			lastoptind;
 static int
 golly(int argc, char* const* argv, const char* optstring, const struct option* longopts, int* longindex, int flags)
 {
-	register char*			s;
-	register const struct option*	o;
-	register int			c;
-	char*				t;
+	char*			s;
+	const struct option*	o;
+	int			c;
+	char*			t;
 
 	if (!up || optstring != lastoptstring || longopts != lastlongopts)
 	{
@@ -113,7 +113,7 @@ golly(int argc, char* const* argv, const char* optstring, const struct option* l
 			{
 				if (!error_info.id)
 					error_info.id = argv[0];
-				errormsg(NiL, c == '?' ? (ERROR_USAGE|4) : 2, "%s", opt_info.arg);
+				errormsg(NULL, c == '?' ? (ERROR_USAGE|4) : 2, "%s", opt_info.arg);
 			}
 			optopt = opt_info.option[1];
 			c = '?';

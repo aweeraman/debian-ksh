@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1990-2013 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -15,7 +15,6 @@
 *            Johnothan King <johnothanking@protonmail.com>             *
 *                                                                      *
 ***********************************************************************/
-#pragma clang diagnostic ignored "-Wdeprecated-register"
 #pragma clang diagnostic ignored "-Wparentheses"
 
 /*
@@ -24,7 +23,7 @@
  * coded for portability
  */
 
-#define RELEASE_DATE "2022-07-15"
+#define RELEASE_DATE "2023-04-16"
 static char id[] = "\n@(#)$Id: mamake (ksh 93u+m) " RELEASE_DATE " $\0\n";
 
 #if _PACKAGE_ast
@@ -37,7 +36,7 @@ static const char usage[] =
 "[-author?Glenn Fowler <gsf@research.att.com>]"
 "[-author?Contributors to https://github.com/ksh93/ksh]"
 "[-copyright?(c) 1994-2012 AT&T Intellectual Property]"
-"[-copyright?(c) 2020-2022 Contributors to ksh 93u+m]"
+"[-copyright?(c) 2020-2023 Contributors to ksh 93u+m]"
 "[-license?https://www.eclipse.org/org/documents/epl-2.0/EPL-2.0.html]"
 "[+NAME?mamake - make abstract machine make]"
 "[+DESCRIPTION?\bmamake\b reads \amake abstract machine\a target and"
@@ -94,9 +93,53 @@ static const char usage[] =
 #define elementsof(x)	(sizeof(x)/sizeof(x[0]))
 #define newof(p,t,n,x)	((p)?(t*)realloc((char*)(p),sizeof(t)*(n)+(x)):(t*)calloc(1,sizeof(t)*(n)+(x)))
 
-#define NiL		0
+/*
+ * For compatibility with compiler flags such as -std=c99, feature macros
+ * must be enabled to prevent the build from failing at the very start.
+ * These are normally handled in src/lib/libast/features/standards; further
+ * information can be found there. Mamake shouldn't need all that much enabled,
+ * so not much is enabled here.
+ */
 
+/* macOS */
+#if (defined(__APPLE__) && defined(__MACH__) && defined(NeXTBSD)) && !defined(_DARWIN_C_SOURCE)
+#define _DARWIN_C_SOURCE 1
+
+/* Solaris and illumos */
+#elif defined(__sun)
+#define _XPG7
+#define _XPG6
+#define _XPG5
+#define _XPG4_2
+#define _XPG4
+#define _XPG3
+#define __EXTENSIONS__	1
+#define _XOPEN_SOURCE	9900
+#undef _POSIX_C_SOURCE
+/*
+ * Though POSIX says it must be allowed, Solaris Studio cc dislikes NULL, a.k.a.
+ * (void*)0, being used for function pointers. It warns, or in some cases it even
+ * throws an error. Just use 0 for NULL, as that is always acceptable in C.
+ */
+#if __SUNPRO_C
+#undef  NULL
+#define NULL    0
+#endif /* __SUNPRO_C */
+
+/* Linux and Cygwin */
+#elif (defined(__linux__) || __CYGWIN__) && !defined(_GNU_SOURCE)
+#define _GNU_SOURCE 1
+
+/* QNX */
+#elif defined(__QNX__) && !defined(_QNX_SOURCE)
+#define _QNX_SOURCE 1
+
+/* Everything else (minus BSD, as the defaults there are acceptable) */
+#elif !(BSD && !__APPLE__ && !__MACH__ && !NeXTBSD) && !defined(_POSIX_C_SOURCE)
+#define _POSIX_C_SOURCE 21000101L
 #endif
+
+#endif /* _PACKAGE_ast */
 
 #include <stdio.h>
 #include <unistd.h>
@@ -112,14 +155,14 @@ static const char usage[] =
 
 #define delimiter(c)	((c)==' '||(c)=='\t'||(c)=='\n'||(c)==';'||(c)=='('||(c)==')'||(c)=='`'||(c)=='|'||(c)=='&'||(c)=='=')
 
-#define add(b,c)	(((b)->nxt >= (b)->end) ? append(b, "") : NiL, *(b)->nxt++ = (c))
+#define add(b,c)	(((b)->nxt >= (b)->end) ? append(b, "") : NULL, *(b)->nxt++ = (c))
 #define get(b)		((b)->nxt-(b)->buf)
 #define set(b,o)	((b)->nxt=(b)->buf+(o))
 #define use(b)		(*(b)->nxt=0,(b)->nxt=(b)->buf)
 
 #define CHUNK		4096
 #define KEY(a,b,c,d)	((((unsigned long)(a))<<15)|(((unsigned long)(b))<<10)|(((unsigned long)(c))<<5)|(((unsigned long)(d))))
-#define NOW		((unsigned long)time((time_t*)0))
+#define NOW		((unsigned long)time(NULL))
 #define ROTATE(p,l,r,t)	((t)=(p)->l,(p)->l=(t)->r,(t)->r=(p),(p)=(t))
 
 #define RULE_active	0x0001		/* active target		*/
@@ -262,7 +305,7 @@ extern char**		environ;
  */
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "Usage: %s"
 		" [-iknFKNV]"
@@ -349,17 +392,17 @@ dont(Rule_t* r, int code, int keepgoing)
 {
 	identify(stderr);
 	if (!code)
-		fprintf(stderr, "don't know how to make %s\n", r->name);
+		report(keepgoing ? 1 : 3, "missing prerequisite", r->name, 0);
 	else
 	{
 		fprintf(stderr, "*** exit code %d making %s%s\n", code, r->name, state.ignore ? " ignored" : "");
 		unlink(r->name);
 		if (state.ignore)
 			return;
+		if (!keepgoing)
+			exit(1);
+		state.errors = 1;
 	}
-	if (!keepgoing)
-		exit(1);
-	state.errors++;
 	r->flags |= RULE_error;
 }
 
@@ -368,9 +411,9 @@ dont(Rule_t* r, int code, int keepgoing)
  */
 
 static char*
-last(register char* s, register int c)
+last(char* s, int c)
 {
-	register char*	r = 0;
+	char*	r = 0;
 
 	for (r = 0; *s; s++)
 		if (*s == c)
@@ -385,12 +428,12 @@ last(register char* s, register int c)
 static Buf_t*
 buffer(void)
 {
-	register Buf_t*	buf;
+	Buf_t*	buf;
 
 	if (buf = state.old)
 		state.old = state.old->old;
 	else if (!(buf = newof(0, Buf_t, 1, 0)) || !(buf->buf = newof(0, char, CHUNK, 0)))
-		report(3, "out of memory [buffer]", NiL, (unsigned long)0);
+		report(3, "out of memory [buffer]", NULL, 0);
 	buf->end = buf->buf + CHUNK;
 	buf->nxt = buf->buf;
 	return buf;
@@ -422,7 +465,7 @@ appendn(Buf_t* buf, char* str, int n)
 		i = buf->nxt - buf->buf;
 		m = (((buf->end - buf->buf) + n + CHUNK + 1) / CHUNK) * CHUNK;
 		if (!(buf->buf = newof(buf->buf, char, m, 0)))
-			report(3, "out of memory [buffer resize]", NiL, (unsigned long)0);
+			report(3, "out of memory [buffer resize]", NULL, 0);
 		buf->end = buf->buf + m;
 		buf->nxt = buf->buf + i;
 	}
@@ -457,7 +500,7 @@ duplicate(char* s)
 
 	n = strlen(s);
 	if (!(t = newof(0, char, n, 1)))
-		report(3, "out of memory [duplicate]", s, (unsigned long)0);
+		report(3, "out of memory [duplicate]", s, 0);
 	strcpy(t, s);
 	return t;
 }
@@ -472,7 +515,7 @@ dictionary(void)
 	Dict_t*	dict;
 
 	if (!(dict = newof(0, Dict_t, 1, 0)))
-		report(3, "out of memory [dictionary]", NiL, (unsigned long)0);
+		report(3, "out of memory [dictionary]", NULL, 0);
 	return dict;
 }
 
@@ -483,15 +526,15 @@ dictionary(void)
  */
 
 static void*
-search(register Dict_t* dict, char* name, void* value)
+search(Dict_t* dict, char* name, void* value)
 {
-	register int		cmp;
-	register Dict_item_t*	root;
-	register Dict_item_t*	t;
-	register Dict_item_t*	left;
-	register Dict_item_t*	right;
-	register Dict_item_t*	lroot;
-	register Dict_item_t*	rroot;
+	int		cmp;
+	Dict_item_t*	root;
+	Dict_item_t*	t;
+	Dict_item_t*	left;
+	Dict_item_t*	right;
+	Dict_item_t*	lroot;
+	Dict_item_t*	rroot;
 
 	root = dict->root;
 	left = right = lroot = rroot = 0;
@@ -546,7 +589,7 @@ search(register Dict_t* dict, char* name, void* value)
 	else if (value)
 	{
 		if (!(root = newof(0, Dict_item_t, 1, strlen(name))))
-			report(3, "out of memory [dictionary]", name, (unsigned long)0);
+			report(3, "out of memory [dictionary]", name, 0);
 		strcpy(root->name, name);
 	}
 	if (root)
@@ -556,7 +599,7 @@ search(register Dict_t* dict, char* name, void* value)
 		root->left = lroot;
 		root->right = rroot;
 		dict->root = root;
-		return value ? (void*)root->name : root->value;
+		return value ? root->name : root->value;
 	}
 	if (left)
 	{
@@ -568,7 +611,17 @@ search(register Dict_t* dict, char* name, void* value)
 		right->left = lroot;
 		dict->root = rroot;
 	}
-	return 0;
+	return NULL;
+}
+
+/*
+ * return true if in strict mode
+ */
+
+static int
+strict(void)
+{
+	return search(state.vars, "MAMAKE_STRICT", NULL) != NULL;
 }
 
 /*
@@ -578,7 +631,7 @@ search(register Dict_t* dict, char* name, void* value)
 static int
 apply(Dict_t* dict, Dict_item_t* item, int (*func)(Dict_item_t*, void*), void* handle)
 {
-	register Dict_item_t*	right;
+	Dict_item_t*	right;
 
 	do
 	{
@@ -610,11 +663,11 @@ rule(char* name)
 {
 	Rule_t*	r;
 
-	if (!(r = (Rule_t*)search(state.rules, name, NiL)))
+	if (!(r = (Rule_t*)search(state.rules, name, NULL)))
 	{
 		if (!(r = newof(0, Rule_t, 1, 0)))
-			report(3, "out of memory [rule]", name, (unsigned long)0);
-		r->name = (char*)search(state.rules, name, (void*)r);
+			report(3, "out of memory [rule]", name, 0);
+		r->name = (char*)search(state.rules, name, r);
 	}
 	return r;
 }
@@ -626,13 +679,13 @@ rule(char* name)
 static void
 cons(Rule_t* r, Rule_t* p)
 {
-	register List_t*	x;
+	List_t*	x;
 
 	for (x = r->prereqs; x && x->rule != p; x = x->next);
 	if (!x)
 	{
 		if (!(x = newof(0, List_t, 1, 0)))
-			report(3, "out of memory [list]", r->name, (unsigned long)0);
+			report(3, "out of memory [list]", r->name, 0);
 		x->rule = p;
 		x->next = r->prereqs;
 		r->prereqs = x;
@@ -646,33 +699,33 @@ cons(Rule_t* r, Rule_t* p)
 static void
 view(void)
 {
-	register char*		s;
-	register char*		t;
-	register char*		p;
-	register View_t*	vp;
+	char*		s;
+	char*		t;
+	char*		p;
+	View_t*		vp;
 
-	View_t*			zp;
-	int			c;
-	int			n;
+	View_t*		zp;
+	int		c;
+	int		n;
 
-	Stat_t			st;
-	Stat_t			ts;
+	Stat_t		st;
+	Stat_t		ts;
 
-	char			buf[CHUNK];
+	char		buf[CHUNK];
 
 	if (stat(".", &st))
-		report(3, "cannot stat", ".", (unsigned long)0);
-	if ((s = (char*)search(state.vars, "PWD", NiL)) && !stat(s, &ts) &&
+		report(3, "cannot stat", ".", 0);
+	if ((s = (char*)search(state.vars, "PWD", NULL)) && !stat(s, &ts) &&
 	    ts.st_dev == st.st_dev && ts.st_ino == st.st_ino)
 		state.pwd = s;
 	if (!state.pwd)
 	{
 		if (!getcwd(buf, sizeof(buf) - 1))
-			report(3, "cannot determine PWD", NiL, (unsigned long)0);
+			report(3, "cannot determine PWD", NULL, 0);
 		state.pwd = duplicate(buf);
 		search(state.vars, "PWD", state.pwd);
 	}
-	if ((s = (char*)search(state.vars, "VPATH", NiL)) && *s)
+	if ((s = (char*)search(state.vars, "VPATH", NULL)) && *s)
 	{
 		zp = 0;
 		for (;;)
@@ -687,9 +740,9 @@ view(void)
 				 */
 
 				if (stat(s, &st))
-					report(3, "cannot stat top view", s, (unsigned long)0);
+					report(3, "cannot stat top view", s, 0);
 				if (stat(state.pwd, &ts))
-					report(3, "cannot stat", state.pwd, (unsigned long)0);
+					report(3, "cannot stat", state.pwd, 0);
 				if (ts.st_dev == st.st_dev && ts.st_ino == st.st_ino)
 					p = ".";
 				else
@@ -700,10 +753,10 @@ view(void)
 						if (*--p == '/')
 						{
 							if (p == state.pwd)
-								report(3, ". not under VPATH", s, (unsigned long)0);
+								report(3, ". not under VPATH", s, 0);
 							*p = 0;
 							if (stat(state.pwd, &ts))
-								report(3, "cannot stat", state.pwd, (unsigned long)0);
+								report(3, "cannot stat", state.pwd, 0);
 							*p = '/';
 							if (ts.st_dev == st.st_dev && ts.st_ino == st.st_ino)
 							{
@@ -713,17 +766,17 @@ view(void)
 						}
 					}
 					if (p <= state.pwd)
-						report(3, "cannot determine viewpath offset", s, (unsigned long)0);
+						report(3, "cannot determine viewpath offset", s, 0);
 				}
 			}
 			n = strlen(s);
 			if (!(vp = newof(0, View_t, 1, strlen(p) + n + 1)))
-				report(3, "out of memory [view]", s, (unsigned long)0);
+				report(3, "out of memory [view]", s, 0);
 			vp->node = n + 1;
 			strcpy(vp->dir, s);
 			*(vp->dir + n) = '/';
 			strcpy(vp->dir + n + 1, p);
-			report(-4, vp->dir, "view", (unsigned long)0);
+			report(-4, vp->dir, "view", 0);
 			if (!state.view)
 				state.view = zp = vp;
 			else
@@ -741,9 +794,9 @@ view(void)
  */
 
 static char*
-cond(register char* s)
+cond(char* s)
 {
-	register int	n;
+	int	n;
 
 	if (*s == '?')
 		s++;
@@ -778,16 +831,16 @@ cond(register char* s)
  */
 
 static void
-substitute(Buf_t* buf, register char* s)
+substitute(Buf_t* buf, char* s)
 {
-	register char*	t;
-	register char*	v;
-	register char*	q;
-	register char*	b;
-	register int	c;
-	register int	n;
-	int		a = 0;
-	int		i;
+	char*	t;
+	char*	v;
+	char*	q;
+	char*	b;
+	int	c;
+	int	n;
+	int	a = 0;
+	int	i;
 
 	while (c = *s++)
 	{
@@ -805,7 +858,7 @@ substitute(Buf_t* buf, register char* s)
 				*s = c;
 				continue;
 			}
-			v = (char*)search(state.vars, t, NiL);
+			v = (char*)search(state.vars, t, NULL);
 			if ((c == ':' || c == '=') && (!v || c == ':' && !*v))
 			{
 				append(buf, b);
@@ -974,7 +1027,7 @@ find(Buf_t* buf, char* file, struct stat* st)
 
 	if (s = status(buf, 0, file, st))
 	{
-		report(-3, s, "find", (unsigned long)0);
+		report(-3, s, "find", 0);
 		return s;
 	}
 	if (vp = state.view)
@@ -1015,13 +1068,13 @@ find(Buf_t* buf, char* file, struct stat* st)
 				s = use(buf);
 				if (s = status(buf, o, s, st))
 				{
-					report(-3, s, "find", (unsigned long)0);
+					report(-3, s, "find", 0);
 					return s;
 				}
 			} while (vp = vp->next);
 		}
 	}
-	return 0;
+	return NULL;
 }
 
 /*
@@ -1057,7 +1110,7 @@ pop(void)
 	int	r;
 
 	if (!state.sp)
-		report(3, "input stack underflow", NiL, (unsigned long)0);
+		report(3, "input stack underflow", NULL, 0);
 	if (!state.sp->fp || (state.sp->flags & STREAM_KEEP))
 		r = 0;
 	else if (state.sp->flags & STREAM_PIPE)
@@ -1085,17 +1138,17 @@ push(char* file, Stdio_t* fp, int flags)
 	if (!state.sp)
 		state.sp = state.streams;
 	else if (++state.sp >= &state.streams[elementsof(state.streams)])
-		report(3, "input stream stack overflow", NiL, (unsigned long)0);
+		report(3, "input stream stack overflow", NULL, 0);
 	if (state.sp->fp = fp)
 	{
 		if(state.sp->file)
 			free(state.sp->file);
 		state.sp->file = strdup("pipeline");
 		if(!state.sp->file)
-			report(3, "out of memory [push]", NiL, (unsigned long)0);
+			report(3, "out of memory [push]", NULL, 0);
 	}
 	else if (flags & STREAM_PIPE)
-		report(3, "pipe error", file, (unsigned long)0);
+		report(3, "pipe error", file, 0);
 	else if (!file || !strcmp(file, "-") || !strcmp(file, "/dev/stdin"))
 	{
 		flags |= STREAM_KEEP;
@@ -1103,7 +1156,7 @@ push(char* file, Stdio_t* fp, int flags)
 			free(state.sp->file);
 		state.sp->file = strdup("/dev/stdin");
 		if(!state.sp->file)
-			report(3, "out of memory [push]", NiL, (unsigned long)0);
+			report(3, "out of memory [push]", NULL, 0);
 		state.sp->fp = stdin;
 	}
 	else
@@ -1112,7 +1165,7 @@ push(char* file, Stdio_t* fp, int flags)
 		if (path = find(buf, file, &st))
 		{
 			if (!(state.sp->fp = fopen(path, "r")))
-				report(3, "cannot read", path, (unsigned long)0);
+				report(3, "cannot read", path, 0);
 			if(state.sp->file)
 				free(state.sp->file);
 			state.sp->file = duplicate(path);
@@ -1123,7 +1176,7 @@ push(char* file, Stdio_t* fp, int flags)
 			drop(buf);
 			pop();
 			if (flags & STREAM_MUST)
-				report(3, "not found", file, (unsigned long)0);
+				report(3, "not found", file, 0);
 			return 0;
 		}
 	}
@@ -1142,11 +1195,11 @@ input(void)
 	char*	e;
 
 	if (!state.sp)
-		report(3, "no input file stream", NiL, (unsigned long)0);
+		report(3, "no input file stream", NULL, 0);
 	if (state.peek)
 		state.peek = 0;
 	else if (!fgets(state.input, sizeof(state.input), state.sp->fp))
-		return 0;
+		return NULL;
 	else if (*state.input && *(e = state.input + strlen(state.input) - 1) == '\n')
 		*e = 0;
 	state.sp->line++;
@@ -1160,12 +1213,12 @@ input(void)
  */
 
 static int
-execute(register char* s)
+execute(char* s)
 {
-	register int	c;
+	int		c;
 	Buf_t*		buf;
 
-	if (!state.shell && (!(state.shell = (char*)search(state.vars, "SHELL", NiL)) || !strcmp(state.shell, sh)))
+	if (!state.shell && (!(state.shell = (char*)search(state.vars, "SHELL", NULL)) || !strcmp(state.shell, sh)))
 		state.shell = sh;
 	buf = buffer();
 	append(buf, state.shell);
@@ -1185,7 +1238,7 @@ execute(register char* s)
 	}
 	add(buf, '\'');
 	s = use(buf);
-	report(-5, s, "exec", (unsigned long)0);
+	report(-5, s, "exec", 0);
 	if ((c = system(s)) > 255)
 		c >>= 8;
 	drop(buf);
@@ -1197,17 +1250,17 @@ execute(register char* s)
  */
 
 static unsigned long
-run(Rule_t* r, register char* s)
+run(Rule_t* r, char* s)
 {
-	register Rule_t*	q;
-	register char*		t;
-	register int		c;
-	register View_t*	v;
-	int			i;
-	int			j;
-	int			x;
-	Stat_t			st;
-	Buf_t*			buf;
+	Rule_t*		q;
+	char*		t;
+	int		c;
+	View_t*		v;
+	int		i;
+	int		j;
+	int		x;
+	Stat_t		st;
+	Buf_t*		buf;
 
 	if (r->flags & RULE_error)
 		return r->time;
@@ -1220,7 +1273,31 @@ run(Rule_t* r, register char* s)
 	else
 		x = state.exec;
 	if (x)
-		append(buf, "trap - 1 2 3 15\nPATH=.:$PATH\nset -x\n");
+		append(buf,
+			/* stub for nmake's silent prefix (for backward compat) */
+			"silent()\n"
+			"(\n"
+				"while	test \"$#\" -gt 0\n"
+				"do	case $1 in\n"
+					"*=*)	export \"$1\"; shift;;\n"
+					"*)	break;;\n"
+					"esac\n"
+				"done\n"
+				"\"$@\"\n"
+			")\n"
+			/* stub for nmake's ignore prefix (for backward compat) */
+			"ignore()\n"
+			"{\n"
+				"silent \"$@\" || :\n"  /* always return status 0 */
+			"}\n"
+			/* find commands in the current working directory first */
+			"case $PATH in\n"
+			".:*)	;;\n"
+			"*)	PATH=.:$PATH;;\n"
+			"esac\n"
+			/* show trace for the shell action commands */
+			"set -x\n"
+		);
 	if (state.view)
 	{
 		do
@@ -1235,7 +1312,7 @@ run(Rule_t* r, register char* s)
 				append(buf, t);
 				continue;
 			}
-			if ((q = (Rule_t*)search(state.rules, t, NiL)) && q->path && !(q->flags & RULE_generated))
+			if ((q = (Rule_t*)search(state.rules, t, NULL)) && q->path && !(q->flags & RULE_generated))
 				append(buf, q->path);
 			else
 			{
@@ -1283,7 +1360,7 @@ run(Rule_t* r, register char* s)
 	{
 		if (c = execute(s))
 			dont(r, c, state.keepgoing);
-		if (status((Buf_t*)0, 0, r->name, &st))
+		if (status(NULL, 0, r->name, &st))
 		{
 			r->time = st.st_mtime;
 			r->flags |= RULE_exists;
@@ -1310,11 +1387,11 @@ run(Rule_t* r, register char* s)
 static char*
 path(Buf_t* buf, char* s, int must)
 {
-	register char*	p;
-	register char*	d;
-	register char*	x;
+	char*		p;
+	char*		d;
+	char*		x;
 	char*		e;
-	register int	c;
+	int		c;
 	int		t;
 	int		o;
 	Stat_t		st;
@@ -1323,8 +1400,8 @@ path(Buf_t* buf, char* s, int must)
 	t = *e;
 	if ((x = status(buf, 0, s, &st)) && (st.st_mode & (S_IXUSR|S_IXGRP|S_IXOTH)))
 		return x;
-	if (!(p = (char*)search(state.vars, "PATH", NiL)))
-		report(3, "variable not defined", "PATH", (unsigned long)0);
+	if (!(p = (char*)search(state.vars, "PATH", NULL)))
+		report(3, "variable not defined", "PATH", 0);
 	do
 	{
 		for (d = p; *p && *p != ':'; p++);
@@ -1347,8 +1424,8 @@ path(Buf_t* buf, char* s, int must)
 			return x;
 	} while (*p++);
 	if (must)
-		report(3, "command not found", s, (unsigned long)0);
-	return 0;
+		report(3, "command not found", s, 0);
+	return NULL;
 }
 
 /*
@@ -1359,8 +1436,8 @@ path(Buf_t* buf, char* s, int must)
 static void
 probe(void)
 {
-	register char*	cc;
-	register char*	s;
+	char*		cc;
+	char*		s;
 	unsigned long	h;
 	unsigned long	q;
 	Buf_t*		buf;
@@ -1371,24 +1448,24 @@ probe(void)
 	static char	let[] = "ABCDEFGHIJKLMNOP";
 	static char	cmd[] = "mamprobe";
 
-	if (!(cc = (char*)search(state.vars, "CC", NiL)))
+	if (!(cc = (char*)search(state.vars, "CC", NULL)))
 		cc = "cc";
 	buf = buffer();
 	s = path(buf, cmd, 1);
-	q = stat(s, &st) ? (unsigned long)0 : (unsigned long)st.st_mtime;
+	q = stat(s, &st) ? 0 : (unsigned long)st.st_mtime;
 	pro = buffer();
 	s = cc = path(pro, cc, 1);
 	for (h = 0; *s; s++)
 		h = h * 0x63c63cd9L + *s + 0x9c39c33dL;
-	if (!(s = (char*)search(state.vars, "INSTALLROOT", NiL)))
-		report(3, "variable must be defined", "INSTALLROOT", (unsigned long)0);
+	if (!(s = (char*)search(state.vars, "INSTALLROOT", NULL)))
+		report(3, "variable must be defined", "INSTALLROOT", 0);
 	append(buf, s);
 	append(buf, "/lib/probe/C/mam/");
 	for (h &= 0xffffffffL; h; h >>= 4)
 		add(buf, let[h & 0xf]);
 	s = use(buf);
-	h = stat(s, &st) ? (unsigned long)0 : (unsigned long)st.st_mtime;
-	if (h < q || !push(s, (Stdio_t*)0, 0))
+	h = stat(s, &st) ? 0 : (unsigned long)st.st_mtime;
+	if (h < q || !push(s, NULL, 0))
 	{
 		tmp = buffer();
 		append(tmp, cmd);
@@ -1397,10 +1474,10 @@ probe(void)
 		add(tmp, ' ');
 		append(tmp, cc);
 		if (execute(use(tmp)))
-			report(3, "cannot generate probe info", s, (unsigned long)0);
+			report(3, "cannot generate probe info", s, 0);
 		drop(tmp);
-		if (!push(s, (Stdio_t*)0, 0))
-			report(3, "cannot read probe info", s, (unsigned long)0);
+		if (!push(s, NULL, 0))
+			report(3, "cannot read probe info", s, 0);
 	}
 	drop(pro);
 	drop(buf);
@@ -1413,10 +1490,10 @@ probe(void)
  */
 
 static void
-attributes(register Rule_t* r, register char* s)
+attributes(Rule_t* r, char* s)
 {
-	register char*	t;
-	register int	n;
+	char*	t;
+	int	n;
 
 	for (;;)
 	{
@@ -1459,7 +1536,7 @@ attributes(register Rule_t* r, register char* s)
 		else if(flag == 0)
 		{
 			t[n] = '\0';
-			report(3, "unknown attribute", t, (unsigned long)0);
+			report(3, "unknown attribute", t, 0);
 		}
 	}
 }
@@ -1471,7 +1548,7 @@ attributes(register Rule_t* r, register char* s)
 static char*
 require(char* lib, int dontcare)
 {
-	register int	c;
+	int		c;
 	char*		s;
 	char*		r;
 	FILE*		f;
@@ -1483,8 +1560,8 @@ require(char* lib, int dontcare)
 	static int	dynamic = -1;
 
 	if (dynamic < 0)
-		dynamic = (s = search(state.vars, "mam_cc_L", NiL)) ? atoi(s) : 0;
-	if (!(r = search(state.vars, lib, NiL)))
+		dynamic = (s = search(state.vars, "mam_cc_L", NULL)) ? atoi(s) : 0;
+	if (!(r = search(state.vars, lib, NULL)))
 	{
 		buf = buffer();
 		tmp = buffer();
@@ -1493,10 +1570,10 @@ require(char* lib, int dontcare)
 		{
 			if (s)
 				append(buf, s);
-			if (r = search(state.vars, "mam_cc_PREFIX_ARCHIVE", NiL))
+			if (r = search(state.vars, "mam_cc_PREFIX_ARCHIVE", NULL))
 				append(buf, r);
 			append(buf, lib + 2);
-			if (r = search(state.vars, "mam_cc_SUFFIX_ARCHIVE", NiL))
+			if (r = search(state.vars, "mam_cc_SUFFIX_ARCHIVE", NULL))
 				append(buf, r);
 			r = expand(tmp, use(buf));
 			if (!stat(r, &st))
@@ -1510,10 +1587,10 @@ require(char* lib, int dontcare)
 			if (dynamic)
 			{
 				append(buf, s);
-				if (r = search(state.vars, "mam_cc_PREFIX_SHARED", NiL))
+				if (r = search(state.vars, "mam_cc_PREFIX_SHARED", NULL))
 					append(buf, r);
 				append(buf, lib + 2);
-				if (r = search(state.vars, "mam_cc_SUFFIX_SHARED", NiL))
+				if (r = search(state.vars, "mam_cc_SUFFIX_SHARED", NULL))
 					append(buf, r);
 				r = expand(tmp, use(buf));
 				if (!stat(r, &st))
@@ -1562,9 +1639,9 @@ require(char* lib, int dontcare)
 		}
 		else if (dontcare)
 		{
-			append(tmp, "set -\n");
+			append(tmp, "set +v +x\n");
 			append(tmp, "cd \"${TMPDIR:-/tmp}\"\n");
-			append(tmp, "echo 'int main(){return 0;}' > x.${!-$$}.c\n");
+			append(tmp, "echo 'int main(void){return 0;}' > x.${!-$$}.c\n");
 			append(tmp, "${CC} ${CCFLAGS} -o x.${!-$$}.x x.${!-$$}.c ");
 			append(tmp, r);
 			append(tmp, " >/dev/null 2>&1\n");
@@ -1596,11 +1673,11 @@ require(char* lib, int dontcare)
 static unsigned long
 make(Rule_t* r)
 {
-	register char*		s;
-	register char*		t;
-	register char*		u;
-	register char*		v;
-	register Rule_t*	q;
+	char*			s;
+	char*			t;
+	char*			u;
+	char*			v;
+	Rule_t*			q;
 	unsigned long		z;
 	unsigned long		x;
 	Buf_t*			buf;
@@ -1642,7 +1719,7 @@ make(Rule_t* r)
 			t = v = s;
 		/* enforce 4-letter lowercase command name */
 		if(u[0]<'a' || u[0]>'z' || u[1]<'a' || u[1]>'z' || u[2]<'a' || u[2]>'z' || u[3]<'a' || u[3]>'z' || u[4] && !isspace(u[4]))
-			report(3, "not a command name", u, (unsigned long)0);
+			report(3, "not a command name", u, 0);
 		switch (KEY(u[0], u[1], u[2], u[3]))
 		{
 		case KEY('b','i','n','d'):
@@ -1674,7 +1751,7 @@ make(Rule_t* r)
 		case KEY('d','o','n','e'):
 			q = rule(expand(buf, t));
 			if (q != r && t[0] != '$')
-				report(2, "improper done statement", t, (unsigned long)0);
+				report(2, "improper done statement", t, 0);
 			attributes(r, v);
 			if (cmd && state.active && (state.force || r->time < z || !r->time && !z))
 			{
@@ -1724,7 +1801,25 @@ make(Rule_t* r)
 			}
 			continue;
 		case KEY('p','r','e','v'):
-			q = rule(expand(buf, t));
+		{
+			char *name = expand(buf, t);
+			if (!strict())
+				q = rule(name); /* for backward compat */
+			else if (!(q = (Rule_t*)search(state.rules, name, NULL)))
+			{	/*
+				 * 'prev' on a nonexistent rule, i.e., without a preceding 'make'...'done':
+				 * special-case this as a way to declare a simple source file prerequisite
+				 */
+				attributes(q = rule(name), v);
+				if(!(q->flags & RULE_virtual))
+				{
+					bindfile(q);
+					if (!(q->flags & (RULE_dontcare | RULE_exists)))
+						dont(q, 0, strict() ? state.keepgoing : 1);
+				}
+			}
+			else if (*v)
+				report(3, v, "superfluous attributes", 0);
 			if (!q->making)
 			{
 				if (!(q->flags & RULE_ignore) && z < q->time)
@@ -1736,8 +1831,9 @@ make(Rule_t* r)
 				state.indent--;
 			}
 			continue;
+		}
 		case KEY('s','e','t','v'):
-			if (!search(state.vars, t, NiL))
+			if (!search(state.vars, t, NULL))
 			{
 				if (*v == '"')
 				{
@@ -1762,7 +1858,7 @@ make(Rule_t* r)
 			/* comment command */
 			continue;
 		default:
-			report(3, "unknown command", u, (unsigned long)0);
+			report(3, "unknown command", u, 0);
 		}
 		break;
 	}
@@ -1801,7 +1897,7 @@ verify(Dict_item_t* item, void* handle)
 static int
 initializer(char* name)
 {
-	register char*	s;
+	char*	s;
 
 	if (s = last(name, '/'))
 		s++;
@@ -1815,9 +1911,9 @@ initializer(char* name)
  */
 
 static int
-update(register Rule_t* r)
+update(Rule_t* r)
 {
-	register List_t*	x;
+	List_t*			x;
 	Buf_t*			buf;
 
 	static char		cmd[] = "${MAMAKE} -C ";
@@ -1845,11 +1941,11 @@ update(register Rule_t* r)
 static int
 scan(Dict_item_t* item, void* handle)
 {
-	register Rule_t*	r = (Rule_t*)item->value;
-	register char*		s;
-	register char*		t;
-	register char*		u;
-	register char*		w;
+	Rule_t*			r = (Rule_t*)item->value;
+	char*			s;
+	char*			t;
+	char*			u;
+	char*			w;
 	Rule_t*			q;
 	int			i;
 	int			j;
@@ -1891,7 +1987,7 @@ scan(Dict_item_t* item, void* handle)
 		append(buf, r->name);
 		add(buf, '/');
 		append(buf, files[i]);
-		if (push(use(buf), (Stdio_t*)0, 0))
+		if (push(use(buf), NULL, 0))
 		{
 			while (s = input())
 			{
@@ -1967,7 +2063,7 @@ scan(Dict_item_t* item, void* handle)
 							}
 						}
 					}
-					if (k && ((q = (Rule_t*)search(state.leaf, t, NiL)) && q != r || *t++ == 'l' && *t++ == 'i' && *t++ == 'b' && *t && (q = (Rule_t*)search(state.leaf, t, NiL)) && q != r))
+					if (k && ((q = (Rule_t*)search(state.leaf, t, NULL)) && q != r || *t++ == 'l' && *t++ == 'i' && *t++ == 'b' && *t && (q = (Rule_t*)search(state.leaf, t, NULL)) && q != r))
 					{
 						for (t = w = r->name; *w; w++)
 							if (*w == '/')
@@ -1996,7 +2092,7 @@ scan(Dict_item_t* item, void* handle)
 					 */
 
 					*(s - 3) = 0;
-					q = (Rule_t*)search(state.leaf, r->name, NiL);
+					q = (Rule_t*)search(state.leaf, r->name, NULL);
 					if (q && q != r)
 						cons(r, q);
 					for (t = w = r->name; *w; w++)
@@ -2004,7 +2100,7 @@ scan(Dict_item_t* item, void* handle)
 							t = w + 1;
 					append(buf, "lib");
 					append(buf, t);
-					q = (Rule_t*)search(state.leaf, use(buf), NiL);
+					q = (Rule_t*)search(state.leaf, use(buf), NULL);
 					if (q && q != r)
 						cons(r, q);
 					*(s - 3) = 'l';
@@ -2021,7 +2117,7 @@ scan(Dict_item_t* item, void* handle)
 					{
 						append(buf, "lib/lib");
 						appendn(buf, s, t - s);
-						q = (Rule_t*)search(state.leaf, use(buf), NiL);
+						q = (Rule_t*)search(state.leaf, use(buf), NULL);
 						if (q && q != r)
 							cons(r, q);
 					}
@@ -2043,7 +2139,7 @@ descend(Dict_item_t* item, void* handle)
 {
 	Rule_t*	r = (Rule_t*)item->value;
 
-	if (!state.active && (!(r->flags & RULE_active) || !(r = (Rule_t*)search(state.leaf, r->name, NiL))))
+	if (!state.active && (!(r->flags & RULE_active) || !(r = (Rule_t*)search(state.leaf, r->name, NULL))))
 		return 0;
 	return r->leaf && !(r->flags & RULE_made) ? update(r) : 0;
 }
@@ -2059,7 +2155,7 @@ active(Dict_item_t* item, void* handle)
 
 	if (r->flags & RULE_active)
 	{
-		if (r->leaf || search(state.leaf, r->name, NiL))
+		if (r->leaf || search(state.leaf, r->name, NULL))
 			state.active = 0;
 		else
 		{
@@ -2077,8 +2173,8 @@ active(Dict_item_t* item, void* handle)
 static int
 recurse(char* pattern)
 {
-	register char*	s;
-	register char*	t;
+	char*		s;
+	char*		t;
 	Rule_t*		r;
 	Buf_t*		buf;
 	Buf_t*		tmp;
@@ -2123,7 +2219,7 @@ recurse(char* pattern)
 	if (!state.active)
 	{
 		state.active = 1;
-		walk(state.rules, active, NiL);
+		walk(state.rules, active, NULL);
 	}
 	search(state.vars, "MAMAKEARGS", duplicate(use(state.opt) + 1));
 
@@ -2131,26 +2227,26 @@ recurse(char* pattern)
 	 * scan the Mamfile and descend
 	 */
 
-	walk(state.rules, scan, NiL);
+	walk(state.rules, scan, NULL);
 	while (state.view)
 	{
 		View_t *prev = state.view;
 		state.view = state.view->next;
 		free(prev);
 	}
-	walk(state.rules, descend, NiL);
+	walk(state.rules, descend, NULL);
 	return 0;
 }
 
 int
 main(int argc, char** argv)
 {
-	register char**		e;
-	register char*		s;
-	register char*		t;
-	register char*		v;
-	Buf_t*			tmp;
-	int			c;
+	char**		e;
+	char*		s;
+	char*		t;
+	char*		v;
+	Buf_t*		tmp;
+	int		c;
 
 	/*
 	 * initialize the state
@@ -2238,7 +2334,7 @@ main(int argc, char** argv)
 	}
 	if (error_info.errors)
 	{
-		error(ERROR_usage(2), "%s", optusage(NiL));
+		error(ERROR_usage(2), "%s", optusage(NULL));
 		UNREACHABLE();
 	}
 	argv += opt_info.index;
@@ -2326,7 +2422,7 @@ main(int argc, char** argv)
 				t = s;
 				if (!*++s && !(s = *++argv))
 				{
-					report(2, "option value expected", t, (unsigned long)0);
+					report(2, "option value expected", t, 0);
 					usage();
 				}
 				else
@@ -2351,7 +2447,7 @@ main(int argc, char** argv)
 					}
 				break;
 			default:
-				report(2, "unknown option", s, (unsigned long)0);
+				report(2, "unknown option", s, 0);
 				/* FALLTHROUGH */
 			case '?':
 				usage();
@@ -2431,7 +2527,7 @@ main(int argc, char** argv)
 	 */
 
 	if (state.directory && chdir(state.directory))
-		report(3, "cannot change working directory", NiL, (unsigned long)0);
+		report(3, "cannot change working directory", NULL, 0);
 	view();
 
 	/*
@@ -2446,7 +2542,7 @@ main(int argc, char** argv)
 	 */
 
 	search(state.vars, "MAMAKEARGS", duplicate(use(state.opt) + 1));
-	push(state.file, (Stdio_t*)0, STREAM_MUST);
+	push(state.file, NULL, STREAM_MUST);
 	make(rule(""));
 	pop();
 
@@ -2455,7 +2551,7 @@ main(int argc, char** argv)
 	 */
 
 	if (!state.active && !state.verified)
-		walk(state.rules, verify, NiL);
+		walk(state.rules, verify, NULL);
 
 	/*
 	 * done

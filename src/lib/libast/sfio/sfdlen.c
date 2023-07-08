@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -26,7 +26,7 @@
 int _sfdlen(Sfdouble_t v)
 {
 #define N_ARRAY		(16*sizeof(Sfdouble_t))
-	reg int		n, w;
+	int		n, w;
 	Sfdouble_t	x;
 	int		exp;
 

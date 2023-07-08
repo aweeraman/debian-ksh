@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -32,11 +32,11 @@ dup2(int d1, int d2)
 {
 	int	save_errno;
 
-	if (d1 == d2) return(d1);
+	if (d1 == d2) return d1;
 	save_errno = errno;
 	close(d2);
 	errno = save_errno;
-	return(fcntl(d1, F_DUPFD, d2));
+	return fcntl(d1, F_DUPFD, d2);
 }
 
 #endif

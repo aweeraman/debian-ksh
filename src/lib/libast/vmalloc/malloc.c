@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -88,7 +88,6 @@ static Vmulong_t	_Vmdbtime = 0;
 #undef calloc
 #undef cfree
 #undef free
-#undef mallinfo
 #undef malloc
 #undef mallopt
 #undef memalign
@@ -131,7 +130,7 @@ lcl_getenv(const char* s)
 	static char	buf[512];
 
 	if (!(n = GetEnvironmentVariable(s, buf, sizeof(buf))) || n > sizeof(buf))
-		return 0;
+		return NULL;
 	return buf;
 }
 #endif /* _WINIX */
@@ -248,7 +247,7 @@ static Vmalloc_t* regionof(void* addr)
 		for(k = 0; k < Regnum; ++k)
 			if(Region[k] && vmaddr(Region[k], addr) == 0 )
 				return Region[k];
-		return NIL(Vmalloc_t*);
+		return NULL;
 	}
 	else
 	{	/* fast, but susceptible to bad data */
@@ -258,7 +257,7 @@ static Vmalloc_t* regionof(void* addr)
 		for(k = 0; k < Regnum; ++k)
 			if(Region[k] && Region[k]->data == vd)
 				return Region[k];
-		return NIL(Vmalloc_t*);
+		return NULL;
 	}
 }
 
@@ -275,12 +274,12 @@ static void addfreelist(Regfree_t* data)
 
 	for(k = 0;; ASOLOOP(k) )
 	{	data->next = head = Regfree;
-		if(asocasptr(&Regfree, head, data) == (void*)head )
+		if(asocasptr(&Regfree, head, data) == head )
 			return;
 	}
 }
 
-static void clrfreelist()
+static void clrfreelist(void)
 {
 	Regfree_t	*list, *next;
 	Vmalloc_t	*vm;
@@ -288,14 +287,14 @@ static void clrfreelist()
 	if(!(list = Regfree) )
 		return; /* nothing to do */
 
-	if(asocasptr(&Regfree, list, NIL(Regfree_t*)) != list )
+	if(asocasptr(&Regfree, list, NULL) != list )
 		return; /* somebody else is doing it */
 
 	for(; list; list = next)
 	{	next = list->next;
-		if(vm = regionof((void*)list))
+		if(vm = regionof(list))
 		{	if(asocasint(&vm->data->lock, 0, 1) == 0) /* can free this now */
-			{	(void)(*vm->meth.freef)(vm, (void*)list, 1);
+			{	(void)(*vm->meth.freef)(vm, list, 1);
 				vm->data->lock = 0;
 			}
 			else	addfreelist(list); /* ah well, back in the queue */
@@ -368,12 +367,12 @@ static Vmalloc_t* getregion(int* local)
 			Regdisc.disc.exceptf = regexcept;
 		}
 
-		/**/ASSERT(Region[p] == NIL(Vmalloc_t*));
-		if((vm = vmopen(&Regdisc.disc, Vmbest, VM_SHARE)) != NIL(Vmalloc_t*) )
+		/**/ASSERT(Region[p] == NULL);
+		if((vm = vmopen(&Regdisc.disc, Vmbest, VM_SHARE)) != NULL )
 		{	vm->data->lock = 1; /* lock new region now */
 			*local = 1;
 			asoincint(&Regopen);
-			return (Region[p] = vm);
+			return Region[p] = vm;
 		}
 		else	Region[p] = Vmregion; /* better than nothing */
 	}
@@ -391,7 +390,7 @@ static Vmalloc_t* getregion(int* local)
 	return vm;
 }
 
-extern void* calloc(reg size_t n_obj, reg size_t s_obj)
+extern void* calloc(size_t n_obj, size_t s_obj)
 {
 	void		*addr;
 	Vmalloc_t	*vm;
@@ -399,7 +398,7 @@ extern void* calloc(reg size_t n_obj, reg size_t s_obj)
 	VMFLINIT();
 
 	vm = getregion(&local);
-	addr = (*vm->meth.resizef)(vm, NIL(void*), n_obj*s_obj, VM_RSZERO, local);
+	addr = (*vm->meth.resizef)(vm, NULL, n_obj*s_obj, VM_RSZERO, local);
 	if(local)
 	{	/**/ASSERT(vm->data->lock == 1);
 		vm->data->lock = 0;
@@ -407,7 +406,7 @@ extern void* calloc(reg size_t n_obj, reg size_t s_obj)
 	return VMRECORD(addr);
 }
 
-extern void* malloc(reg size_t size)
+extern void* malloc(size_t size)
 {
 	void		*addr;
 	Vmalloc_t	*vm;
@@ -423,8 +422,8 @@ extern void* malloc(reg size_t size)
 	return VMRECORD(addr);
 }
 
-extern void* realloc(reg void*	data,	/* block to be reallocated	*/
-		     reg size_t	size)	/* new size			*/
+extern void* realloc(void*	data,	/* block to be reallocated	*/
+		     size_t	size)	/* new size			*/
 {
 	ssize_t		copy;
 	void		*addr;
@@ -462,12 +461,12 @@ extern void* realloc(reg void*	data,	/* block to be reallocated	*/
 		extern void*	realloc(void*, size_t);
 		return realloc(data, size);
 #else 
-		return NIL(void*);
+		return NULL;
 #endif
 	}
 }
 
-extern void free(reg void* data)
+extern void free(void* data)
 {
 	Vmalloc_t	*vm;
 	VMFLINIT();
@@ -492,12 +491,12 @@ extern void free(reg void* data)
 	}
 }
 
-extern void cfree(reg void* data)
+extern void cfree(void* data)
 {
 	free(data);
 }
 
-extern void* memalign(reg size_t align, reg size_t size)
+extern void* memalign(size_t align, size_t size)
 {
 	void		*addr;
 	Vmalloc_t	*vm;
@@ -515,7 +514,7 @@ extern void* memalign(reg size_t align, reg size_t size)
 	return VMRECORD(addr);
 }
 
-extern int posix_memalign(reg void **memptr, reg size_t align, reg size_t size)
+extern int posix_memalign(void **memptr, size_t align, size_t size)
 {
 	void	*mem;
 
@@ -529,7 +528,7 @@ extern int posix_memalign(reg void **memptr, reg size_t align, reg size_t size)
 	return 0;
 }
 
-extern void* valloc(reg size_t size)
+extern void* valloc(size_t size)
 {
 	VMFLINIT();
 
@@ -537,30 +536,13 @@ extern void* valloc(reg size_t size)
 	return VMRECORD(memalign(_Vmpagesize, size));
 }
 
-extern void* pvalloc(reg size_t size)
+extern void* pvalloc(size_t size)
 {
 	VMFLINIT();
 
 	GETPAGESIZE(_Vmpagesize);
 	return VMRECORD(memalign(_Vmpagesize, ROUND(size,_Vmpagesize)) );
 }
-
-#if !_PACKAGE_ast
-char* strdup(const char* s)
-{
-	char	*ns;
-	size_t	n;
-
-	if(!s)
-		return NIL(char*);
-	else
-	{	n = strlen(s);
-		if((ns = malloc(n+1)) )
-			memcpy(ns,s,n+1);
-		return ns;
-	}
-}
-#endif /* _PACKAGE_ast */
 
 #if !_lib_alloca || _mal_alloca
 #ifndef _stk_down
@@ -614,7 +596,7 @@ extern void* alloca(size_t size)
 	f->head.head.next = Frame;
 	Frame = f;
 
-	return (void*)f->data;
+	return f->data;
 }
 #endif /*!_lib_alloca || _mal_alloca*/
 
@@ -754,7 +736,6 @@ extern void*	__libc_valloc(size_t n) { return valloc(n); }
 
 #include	<malloc.h>
 
-typedef struct mallinfo Mallinfo_t;
 typedef struct mstats Mstats_t;
 
 #if _lib_mallopt
@@ -764,24 +745,6 @@ extern int mallopt(int cmd, int value)
 	return 0;
 }
 #endif /*_lib_mallopt*/
-
-#if _lib_mallinfo && _mem_arena_mallinfo
-extern Mallinfo_t mallinfo(void)
-{
-	Vmstat_t	sb;
-	Mallinfo_t	mi;
-
-	VMFLINIT();
-	memset(&mi,0,sizeof(mi));
-	if(vmstat(Vmregion,&sb) >= 0)
-	{	mi.arena = sb.extent;
-		mi.ordblks = sb.n_busy+sb.n_free;
-		mi.uordblks = sb.s_busy;
-		mi.fordblks = sb.s_free;
-	}
-	return mi;
-}
-#endif /* _lib_mallinfo */
 
 #if _lib_mstats && _mem_bytes_total_mstats
 extern Mstats_t mstats(void)
@@ -835,7 +798,6 @@ extern void*	_ast_valloc(size_t n) { return valloc(n); }
 
 #if _hdr_malloc
 
-#undef	mallinfo
 #undef	mallopt
 #undef	mstats
 
@@ -849,15 +811,10 @@ extern void*	_ast_valloc(size_t n) { return valloc(n); }
 
 #include	<malloc.h>
 
-typedef struct mallinfo Mallinfo_t;
 typedef struct mstats Mstats_t;
 
 #if _lib_mallopt
 extern int	_ast_mallopt(int cmd, int value) { return mallopt(cmd, value); }
-#endif
-
-#if _lib_mallinfo && _mem_arena_mallinfo
-extern Mallinfo_t	_ast_mallinfo(void) { return mallinfo(); }
 #endif
 
 #if _lib_mstats && _mem_bytes_total_mstats
@@ -901,12 +858,12 @@ static char* insertpid(char* begs, char* ends)
 	char*	s;
 
 	if((pid = getpid()) < 0)
-		return NIL(char*);
+		return NULL;
 
 	s = ends;
 	do
 	{	if(s == begs)
-			return NIL(char*);
+			return NULL;
 		*--s = '0' + pid%10;
 	} while((pid /= 10) > 0);
 	while(s < ends)
@@ -978,20 +935,14 @@ static int createfile(char* file)
 		fd = dup((int)atou(&file));
 	else if (*file)
 	{
-#if _PACKAGE_ast
 		fd = open(file, O_WRONLY|O_CREAT|O_TRUNC, CREAT_MODE);
-#else
-		fd = creat(file, CREAT_MODE);
-#endif
 		fd = _vmfd(fd);
 	}
 	else
 		return -1;
-#if _PACKAGE_ast
 #ifdef FD_CLOEXEC
 	if (fd >= 0)
 		fcntl(fd, F_SETFD, FD_CLOEXEC);
-#endif
 #endif
 	return fd;
 }

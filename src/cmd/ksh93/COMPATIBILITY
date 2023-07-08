@@ -1,4 +1,4 @@
-		ksh 93u+m/1.0.4 vs. ksh 93u+
+		ksh 93u+m/1.0.5 vs. ksh 93u+
 
 The following is a list of changes between ksh 93u+ 2012-08-01 and the new
 ksh 93u+m reboot that could cause incompatibilities in rare corner cases.
@@ -91,6 +91,8 @@ For more details, see the NEWS file and for complete details, see the git log.
 14.	The DEBUG trap has reverted to pre-93t behavior. It is now once again
 	reset like other traps upon entering a subshell or ksh-style function,
 	as documented, and it is no longer prone to crash or get corrupted.
+	A new --functrace shell option has been added that, when turned on,
+	makes subshells and functions correctly inherit the DEBUG trap.
 
 15.	'command -x' now always runs an external command, bypassing built-ins.
 
@@ -183,6 +185,12 @@ For more details, see the NEWS file and for complete details, see the git log.
 	and '-' in bracket expressions in shell glob patterns, e.g., the glob
 	pattern ["!a-z"] now matches !, a, - or z and is no longer misparsed
 	as [!a-z]. This restores compatibility with ksh88 and non-ksh shells.
+
+35.	In the ${parameter/pattern/string} search-and-replace expansion, an
+	anchored empty pattern will now match the beginning or the end of the
+	string, so that ${parameter/#/string} will prefix the string to the
+	parameter value and ${parameter/%/string} will append it. Previously,
+	these operations were no-ops (equivalent to ${parameter}).
 
 ____________________________________________________________________________
 

@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -29,10 +29,10 @@
 */
 
 int _sffilbuf(Sfio_t*	f,	/* fill the read buffer of this stream */
-	      reg int	n)	/* see above */
+	      int	n)	/* see above */
 {
-	reg ssize_t	r;
-	reg int		first, local, rcrv, rc, justseek;
+	ssize_t		r;
+	int		first, local, rcrv, rc, justseek;
 
 	if(!f)
 		return -1;

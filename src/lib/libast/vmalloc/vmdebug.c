@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -14,6 +14,7 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                   Phong Vo <kpv@research.att.com>                    *
 *                  Martijn Dekker <martijn@inlv.org>                   *
+*            Johnothan King <johnothanking@protonmail.com>             *
 *                                                                      *
 ***********************************************************************/
 
@@ -48,7 +49,7 @@ static void*	Dbwatch[S_WATCH];
 
 static int Dbinit = 0;
 #define DBINIT()	(Dbinit ? 0 : (dbinit(), Dbinit=1) )
-static void dbinit()
+static void dbinit(void)
 {	int	fd;	
 	if((fd = vmtrace(-1)) >= 0)
 		vmtrace(fd);
@@ -66,7 +67,7 @@ int vmdebug(int fd)
 /* just an entry point to make it easy to set break point */
 static void vmdbwarn(Vmalloc_t* vm, char* mesg, int n)
 {
-	reg Vmdata_t*	vd = vm->data;
+	Vmdata_t*	vd = vm->data;
 
 	write(Dbfd,mesg,n);
 	if(vd->mode&VM_DBABORT)
@@ -160,7 +161,7 @@ static void dbwarn(Vmalloc_t*	vm,	/* region holding the block	*/
 static void dbwatch(Vmalloc_t* vm, void* data,
 		    char* file, int line, void* func, int type)
 {
-	reg int		n;
+	int		n;
 
 	for(n = Dbnwatch; n >= 0; --n)
 	{	if(Dbwatch[n] == data)
@@ -176,16 +177,16 @@ static void dbsetinfo(Vmuchar_t*	data,	/* real address not the one from Vmbest	*
 		      char*		file,	/* file where the request came from	*/
 		      int		line)	/* and line number			*/
 {
-	reg Vmuchar_t	*begp, *endp;
-	reg Dbfile_t	*last, *db;
+	Vmuchar_t	*begp, *endp;
+	Dbfile_t	*last, *db;
 
 	DBINIT();
 
 	/* find the file structure */
 	if(!file || !file[0])
-		db = NIL(Dbfile_t*);
+		db = NULL;
 	else
-	{	for(last = NIL(Dbfile_t*), db = Dbfile; db; last = db, db = db->next)
+	{	for(last = NULL, db = Dbfile; db; last = db, db = db->next)
 			if(strcmp(db->file,file) == 0)
 				break;
 		if(!db)
@@ -203,7 +204,7 @@ static void dbsetinfo(Vmuchar_t*	data,	/* real address not the one from Vmbest	*
 		}
 	}
 
-	DBSETFL(data,(db ? db->file : NIL(char*)),line);
+	DBSETFL(data,(db ? db->file : NULL),line);
 	DBSIZE(data) = size;
 	DBSEG(data)  = SEG(DBBLOCK(data));
 
@@ -221,15 +222,15 @@ static void dbsetinfo(Vmuchar_t*	data,	/* real address not the one from Vmbest	*
 */
 static long dbaddr(Vmalloc_t* vm, void* addr, int local)
 {
-	reg Block_t	*b, *endb;
-	reg Seg_t	*seg;
-	reg Vmuchar_t	*data;
-	reg long	offset = -1L;
-	reg Vmdata_t	*vd = vm->data;
+	Block_t	*b, *endb;
+	Seg_t	*seg;
+	Vmuchar_t	*data;
+	long	offset = -1L;
+	Vmdata_t	*vd = vm->data;
 
 	SETLOCK(vm, local);
 
-	b = endb = NIL(Block_t*);
+	b = endb = NULL;
 	for(seg = vd->seg; seg; seg = seg->next)
 	{	b = SEGBLOCK(seg);
 		endb = (Block_t*)(seg->baddr - sizeof(Head_t));
@@ -288,7 +289,7 @@ static long dbsize(Vmalloc_t* vm, void* addr, int local)
 		   (Vmuchar_t*)addr >= (Vmuchar_t*)endb)
 			continue;
 		while(b < endb)
-		{	if(addr == (void*)DB2DEBUG(DATA(b)))
+		{	if(addr == DB2DEBUG(DATA(b)))
 			{	if(ISBUSY(SIZE(b)) && !ISJUNK(SIZE(b)) )
 					size = (long)DBSIZE(addr);
 				goto done;
@@ -323,7 +324,7 @@ static void* dballoc(Vmalloc_t* vm, size_t size, int local)
 		s = sizeof(Body_t);
 
 	if(!(data = (Vmuchar_t*)KPVALLOC(vm,s,(*(Vmbest->allocf))) ) )
-	{	dbwarn(vm,NIL(Vmuchar_t*),DB_ALLOC,file,line,func,DB_ALLOC);
+	{	dbwarn(vm,NULL,DB_ALLOC,file,line,func,DB_ALLOC);
 		goto done;
 	}
 
@@ -332,7 +333,7 @@ static void* dballoc(Vmalloc_t* vm, size_t size, int local)
 
 	if((vd->mode&VM_TRACE) && _Vmtrace)
 	{	vm->file = file; vm->line = line; vm->func = func;
-		(*_Vmtrace)(vm,NIL(Vmuchar_t*),data,size,0);
+		(*_Vmtrace)(vm,NULL,data,size,0);
 	}
 
 	if(Dbnwatch > 0 )
@@ -341,7 +342,7 @@ static void* dballoc(Vmalloc_t* vm, size_t size, int local)
 done:
 	CLRLOCK(vm, local);
 
-	return (void*)data;
+	return data;
 }
 
 
@@ -373,7 +374,7 @@ static int dbfree(Vmalloc_t* vm, void* data, int local )
 
 		if((vd->mode&VM_TRACE) && _Vmtrace)
 		{	vm->file = file; vm->line = line; vm->func = func;
-			(*_Vmtrace)(vm,(Vmuchar_t*)data,NIL(Vmuchar_t*),DBSIZE(data),0);
+			(*_Vmtrace)(vm,(Vmuchar_t*)data,NULL,DBSIZE(data),0);
 		}
 
 		/* clear free space */
@@ -382,7 +383,7 @@ static int dbfree(Vmalloc_t* vm, void* data, int local )
 		while(ip < endip)
 			*ip++ = 0;
 
-		rv = KPVFREE((vm), (void*)DB2BEST(data), (*Vmbest->freef));
+		rv = KPVFREE((vm), DB2BEST(data), (*Vmbest->freef));
 	}
 
 	CLRLOCK(vm, local);
@@ -392,7 +393,7 @@ static int dbfree(Vmalloc_t* vm, void* data, int local )
 /*	Resizing an existing block */
 static void* dbresize(Vmalloc_t*	vm,	/* region allocating from	*/
 		      void*		addr,	/* old block of data		*/
-		      reg size_t	size,	/* new size			*/
+		      size_t	size,	/* new size			*/
 		      int		type,	/* !=0 for movable, >0 for copy	*/
 		      int		local)
 {
@@ -409,13 +410,13 @@ static void* dbresize(Vmalloc_t*	vm,	/* region allocating from	*/
 	{	vm->file = file; vm->line = line;
 		data = (Vmuchar_t*)dballoc(vm, size, local);
 		if(data && (type&VM_RSZERO) )
-			memset((void*)data, 0, size);
+			memset(data, 0, size);
 		return data;
 	}
 	if(size == 0)
 	{	vm->file = file; vm->line = line;
 		(void)dbfree(vm, addr, local);
-		return NIL(void*);
+		return NULL;
 	}
 
 	SETLOCK(vm, local);
@@ -425,7 +426,7 @@ static void* dbresize(Vmalloc_t*	vm,	/* region allocating from	*/
 
 	if((offset = KPVADDR(vm,addr,dbaddr)) != 0)
 	{	dbwarn(vm,(Vmuchar_t*)addr,offset == -1L ? 0 : 1,file,line,func,DB_RESIZE);
-		data = NIL(Vmuchar_t*);
+		data = NULL;
 	}
 	else
 	{	if(Dbnwatch > 0)
@@ -441,10 +442,10 @@ static void* dbresize(Vmalloc_t*	vm,	/* region allocating from	*/
 		s = ROUND(size,ALIGN) + DB_EXTRA;
 		if(s < sizeof(Body_t))
 			s = sizeof(Body_t);
-		data = (Vmuchar_t*)KPVRESIZE(vm,(void*)data,s,
+		data = (Vmuchar_t*)KPVRESIZE(vm,data,s,
 					 (type&~VM_RSZERO),(*(Vmbest->resizef)) );
 		if(!data) /* failed, reset data for old block */
-		{	dbwarn(vm,NIL(Vmuchar_t*),DB_ALLOC,file,line,func,DB_RESIZE);
+		{	dbwarn(vm,NULL,DB_ALLOC,file,line,func,DB_RESIZE);
 			dbsetinfo((Vmuchar_t*)addr,oldsize,oldfile,oldline);
 		}
 		else
@@ -467,7 +468,7 @@ static void* dbresize(Vmalloc_t*	vm,	/* region allocating from	*/
 
 	CLRLOCK(vm, local);
 
-	return (void*)data;
+	return data;
 }
 
 /* compact any residual free space */
@@ -479,14 +480,14 @@ static int dbcompact(Vmalloc_t* vm, int local)
 /* check for memory overwrites over all live blocks */
 int vmdbcheck(Vmalloc_t* vm)
 {
-	reg Block_t	*b, *endb;
-	reg Seg_t*	seg;
+	Block_t	*b, *endb;
+	Seg_t*	seg;
 	int		rv;
-	reg Vmdata_t*	vd = vm->data;
+	Vmdata_t*	vd = vm->data;
 
 	/* check the meta-data of this region */
 	if(vd->mode & (VM_MTDEBUG|VM_MTBEST|VM_MTPROFILE))
-	{	if(_vmbestcheck(vd, NIL(Block_t*)) < 0)
+	{	if(_vmbestcheck(vd, NULL) < 0)
 			return -1;
 		if(!(vd->mode&VM_MTDEBUG) )
 			return 0;
@@ -498,7 +499,7 @@ int vmdbcheck(Vmalloc_t* vm)
 	{	b = SEGBLOCK(seg);
 		endb = (Block_t*)(seg->baddr - sizeof(Head_t));
 		while(b < endb)
-		{	reg Vmuchar_t	*data, *begp, *endp;
+		{	Vmuchar_t	*data, *begp, *endp;
 
 			if(ISJUNK(SIZE(b)) || !ISBUSY(SIZE(b)))
 				goto next;
@@ -535,10 +536,10 @@ int vmdbcheck(Vmalloc_t* vm)
 /* set/delete an address to watch */
 void* vmdbwatch(void* addr)
 {
-	reg int		n;
-	reg void*	out;
+	int		n;
+	void*	out;
 
-	out = NIL(void*);
+	out = NULL;
 	if(!addr)
 		Dbnwatch = 0;
 	else
@@ -571,7 +572,7 @@ static void* dbalign(Vmalloc_t* vm, size_t size, size_t align, int local)
 	VMFLF(vm,file,line,func);
 
 	if(size <= 0 || align <= 0)
-		return NIL(void*);
+		return NULL;
 
 	SETLOCK(vm, local);
 
@@ -584,13 +585,13 @@ static void* dbalign(Vmalloc_t* vm, size_t size, size_t align, int local)
 
 		if((vd->mode&VM_TRACE) && _Vmtrace)
 		{	vm->file = file; vm->line = line; vm->func = func;
-			(*_Vmtrace)(vm,NIL(Vmuchar_t*),data,size,align);
+			(*_Vmtrace)(vm,NULL,data,size,align);
 		}
 	}
 
 	CLRLOCK(vm, local);
 
-	return (void*)data;
+	return data;
 }
 
 /* print statistics of region vm. If vm is NULL, use Vmregion */

@@ -1,30 +1,14 @@
-Announcing: KornShell 93u+m/1.0.4
+Announcing: KornShell 93u+m/1.0.6
 https://github.com/ksh93/ksh
 
-This is the fourth bugfix release in the ksh 93u+m/1.0 series. Many thanks
-to all contributors for their hard work! Compared to an unpatched ksh 93u+
-2012-08-01, this release has over a thousand bugs fixed. It incorporates
-a fair number of enhancements as well.
+Sooner than expected after the fifth, here is the sixth ksh 93u+m/1.0 bugfix
+release. 93u+m/1.0.5 brought a wide range of bugfixes and robustness
+enhancements, but also introduced a serious regression in pathname
+expansion, so that previous release is WITHDRAWN and should not be used.
 
-### CONTRIBUTORS ###
-
-Work on ksh 93u+m started in May 2020.
-Main developers: Martijn Dekker, Johnothan King, hyenias
-
-Direct contributors: Andy Fiddaman, Anuradha Weeraman, atheik, Chase,
-Govind Kamat, Harald van Dijk, K. Eugene Carlson, Lev Kujawski, Marc
-Wilson, Ryan Schmidt, Sterling Jensen, Trey Valenta, Vincent Mihalkovic
-
-Also includes backported contributions by: David Korn, Glenn Fowler,
-Lefteris Koutsofios, Siteshwar Vashisht, Kurtis Rader, Roland Mainz,
-Finnbarr P. Murphy, Lijo George, OpenSUSE ksh 93u+ patch authors, Red Hat
-ksh 93u+ path authors, Solaris ksh 93u+ patch authors, Debian ksh 93u+
-patch authors, Apple ksh 93u+ patch authors, Graphviz maintainers
-
-Many fixes have also been backported from the AT&T 93v- beta as well as
-the former ksh2020 project lead by Kurtis Rader and Siteshwar Vashisht;
-we appreciate and benefit from their work. Many thanks also to Siteshwar
-for graciously donating his 'ksh93' GitHub organisation account!
+Further below is an overview of the main changes. For greater detail, see
+the NEWS file in the distribution. For complete detail, see the git(1)
+commit log, which has full documentation of every significant change.
 
 ### HOW TO GET IT ###
 
@@ -32,7 +16,48 @@ Please download the source code tarball from our GitHub releases page:
 https://github.com/ksh93/ksh/releases
 To build, follow the instructions in README.md or src/cmd/ksh93/README.
 
-Or ask your distribution package manager to upgrade ksh93 to this version.
+Or ask your distribution package manager to upgrade ksh to this version.
+
+### ABOUT KSH ###
+
+KornShell (ksh) is a full-featured and very fast shell script interpreter
+and interactive command shell with a distinguished lineage: it is a direct
+descendant of the Bourne shell and, like its ancestor, was developed at
+AT&T, the birthplace of UNIX. ksh has been open source since 2000.
+
+But when AT&T terminated development in 2020, ksh was left buggy and
+unreliable. ksh 93u+m aims to fix this situation whilst maintaining and
+growing the tradition. For now, we are focusing mostly on fixing bugs and
+egregious flaws but we also prioritise backward compatibility, performance,
+portability, and occasionally adding a feature. Work on ksh 93u+m started in
+May 2020, based on the last AT&T stable release, ksh 93u+.
+
+Unique ksh features include discipline functions (every variable expansion
+or assignment can trigger a shell function call determining its value),
+static scoping of local variables in functions, the ability to define your
+own data types, customisable tilde expansion (new in 93u+m), a shell option
+for file system case (in)sensitivity detection for pathname expansion and
+file name completion (new in 93u+m), and much more.
+
+### CONTRIBUTORS ###
+
+Main ksh 93u+m developers: Martijn Dekker, Johnothan King, hyenias
+
+Direct contributors: Andy Fiddaman, Anuradha Weeraman, atheik, Chase,
+Cy Schubert, Govind Kamat, Harald van Dijk, K. Eugene Carlson, Lev
+Kujawski, Marc Wilson, Phi, Ryan Schmidt, rymrg, Sterling Jensen,
+Trey Valenta, Vincent Mihalkovic
+
+Also includes backported contributions by: David Korn, Glenn Fowler,
+Lefteris Koutsofios, Siteshwar Vashisht, Kurtis Rader, Roland Mainz,
+Finnbarr P. Murphy, Lijo George, OpenSUSE ksh 93u+ patch authors, Red Hat
+ksh 93u+ path authors, Solaris ksh 93u+ patch authors, Debian ksh 93u+
+patch authors, Apple ksh 93u+ patch authors, Graphviz maintainers
+
+Many fixes have also been backported from the AT&T 93v- beta as well as the
+former AT&T ksh2020 project lead by Kurtis Rader and Siteshwar Vashisht; we
+appreciate and benefit from their work. Many thanks also to Siteshwar for
+graciously donating his 'ksh93' GitHub organisation account!
 
 ### HOW TO GET INVOLVED ###
 
@@ -40,9 +65,52 @@ To report a bug, please open an issue at our GitHub page (see above).
 Alternatively, email me at martijn@inlv.org with your report.
 To get involved in development, read the brief policy information in
 README.md and then jump right in with a pull request or email a patch.
-See the TODO file in the top-level directory for a to-do list.
+Feel free to use Discussions to introduce yourself to the community.
 
-### MAIN CHANGES between ksh 93u+m 1.0.3 and 1.0.4 ###
+You can also join the mailing list/Google group at:
+https://groups.google.com/g/korn-shell
+
+### MAIN CHANGES between ksh 93u+m/1.0.5 and 93u+m/1.0.6 ###
+
+- Fixed a serious regression in pathname expansion where quoted wildcard
+  characters were incorrectly expanded if a pattern contains both a brace
+  expansion and a variable expansion.
+- Fixed a bug where the command to launch a full-screen editor (^X^E in
+  emacs and 'v' in vi) could cause the wrong command line to be edited
+  if two shell sessions share a .sh_history file.
+
+### MAIN CHANGES between ksh 93u+m/1.0.4 and 93u+m/1.0.5 ###
+
+- Fixed various bugs causing crashes.
+- Fixed many bugs in the emacs and vi line editors, in command completion,
+  and in file name completion.
+- Fixed various bugs in the handling of quotes, backslash escapes and braces
+  when processing shell glob patterns (e.g. in pathname expansion and 'case').
+- ksh now throws a panic and exits if a read error (such as an I/O error)
+  occurs while trying to read the next command(s) from a running script.
+- Fixed many bugs in 'printf' and 'print -f' built-in commands, including:
+  . Multiple bugs causing incorrect output for relative date specifications,
+    e.g., printf %T\\n 'exactly 20 months ago' now outputs a correct result.
+  . More printf bugs with mix and match of % and %x$.
+  . A data corruption bug when using %B with 'printf -v varname'.
+  . A bug causing double evaluation of arithmetic expressions.
+- Fixed a bug where 'unset -f commandname', executed in a subshell, hides
+  any built-in command by the same name for the duration of that subshell.
+- Fixed ${var/#/string} and ${var/%/string} (with anchored empty pattern)
+  to work as on mksh, bash and zsh; these are no longer ineffective.
+- Fixed incorrect result of array slicing ${array[@]:offset:length} where
+  'length' is a nested expansion involving an array.
+- Command names can now end in ':' as they can on other shells.
+- Fixed a spurious syntax error in compound assignments upon encountering a
+  pair of repeated opening parentheses '(('.
+- Fixed spurious syntax error in ${parameter:offset:length}: the arithmetic
+  expressions 'offset' and 'length' may now contain the operators ( ) & |.
+- Fixed a parsing bug in the declaration of .sh.math.* arithmetic functions.
+- Fixed nameref self-reference loop detection for more than two namerefs.
+- Several improvements to the POSIX compatibility mode.
+- Many more minor and/or esoteric bugfixes.
+
+### MAIN CHANGES between ksh 93u+m/1.0.3 and 93u+m/1.0.4 ###
 
 - Fixed multiple scoping-related bugs in the += additive assignment operator.
 - A number of crashing bugs have been fixed.
@@ -64,7 +132,7 @@ See the TODO file in the top-level directory for a to-do list.
 - Backported support for 'print -u p' from ksh 93v- for compatibility with
   scripts written for 93v-/ksh2020 (this is equivalent to 'print -p').
 
-### MAIN CHANGES between ksh 93u+m 1.0.2 and 1.0.3 ###
+### MAIN CHANGES between ksh 93u+m/1.0.2 and 93u+m/1.0.3 ###
 
 This point release fixes the following:
 - An old bug in history expansion (set -H) where any use of the history
@@ -78,7 +146,7 @@ This point release fixes the following:
 - A bug that caused ksh in the vi editor mode to crash or produce invalid
   completions if ESC = was used at the beginning of a line.
 
-### MAIN CHANGES between ksh 93u+m 1.0.1 and 1.0.2 ###
+### MAIN CHANGES between ksh 93u+m/1.0.1 and 93u+m/1.0.2 ###
 
 This bugfix release fixes the interactive shell crashing when one of the
 predefined aliases (currently 'history' and 'r') is redefined, whether from
@@ -87,7 +155,7 @@ a profile/kshrc script or manually. This crash occurred in two scenarios:
 2. when redefining a predefined alias and then executing a shell script that
    does not begin with a #! path.
 
-### MAIN CHANGES between ksh 93u+m 1.0.0 and 1.0.1 ###
+### MAIN CHANGES between ksh 93u+m/1.0.0 and 93u+m/1.0.1 ###
 
 This is an urgent bugfix release that removes an incorrect exec
 optimization that was capable of terminating the execution of scripts
@@ -95,7 +163,7 @@ prematurely in certain corner cases. It is known to make the build scripts
 of GNU binutils produce corrupted results if ksh is used as /bin/sh.
 See https://github.com/ksh93/ksh/issues/507 for more information.
 
-### MAIN CHANGES between ksh 93u+ 2012-08-01 and 93u+m/1.0.0 ###
+### MAIN CHANGES between ksh 93u+ and 93u+m/1.0.0 ###
 
 Roughly a thousand bugs have been fixed, including many serious/critical
 bugs. See the NEWS file for more information, and the git commit log for

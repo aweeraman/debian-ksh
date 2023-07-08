@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -39,17 +39,17 @@
  */
 
 Time_t
-tmxtime(register Tm_t* tm, int west)
+tmxtime(Tm_t* tm, int west)
 {
-	register Time_t		t;
-	register Tm_leap_t*	lp;
-	register int32_t	y;
-	int			n;
-	int			sec;
-	time_t			now;
-	struct tm*		tl;
-	Tm_t*			to;
-	Tm_t			ts;
+	Time_t		t;
+	Tm_leap_t*	lp;
+	int32_t		y;
+	int		n;
+	int		sec;
+	time_t		now;
+	struct tm*	tl;
+	Tm_t*		to;
+	Tm_t		ts;
 
 	ts = *tm;
 	to = tm;

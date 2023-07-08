@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -184,7 +184,10 @@ extern int		nv_arraysettype(Namval_t*, Namval_t*,const char*,int);
 extern int		nv_aimax(Namval_t*);
 extern int		nv_atypeindex(Namval_t*, const char*);
 extern void		nv_setlist(struct argnod*, int, Namval_t*);
-extern void 		nv_optimize(Namval_t*);
+#if SHOPT_OPTIMIZE
+    extern void		nv_optimize(Namval_t*);
+    extern void		nv_optimize_clear(Namval_t*);
+#endif /* SHOPT_OPTIMIZE */
 extern void		nv_outname(Sfio_t*,char*, int);
 extern void 		nv_unref(Namval_t*);
 extern void		_nv_unset(Namval_t*,int);
@@ -217,6 +220,9 @@ extern Namfun_t		*nv_mapchar(Namval_t*, const char*);
 
 extern const Namdisc_t	RESTRICTED_disc;
 extern const Namdisc_t	ENUM_disc;
+#if SHOPT_OPTIMIZE
+extern const Namdisc_t	OPTIMIZE_disc;
+#endif /* SHOPT_OPTIMIZE */
 extern char		nv_local;
 extern Dtdisc_t		_Nvdisc;
 extern const char	*nv_discnames[];
@@ -246,7 +252,6 @@ extern const char	e_selfref[];
 extern const char	e_staticfun[];
 extern const char	e_envmarker[];
 extern const char	e_badlocale[];
-extern const char	e_loop[];
 extern const char	e_redef[];
 extern const char	e_required[];
 extern const char	e_badappend[];

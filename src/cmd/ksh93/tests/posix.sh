@@ -1,7 +1,7 @@
 ########################################################################
 #                                                                      #
 #              This file is part of the ksh 93u+m package              #
-#          Copyright (c) 2022-2022 Contributors to ksh 93u+m           #
+#          Copyright (c) 2022-2023 Contributors to ksh 93u+m           #
 #                    <https://github.com/ksh93/ksh>                    #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 2.0                  #
@@ -63,8 +63,8 @@ fi
 # Furthermore, the posix option is automatically turned on upon invocation if the shell is invoked as sh or rsh,
 # or if -o posix or --posix is specified on the shell invocation command line, or when executing scripts
 # without a #! path with this option active in the invoking shell.
-# In that case, the invoked shell will not set the preset aliases even if interactive, and will not import
-# type attributes for variables (such as integer or left/right justify) from the environment.
+# In that case, the invoked shell will not import type attributes for variables
+# (such as integer or left/right justify) from the environment.
 set --noposix
 ln -s "$SHELL" sh
 ln -s "$SHELL" rsh
@@ -227,6 +227,20 @@ got=$(PATH=.:$PATH; source scrunction)
 got=$(set --noposix; PATH=.:$PATH; source scrunction)
 [[ $got == "$exp" ]] || err_exit "'source' does not find ksh function in --noposix mode" \
 	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# disables the recognition of unexpanded shell arithmetic expressions for the numerical
+# conversion specifiers of the printf built-in command, causing them to print a warning for
+# operands that are not valid decimal, 0x-prefixed hexadecimal or 0-prefixed octal numbers;
+for c in o x X u U d D i a e f g A E F G
+do	printf "%$c" 1+1 2>/dev/null && err_exit "POSIX printf %$c fails to warn on bad number"
+	print -f "%$c" 1+1 2>/dev/null || err_exit "non-POSIX print -f %$c fails to recognise arithmetic expression"
+done >/dev/null
+for c in o x X u U d D i
+do	printf "%$c" 1.5 2>/dev/null && err_exit "POSIX printf %$c fails to warn on floating point operand"
+done >/dev/null
+for c in a e f g A E F G
+do	printf "%$c" 1.5 2>/dev/null || err_exit "POSIX printf %$c fails to accept floating point operand"
+done >/dev/null
 
 # changes the test/[ built-in command to make its deprecated expr1 -a expr2 and expr1 -o expr2 operators work
 # even if expr1 equals "!" or "(" (which means the nonstandard unary -a file and -o option operators cannot

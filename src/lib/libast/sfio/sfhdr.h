@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -41,22 +41,9 @@
 #include	"FEATURE/sfio"
 #include	"FEATURE/mmap"
 
-/* define va_list, etc. before including sfio_t.h (sfio.h) */
-#if !_PACKAGE_ast
-
-#if _hdr_stdarg
-#include	<stdarg.h>
-#else
-#include	<varargs.h>
-#endif
-#include	"FEATURE/common"
-#endif /* !_PACKAGE_ast */
-
 #include	"sfio_t.h"
 
 /* file system info */
-#if _PACKAGE_ast
-
 #include	<ast.h>
 #include	<ast_time.h>
 #include	<ast_tty.h>
@@ -78,95 +65,6 @@
 #define _lib_locale	1
 #endif
 
-#else /*!_PACKAGE_ast*/
-
-/* when building the binary compatibility package, a number of header files
-   are not needed and they may get in the way so we remove them here.
-*/
-#if _SFBINARY_H
-#undef  _hdr_time
-#undef  _sys_time
-#undef  _sys_stat
-#undef  _hdr_stat
-#undef  _hdr_filio
-#undef  _sys_filio
-#undef  _lib_poll
-#undef  _stream_peek
-#undef  _socket_peek
-#undef  _hdr_vfork
-#undef  _sys_vfork
-#undef  _lib_vfork
-#undef  _hdr_values
-#undef  _hdr_math
-#undef  _sys_mman
-#undef  _hdr_mman
-#undef  _sys_ioctl
-#endif
-
-#if _hdr_stdlib
-#include	<stdlib.h>
-#endif
-
-#if _hdr_string
-#include	<string.h>
-#endif
-
-#if _hdr_time
-#include	<time.h>
-#endif
-#if _sys_time
-#include	<sys/time.h>
-#endif
-
-#if _sys_stat
-#include	<sys/stat.h>
-#else
-#if _hdr_stat
-#include	<stat.h>
-#ifndef _sys_stat
-#define	_sys_stat	1
-#endif
-#endif
-#endif /*_sys_stat*/
-
-#ifndef _sys_stat
-#define _sys_stat	0
-#endif
-
-#include	<fcntl.h>
-
-#ifndef F_SETFD
-#ifndef FIOCLEX
-#if _hdr_filio
-#include	<filio.h>
-#else
-#if _sys_filio
-#include	<sys/filio.h>
-#endif /*_sys_filio*/
-#endif /*_hdr_filio*/
-#endif /*_FIOCLEX*/
-#endif /*F_SETFD*/
-
-#include	<unistd.h>
-
-/* see if we can use memory mapping for io */
-#if !_mmap_worthy
-#undef _hdr_mman
-#undef _sys_mman
-#endif
-#if _hdr_mman
-#include	<mman.h>
-#endif
-#if _sys_mman
-#include	<sys/mman.h>
-#endif
-
-#if !_lib_remove
-#define remove		unlink
-#endif
-
-#endif /*_PACKAGE_ast*/
-
 #if !_mmap_worthy
 #undef MAP_TYPE
 #endif
@@ -179,55 +77,16 @@
 /* deal with multi-byte character and string conversions */
 #if AST_NOMULTIBYTE
 #undef	_has_multibyte
-#elif _PACKAGE_ast
-
+#else
 #include	<wchar.h>
-
 #define _has_multibyte		1
-
 #define SFMBMAX			mbmax()
 #define SFMBCPY(to,fr)		memcpy((to), (fr), sizeof(mbstate_t))
 #define SFMBCLR(mb)		memset((mb), 0,  sizeof(mbstate_t))
 #define SFMBSET(lhs,v)		(lhs = (v))
 #define SFMBLEN(s,mb)		mbsize(s)
 #define SFMBDCL(ms)		mbstate_t ms;
-
-#else
-
-#if _hdr_wchar && _typ_mbstate_t && _lib_wcrtomb && _lib_mbrtowc
-#define _has_multibyte		1	/* X/Open-compliant	*/
-#if _typ___va_list && !defined(__va_list)
-#define __va_list	va_list
-#endif
-#include	<wchar.h>
-#define SFMBCPY(to,fr)		memcpy((to), (fr), sizeof(mbstate_t))
-#define SFMBCLR(mb)		memset((mb), 0,  sizeof(mbstate_t))
-#define SFMBSET(lhs,v)		(lhs = (v))
-#define SFMBDCL(mb)		mbstate_t mb;
-#define SFMBLEN(s,mb)		mbrtowc(NIL(wchar_t*), (s), SFMBMAX, (mb) )
-#endif /*_hdr_wchar && _typ_mbstate_t && _lib_wcrtomb && _lib_mbrtowc*/
-
-#if !_has_multibyte && _hdr_wchar && _lib_mbtowc && _lib_wctomb
-#define _has_multibyte		2	/* no shift states	*/
-#include	<wchar.h>
-#undef mbrtowc
-#define mbrtowc(wp,s,n,mb)	mbtowc(wp, s, n)
-#undef wcrtomb
-#define wcrtomb(s,wc,mb)	wctomb(s, wc)
-#define SFMBCPY(to,fr)
-#define SFMBCLR(mb)
-#define SFMBSET(lhs,v)
-#define SFMBDCL(mb)
-#define SFMBLEN(s,mb)		mbrtowc(NIL(wchar_t*), (s), SFMBMAX, (mb) )
-#endif /*!_has_multibyte && _hdr_wchar && _lib_mbtowc && _lib_wctomb*/
-
-#ifdef MB_CUR_MAX
-#define SFMBMAX			MB_CUR_MAX
-#else
-#define SFMBMAX			sizeof(Sflong_t)
-#endif
-
-#endif /* _PACKAGE_ast */
+#endif /* AST_NOMULTIBYTE */
 
 #if !_has_multibyte
 #define _has_multibyte		0	/* no multibyte support	*/
@@ -277,17 +136,6 @@
 /* to test for executable access mode of a file */
 #ifndef X_OK
 #define X_OK	01
-#endif
-
-/* alternative process forking */
-#if _lib_vfork && !defined(fork) && !defined(__sparc) && !defined(__sparc__)
-#if _hdr_vfork
-#include	<vfork.h>
-#endif
-#if _sys_vfork
-#include	<sys/vfork.h>
-#endif
-#define fork	vfork
 #endif
 
 /* Private flags in the "bits" field */
@@ -344,8 +192,8 @@
 #endif
 
 /* shorthands */
-#define NIL(t)		((t)0)
-#define reg		register
+#define NIL(t)		NULL		/* for backward compatibility */
+#define reg		/* empty */	/* for backward compatibility (was 'register') */
 #ifndef uchar
 #define uchar		unsigned char
 #endif
@@ -423,7 +271,6 @@
 #define SF_FD_CLOEXEC			0x0001
 
 /* function to get the decimal point for local environment */
-#if !defined(SFSETLOCALE) && _PACKAGE_ast
 #include "lclib.h"
 #define SFSETLOCALE(dp,tp) \
 	do if (*(dp) == 0) { \
@@ -431,28 +278,6 @@
 		*(dp) = lv->decimal; \
 		*(tp) = lv->thousand; \
 	} while (0)
-#endif /*!defined(SFSETLOCALE) && _PACKAGE_ast*/
-
-#if !defined(SFSETLOCALE) && _lib_locale
-#include	<locale.h>
-#define SFSETLOCALE(decimal,thousand) \
-	do { struct lconv*	lv; \
-	  if(*(decimal) == 0) \
-	  { *(decimal) = '.'; \
-	    *(thousand) = -1; \
-	    if((lv = localeconv())) \
-	    { if(lv->decimal_point && *lv->decimal_point) \
-	    	*(decimal) = *(unsigned char*)lv->decimal_point; \
-	      if(lv->thousands_sep && *lv->thousands_sep) \
-	    	*(thousand) = *(unsigned char*)lv->thousands_sep; \
-	    } \
-	  } \
-	} while (0)
-#endif /*!defined(SFSETLOCALE) && _lib_locale*/
-
-#if !defined(SFSETLOCALE)
-#define SFSETLOCALE(decimal,thousand)	(*(decimal)='.',*(thousand)=-1)
-#endif
 
 /* stream pool structure. */
 typedef struct _sfpool_s	Sfpool_t;
@@ -654,7 +479,7 @@ typedef struct _sfextern_s
 
 #define SFMUNMAP(f,a,s)		(munmap((caddr_t)(a),(size_t)(s)), \
 				 ((f)->endb = (f)->endr = (f)->endw = (f)->next = \
-				  (f)->data = NIL(uchar*)) )
+				  (f)->data = NULL) )
 
 /* safe closing function */
 #define CLOSE(f)	{ while(close(f) < 0 && errno == EINTR) errno = 0; }
@@ -679,8 +504,8 @@ typedef struct _sfextern_s
 #define SFISALL(f,v)	((((v) = (f)->mode&SF_RV) ? ((f)->mode &= ~SF_RV) : 0), \
 			 ((v) || ((f)->flags&(SF_SHARE|SF_APPENDWR|SF_WHOLE)) ) )
 #define SFSK(f,a,o,d)	(SETLOCAL(f),sfsk(f,(Sfoff_t)a,o,d))
-#define SFRD(f,b,n,d)	(SETLOCAL(f),sfrd(f,(void*)b,n,d))
-#define SFWR(f,b,n,d)	(SETLOCAL(f),sfwr(f,(void*)b,n,d))
+#define SFRD(f,b,n,d)	(SETLOCAL(f),sfrd(f,b,n,d))
+#define SFWR(f,b,n,d)	(SETLOCAL(f),sfwr(f,b,n,d))
 #define SFSYNC(f)	(SETLOCAL(f),sfsync(f))
 #define SFCLOSE(f)	(SETLOCAL(f),sfclose(f))
 #define SFFLSBUF(f,n)	(SETLOCAL(f),_sfflsbuf(f,n))
@@ -782,14 +607,6 @@ typedef struct _sfextern_s
 #endif
 
 #define	SF_RADIX	64	/* maximum integer conversion base */
-
-#if _PACKAGE_ast
-#define SF_MAXINT	INT_MAX
-#define SF_MAXLONG	LONG_MAX
-#else
-#define SF_MAXINT	((int)(((uint)~0) >> 1))
-#define SF_MAXLONG	((long)(((ulong)~0L) >> 1))
-#endif
 
 #define SF_MAXCHAR	((uchar)(~0))
 
@@ -910,23 +727,12 @@ typedef struct _sftab_
 #define max(x,y)	((x) > (y) ? (x) : (y))
 
 /* fast functions for memory copy and memory clear */
-#if _PACKAGE_ast
 #define memclear(s,n)	memzero(s,n)
-#else
-#if _lib_bcopy && !_lib_memcpy
-#define memcpy(to,fr,n)	bcopy((fr),(to),(n))
-#endif
-#if _lib_bzero && !_lib_memset
-#define memclear(s,n)	bzero((s),(n))
-#else
-#define memclear(s,n)	memset((s),'\0',(n))
-#endif
-#endif /*_PACKAGE_ast*/
 
 /* note that MEMCPY advances the associated pointers */
 #define MEMCPY(to,fr,n) \
 	switch(n) \
-	{ default : memcpy((void*)to,(void*)fr,n); to += n; fr += n; break; \
+	{ default : memcpy(to,fr,n); to += n; fr += n; break; \
 	  case  7 : *to++ = *fr++;	\
 		/* FALLTHROUGH */	\
 	  case  6 : *to++ = *fr++;	\
@@ -943,7 +749,7 @@ typedef struct _sftab_
 	}
 #define MEMSET(s,c,n) \
 	switch(n) \
-	{ default : memset((void*)s,(int)c,n); s += n; break; \
+	{ default : memset(s,(int)c,n); s += n; break; \
 	  case  7 : *s++ = c;		\
 		    /* FALLTHROUGH */	\
 	  case  6 : *s++ = c;		\
@@ -995,35 +801,6 @@ extern long double	frexpl(long double, int*);
 extern long double	ldexpl(long double, int);
 #endif
 #endif
-
-#if !_PACKAGE_ast
-
-#if _lib_bcopy && !_proto_bcopy
-extern void	bcopy(const void*, void*, size_t);
-#endif
-#if _lib_bzero && !_proto_bzero
-extern void	bzero(void*, size_t);
-#endif
-
-extern time_t	time(time_t*);
-extern int	waitpid(int,int*,int);
-extern void	_exit(int);
-typedef int(*	Onexit_f)(void);
-extern Onexit_f	onexit(Onexit_f);
-
-#if _lib_vfork && !_hdr_vfork && !_sys_vfork
-extern pid_t	vfork(void);
-#endif /*_lib_vfork*/
-
-#if _lib_poll
-#if _lib_poll_fd_1
-extern int	poll(struct pollfd*, ulong, int);
-#else
-extern int	poll(ulong, struct pollfd*, int);
-#endif
-#endif /*_lib_poll*/
-
-#endif /* _PACKAGE_ast */
 
 #ifdef _SF_HIDESFFLAGS
 #undef SFIO_FLAGS

@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2011 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2023 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 2.0                  #
 #                                                                      #
@@ -199,6 +199,31 @@ status=$?
 exp=0
 (( exp == status )) || err_exit 'without pipefail, non-zero exit in pipeline causes command substitution to fail' \
 	"(expected '$exp', got '$status')"
+
+# ======
+# trap/signal exit status tests
+
+unset exp got
+typeset -i exp got
+sig=TERM
+
+exp=$((${ kill -l "$sig";}+256))
+{ "$SHELL" -c "trap : EXIT; kill -s $sig \$$; exit 42"; } 2>/dev/null
+(((got=$?)==exp)) || err_exit "SIG$sig exit status with EXIT trap failed (got $got, expected $exp)"
+
+exp=123
+"$SHELL" -c "trap 'exit 123' EXIT; kill -s $sig \$$; exit 42"
+(((got=$?)==exp)) || err_exit "SIG$sig exit status with EXIT trap failed (got $got, expected $exp)"
+
+exp=42
+"$SHELL" -c "trap : $sig; kill -s $sig \$$; exit 42"
+(((got=$?)==exp)) || err_exit "exit status with $sig trap failed (got $got, expected $exp)"
+
+exp=123
+"$SHELL" -c "trap 'exit 123' $sig; kill -s $sig \$$; exit 42"
+(((got=$?)==exp)) || err_exit "exit status with $sig trap failed (got $got, expected $exp)"
+
+unset exp got sig
 
 # ======
 exit $((Errors<125?Errors:125))

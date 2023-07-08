@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -164,10 +164,10 @@ static Notify_t*		notify;
  */
 
 static FTSENT*
-node(FTS* fts, FTSENT* parent, register char* name, register size_t namelen)
+node(FTS* fts, FTSENT* parent, char* name, size_t namelen)
 {
-	register FTSENT*	f;
-	register size_t		n;
+	FTSENT*	f;
+	size_t		n;
 
 	if (fts->free && namelen < MINNAME)
 	{
@@ -181,7 +181,7 @@ node(FTS* fts, FTSENT* parent, register char* name, register size_t namelen)
 		{
 			fts->fts_errno = errno;
 			fts->state = FTS_error;
-			return 0;
+			return NULL;
 		}
 		f->fts = fts;
 	}
@@ -207,8 +207,8 @@ node(FTS* fts, FTSENT* parent, register char* name, register size_t namelen)
 static int
 statcmp(FTSENT* const* pf1, FTSENT* const* pf2)
 {
-	register const FTSENT*	f1 = *pf1;
-	register const FTSENT*	f2 = *pf2;
+	const FTSENT*	f1 = *pf1;
+	const FTSENT*	f2 = *pf2;
 
 	if (f1->statb.st_ino < f2->statb.st_ino)
 		return -1;
@@ -241,12 +241,12 @@ statcmp(FTSENT* const* pf1, FTSENT* const* pf2)
 static FTSENT*
 search(FTSENT* e, FTSENT* root, int(*comparf)(FTSENT* const*, FTSENT* const*), int insert)
 {
-	register int		cmp;
-	register FTSENT*	t;
-	register FTSENT*	left;
-	register FTSENT*	right;
-	register FTSENT*	lroot;
-	register FTSENT*	rroot;
+	int	cmp;
+	FTSENT*	t;
+	FTSENT*	left;
+	FTSENT*	right;
+	FTSENT*	lroot;
+	FTSENT*	rroot;
 
 	left = right = lroot = rroot = 0;
 	while (root)
@@ -327,11 +327,11 @@ search(FTSENT* e, FTSENT* root, int(*comparf)(FTSENT* const*, FTSENT* const*), i
  */
 
 static FTSENT*
-deleteroot(register FTSENT* root)
+deleteroot(FTSENT* root)
 {
-	register FTSENT*	t;
-	register FTSENT*	left;
-	register FTSENT*	right;
+	FTSENT*	t;
+	FTSENT*	left;
+	FTSENT*	right;
 
 	right = root->right;
 	if (!(left = root->left))
@@ -353,9 +353,9 @@ deleteroot(register FTSENT* root)
  */
 
 static void
-getlist(register FTSENT** top, register FTSENT** bot, register FTSENT* root)
+getlist(FTSENT** top, FTSENT** bot, FTSENT* root)
 {
-	register FTSENT*	stack = 0;
+	FTSENT*	stack = 0;
 
 	for (;;)
 	{
@@ -394,12 +394,12 @@ getlist(register FTSENT** top, register FTSENT** bot, register FTSENT* root)
  */
 
 static int
-setdir(register char* home, register char* path)
+setdir(char* home, char* path)
 {
-	register int	cdrv;
+	int	cdrv;
 
 	if (path[0] == '/')
-		cdrv = pathcd(path, NiL);
+		cdrv = pathcd(path, NULL);
 	else
 	{
 		/*
@@ -407,11 +407,11 @@ setdir(register char* home, register char* path)
 		 */
 
 		path[-1] = '/';
-		cdrv = pathcd(home, NiL);
+		cdrv = pathcd(home, NULL);
 		path[-1] = 0;
 	}
 	if (cdrv < 0)
-		pathcd(home, NiL);
+		pathcd(home, NULL);
 	return cdrv;
 }
 
@@ -420,10 +420,10 @@ setdir(register char* home, register char* path)
  */
 
 static int
-setpdir(register char* home, register char* path, register char* base)
+setpdir(char* home, char* path, char* base)
 {
-	register int	c;
-	register int	cdrv;
+	int	c;
+	int	cdrv;
 
 	if (base > path)
 	{
@@ -433,7 +433,7 @@ setpdir(register char* home, register char* path, register char* base)
 		base[0] = c;
 	}
 	else
-		cdrv = pathcd(home, NiL);
+		cdrv = pathcd(home, NULL);
 	return cdrv;
 }
 
@@ -443,11 +443,11 @@ setpdir(register char* home, register char* path, register char* base)
 static int
 popdirs(FTS* fts)
 {
-	register FTSENT*f;
-	register char*	s;
-	register char*	e;
+	FTSENT*f;
+	char*	s;
+	char*	e;
 #ifndef verify
-	register int	verify;
+	int	verify;
 #endif
 	struct stat	sb;
 	char		buf[PATH_MAX];
@@ -485,7 +485,7 @@ popdirs(FTS* fts)
  */
 
 static int
-info(FTS* fts, register FTSENT* f, const char* path, struct stat* sp, int flags)
+info(FTS* fts, FTSENT* f, const char* path, struct stat* sp, int flags)
 {
 	if (path)
 	{
@@ -571,16 +571,16 @@ info(FTS* fts, register FTSENT* f, const char* path, struct stat* sp, int flags)
  */
 
 static FTSENT*
-toplist(FTS* fts, register char* const* pathnames)
+toplist(FTS* fts, char* const* pathnames)
 {
-	register char*		path;
-	register FTSENT*	f;
-	register FTSENT*	top;
-	register FTSENT*	bot;
-	int			physical;
-	int			metaphysical;
-	char*			s;
-	struct stat		st;
+	char*		path;
+	FTSENT*		f;
+	FTSENT*		top;
+	FTSENT*		bot;
+	int		physical;
+	int		metaphysical;
+	char*		s;
+	struct stat	st;
 
 	if (fts->flags & FTS_NOSEEDOTDIR)
 		fts->flags &= ~FTS_SEEDOTDIR;
@@ -645,7 +645,7 @@ toplist(FTS* fts, register char* const* pathnames)
 			if (stat(path, &st) >= 0)
 			{
 				*f->fts_statp = st;
-				info(fts, f, NiL, f->fts_statp, 0);
+				info(fts, f, NULL, f->fts_statp, 0);
 			}
 			else
 				f->fts_info = FTS_SLNONE;
@@ -669,8 +669,8 @@ toplist(FTS* fts, register char* const* pathnames)
 static void
 order(FTS* fts)
 {
-	register FTSENT*	f;
-	register FTSENT*	root;
+	FTSENT*	f;
+	FTSENT*	root;
 	FTSENT*			top;
 	FTSENT*			bot;
 
@@ -688,11 +688,11 @@ order(FTS* fts)
  */
 
 static int
-resize(register FTS* fts, size_t inc)
+resize(FTS* fts, size_t inc)
 {
-	register char*	old;
-	register char*	newp;
-	register size_t	n_old;
+	char*	old;
+	char*	newp;
+	size_t	n_old;
 
 	/*
 	 * add space for "/." used in testing FTS_DNX
@@ -726,10 +726,10 @@ resize(register FTS* fts, size_t inc)
 FTS*
 fts_open(char* const* pathnames, int flags, int (*comparf)(FTSENT* const*, FTSENT* const*))
 {
-	register FTS*	fts;
+	FTS*	fts;
 
 	if (!(fts = newof(0, FTS, 1, sizeof(FTSENT))))
-		return 0;
+		return NULL;
 	fts->flags = flags;
 	fts->cd = (flags & FTS_NOCHDIR) ? 1 : -1;
 	fts->comparf = comparf;
@@ -744,7 +744,7 @@ fts_open(char* const* pathnames, int flags, int (*comparf)(FTSENT* const*, FTSEN
 		if (!(fts->home = newof(fts->home, char, fts->homesize, 0)))
 		{
 			free(fts);
-			return 0;
+			return NULL;
 		}
 		if (fts->cd > 0 || getcwd(fts->home, fts->homesize))
 			break;
@@ -789,7 +789,7 @@ fts_open(char* const* pathnames, int flags, int (*comparf)(FTSENT* const*, FTSEN
 #endif
 	{
 		fts_close(fts);
-		return 0;
+		return NULL;
 	}
 	return fts;
 }
@@ -799,17 +799,17 @@ fts_open(char* const* pathnames, int flags, int (*comparf)(FTSENT* const*, FTSEN
  */
 
 FTSENT*
-fts_read(register FTS* fts)
+fts_read(FTS* fts)
 {
-	register char*		s;
-	register int		n;
-	register FTSENT*	f;
-	struct dirent*		d;
-	size_t			i;
-	FTSENT*			t;
-	Notify_t*		p;
+	char*		s;
+	int		n;
+	FTSENT*		f;
+	struct dirent*	d;
+	size_t		i;
+	FTSENT*		t;
+	Notify_t*	p;
 #ifdef verify
-	struct stat		sb;
+	struct stat	sb;
 #endif
 
 	f = 0;
@@ -849,7 +849,7 @@ fts_read(register FTS* fts)
 			if (!fts->state && fts->comparf)
 				order(fts);
 			if (!(f = fts->todo))
-				return 0;
+				return NULL;
 			/* FALLTHROUGH */
 
 		case FTS_todo:
@@ -873,7 +873,7 @@ fts_read(register FTS* fts)
 				f->fts_parent = fts->parent;
 				fts->diroot = 0;
 				if (fts->cd == 0)
-					pathcd(fts->home, NiL);
+					pathcd(fts->home, NULL);
 				else if (fts->cd < 0)
 					fts->cd = 0;
 				fts->pwd = f->fts_parent;
@@ -897,7 +897,7 @@ fts_read(register FTS* fts)
 			 */
 
 			if ((fts->baselen = f->fts_namelen) >= (fts->endbuf - fts->base) && resize(fts, fts->baselen))
-				return 0;
+				return NULL;
 			memcpy(fts->base, f->name, fts->baselen + 1);
 			fts->name = fts->cd ? fts->path : fts->base;
 			/* FALLTHROUGH */
@@ -968,7 +968,7 @@ fts_read(register FTS* fts)
 			if (fts->cd == 0)
 			{
 				if ((fts->cd = chdir(fts->name)) < 0)
-					pathcd(fts->home, NiL);
+					pathcd(fts->home, NULL);
 				else if (fts->pwd != f)
 				{
 					f->pwd = fts->pwd;
@@ -1020,7 +1020,7 @@ fts_read(register FTS* fts)
 
 				i = D_NAMLEN(d);
 				if (!(f = node(fts, fts->current, s, i)))
-					return 0;
+					return NULL;
 				TYPE(f, D_TYPE(d));
 
 				/*
@@ -1030,7 +1030,7 @@ fts_read(register FTS* fts)
 				if (i >= fts->endbuf - fts->endbase)
 				{
 		   	   		if (resize(fts, i))
-						return 0;
+						return NULL;
 					fts->endbase = fts->base + fts->baselen;
 					if (fts->endbase[-1] != '/')
 						fts->endbase++;
@@ -1242,7 +1242,7 @@ fts_read(register FTS* fts)
 
 			if (fts->nd > 0 && popdirs(fts) < 0)
 			{
-				pathcd(fts->home, NiL);
+				pathcd(fts->home, NULL);
 				fts->curdir = 0;
 				fts->cd = -1;
 			}
@@ -1257,7 +1257,7 @@ fts_read(register FTS* fts)
 				fts->state = FTS_todo;
 				continue;
 			}
-			return 0;
+			return NULL;
 
 		case FTS_children_return:
 
@@ -1273,7 +1273,7 @@ fts_read(register FTS* fts)
 			if (!n && fts->cd == 0)
 			{
 				if ((fts->cd = chdir(fts->base)) < 0)
-					pathcd(fts->home, NiL);
+					pathcd(fts->home, NULL);
 				else if (fts->pwd != f)
 				{
 					f->pwd = fts->pwd;
@@ -1303,7 +1303,7 @@ fts_read(register FTS* fts)
 					if (fts->children > 1 && i)
 					{
 						if (f->status == FTS_STAT)
-							info(fts, f, NiL, f->fts_statp, 0);
+							info(fts, f, NULL, f->fts_statp, 0);
 						else if (f->fts_info == FTS_NSOK && !SKIP(fts, f))
 						{
 							s = f->fts_name;
@@ -1390,13 +1390,13 @@ fts_read(register FTS* fts)
 
 		case FTS_error:
 
-			return 0;
+			return NULL;
 
 		default:
 
 			fts->fts_errno = EINVAL;
 			fts->state = FTS_error;
-			return 0;
+			return NULL;
 
 		}
  note:
@@ -1407,7 +1407,7 @@ fts_read(register FTS* fts)
 		{
 			fts->fts_errno = EINVAL;
 			fts->state = FTS_error;
-			return 0;
+			return NULL;
 		}
 	return f;
 }
@@ -1417,7 +1417,7 @@ fts_read(register FTS* fts)
  */
 
 int
-fts_set(register FTS* fts, register FTSENT* f, int status)
+fts_set(FTS* fts, FTSENT* f, int status)
 {
 	if (fts || !f || f->fts->current != f)
 		return -1;
@@ -1447,9 +1447,9 @@ fts_set(register FTS* fts, register FTSENT* f, int status)
  */
 
 FTSENT*
-fts_children(register FTS* fts, int flags)
+fts_children(FTS* fts, int flags)
 {
-	register FTSENT*	f;
+	FTSENT*	f;
 
 	switch (fts->state)
 	{
@@ -1469,7 +1469,7 @@ fts_children(register FTS* fts, int flags)
 		return f;
 
 	}
-	return 0;
+	return NULL;
 }
 
 /*
@@ -1480,9 +1480,9 @@ fts_children(register FTS* fts, int flags)
 int
 fts_flags(void)
 {
-	register char*	s;
+	char*	s;
 	
-	s = astconf("PATH_RESOLVE", NiL, NiL);
+	s = astconf("PATH_RESOLVE", NULL, NULL);
 	if (streq(s, "logical"))
 		return FTS_LOGICAL;
 	if (streq(s, "physical"))
@@ -1502,7 +1502,7 @@ fts_local(FTSENT* ent)
 
 	return statvfs(ent->fts_path, &fs) || (fs.f_flag & ST_LOCAL);
 #else
-	return !strgrpmatch(fmtfs(ent->fts_statp), "([an]fs|samb)", NiL, 0, STR_LEFT|STR_ICASE);
+	return !strgrpmatch(fmtfs(ent->fts_statp), "([an]fs|samb)", NULL, 0, STR_LEFT|STR_ICASE);
 #endif
 }
 
@@ -1511,15 +1511,15 @@ fts_local(FTSENT* ent)
  */
 
 int
-fts_close(register FTS* fts)
+fts_close(FTS* fts)
 {
-	register FTSENT*	f;
-	register FTSENT*	x;
+	FTSENT*	f;
+	FTSENT*	x;
 
 	if (fts->dir)
 		closedir(fts->dir);
 	if (fts->cd == 0)
-		pathcd(fts->home, NiL);
+		pathcd(fts->home, NULL);
 	free(fts->home);
 	if (fts->state == FTS_children_return)
 		fts->current->fts_link = fts->link;
@@ -1543,15 +1543,15 @@ fts_close(register FTS* fts)
 }
 
 /*
- * register function to be called for each fts_read() entry
- * context==0 => unregister notifyf
+ * function to be called for each fts_read() entry
+ * context==0 => unnotifyf
  */
 
 int
 fts_notify(Notify_f notifyf, void* context)
 {
-	register Notify_t*	np;
-	register Notify_t*	pp;
+	Notify_t*	np;
+	Notify_t*	pp;
 
 	if (context)
 	{

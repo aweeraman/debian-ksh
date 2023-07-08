@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -17,7 +17,6 @@
 ***********************************************************************/
 #include	"shopt.h"
 #include	"defs.h"
-#include	<stak.h>
 #include	<ls.h>
 #include	<error.h>
 #include	"variables.h"
@@ -31,6 +30,19 @@
 
 #define HIST_RECURSE	5
 
+#if SHOPT_SCRIPTONLY
+
+int	b_hist(int argc,char *argv[], Shbltin_t *context)
+{
+	NOT_USED(argc);
+	NOT_USED(argv);
+	NOT_USED(context);
+	errormsg(SH_DICT,ERROR_exit(1),e_scriptonly);
+	UNREACHABLE();
+}
+
+#else
+
 static void hist_subst(const char*, int fd, char*);
 
 #if 0
@@ -39,9 +51,9 @@ static void hist_subst(const char*, int fd, char*);
 #endif
 int	b_hist(int argc,char *argv[], Shbltin_t *context)
 {
-	register History_t *hp;
-	register char *arg;
-	register int flag,fdo;
+	History_t *hp;
+	char *arg;
+	int flag,fdo;
 	Sfio_t *outfile;
 	char *fname;
 	int range[2], incr, index2, indx= -1;
@@ -100,7 +112,7 @@ int	b_hist(int argc,char *argv[], Shbltin_t *context)
 	}
 	if(error_info.errors)
 	{
-		errormsg(SH_DICT,ERROR_usage(2),"%s",optusage((char*)0));
+		errormsg(SH_DICT,ERROR_usage(2),"%s",optusage(NULL));
 		UNREACHABLE();
 	}
 	argv += (opt_info.index-1);
@@ -141,7 +153,7 @@ int	b_hist(int argc,char *argv[], Shbltin_t *context)
 			if(*arg==0)
 			{
 				arg = argv[1];
-				range[++flag] = (int)strtol(arg, (char**)0, 10);
+				range[++flag] = (int)strtol(arg, NULL, 10);
 				if(*arg == '-')
 					range[flag] += (hist_max(hp)-1);
 				argv++;
@@ -202,7 +214,7 @@ int	b_hist(int argc,char *argv[], Shbltin_t *context)
 	}
 	else
 	{
-		if(!(fname=pathtmp(NIL(char*),0,0,NIL(int*))))
+		if(!(fname=pathtmp(NULL,0,0,NULL)))
 		{
 			errormsg(SH_DICT,ERROR_exit(1),e_create,"");
 			UNREACHABLE();
@@ -212,7 +224,7 @@ int	b_hist(int argc,char *argv[], Shbltin_t *context)
 			errormsg(SH_DICT,ERROR_system(1),e_create,fname);
 			UNREACHABLE();
 		}
-		outfile= sfnew(NIL(Sfio_t*),sh.outbuff,IOBSIZE,fdo,SF_WRITE);
+		outfile= sfnew(NULL,sh.outbuff,IOBSIZE,fdo,SF_WRITE);
 		arg = "\n";
 		nflag++;
 	}
@@ -230,7 +242,7 @@ int	b_hist(int argc,char *argv[], Shbltin_t *context)
 		range[flag] += incr;
 	}
 	if(lflag)
-		return(0);
+		return 0;
 	sfclose(outfile);
 	hist_eof(hp);
 	arg = edit;
@@ -253,7 +265,7 @@ int	b_hist(int argc,char *argv[], Shbltin_t *context)
 	}
 	fdo = sh_chkopen(fname);
 	unlink(fname);
-	free((void*)fname);
+	free(fname);
 	/* don't history fc itself unless forked */
 	error_info.flags |= ERROR_SILENT;
 	if(!sh_isstate(SH_FORKED))
@@ -267,18 +279,20 @@ int	b_hist(int argc,char *argv[], Shbltin_t *context)
 	}
 	else if(error_info.errors == 0)
 	{
+		static char hist_depth;
 		char buff[IOBSIZE+1];
 		Sfio_t *iop;
 		/* read in and run the command */
-		if(sh.hist_depth++ > HIST_RECURSE)
+		if(hist_depth++ > HIST_RECURSE)
 		{
 			sh_close(fdo);
+			hist_depth = 0;
 			errormsg(SH_DICT,ERROR_exit(1),e_toodeep,"history");
 			UNREACHABLE();
 		}
-		iop = sfnew(NIL(Sfio_t*),buff,IOBSIZE,fdo,SF_READ);
+		iop = sfnew(NULL,buff,IOBSIZE,fdo,SF_READ);
 		sh_eval(iop,1); /* this will close fdo */
-		sh.hist_depth--;
+		hist_depth--;
 	}
 	else
 	{
@@ -287,7 +301,7 @@ int	b_hist(int argc,char *argv[], Shbltin_t *context)
 			sh_offstate(SH_VERBOSE);
 		sh_offstate(SH_HISTORY);
 	}
-	return(sh.exitval);
+	return sh.exitval;
 }
 
 
@@ -297,17 +311,17 @@ int	b_hist(int argc,char *argv[], Shbltin_t *context)
  */
 static void hist_subst(const char *command,int fd,char *replace)
 {
-	register char *newp=replace;
-	register char *sp;
-	register int c;
+	char *newp=replace;
+	char *sp;
+	int c;
 	off_t size;
 	char *string;
 	while(*++newp != '='); /* skip to '=' */
-	if((size = lseek(fd,(off_t)0,SEEK_END)) < 0)
+	if((size = lseek(fd,0,SEEK_END)) < 0)
 		return;
-	lseek(fd,(off_t)0,SEEK_SET);
+	lseek(fd,0,SEEK_SET);
 	c =  (int)size;
-	string = stakalloc(c+1);
+	string = stkalloc(sh.stk,c+1);
 	if(read(fd,string,c)!=c)
 		return;
 	string[c] = 0;
@@ -319,5 +333,7 @@ static void hist_subst(const char *command,int fd,char *replace)
 		UNREACHABLE();
 	}
 	*(newp-1) =  '=';
-	sh_eval(sfopen(NIL(Sfio_t*),sp,"s"),1);
+	sh_eval(sfopen(NULL,sp,"s"),1);
 }
+
+#endif /* SHOPT_SCRIPTONLY */

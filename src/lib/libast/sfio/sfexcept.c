@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -27,9 +27,9 @@ int _sfexcept(Sfio_t*	f,	/* stream where the exception happened */
 	      ssize_t	io,	/* the io return value that indicated exception */
 	      Sfdisc_t*	disc)	/* discipline in use */
 {
-	reg int		ev, local, lock;
-	reg ssize_t	size;
-	reg uchar*	data;
+	int		ev, local, lock;
+	ssize_t		size;
+	uchar*		data;
 
 	if(!f)
 		return -1;
@@ -104,13 +104,13 @@ chk_stack:
 	   ((type == SF_READ  && f->next >= f->endb) ||
 	    (type == SF_WRITE && f->next <= f->data)))
 	{	/* pop the stack */
-		reg Sfio_t	*pf;
+		Sfio_t	*pf;
 
 		if(lock)
 			SFOPEN(f,0);
 
 		/* pop and close */
-		pf = (*_Sfstack)(f,NIL(Sfio_t*));
+		pf = (*_Sfstack)(f,NULL);
 		if((ev = sfclose(pf)) < 0) /* can't close, restack */
 			(*_Sfstack)(f,pf);
 

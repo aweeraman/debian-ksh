@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -26,8 +26,8 @@
 Sfulong_t sfgetm(Sfio_t* f, Sfulong_t m)
 {
 	Sfulong_t	v;
-	reg uchar	*s, *ends, c;
-	reg int		p;
+	uchar		*s, *ends, c;
+	int		p;
 
 	if(!f || (f->mode != SF_READ && _sfmode(f,SF_READ,0) < 0))
 		return (Sfulong_t)(-1);

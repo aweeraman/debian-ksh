@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -130,8 +130,8 @@ static int vmchktree(Block_t* node)
 
 int _vmbestcheck(Vmdata_t* vd, Block_t* freeb)	/* freeb: known to be free but not on any free list */
 {
-	reg Seg_t	*seg;
-	reg Block_t	*b, *endb, *nextb;
+	Seg_t	*seg;
+	Block_t	*b, *endb, *nextb;
 	int		rv = 0;
 
 	if(!CHECK())
@@ -199,15 +199,15 @@ int _vmbestcheck(Vmdata_t* vd, Block_t* freeb)	/* freeb: known to be free but no
 #define LLINK(s,x)	((s) = RIGHT(s) = (x))
 
 /* Find and delete a suitable element in the free tree. */
-static Block_t* bestsearch(Vmdata_t* vd, reg size_t size, Block_t* wanted)
+static Block_t* bestsearch(Vmdata_t* vd, size_t size, Block_t* wanted)
 {
-	reg size_t	s;
-	reg Block_t	*t, *root, *l, *r;
+	size_t	s;
+	Block_t	*t, *root, *l, *r;
 	Block_t		link;
 
 	/* extracting a tiniest block from its list */
 	if((root = wanted) && size == TINYSIZE)
-	{	reg Seg_t*	seg;
+	{	Seg_t*	seg;
 
 		l = TLEFT(root);
 		if((r = LINK(root)) )
@@ -276,8 +276,8 @@ static Block_t* bestsearch(Vmdata_t* vd, reg size_t size, Block_t* wanted)
 		LEFT(r) = RIGHT(root);
 	}
 	else		/* nothing exactly fit	*/
-	{	LEFT(r) = NIL(Block_t*);
-		RIGHT(l) = NIL(Block_t*);
+	{	LEFT(r) = NULL;
+		RIGHT(l) = NULL;
 
 		/* grab the least one from the right tree */
 		if((root = LEFT(&link)) )
@@ -308,23 +308,23 @@ static Block_t* bestsearch(Vmdata_t* vd, reg size_t size, Block_t* wanted)
 }
 
 /* Reclaim all delayed free blocks into the free tree */
-static int bestreclaim(reg Vmdata_t* vd, Block_t* wanted, int c)
+static int bestreclaim(Vmdata_t* vd, Block_t* wanted, int c)
 {
-	reg size_t	size, s;
-	reg Block_t	*fp, *np, *t, *list;
-	reg int		n, saw_wanted;
+	size_t	size, s;
+	Block_t	*fp, *np, *t, *list;
+	int		n, saw_wanted;
 
 	/**/COUNT(N_reclaim);
-	/**/ASSERT(_vmbestcheck(vd, NIL(Block_t*)) == 0);
+	/**/ASSERT(_vmbestcheck(vd, NULL) == 0);
 
 	if((fp = vd->free) )
 	{	LINK(fp) = CACHE(vd)[S_CACHE]; CACHE(vd)[S_CACHE] = fp;
-		vd->free = NIL(Block_t*);
+		vd->free = NULL;
 	}
 
 	saw_wanted = wanted ? 0 : 1;
 	for(n = S_CACHE; n >= c; --n)
-	{	list = CACHE(vd)[n]; CACHE(vd)[n] = NIL(Block_t*);
+	{	list = CACHE(vd)[n]; CACHE(vd)[n] = NULL;
 		while((fp = list) )
 		{	/* Note that below here we allow ISJUNK blocks to be
 			** forward-merged even though they are not removed from
@@ -362,7 +362,7 @@ static int bestreclaim(reg Vmdata_t* vd, Block_t* wanted, int c)
 				if(!ISBUSY(s))
 				{	/**/ASSERT((s&BITS) == 0);
 					if(np == vd->wild)
-						vd->wild = NIL(Block_t*);
+						vd->wild = NULL;
 					else	REMOVE(vd,np,INDEX(s),t,bestsearch);
 				}
 				else if(ISJUNK(s))
@@ -402,19 +402,19 @@ static int bestreclaim(reg Vmdata_t* vd, Block_t* wanted, int c)
 				if(s == 0)	/* TINIEST block */
 				{	if(np)
 						TLEFT(np) = fp;
-					TLEFT(fp) = NIL(Block_t*);
+					TLEFT(fp) = NULL;
 				}
 				else
 				{	if(np)
 						LEFT(np)  = fp;
-					LEFT(fp) = NIL(Block_t*);
+					LEFT(fp) = NULL;
 					SETLINK(fp);
 				}
 				TINY(vd)[s] = fp;
 				continue;
 			}
 
-			LEFT(fp) = RIGHT(fp) = LINK(fp) = NIL(Block_t*);
+			LEFT(fp) = RIGHT(fp) = LINK(fp) = NULL;
 			if(!(np = vd->root) )	/* inserting into an empty tree	*/
 			{	vd->root = fp;
 				continue;
@@ -464,14 +464,14 @@ static int bestreclaim(reg Vmdata_t* vd, Block_t* wanted, int c)
 
 static int bestcompact(Vmalloc_t* vm, int local)
 {
-	reg Seg_t	*seg, *next;
-	reg Block_t	*bp, *tp;
-	reg size_t	size, segsize, round;
-	reg Vmdata_t*	vd = vm->data;
+	Seg_t	*seg, *next;
+	Block_t	*bp, *tp;
+	size_t	size, segsize, round;
+	Vmdata_t*	vd = vm->data;
 
 	SETLOCK(vm, local);
 
-	bestreclaim(vd,NIL(Block_t*),0);
+	bestreclaim(vd,NULL,0);
 
 	for(seg = vd->seg; seg; seg = next)
 	{	next = seg->next;
@@ -502,7 +502,7 @@ static int bestcompact(Vmalloc_t* vm, int local)
 			if(size <= COMPACT*vd->incr || size <= COMPACT*vd->pool)
 				continue;
 
-			vd->wild = NIL(Block_t*);
+			vd->wild = NULL;
 			vd->pool = 0;
 		}
 		else	REMOVE(vd,bp,INDEX(size),tp,bestsearch);
@@ -519,7 +519,7 @@ static int bestcompact(Vmalloc_t* vm, int local)
 
 			if((size = (seg->baddr - ((Vmuchar_t*)bp) - sizeof(Head_t))) > 0)
 				SIZE(bp) = size - sizeof(Head_t);
-			else	bp = NIL(Block_t*);
+			else	bp = NULL;
 		}
 
 		if(bp)
@@ -533,9 +533,9 @@ static int bestcompact(Vmalloc_t* vm, int local)
 	}
 
 	if(!local && _Vmtrace && (vd->mode&VM_TRACE) && VMETHOD(vd) == VM_MTBEST)
-		(*_Vmtrace)(vm, (Vmuchar_t*)0, (Vmuchar_t*)0, 0, 0);
+		(*_Vmtrace)(vm, NULL, NULL, 0, 0);
 
-	CLRLOCK(vm, local); /**/ASSERT(_vmbestcheck(vd, NIL(Block_t*)) == 0);
+	CLRLOCK(vm, local); /**/ASSERT(_vmbestcheck(vd, NULL) == 0);
 
 	return 0;
 }
@@ -544,10 +544,10 @@ static void* bestalloc(Vmalloc_t*	vm,	/* region allocating from	*/
 			 size_t		size,	/* desired block size		*/
 			 int		local)	/* internal call		*/
 {
-	reg Vmdata_t*	vd = vm->data;
-	reg size_t	s;
-	reg int		n;
-	reg Block_t	*tp, *np, *ap;
+	Vmdata_t*	vd = vm->data;
+	size_t	s;
+	int		n;
+	Block_t	*tp, *np, *ap;
 	size_t		orgsize = size;
 
 	/**/COUNT(N_alloc);
@@ -555,7 +555,7 @@ static void* bestalloc(Vmalloc_t*	vm,	/* region allocating from	*/
 
 	SETLOCK(vm,local);
 
-	/**/ ASSERT(_vmbestcheck(vd, NIL(Block_t*)) == 0);
+	/**/ ASSERT(_vmbestcheck(vd, NULL) == 0);
 	/**/ ASSERT(HEADSIZE == sizeof(Head_t));
 	/**/ ASSERT(BODYSIZE == sizeof(Body_t));
 	/**/ ASSERT((ALIGN%(BITS+1)) == 0 );
@@ -572,7 +572,7 @@ static void* bestalloc(Vmalloc_t*	vm,	/* region allocating from	*/
 		/**/ASSERT(ISJUNK(SIZE(tp)) );
 		/**/COUNT(N_last);
 
-		vd->free = NIL(Block_t*);
+		vd->free = NULL;
 		if((s = SIZE(tp)) >= size && s < (size << 1) )
 		{	if(s >= size + (sizeof(Head_t)+BODYSIZE) )
 			{	SIZE(tp) = size;
@@ -591,15 +591,15 @@ static void* bestalloc(Vmalloc_t*	vm,	/* region allocating from	*/
 	}
 
 	for(n = S_CACHE; n >= 0; --n)	/* best-fit except for coalescing */
-	{	bestreclaim(vd,NIL(Block_t*),n);
-		if(vd->root && (tp = bestsearch(vd,size,NIL(Block_t*))) )
+	{	bestreclaim(vd,NULL,n);
+		if(vd->root && (tp = bestsearch(vd,size,NULL)) )
 			goto got_block;
 	}
 
 	/**/ASSERT(!vd->free);
 	if((tp = vd->wild) && SIZE(tp) >= size)
 	{	/**/COUNT(N_wild);
-		vd->wild = NIL(Block_t*);
+		vd->wild = NULL;
 		goto got_block;
 	}
 	
@@ -638,26 +638,26 @@ static void* bestalloc(Vmalloc_t*	vm,	/* region allocating from	*/
 
 done:
 	if(tp && !local && (vd->mode&VM_TRACE) && _Vmtrace && VMETHOD(vd) == VM_MTBEST)
-		(*_Vmtrace)(vm,NIL(Vmuchar_t*),(Vmuchar_t*)DATA(tp),orgsize,0);
+		(*_Vmtrace)(vm,NULL,(Vmuchar_t*)DATA(tp),orgsize,0);
 
-	CLRLOCK(vm,local); /**/ASSERT(_vmbestcheck(vd, NIL(Block_t*)) == 0);
+	CLRLOCK(vm,local); /**/ASSERT(_vmbestcheck(vd, NULL) == 0);
 
-	return tp ? DATA(tp) : NIL(void*);
+	return tp ? DATA(tp) : NULL;
 }
 
 static long bestaddr(Vmalloc_t*	vm,	/* region allocating from	*/
 		     void*	addr,	/* address to check		*/
 		     int	local)
 {
-	reg Seg_t*	seg;
-	reg Block_t	*b, *endb;
-	reg long	offset;
-	reg Vmdata_t*	vd = vm->data;
+	Seg_t*	seg;
+	Block_t	*b, *endb;
+	long	offset;
+	Vmdata_t*	vd = vm->data;
 
 	/**/ASSERT(local ? (vd->lock == 1) : 1 );
 	SETLOCK(vm, local);
 
-	offset = -1L; b = endb = NIL(Block_t*);
+	offset = -1L; b = endb = NULL;
 	for(seg = vd->seg; seg; seg = seg->next)
 	{	b = SEGBLOCK(seg);
 		endb = (Block_t*)(seg->baddr - sizeof(Head_t));
@@ -673,8 +673,8 @@ static long bestaddr(Vmalloc_t*	vm,	/* region allocating from	*/
 	}
 	else if(seg)
 	{	while(b < endb)
-		{	reg Vmuchar_t*	data = (Vmuchar_t*)DATA(b);
-			reg size_t	size = SIZE(b)&~BITS;
+		{	Vmuchar_t*	data = (Vmuchar_t*)DATA(b);
+			size_t	size = SIZE(b)&~BITS;
 
 			if((Vmuchar_t*)addr >= data && (Vmuchar_t*)addr < data+size)
 			{	if(ISJUNK(SIZE(b)) || !ISBUSY(SIZE(b)))
@@ -694,14 +694,14 @@ done:
 
 static int bestfree(Vmalloc_t* vm, void* data, int local )
 {
-	reg Vmdata_t*	vd = vm->data;
-	reg Block_t	*bp;
-	reg size_t	s;
+	Vmdata_t*	vd = vm->data;
+	Block_t	*bp;
+	size_t	s;
 
 #ifdef DEBUG
 	if(((char*)data - (char*)0) <= 1)
 	{	_Vmassert |= VM_check;
-		_vmbestcheck(vd, NIL(Block_t*));
+		_vmbestcheck(vd, NULL);
 		if (!data)
 			_Vmassert &= ~VM_check;
 		return 0;
@@ -717,7 +717,7 @@ static int bestfree(Vmalloc_t* vm, void* data, int local )
 	SETLOCK(vm, local);
 
 	/**/ASSERT(KPVADDR(vm, data, bestaddr) == 0);
-	/**/ASSERT(_vmbestcheck(vd, NIL(Block_t*)) == 0);
+	/**/ASSERT(_vmbestcheck(vd, NULL) == 0);
 	bp = BLOCK(data); s = SIZE(bp);
 
 	/* Keep an approximate average free block size.
@@ -743,27 +743,27 @@ static int bestfree(Vmalloc_t* vm, void* data, int local )
 	
 		/* coalesce on freeing large blocks to avoid fragmentation */
 		if(SIZE(bp) >= 2*vd->incr)
-		{	bestreclaim(vd,NIL(Block_t*),0);
+		{	bestreclaim(vd,NULL,0);
 			if(vd->wild && SIZE(vd->wild) >= COMPACT*vd->incr)
 				KPVCOMPACT(vm,bestcompact);
 		}
 	}
 
 	if(!local && _Vmtrace && (vd->mode&VM_TRACE) && VMETHOD(vd) == VM_MTBEST )
-		(*_Vmtrace)(vm,(Vmuchar_t*)data,NIL(Vmuchar_t*), (s&~BITS), 0);
+		(*_Vmtrace)(vm,(Vmuchar_t*)data,NULL, (s&~BITS), 0);
 
-	CLRLOCK(vm, local); /**/ASSERT(_vmbestcheck(vd, NIL(Block_t*)) == 0);
+	CLRLOCK(vm, local); /**/ASSERT(_vmbestcheck(vd, NULL) == 0);
 
 	return 0;
 }
 
 static void* bestresize(Vmalloc_t*	vm,		/* region allocating from	*/
 			  void*		data,		/* old block of data		*/
-			  reg size_t	size,		/* new size			*/
+			  size_t	size,		/* new size			*/
 			  int		type,		/* !=0 to move, <0 for not copy */
 			  int		local)
 {
-	reg Block_t	*rp, *np, *t;
+	Block_t	*rp, *np, *t;
 	size_t		s, bs;
 	size_t		oldz = 0,  orgsize = size;
 	void		*oldd = 0, *orgdata = data;
@@ -775,18 +775,18 @@ static void* bestresize(Vmalloc_t*	vm,		/* region allocating from	*/
 	if(!data) /* resizing a NULL block is the same as allocating */
 	{	data = bestalloc(vm, size, local);
 		if(data && (type&VM_RSZERO) )
-			memset((void*)data, 0, size);
+			memset(data, 0, size);
 		return data;
 	}
 	if(size == 0) /* resizing to zero size is the same as freeing */
 	{	(void)bestfree(vm, data, local);
-		return NIL(void*);
+		return NULL;
 	}
 
 	SETLOCK(vm, local);
 
 	/**/ASSERT(KPVADDR(vm, data, bestaddr) == 0);
-	/**/ASSERT(_vmbestcheck(vd, NIL(Block_t*)) == 0);
+	/**/ASSERT(_vmbestcheck(vd, NULL) == 0);
 	size = size <= BODYSIZE ? BODYSIZE : ROUND(size,ALIGN);
 	rp = BLOCK(data);	/**/ASSERT(ISBUSY(SIZE(rp)) && !ISJUNK(SIZE(rp)));
 	oldz = SIZE(rp); CLRBITS(oldz);
@@ -795,7 +795,7 @@ static void* bestresize(Vmalloc_t*	vm,		/* region allocating from	*/
 		do	/* forward merge as much as possible */
 		{	s = SIZE(np); /**/ASSERT(!ISPFREE(s));
 			if(np == vd->free)
-			{	vd->free = NIL(Block_t*);
+			{	vd->free = NULL;
 				CLRBITS(s);
 			}
 			else if(ISJUNK(s) )
@@ -806,7 +806,7 @@ static void* bestresize(Vmalloc_t*	vm,		/* region allocating from	*/
 			}
 			else if(!ISBUSY(s) )
 			{	if(np == vd->wild)
-					vd->wild = NIL(Block_t*);
+					vd->wild = NULL;
 				else	REMOVE(vd,np,INDEX(s),t,bestsearch); 
 			}
 			else	break;
@@ -817,7 +817,7 @@ static void* bestresize(Vmalloc_t*	vm,		/* region allocating from	*/
 		} while(SIZE(rp) < size);
 
 		if(SIZE(rp) < size && size > vd->incr && SEGWILD(rp) )
-		{	reg Seg_t*	seg;
+		{	Seg_t*	seg;
 
 			s = (size - SIZE(rp)) + sizeof(Head_t); s = ROUND(s,vd->incr);
 			seg = SEG(rp);
@@ -846,7 +846,7 @@ static void* bestresize(Vmalloc_t*	vm,		/* region allocating from	*/
 	}
 	else if((bs = s&~BITS) < size)
 	{	if(!(type&(VM_RSMOVE|VM_RSCOPY)) )
-			data = NIL(void*); /* old data is not moveable */
+			data = NULL; /* old data is not moveable */
 		else
 		{	oldd = data;
 			if((data = KPVALLOC(vm,size,bestalloc)) )
@@ -857,18 +857,18 @@ static void* bestresize(Vmalloc_t*	vm,		/* region allocating from	*/
 				SETJUNK(SIZE(rp));
 				LINK(rp) = CACHE(vd)[S_CACHE];
 				CACHE(vd)[S_CACHE] = rp;
-				bestreclaim(vd, NIL(Block_t*), S_CACHE);
+				bestreclaim(vd, NULL, S_CACHE);
 			}
 		}
 	}
 
 	if(data && (type&VM_RSZERO) && (size = SIZE(BLOCK(data))&~BITS) > oldz )
-		memset((void*)((Vmuchar_t*)data + oldz), 0, size-oldz);
+		memset(((Vmuchar_t*)data + oldz), 0, size-oldz);
 
 	if(!local && _Vmtrace && data && (vd->mode&VM_TRACE) && VMETHOD(vd) == VM_MTBEST)
 		(*_Vmtrace)(vm, (Vmuchar_t*)orgdata, (Vmuchar_t*)data, orgsize, 0);
 
-	CLRLOCK(vm, local); /**/ASSERT(_vmbestcheck(vd, NIL(Block_t*)) == 0);
+	CLRLOCK(vm, local); /**/ASSERT(_vmbestcheck(vd, NULL) == 0);
 
 	return data;
 }
@@ -920,11 +920,11 @@ static void* bestalign(Vmalloc_t* vm, size_t size, size_t align, int local)
 	Vmdata_t	*vd = vm->data;
 
 	if(size <= 0 || align <= 0)
-		return NIL(void*);
+		return NULL;
 
 	SETLOCK(vm, local);
 
-	/**/ASSERT(_vmbestcheck(vd, NIL(Block_t*)) == 0);
+	/**/ASSERT(_vmbestcheck(vd, NULL) == 0);
 	size = size <= BODYSIZE ? BODYSIZE : ROUND(size,ALIGN);
 	align = MULTIPLE(align,ALIGN);
 
@@ -938,7 +938,7 @@ static void* bestalign(Vmalloc_t* vm, size_t size, size_t align, int local)
 	}
 
 	/* reclaim all free blocks now to avoid fragmentation */
-	bestreclaim(vd,NIL(Block_t*),0);
+	bestreclaim(vd,NULL,0);
 
 	s = size + 2*(align+sizeof(Head_t)+extra); 
 	if(!(data = (Vmuchar_t*)KPVALLOC(vm,s,bestalloc)) )
@@ -980,15 +980,15 @@ static void* bestalign(Vmalloc_t* vm, size_t size, size_t align, int local)
 		SIZE(np) |= s&BITS;
 	}
 
-	bestreclaim(vd,NIL(Block_t*),0); /* coalesce all free blocks */
+	bestreclaim(vd,NULL,0); /* coalesce all free blocks */
 
 	if(!local && _Vmtrace && (vd->mode&VM_TRACE) )
-		(*_Vmtrace)(vm,NIL(Vmuchar_t*),data,orgsize,orgalign);
+		(*_Vmtrace)(vm,NULL,data,orgsize,orgalign);
 
 done:
-	CLRLOCK(vm, local); /**/ASSERT(_vmbestcheck(vd, NIL(Block_t*)) == 0);
+	CLRLOCK(vm, local); /**/ASSERT(_vmbestcheck(vd, NULL) == 0);
 
-	return (void*)data;
+	return data;
 }
 
 /* The below implements the discipline Vmdcsbrk and the heap region Vmheap.
@@ -1005,14 +1005,6 @@ done:
 #endif
 #if _mem_mmap_anon
 #undef	_mem_mmap_zero
-#if !_PACKAGE_ast
-#undef	_mem_sbrk
-#endif
-#endif
-#if _mem_mmap_zero
-#if !_PACKAGE_ast
-#undef	_mem_sbrk
-#endif
 #endif
 
 #if __linux__
@@ -1053,23 +1045,19 @@ static int chkaddr(Vmuchar_t* addr, size_t nsize)
 #endif /*__linux__*/
 
 #if _mem_win32 /* getting memory on a window system */
-#if _PACKAGE_ast
 #include	<ast_windows.h>
-#else
-#include	<windows.h>
-#endif
 
 static void* win32mem(void* caddr, size_t csize, size_t nsize)
 {	/**/ ASSERT(csize > 0 || nsize > 0)
 	if(csize == 0)
-	{	caddr = (void*)VirtualAlloc(0,nsize,MEM_COMMIT,PAGE_READWRITE);
+	{	caddr = VirtualAlloc(0,nsize,MEM_COMMIT,PAGE_READWRITE);
 		return caddr;
 	}
 	else if(nsize == 0)
 	{	(void)VirtualFree((LPVOID)caddr,0,MEM_RELEASE);
 		return caddr;
 	}
-	else	return NIL(void*);
+	else	return NULL;
 }
 #endif /* _mem_win32 */
 
@@ -1079,10 +1067,10 @@ static void* sbrkmem(void* caddr, size_t csize, size_t nsize)
 	Vmuchar_t	*addr = (Vmuchar_t*)sbrk(0);
 
 	if(!addr || addr == (Vmuchar_t*)(-1) )
-		return NIL(void*);
+		return NULL;
 
 	if(csize > 0 && addr != (Vmuchar_t*)caddr+csize)
-		return NIL(void*);
+		return NULL;
 	else if(csize == 0)
 		caddr = addr;
 
@@ -1090,13 +1078,13 @@ static void* sbrkmem(void* caddr, size_t csize, size_t nsize)
 	if(nsize < csize)
 		addr -= csize-nsize;
 	else if((addr += nsize-csize) < (Vmuchar_t*)caddr )
-		return NIL(void*);
+		return NULL;
 
 	if(brk(addr) != 0 )
-		return NIL(void*);
+		return NULL;
 	else if(nsize > csize && chkaddr(caddr, nsize) < 0 )
 	{	(void)brk((Vmuchar_t*)caddr+csize);
-		return NIL(void*);
+		return NULL;
 	}
 	else	return caddr;
 }
@@ -1134,20 +1122,20 @@ static void* mmapmem(void* caddr, size_t csize, size_t nsize, Mmdisc_t* mmdc)
 		{	int	fd;
 			if((fd = open("/dev/zero", O_RDONLY)) < 0 )
 			{	mmdc->fd = FD_NONE;
-				return NIL(void*);
+				return NULL;
 			}
 			mmdc->fd = _vmfd(fd);
 		}
 
 		if(mmdc->fd == FD_NONE)
-			return NIL(void*);
+			return NULL;
 	}
 #endif /* _mem_mmap_zero */
 
 	/**/ASSERT(csize > 0 || nsize > 0);
 	if(csize == 0)
 	{	nsize = ROUND(nsize, _Vmpagesize);
-		caddr = NIL(void*);
+		caddr = NULL;
 #if _mem_mmap_zero
 		if(mmdc && mmdc->fd >= 0 )
 			caddr = mmap(0, nsize, PROT_READ|PROT_WRITE, MAP_PRIVATE, mmdc->fd, mmdc->offset);
@@ -1157,10 +1145,10 @@ static void* mmapmem(void* caddr, size_t csize, size_t nsize, Mmdisc_t* mmdc)
 			caddr = mmap(0, nsize, PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE, -1, 0);
 #endif
 		if(!caddr || caddr == (void*)(-1))
-			return NIL(void*);
+			return NULL;
 		else if(chkaddr((Vmuchar_t*)caddr, nsize) < 0 )
 		{	(void)munmap(caddr, nsize);
-			return NIL(void*);
+			return NULL;
 		}
 		else
 		{	if(mmdc)
@@ -1173,14 +1161,14 @@ static void* mmapmem(void* caddr, size_t csize, size_t nsize, Mmdisc_t* mmdc)
 #if _mem_sbrk
 		Vmuchar_t	*addr = (Vmuchar_t*)sbrk(0);
 		if(addr < (Vmuchar_t*)caddr ) /* in sbrk space */
-			return NIL(void*);
+			return NULL;
 		else
 #endif
 		{	(void)munmap(caddr, csize);
 			return caddr;
 		}
 	}
-	else	return NIL(void*);
+	else	return NULL;
 }
 #endif /* _mem_map_anon || _mem_mmap_zero */
 
@@ -1189,12 +1177,12 @@ static void* mallocmem(void* caddr, size_t csize, size_t nsize)
 {
 	/**/ASSERT(csize > 0 || nsize > 0);
 	if(csize == 0)
-		return (void*)malloc(nsize);
+		return malloc(nsize);
 	else if(nsize == 0)
 	{	free(caddr);
 		return caddr;
 	}
-	else	return NIL(void*);
+	else	return NULL;
 }
 #endif
 
@@ -1204,11 +1192,11 @@ static void* getmemory(Vmalloc_t* vm, void* caddr, size_t csize, size_t nsize, V
 	Vmuchar_t	*addr;
 
 	if((csize > 0 && !caddr) || (csize == 0 && nsize == 0) )
-		return NIL(void*);
+		return NULL;
 
 #if _mem_win32
 	if((addr = win32mem(caddr, csize, nsize)) )
-		return (void*)addr;
+		return addr;
 #endif
 #if _mem_sbrk
 #if 1 /* no sbrk() unless explicit VM_break */
@@ -1216,31 +1204,31 @@ static void* getmemory(Vmalloc_t* vm, void* caddr, size_t csize, size_t nsize, V
 #else /* asoinit(0,0,0)==0 => the application did not request a specific aso method => sbrk() ok */
 	if(((_Vmassert & VM_break) || !(_Vmassert & VM_mmap) && !asoinit(0, 0, 0)) && (addr = sbrkmem(caddr, csize, nsize)) )
 #endif
-		return (void*)addr;
+		return addr;
 #endif
 #if _mem_mmap_anon
-	if((addr = mmapmem(caddr, csize, nsize, (Mmdisc_t*)0)) )
-		return (void*)addr;
+	if((addr = mmapmem(caddr, csize, nsize, NULL)) )
+		return addr;
 #endif
 #if _mem_mmap_zero
 	if((addr = mmapmem(caddr, csize, nsize, (Mmdisc_t*)disc)) )
-		return (void*)addr;
+		return addr;
 #endif
 #if _mem_sbrk
 	if(!(_Vmassert & VM_break) && (addr = sbrkmem(caddr, csize, nsize)) )
-		return (void*)addr;
+		return addr;
 #endif
 #if _std_malloc
 	if((addr = mallocmem(caddr, csize, nsize)) )
-		return (void*)addr;
+		return addr;
 #endif 
-	return NIL(void*);
+	return NULL;
 }
 
 #if _mem_mmap_zero || _mem_mmap_anon
-static Mmdisc_t _Vmdcsystem = { { getmemory, NIL(Vmexcept_f), 64*1024, sizeof(Mmdisc_t) }, FD_INIT, 0 };
+static Mmdisc_t _Vmdcsystem = { { getmemory, NULL, 64*1024, sizeof(Mmdisc_t) }, FD_INIT, 0 };
 #else
-static Vmdisc_t _Vmdcsystem = { getmemory, NIL(Vmexcept_f), 0, sizeof(Vmdisc_t) };
+static Vmdisc_t _Vmdcsystem = { getmemory, NULL, 0, sizeof(Vmdisc_t) };
 #endif
 
 static Vmethod_t _Vmbest =
@@ -1262,10 +1250,10 @@ static Vmdata_t	_Vmdata =
 	VM_MTBEST|VM_SHARE,		/* mode		*/
 	0,				/* incr		*/
 	0,				/* pool		*/
-	NIL(Seg_t*),			/* seg		*/
-	NIL(Block_t*),			/* free		*/
-	NIL(Block_t*),			/* wild		*/
-	NIL(Block_t*)			/* root		*/
+	NULL,			/* seg		*/
+	NULL,			/* free		*/
+	NULL,			/* wild		*/
+	NULL			/* root		*/
 					/* tiny[]	*/
 					/* cache[]	*/
 };
@@ -1280,12 +1268,12 @@ Vmalloc_t _Vmheap =
 	  bestalign,
 	  VM_MTBEST
 	},
-	NIL(char*),			/* file		*/
+	NULL,			/* file		*/
 	0,				/* line		*/
 	0,				/* func		*/
 	(Vmdisc_t*)(&_Vmdcsystem),	/* disc		*/
 	&_Vmdata,			/* data		*/
-	NIL(Vmalloc_t*)			/* next		*/
+	NULL			/* next		*/
 };
 
 Vmalloc_t*	Vmheap = &_Vmheap;

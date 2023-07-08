@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -142,7 +142,7 @@ static char* _sfsetclass(const char*	form,	/* format string			*/
 		SFMBCLR(&mbs);
 	for(n = 1; *form != ']'; form += n)
 	{	if((c = *((uchar*)form)) == 0)
-			return NIL(char*);
+			return NULL;
 
 		if(*(form+1) == '-')
 		{	endc = *((uchar*)(form+2));
@@ -158,7 +158,7 @@ static char* _sfsetclass(const char*	form,	/* format string			*/
 		{ one_char:
 #if _has_multibyte /* true multi-byte chars must be checked differently */
 			if((flags&SFFMT_LONG) && (n = (int)SFMBLEN(form,&mbs)) <= 0)
-				return NIL(char*);
+				return NULL;
 			if(n == 1)
 #endif
 				ac->ok[c] = ac->yes;
@@ -202,7 +202,7 @@ static int _sfwaccept(wchar_t wc, Accept_t* ac)
 #if _has_multibyte == 1
 #define SFgetwc(sc,wc,fmt,ac,mbs)	_sfgetwc(sc,wc,fmt,ac,(void*)(mbs))
 #else
-#define SFgetwc(sc,wc,fmt,ac,mbs)	_sfgetwc(sc,wc,fmt,ac,NIL(void*))
+#define SFgetwc(sc,wc,fmt,ac,mbs)	_sfgetwc(sc,wc,fmt,ac,NULL)
 #endif
 
 static int _sfgetwc(Scan_t*	sc,	/* the scanning handle		*/
@@ -229,7 +229,7 @@ static int _sfgetwc(Scan_t*	sc,	/* the scanning handle		*/
 	}
 
 	for(n = 0; n < SFMBMAX; )
-	{	if((v = _scgetc((void*)sc, 0)) <= 0)
+	{	if((v = _scgetc(sc, 0)) <= 0)
 			goto no_match;
 		else	b[n++] = v;
 
@@ -267,10 +267,10 @@ no_match: /* this unget is lossy on a stream with small buffer */
 
 
 int sfvscanf(Sfio_t*		f,		/* file to be scanned */
-	     reg const char*	form,		/* scanning format */
+	     const char*	form,		/* scanning format */
 	     va_list		args)
 {
-	reg int		inp, shift, base, width;
+	int		inp, shift, base, width;
 	ssize_t		size;
 	int		fmt, flags, dot, n_assign, v, n, n_input;
 	char		*sp;
@@ -306,7 +306,7 @@ int sfvscanf(Sfio_t*		f,		/* file to be scanned */
 #define SFlen(f)	(d - data)
 #define SFinit(f)	((peek = f->extent < 0 && (f->flags&SF_SHARE)), SFbuf(f) )
 #define SFend(f)	((n_input += SFlen(f)), \
-			 (peek ? SFREAD(f,(void*)data,SFlen(f)) : ((f->next = d),0)) )
+			 (peek ? SFREAD(f,data,SFlen(f)) : ((f->next = d),0)) )
 #define SFgetc(f,c)	((c) = (d < endd || (SFend(f), SFbuf(f), d < endd)) ? \
 				(int)(*d++) : -1 )
 #define SFungetc(f,c)	(d -= 1)
@@ -322,10 +322,10 @@ int sfvscanf(Sfio_t*		f,		/* file to be scanned */
 
 	n_assign = n_input = 0; inp = -1;
 
-	fmstk = NIL(Fmt_t*);
-	ft = NIL(Sffmt_t*);
+	fmstk = NULL;
+	ft = NULL;
 
-	fp = NIL(Fmtpos_t*);
+	fp = NULL;
 	argn = -1;
 	oform = (char*)form;
 	va_copy(oargs,args);
@@ -393,8 +393,8 @@ loop_fmt:
 		/* matching some pattern */
 		base = 10; size = -1;
 		width = dot = 0;
-		t_str = NIL(char*); n_str = 0;
-		value = NIL(void*);
+		t_str = NULL; n_str = 0;
+		value = NULL;
 		argp = -1;
 
 	loop_flags:	/* LOOP FOR FLAGS, WIDTH, BASE, TYPE */
@@ -407,7 +407,7 @@ loop_fmt:
 				{
 				case 0 :	/* not balanceable, retract */
 					form = t_str;
-					t_str = NIL(char*);
+					t_str = NULL;
 					n_str = 0;
 					goto loop_flags;
 				case LEFTP :	/* increasing nested level */
@@ -435,9 +435,9 @@ loop_fmt:
 						else if(ft && ft->extf )
 						{	FMTSET(ft, form,args,
 								LEFTP, 0, 0, 0,0,0,
-								NIL(char*),0);
+								NULL,0);
 							n = (*ft->extf)
-							      (f,(void*)&argv,ft);
+							      (f,&argv,ft);
 							if(n < 0)
 								goto pop_fmt;
 							if(!(ft->flags&SFFMT_VALUE) )
@@ -481,8 +481,8 @@ loop_fmt:
 					v = fp[n].argv.i;
 				else if(ft && ft->extf )
 				{	FMTSET(ft, form,args, '.',dot, 0, 0,0,0,
-						NIL(char*), 0);
-					if((*ft->extf)(f, (void*)(&argv), ft) < 0)
+						NULL, 0);
+					if((*ft->extf)(f, &argv, ft) < 0)
 						goto pop_fmt;
 					if(ft->flags&SFFMT_VALUE)
 						v = argv.i;
@@ -534,8 +534,8 @@ loop_fmt:
 					size = fp[n].argv.i;
 				else if(ft && ft->extf )
 				{	FMTSET(ft, form,args, 'I',sizeof(int), 0, 0,0,0,
-						NIL(char*), 0);
-					if((*ft->extf)(f, (void*)(&argv), ft) < 0)
+						NULL, 0);
+					if((*ft->extf)(f, &argv, ft) < 0)
 						goto pop_fmt;
 					if(ft->flags&SFFMT_VALUE)
 						size = argv.i;
@@ -643,7 +643,7 @@ loop_fmt:
 		else if(ft && ft->extf)
 		{	FMTSET(ft, form,args, fmt, size,flags, width,0,base, t_str,n_str);
 			SFend(f); SFOPEN(f,0);
-			v = (*ft->extf)(f, (void*)&argv, ft);
+			v = (*ft->extf)(f, &argv, ft);
 			SFLOCK(f,0); SFbuf(f);
 
 			if(v < 0)
@@ -696,11 +696,11 @@ loop_fmt:
 					form = ft->form; SFMBCLR(ft->mbs);
 					va_copy(args,ft->args);
 					argn = -1;
-					fp = NIL(Fmtpos_t*);
+					fp = NULL;
 					oform = (char*)form;
 					va_copy(oargs,args);
 				}
-				else	fm->form = NIL(char*);
+				else	fm->form = NULL;
 
 				fm->eventf = ft->eventf;
 				fm->next = fmstk;
@@ -746,7 +746,7 @@ loop_fmt:
 
 		if(_Sftype[fmt] == SFFMT_FLOAT)
 		{	SFungetc(f,inp); SCinit(&scd,1);
-			argv.ld = _sfdscan((void*)(&scd), _scgetc);
+			argv.ld = _sfdscan(&scd, _scgetc);
 			SCend(&scd,1);
 
 			if(scd.error >= 0)
@@ -1013,12 +1013,12 @@ loop_fmt:
 pop_fmt:
 	if(fp)
 	{	free(fp);
-		fp = NIL(Fmtpos_t*);
+		fp = NULL;
 	}
 	while((fm = fmstk) ) /* pop the format stack and continue */
 	{	if(fm->eventf)
 		{	if(!form || !form[0])
-				(*fm->eventf)(f,SF_FINAL,NIL(void*),ft);
+				(*fm->eventf)(f,SF_FINAL,NULL,ft);
 			else if((*fm->eventf)(f,SF_DPOP,(void*)form,ft) < 0)
 				goto loop_fmt;
 		}
@@ -1043,7 +1043,7 @@ done:
 		free(fp);
 	while((fm = fmstk) )
 	{	if(fm->eventf)
-			(*fm->eventf)(f,SF_FINAL,NIL(void*),fm->ft);
+			(*fm->eventf)(f,SF_FINAL,NULL,fm->ft);
 		fmstk = fm->next;
 		free(fm);
 	}

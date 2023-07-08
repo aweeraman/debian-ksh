@@ -2,6 +2,334 @@ This documents significant changes in the 1.0 branch of ksh 93u+m.
 For full details, see the git log at: https://github.com/ksh93/ksh/tree/1.0
 Uppercase BUG_* IDs are shell bug IDs as used by the Modernish shell library.
 
+2023-06-13:
+
+- Release 1.0.6.
+
+- Fixed a serious regression in pathname expansion where quoted wildcard
+  characters were incorrectly expanded if a pattern contains both a brace
+  expansion and a variable expansion.
+
+2023-06-12:
+
+- Fixed a bug where ^X^E in emacs or 'v' in vi, which invoke a full-screen
+  editor to edit the command line, could cause the wrong command line to be
+  edited if two shell sessions share a .sh_history file.
+
+- In the emacs line editor, ^X^E no longer echos the hist command it invokes.
+
+2023-06-10:
+
+- Ksh can now compile on most operating systems when using -std=c99 in CCFLAGS.
+
+2023-06-09:
+
+- Fixed a bug where the 'break' and 'continue' commands stopped working after
+  changing scope levels (.sh.level=n) within a loop invoked from a DEBUG trap.
+
+2023-06-07:
+
+- Release 1.0.5.
+
+2023-06-05:
+
+- Fixed a bug in command completion: when a shell built-in or defined function
+  was preceded in alphabetical order by an undefined function (on FPATH or
+  after 'autoload'), the built-in or defined function failed to tab-complete.
+
+2023-06-04:
+
+- Fixed a bug in 'case', introduced in ksh 93t 2008-10-31, where extended
+  patterns containing a closing brace ('}') caused a spurious syntax error.
+
+- The POSIX mode was amended to make 'test -e /dev/fd/n' (where n is a file
+  descriptor number) actually test for the existence of /dev/fd/n in the
+  file system. By default it tests if that file descriptor is open.
+
+2023-06-02:
+
+- Fixed a bug introduced on 2021-04-24 where unsetting a function in a
+  subshell hides any built-in command by the same name for the duration
+  of that subshell.
+
+2023-05-30:
+
+- Fixed a bug in the 'type -t'/'whence -t' output for an undefined function.
+
+- The autoloadable directory stack and menu-based cd functions in the 'fun'
+  directory have been reorganised and fixed to play well together when that
+  directory is added to FPATH.
+
+2023-05-29:
+
+- Fixed a bug in bracket expressions in glob patterns where quoting a '!'
+  (e.g., to disable its negator function) caused a '\' to be wrongly matched.
+  For example,
+	case '\' in ['!'X]) echo BAD;; esac
+  no longer outputs BAD, and
+	touch '\'; ls ['!'X]
+  no longer incorrectly lists the file '\'.
+
+2023-05-28:
+
+- Fixed a bug, introduced on 2020-06-08 and exacerbated on 2022-07-02, where
+  the exit status of a script did not reflect the signal with the 9th bit
+  set if the script exited on receiving a signal and an EXIT trap was set.
+
+2023-05-27:
+
+- Fixed a bug in the handling of backslashes in pathname expansion patterns
+  resulting from field splitting. For example, the following:
+	$ mkdir testdir; cd testdir; touch b; p='[a\-c]'; echo $p
+  now correctly recognises the backslash escape and no longer outputs 'b'.
+
+- The 2023-05-19 fix for brace expansion interfering with extended patterns has
+  been improved to also recognise and handle extended patterns that are parts
+  of larger patterns, e.g., 'ls file~(E)[[:digit:]]{3,6}\.txt$' now works.
+
+2023-05-19:
+
+- Fixed a bug in the loop invariants optimizer where a variable for which
+  a .get or .getn discipline function is set within a loop is incorrectly
+  treated as invariant.
+
+- Fixed two bugs in pathname expansion:
+  1. Brace expansion interfered with EREs and other extended pattern
+     types used with ~(...) pattern option prefixes, e.g. the {3,6} in
+     'ls ~(E)^file[[:digit:]]{3,6}\.txt$' was incorrectly parsed as a
+     brace expansion instead of an ERE bound matching 3 to 6 digits.
+     That command will now list any matching files such as file1234.txt.
+  2. With brace expansion disabled (set +B), any '{' character in a file
+     name pattern stopped it from being resolved unless a wildcard followed
+     it. Now, 'set +B; ls *{' will list files with names ending in '{'.
+
+2023-05-18:
+
+- Fixed multiple bugs causing incorrect output for relative date specifications
+  given as arguments to printf %(dateformat)T. For example, something like
+	printf '%(%Y-%m-%d %H:%M)T\n' 'exact 9 weeks ago'
+  will now produce the correct output, which is the same as GNU date:
+	date '+%Y-%m-%d %H:%M' '9 weeks ago'
+
+- In the ${parameter/pattern/string} search-and-replace expansion, an
+  anchored empty pattern will now match the beginning or the end of the
+  string, so that ${parameter/#/string} will prefix the string to the
+  parameter value and ${parameter/%/string} will append it. Previously,
+  these operations were no-ops (equivalent to ${parameter}). This change
+  brings ksh 93u+m into line with mksh, zsh and bash.
+
+2023-05-17:
+
+- Fixed buggy behaviour of printf with mix and match of % and %x$.
+
+2023-05-15:
+
+- Fixed a crash on executing a nested compound assignment in a command
+  substitution.
+
+2023-05-14:
+
+- If history expansion is active, then command and file name completion now
+  quotes the history expansion characters with a backslash as needed to
+  avoid triggering history expansion failures if one of those characters
+  occurs in a command or file name.
+
+- Fixed completion of file names starting with an escaped literal tilde.
+
+- Undocumented and non-functional goto label functionality has been removed.
+  Command names can now end in ':' like on other shells, as POSIX requires.
+
+2023-05-11:
+
+- The ability to use multi-line editing is now detected at runtime instead of
+  compile time, making detection more reliable across terminals and platforms.
+
+2023-05-01:
+
+- Fixes for indexed arrays declared to use enum constants for subscripts:
+  - Syntax validation: add missing check for ] in 'typeset -a \[type] array'.
+  - Fixed error message when type in 'typeset -a \[type] array' is unknown.
+  - Fixed 'typeset -p' output of such arrays to quote the square brackets.
+
+2023-04-09:
+
+- Fixed command line redrawing on resizing the window with --multiline off.
+
+- Multiline editing is now automatically disabled if and when the TERM
+  environment variable is unset, not exported, or set to a terminal type
+  that does not support the necessary operations. It is automatically
+  re-enabled when the TERM variable is corrected and --multiline is on.
+
+2023-04-08:
+
+- Fixed a termcap(5) detection bug that broke multiline editing on FreeBSD.
+
+2023-04-05:
+
+- Fixed a spurious syntax error in compound assignments upon encountering a
+  pair of repeated opening parentheses '(('. This bug behaved differently
+  depending on whether the compound assignment was outside or within a command
+  substitution of the form $(...) or ${ ...; }. Both cases are now fixed.
+
+- Fixed a parsing bug in arithmetic functions like
+	function .sh.math.add x y { .sh.value=x+y; }
+  so that the '.sh.value=x+y' is correctly interpreted as an assignment, not
+  as a command name. After this, (( z = add(x,y) )) works correctly.
+
+2023-04-03:
+
+- Fixed multiple crashing bugs in discipline functions invoked from non-forked
+  subshells, including corruption of the $_ variable.
+
+2023-04-02:
+
+- Corrected the 2022-07-05 fix for the detection of a syntax error in
+  compound assignments to associative arrays.
+
+- Fixed spurious syntax error in ${parameter:offset:length}: the arithmetic
+  expressions 'offset' and 'length' may now contain the operators ( ) & |.
+
+2023-03-29:
+
+- Fixed a bug in 'printf -v' (added on 2021-11-18) where using the %B format
+  specifier would overwrite any data already written to the variable.
+
+2023-03-26:
+
+- Fixed an intermittent crash in 'command -x' experienced on some arm/arm64
+  systems running Linux.
+
+- Fixed a bug that caused 'printf "%(%Z)T\n" now' to print nonsense strings
+  such as 'ica' on Cygwin.
+
+2023-03-24:
+
+- Fixed a crash in read -d D in multibyte locales that occurred when a byte
+  with the 8th bit set was passed as the delimiter character D. For example,
+  read -d $'\200' crashed in a UTF-8 locale. (Note that multibyte delimiter
+  characters are not supported yet.)
+
+2023-03-23:
+
+- A bug has been fixed in 'printf' and 'print -f' that caused the %a, %A, %e,
+  %E, %f, %F, %g, and %G conversion specifiers to evaluate any unexpanded
+  arithmetic expression passed to them twice, causing any side effects, such
+  as incrementing a variable, to be incorrect. Bug introduced in 93t- (2008).
+
+- The POSIX compatibility mode has been amended to cause 'printf' to parse only
+  decimal/hexadecimal/octal constants for its numerical conversion specifiers,
+  instead of arithmetic expressions. (POSIX mode does not change 'print -f'.)
+
+2023-03-20:
+
+- Fixed incorrect result of array slicing ${array[@]:offset:length} where
+  'length' is a nested expansion involving an array. For example,
+  ${array[@]:0:${#array[@]}} is now correctly equivalent to ${array[@]}.
+
+- Fixed bugs in 'command -x' and 'command -v -x' (see 2021-01-30) that caused
+  it to fail to disregard built-ins if /opt/ast/bin (the virtual path for
+  path-bound built-ins) is in $PATH.
+
+2023-03-19:
+
+- Fixed a crash in 'read' (as well as a spurious error in 'printf -v', added
+  on 2021-11-18) when using an indexed array subscript with an arithmetic
+  expression that yields 0 while also modifying the variable. For example,
+  'i=-1; read a[i+=1]' crashed. Bug introduced in ksh 93s+ 2008-01-31.
+
+- In the 'read' built-in, a '=' in a variable name argument is now once
+  again an error and is no longer misparsed as an assignment, which caused
+  inconsistent behaviour or (in the case of 'read -C foo=bar') a crash. This
+  fixes a bug introduced in ksh 93u+ 2011-04-28.
+
+2023-03-17:
+
+- Fixed nameref self-reference loop detection; as of ksh 93u 2010-11-22, this
+  failed for loops of more than two refs. For example, 'nameref a=b b=c c=a'
+  now correctly outputs an 'invalid self reference' error message.
+
+2023-03-16:
+
+- Backported a fix from ksh 93v- beta for a bug in the 'for' loop optimizer
+  which could falsely treat 'typeset -b' variables as loop invariants.
+
+2023-03-04:
+
+- Fixed a bug introduced on 2022-02-08 that caused string translation using
+  $"..." to either crash or fail silently.
+
+2023-03-03:
+
+- A new SHOPT_SCRIPTONLY compile-time option was added that, if enabled,
+  compiles out the interactive shell, resulting in a ksh binary that can
+  only run scripts. See src/cmd/ksh93/README for more information.
+
+2023-02-23:
+
+- Fixed a crash or corrupted output that occurred on some systems if the vi
+  '.' repeater command was used immediately after starting ksh in vi mode.
+
+- In vi mode, when navigating back in the command history and then editing a
+  line from the history, the U command now correctly undoes the latest edit
+  to the history line instead of jumping back to the current command line.
+
+- In vi mode, issuing the v command from a completely empty line now invokes
+  the full editor with an empty file instead of beeping.
+
+- Fixed a bug in vi mode where the v command from a line with only whitespace
+  resulted in an "invalid range" hist error and the editor failed to open.
+
+- Fixed a bug in emacs mode where calling the full editor saved the current
+  command line to the history file without a terminating newline.
+
+- Fixed a bug in emacs and vi modes where navigating to a null or empty
+  history line displays an empty line onscreen.
+
+- Fixed a bug in emacs and vi modes where attempting to tab-complete an
+  alias or $PATH item containing wide characters failed before the first
+  normal-width character had been entered.
+
+2023-02-22:
+
+- ksh now throws a panic and exits if a read error (such as an I/O error)
+  occurs while trying to read the next command(s) from a running script.
+  Previously, ksh acted as if EOF was reached, and the script ended normally.
+
+- The '.' and 'source' commands now throw an error if a dot script can be only
+  partially read, instead of ignoring the error. As ksh reads the entire dot
+  script before running it, no part of the script is executed in that case.
+
+2023-02-20:
+
+- The SHOPT_RAWONLY compile-time has been removed. Ksh's vi editor now always
+  operates in raw mode (but note that "raw only" was already the default
+  compiled-in behaviour as of 93m+ 2002-03-17).
+
+2023-02-16:
+
+- Fixed a bug in 'cd' with no arguments. When changing the working directory
+  to the default value ($HOME), it incorrectly used the global scope of the
+  HOME variable even if a local scope was active.
+
+2023-01-09:
+
+- Fixed a bug causing incorrect greedy ${.sh.match} results when matching
+  the pattern [^]] in a non-ASCII locale.
+
+- Fixed a crash on initialisation that occurred if ksh was launched from a
+  parent process with a very high or very low open files limit (ulimit -n).
+
+2023-01-08:
+
+- Fixed a completion bug in vi mode in multibyte character locales, in which
+  one or more invalid characters were output at the end of the completion if
+  the cursor was on a "wide" character (or if the last character of the word
+  is wide and the cursor is in the immediately-following position).
+
+- Fixed a bug in vi and emacs in which using = or * completion from within
+  a word failed to replace the word; any trailing characters were printed
+  at the end of the completion. (Bolsky and Korn, pp. 105-106 and 114-115)
+
 2022-10-22:
 
 - Release 1.0.4.

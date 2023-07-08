@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -44,22 +44,22 @@ static char time_state;
 
 static double getnow(void)
 {
-	register double now;
+	double now;
 #ifdef timeofday
 	struct timeval tp;
 	timeofday(&tp);
 	now = tp.tv_sec + 1.e-6*tp.tv_usec;
 
 #else
-	now = (double)time((time_t*)0);
+	now = (double)time(NULL);
 #endif /* timeofday */
-	return(now+.001);
+	return now+.001;
 }
 
 /*
  * set an alarm for <t> seconds
  */
-static double setalarm(register double t)
+static double setalarm(double t)
 {
 #if defined(_lib_setitimer) && defined(ITIMER_REAL)
 	struct itimerval tnew, told;
@@ -81,13 +81,13 @@ static double setalarm(register double t)
 		seconds=1;
 	t = (double)alarm(seconds);
 #endif
-	return(t);
+	return t;
 }
 
 /* signal handler for alarm call */
 static void sigalrm(int sig)
 {
-	register Timer_t *tp, *tplast, *tpold, *tpnext;
+	Timer_t *tp, *tplast, *tpold, *tpnext;
 	double now;
 	static double left;
 	NOT_USED(sig);
@@ -181,12 +181,12 @@ static void oldalrm(void *handle)
 	
 void *sh_timeradd(unsigned long msec,int flags,void (*action)(void*),void *handle) 
 {
-	register Timer_t *tp;
+	Timer_t *tp;
 	double t;
 	Handler_t fn;
 	t = ((double)msec)/1000.;
 	if(t<=0 || !action)
-		return((void*)0);
+		return NULL;
 	if(tp=tpfree)
 		tpfree = tp->next;
 	else
@@ -206,7 +206,7 @@ void *sh_timeradd(unsigned long msec,int flags,void (*action)(void*),void *handl
 		{
 			Handler_t *hp = (Handler_t*)sh_malloc(sizeof(Handler_t));
 			*hp = fn;
-			sh_timeradd((long)(1000*t), 0, oldalrm, (void*)hp);
+			sh_timeradd((long)(1000*t), 0, oldalrm, hp);
 		}
 		tp = tptop;
 	}
@@ -220,7 +220,7 @@ void *sh_timeradd(unsigned long msec,int flags,void (*action)(void*),void *handl
 		if(tp!=tptop)
 			tp=0;
 	}
-	return((void*)tp);
+	return tp;
 }
 
 /*
@@ -228,7 +228,7 @@ void *sh_timeradd(unsigned long msec,int flags,void (*action)(void*),void *handl
  */
 void	sh_timerdel(void *handle)
 {
-	register Timer_t *tp = (Timer_t*)handle;
+	Timer_t *tp = (Timer_t*)handle;
 	if(tp)
 		tp->action = 0;
 	else

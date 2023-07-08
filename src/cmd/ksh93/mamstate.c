@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -14,7 +14,6 @@
 *                  Martijn Dekker <martijn@inlv.org>                   *
 *                                                                      *
 ***********************************************************************/
-#pragma clang diagnostic ignored "-Wdeprecated-register"
 #pragma clang diagnostic ignored "-Wparentheses"
 /*
  * AT&T Bell Laboratories
@@ -38,8 +37,8 @@ static char id[] = "\n@(#)$Id: mamstate (AT&T Bell Laboratories) 1989-06-26 $\0\
 
 int main(int argc, char **argv)
 {
-	register char*	s;
-	register int	c;
+	char*		s;
+	int		c;
 	long		ref;
 	struct stat	st;
 	char		buf[1024];

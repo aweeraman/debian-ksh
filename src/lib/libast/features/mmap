@@ -63,13 +63,13 @@ tst	lib_mmap note{ standard mmap interface that works }end execute{
 		if ((fd = open(file, O_RDWR)) < 0)
 			return Failed(file);
 
-		mm = mmap((caddr_t)0, sizeof(buf), (PROT_READ|PROT_WRITE),
+		mm = mmap(NULL, sizeof(buf), (PROT_READ|PROT_WRITE),
 			  (MAP_PRIVATE|MAP_VARIABLE), fd, 0);
-		if(mm == (caddr_t)0 || mm == (caddr_t)(-1))
+		if(mm == NULL || mm == (caddr_t)(-1))
 			return Failed(file);
 		mm = mmap(mm, sizeof(buf), (PROT_READ|PROT_WRITE),
 			  (MAP_PRIVATE|MAP_FIXED), fd, 0);
-		okfixed = (mm == (caddr_t)0 || mm == (caddr_t)(-1)) ? 0 : 1;
+		okfixed = (mm == NULL || mm == (caddr_t)(-1)) ? 0 : 1;
 		munmap(mm, sizeof(buf));
 		close(fd);
 
@@ -88,7 +88,7 @@ tst	lib_mmap note{ standard mmap interface that works }end execute{
 		if ((fd = open(file, O_RDWR)) < 0)
 			return Failed(file);
 		times(&stm);
-		for(i = 0, mm = (caddr_t)0; i < WRITE; ++i)
+		for(i = 0, mm = NULL; i < WRITE; ++i)
 		{	if(okfixed)
 			{	mm = (caddr_t)mmap(mm, MAPSIZE,
 					(PROT_READ|PROT_WRITE),
@@ -98,12 +98,12 @@ tst	lib_mmap note{ standard mmap interface that works }end execute{
 			else
 			{	if(mm)
 					munmap(mm, MAPSIZE);
-				mm = (caddr_t)mmap((caddr_t)0, MAPSIZE,
+				mm = (caddr_t)mmap(NULL, MAPSIZE,
 					(PROT_READ|PROT_WRITE),
 					(MAP_PRIVATE|MAP_VARIABLE),
 					fd, i*MAPSIZE );
 			}
-			if(mm == (caddr_t)(-1) || mm == (caddr_t)0)
+			if(mm == (caddr_t)(-1) || mm == NULL)
 				return Failed(file);
 		}
 		times(&etm);
@@ -127,7 +127,7 @@ tst	mmap_anon note{ use mmap MAP_ANON to get raw memory }end execute{
 	#define MAP_ANON	MAP_ANONYMOUS
 	#endif
 	int
-	main()
+	main(void)
 	{	void	*addr;
 		addr = mmap(0,1024*1024,PROT_READ|PROT_WRITE,MAP_ANON|MAP_PRIVATE,-1,0);
 		return (addr && addr != (void*)(-1)) ? 0 : 1;
@@ -143,7 +143,7 @@ tst	mmap_devzero note{ use mmap on /dev/zero to get raw memory }end execute{
 	#include <sys/types.h>
 	#include <sys/mman.h>
 	int
-	main()
+	main(void)
 	{	int	fd;
 		void	*addr;
 		if((fd = open("/dev/zero", O_RDWR)) < 0)
@@ -217,13 +217,13 @@ tst	note{ mmap is fast enough to be worth using }end output{
 		for(run = 0; run < RUN; ++run)
 		{	if ((fd = open(file, O_RDWR)) < 0)
 				return Failed(file);
-			for(i = 0, mm = (caddr_t)0; i < WRITE; ++i)
+			for(i = 0, mm = NULL; i < WRITE; ++i)
 			{	if(mm)
 					munmap(mm, MAPSIZE);
-				mm = (caddr_t)mmap((caddr_t)0, MAPSIZE,
+				mm = (caddr_t)mmap(NULL, MAPSIZE,
 						   (PROT_READ|PROT_WRITE),
 						   MAP_PRIVATE, fd, i*MAPSIZE );
-				if(mm == (caddr_t)(-1) || mm == (caddr_t)0)
+				if(mm == (caddr_t)(-1) || mm == NULL)
 					return Failed(file);
 	
 				/* the memcpy is < BUFSIZE to simulate the

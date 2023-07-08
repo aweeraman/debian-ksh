@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2013 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -46,7 +46,7 @@ static const char usage[] =
 		"[+Gi?1024*1024*1024 (gibi)]"
 		"[+...?and so on for T, Ti, P, Pi, E, and Ei.]"
 	"}"
-"[+?For backwards compatibility, \b-\b\anumber\a is equivalent to \b-n\b "
+"[+?For backward compatibility, \b-\b\anumber\a is equivalent to \b-n\b "
     "\anumber\a.]"
 "[n:lines?Copy \alines\a lines from each file.]#[lines:=10]"
 "[c:bytes?Copy \achars\a bytes from each file.]#[chars]"
@@ -68,18 +68,18 @@ static const char usage[] =
 #include <cmd.h>
 
 int
-b_head(int argc, register char** argv, Shbltin_t* context)
+b_head(int argc, char** argv, Shbltin_t* context)
 {
 	static const char	header_fmt[] = "\n==> %s <==\n";
 
-	register Sfio_t*	fp;
-	register char*		cp;
-	register off_t		keep = 10;
-	register off_t		skip = 0;
-	register int		delim = '\n';
-	off_t			moved;
-	int			header = 1;
-	char*			format = (char*)header_fmt+1;
+	Sfio_t*		fp;
+	char*		cp;
+	off_t		keep = 10;
+	off_t		skip = 0;
+	int		delim = '\n';
+	off_t		moved;
+	int		header = 1;
+	char*		format = (char*)header_fmt+1;
 
 	cmdinit(argc, argv, context, ERROR_CATALOG, 0);
 	for (;;)
@@ -120,7 +120,7 @@ b_head(int argc, register char** argv, Shbltin_t* context)
 	argc -= opt_info.index;
 	if (error_info.errors)
 	{
-		error(ERROR_usage(2), "%s", optusage(NiL));
+		error(ERROR_usage(2), "%s", optusage(NULL));
 		UNREACHABLE();
 	}
 	if (cp = *argv)
@@ -133,7 +133,7 @@ b_head(int argc, register char** argv, Shbltin_t* context)
 			fp = sfstdin;
 			sfset(fp, SF_SHARE, 1);
 		}
-		else if (!(fp = sfopen(NiL, cp, "r")))
+		else if (!(fp = sfopen(NULL, cp, "r")))
 		{
 			error(ERROR_system(0), "%s: cannot open", cp);
 			continue;
@@ -143,7 +143,7 @@ b_head(int argc, register char** argv, Shbltin_t* context)
 		format = (char*)header_fmt;
 		if (skip > 0)
 		{
-			if ((moved = sfmove(fp, NiL, skip, delim)) < 0 && !ERROR_PIPE(errno) && errno != EINTR)
+			if ((moved = sfmove(fp, NULL, skip, delim)) < 0 && !ERROR_PIPE(errno) && errno != EINTR)
 				error(ERROR_system(0), "%s: skip error", cp);
 			if (delim >= 0 && moved < skip)
 				goto next;

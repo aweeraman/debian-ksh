@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2013 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -138,7 +138,7 @@ static noreturn void outofmemory(void)
 		strncpy(sname,name,sizeof(sname));
 		last = strrchr(sname,'/');
 		last[1] = 't';
-		return(sname);
+		return sname;
 	}
 #   endif
 
@@ -149,7 +149,7 @@ static noreturn void outofmemory(void)
 	if(!name)
 	{
 		strcpy(sname,_pty_first);
-		return(sname);
+		return sname;
 	}
 	n = strlen(_pty_first);
 	if(name[n-1]=='9')
@@ -160,7 +160,7 @@ static noreturn void outofmemory(void)
 		{
 			name[n-2]='0';
 			if(name[n-3]=='9' || name[n-3]=='z')
-				return(NULL);
+				return NULL;
 			name[n-3]++;
 		}
 		if(_pty_first[n-2]=='p' && (name[n-2]=='z' || name[n-2]=='Z'))
@@ -168,7 +168,7 @@ static noreturn void outofmemory(void)
 			if(name[n-2]=='z')
 				name[n-2]=='P';
 			else
-				return(0);
+				return NULL;
 		}
 		else
 			name[n-2]++;
@@ -176,7 +176,7 @@ static noreturn void outofmemory(void)
 	}
 	else
 		name[n-1]++;
-	return(name);
+	return name;
     }
 #endif
 
@@ -185,7 +185,7 @@ static noreturn void outofmemory(void)
 	{
 		char *minion=0;
 #   if _lib__getpty
-		return(_getpty(master,O_RDWR,MODE_666,0));
+		return _getpty(master,O_RDWR,MODE_666,0);
 #   else
 #	if defined(_pty_clone)
 		*master = open(_pty_clone,O_RDWR|O_CREAT,MODE_666);
@@ -210,7 +210,7 @@ static noreturn void outofmemory(void)
 		}
 # 	endif
 #   endif
-		return(minion);
+		return minion;
 	}
 # endif
 #endif
@@ -363,7 +363,7 @@ runcmd(char** argv, int minion, int session)
 		ops[2] = PROC_FD_DUP(minion, 2, PROC_FD_CHILD);
 		ops[3] = 0;
 	}
-	return procopen(argv[0], argv, NiL, ops, 0);
+	return procopen(argv[0], argv, NULL, ops, 0);
 }
 
 /*
@@ -486,7 +486,7 @@ match(char* pattern, char* text, int must)
 		error(2, "%s: %s", pattern, buf);
 		return 0;
 	}
-	if (regexec(re, text, 0, NiL, 0))
+	if (regexec(re, text, 0, NULL, 0))
 	{
 		if (must)
 			error(2, "expected \"%s\", got \"%s\"", pattern, fmtesq(text, "\""));
@@ -621,7 +621,7 @@ masterline(Sfio_t* mp, Sfio_t* lp, char* prompt, int must, int timeout, Master_t
 			errno = 0;
 			error(-1, "r EOF");
 		}
-		return 0;
+		return NULL;
 	}
 	if (!(s = sfreserve(mp, SF_UNBOUND, -1)))
 	{
@@ -646,7 +646,7 @@ masterline(Sfio_t* mp, Sfio_t* lp, char* prompt, int must, int timeout, Master_t
 				error(-1, "r EOF");
 			}
 		}
-		return 0;
+		return NULL;
 	}
 	n = sfvalue(mp);
 	error(-2, "b \"%s\"", fmtnesq(s, "\"", n));
@@ -1077,7 +1077,7 @@ b_pty(int argc, char** argv, Shbltin_t* context)
 		error(ERROR_system(1), "unable to create pty");
 		UNREACHABLE();
 	}
-	if (!(mp = sfnew(NiL, 0, SF_UNBOUND, master, SF_READ|SF_WRITE)))
+	if (!(mp = sfnew(NULL, 0, SF_UNBOUND, master, SF_READ|SF_WRITE)))
 	{
 		error(ERROR_system(1), "cannot open master stream");
 		UNREACHABLE();
@@ -1108,7 +1108,7 @@ b_pty(int argc, char** argv, Shbltin_t* context)
 	}
 	if (!log)
 		lp = 0;
-	else if (!(lp = sfopen(NiL, log, "w")))
+	else if (!(lp = sfopen(NULL, log, "w")))
 	{
 		error(ERROR_system(1), "%s: cannot write", log);
 		UNREACHABLE();

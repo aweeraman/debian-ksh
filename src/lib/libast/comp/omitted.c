@@ -161,17 +161,17 @@ extern ssize_t		_write(int, const void*, size_t);
 #endif
 
 static char*
-suffix(register const char* path)
+suffix(const char* path)
 {
-	register const char*	s = path + strlen(path);
-	register int		c;
+	const char*	s = path + strlen(path);
+	int		c;
 
 	while (s > path)
 		if ((c = *--s) == '.')
 			return (char*)s + 1;
 		else if (c == '/' || c == '\\')
 			break;
-	return 0;
+	return NULL;
 }
 
 static int
@@ -279,7 +279,7 @@ alarm(unsigned int s)
 
 	static unsigned int	a;
 
-	n = (unsigned int)time(NiL);
+	n = (unsigned int)time(NULL);
 	if (a <= n)
 		r = 0;
 	else
@@ -311,7 +311,7 @@ chmod(const char* path, mode_t mode)
 	    (strlen(path) + 4) < sizeof(buf))
 	{
 		oerrno = errno;
-		if (!magic(path, NiL))
+		if (!magic(path, NULL))
 		{
 			snprintf(buf, sizeof(buf), "%s.exe", path);
 			sysrename(path, buf);
@@ -362,11 +362,11 @@ static int		convertinit;
 static const char*	convertvars[] = { "DOSPATHVARS", "PATH" };
 
 static int
-convert(register const char* d, const char* s)
+convert(const char* d, const char* s)
 {
-	register const char*	t;
-	register const char*	v;
-	int			i;
+	const char*	t;
+	const char*	v;
+	int		i;
 
 	for (i = 0; i < elementsof(convertvars); i++)
 	{
@@ -392,12 +392,12 @@ convert(register const char* d, const char* s)
 uid_t
 getuid(void)
 {
-	register char*		d;
-	register char*		s;
-	register char*		t;
-	register char**		e;
-	int			n;
-	int			m;
+	char*		d;
+	char*		s;
+	char*		t;
+	char**		e;
+	int		n;
+	int		m;
 
 	if (!convertinit++ && (d = getenv(convertvars[0])))
 		for (e = environ; s = *e; e++)
@@ -423,9 +423,9 @@ getuid(void)
 static pid_t
 runve(int mode, const char* path, char* const* argv, char* const* envv)
 {
-	register char*	s;
-	register char**	p;
-	register char**	v;
+	char*	s;
+	char**	p;
+	char**	v;
 
 	void*		m1;
 	void*		m2;
@@ -536,7 +536,7 @@ runve(int mode, const char* path, char* const* argv, char* const* envv)
 				s += 5;
 				do
 				{
-					s = pathcat(s, ':', NiL, "", tmp, sizeof(tmp));
+					s = pathcat(s, ':', NULL, "", tmp, sizeof(tmp));
 					if (streq(tmp, "/usr/bin/") || streq(tmp, "/bin/"))
 					{
 						n = 0;
@@ -724,7 +724,7 @@ extern ssize_t
 write(int fd, const void* buf, size_t n)
 {
 	if (fd >= 0 && fd < elementsof(exe) && exe[fd] && exe[fd]->test < 0)
-		exe[fd]->test = n >= 2 && ((unsigned char*)buf)[1] == 0x5a && (((unsigned char*)buf)[0] == 0x4c || ((unsigned char*)buf)[0] == 0x4d) && !lseek(fd, (off_t)0, SEEK_CUR);
+		exe[fd]->test = n >= 2 && ((unsigned char*)buf)[1] == 0x5a && (((unsigned char*)buf)[0] == 0x4c || ((unsigned char*)buf)[0] == 0x4d) && !lseek(fd, 0, SEEK_CUR);
 	return syswrite(fd, buf, n);
 }
 
@@ -922,7 +922,7 @@ unlink(const char* path)
 	 * otherwise directory readers may choke on phantom entries
 	 */
 
-	base = ((getuid() & 0xffff) << 16) | (time(NiL) & 0xffff);
+	base = ((getuid() & 0xffff) << 16) | (time(NULL) & 0xffff);
 	suffix = (getpid() & 0xfff) + count++;
 	snprintf(tmp, sizeof(tmp), deleted, drive, base, suffix);
 	if (!sysrename(path, tmp))
@@ -1109,7 +1109,7 @@ bzero(void* b, size_t n)
 #endif
 
 int
-getpagesize()
+getpagesize(void)
 {
 	return _AST_PAGESIZE;
 }

@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -25,7 +25,7 @@
 
 Sfoff_t sftell(Sfio_t* f)
 {	
-	reg int	mode;
+	int	mode;
 	Sfoff_t	p;
 
 	/* set the stream to the right mode */
@@ -34,14 +34,14 @@ Sfoff_t sftell(Sfio_t* f)
 
 	/* throw away ungetc data */
 	if(f->disc == _Sfudisc)
-		(void)sfclose((*_Sfstack)(f,NIL(Sfio_t*)));
+		(void)sfclose((*_Sfstack)(f,NULL));
 
 	if(f->flags&SF_STRING)
 		return (Sfoff_t)(f->next-f->data);
 
 	/* let sfseek() handle the hard case */
 	if(f->extent >= 0 && (f->flags&(SF_SHARE|SF_APPENDWR)) )
-		p = sfseek(f,(Sfoff_t)0,SEEK_CUR);
+		p = sfseek(f,0,SEEK_CUR);
 	else	p = f->here + ((f->mode&SF_WRITE) ? f->next-f->data : f->next-f->endb);
 
 	return p;

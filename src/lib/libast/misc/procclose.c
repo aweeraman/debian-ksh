@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -27,7 +27,7 @@
 #include "proclib.h"
 
 int
-procclose(register Proc_t* p)
+procclose(Proc_t* p)
 {
 	int	pid;
 	int	flags = 0;
@@ -67,17 +67,13 @@ procclose(register Proc_t* p)
 					signal(SIGINT, p->sigint);
 				if (p->sigquit != SIG_IGN)
 					signal(SIGQUIT, p->sigquit);
-#if defined(SIGCHLD)
 #if _lib_sigprocmask
-				sigprocmask(SIG_SETMASK, &p->mask, NiL);
-#else
-#if _lib_sigsetmask
+				sigprocmask(SIG_SETMASK, &p->mask, NULL);
+#elif _lib_sigsetmask
 				sigsetmask(p->mask);
 #else
 				if (p->sigchld != SIG_DFL)
 					signal(SIGCHLD, p->sigchld);
-#endif
-#endif
 #endif
 			}
 			status = status == -1 ?

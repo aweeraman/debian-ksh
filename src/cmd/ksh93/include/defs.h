@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -44,7 +44,6 @@
 #include	<sfio.h>
 #include	<error.h>
 #include	"FEATURE/externs"
-#include	"FEATURE/options"
 #include	<cdt.h>
 #include	"argnod.h"
 #include	"name.h"
@@ -72,13 +71,12 @@ extern char*	sh_setenviron(const char*);
 #include	"shtable.h"
 #include	"regress.h"
 
-/* error exits from various parts of shell */
-#define	NIL(type)	((type)0)
+#define	NIL(type)	NULL		/* for backward compatibility */
 
 #define exitset()	(sh.savexit=sh.exitval)
 
 #ifndef SH_DICT
-#define SH_DICT		(void*)e_dict
+#define SH_DICT		e_dict
 #endif
 
 #ifndef SH_CMDLIB_DIR
@@ -174,18 +172,30 @@ extern char		*sh_getcwd(void);
 #define WBITS		(sizeof(long)*8)
 #define WMASK		(0xff)
 
+#if SHOPT_SCRIPTONLY
+#define is_option(s,x)	((x)==SH_INTERACTIVE || (x)==SH_HISTORY ? 0 : ((s)->v[((x)&WMASK)/WBITS] & (1L << ((x) % WBITS))) )
+#define on_option(s,x)	( (x)==SH_INTERACTIVE || (x)==SH_HISTORY ? errormsg(SH_DICT,ERROR_exit(1),e_scriptonly) : ((s)->v[((x)&WMASK)/WBITS] |= (1L << ((x) % WBITS))) )
+#define off_option(s,x)	((x)==SH_INTERACTIVE || (x)==SH_HISTORY ? 0 : ((s)->v[((x)&WMASK)/WBITS] &= ~(1L << ((x) % WBITS))) )
+#else
 #define is_option(s,x)	((s)->v[((x)&WMASK)/WBITS] & (1L << ((x) % WBITS)))
 #define on_option(s,x)	((s)->v[((x)&WMASK)/WBITS] |= (1L << ((x) % WBITS)))
 #define off_option(s,x)	((s)->v[((x)&WMASK)/WBITS] &= ~(1L << ((x) % WBITS)))
+#endif /* SHOPT_SCRIPTONLY */
 #define sh_isoption(x)	is_option(&sh.options,x)
 #define sh_onoption(x)	on_option(&sh.options,x)
 #define sh_offoption(x)	off_option(&sh.options,x)
 
 
 #define sh_state(x)	( 1<<(x))
+#if SHOPT_SCRIPTONLY
+#define	sh_isstate(x)	( (x)==SH_INTERACTIVE || (x)==SH_HISTORY ? 0 : (sh.st.states&sh_state(x)) )
+#define	sh_onstate(x)	( (x)==SH_INTERACTIVE || (x)==SH_HISTORY ? 0 : (sh.st.states |= sh_state(x)) )
+#define	sh_offstate(x)	( (x)==SH_INTERACTIVE || (x)==SH_HISTORY ? 0 : (sh.st.states &= ~sh_state(x)) )
+#else
 #define	sh_isstate(x)	(sh.st.states&sh_state(x))
 #define	sh_onstate(x)	(sh.st.states |= sh_state(x))
 #define	sh_offstate(x)	(sh.st.states &= ~sh_state(x))
+#endif /* SHOPT_SCRIPTONLY */
 #define	sh_getstate()	(sh.st.states)
 #define	sh_setstate(x)	(sh.st.states = (x))
 
@@ -195,6 +205,9 @@ extern int32_t		sh_mailchk;
 extern const char	e_dict[];	/* error message catalog */
 extern const char	e_sptbnl[];	/* default IFS: " \t\n" */
 extern const char	e_dot[];	/* default path & name of dot command: "." */
+#if SHOPT_SCRIPTONLY
+extern const char	e_scriptonly[];
+#endif
 
 /* sh_printopts() mode flags -- set --[no]option by default */
 

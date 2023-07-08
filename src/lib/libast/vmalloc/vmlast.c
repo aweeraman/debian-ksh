@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -36,7 +36,7 @@ static void* lastalloc(Vmalloc_t* vm, size_t size, int local)
 	SETLOCK(vm, local);
 
 	size = size < ALIGN ? ALIGN : ROUND(size,ALIGN);
-	for(last = NIL(Seg_t*), seg = vd->seg; seg; last = seg, seg = seg->next)
+	for(last = NULL, seg = vd->seg; seg; last = seg, seg = seg->next)
 	{	if(!(tp = seg->free) || (SIZE(tp)+sizeof(Head_t)) < size)
 			continue;
 		if(last)
@@ -48,7 +48,7 @@ static void* lastalloc(Vmalloc_t* vm, size_t size, int local)
 	}
 
 	/* there is no usable free space in region, try extending */
-	if((tp = (*_Vmextend)(vm,size,NIL(Vmsearch_f))) )
+	if((tp = (*_Vmextend)(vm,size,NULL)) )
 	{	seg = SEG(tp);
 		goto got_block;
 	}
@@ -61,20 +61,20 @@ got_block:
 		SEG(next) = seg;
 		seg->free = next;
 	}
-	else	seg->free = NIL(Block_t*);
+	else	seg->free = NULL;
 
 	vd->free = seg->last = tp;
 
 	if(!local && (vd->mode&VM_TRACE) && _Vmtrace)
-		(*_Vmtrace)(vm, NIL(Vmuchar_t*), (Vmuchar_t*)tp, orgsize, 0);
+		(*_Vmtrace)(vm, NULL, (Vmuchar_t*)tp, orgsize, 0);
 
 done:
 	CLRLOCK(vm, local);
 
-	return (void*)tp;
+	return tp;
 }
 
-static int lastfree(Vmalloc_t* vm, reg void* data, int local )
+static int lastfree(Vmalloc_t* vm, void* data, int local )
 {
 	Seg_t		*seg;
 	Block_t		*fp;
@@ -87,22 +87,22 @@ static int lastfree(Vmalloc_t* vm, reg void* data, int local )
 	SETLOCK(vm, local);
 
 	if(data != (void*)vd->free)
-		data = NIL(void*); /* signaling an error */
+		data = NULL; /* signaling an error */
 	else
 	{	seg = vd->seg;
 		if(!local && (vd->mode&VM_TRACE) && _Vmtrace)
 		{	if(seg->free )
 				s = (Vmuchar_t*)(seg->free) - (Vmuchar_t*)data;
 			else	s = (Vmuchar_t*)BLOCK(seg->baddr) - (Vmuchar_t*)data;
-			(*_Vmtrace)(vm, (Vmuchar_t*)data, NIL(Vmuchar_t*), s, 0);
+			(*_Vmtrace)(vm, (Vmuchar_t*)data, NULL, s, 0);
 		}
 
-		vd->free = NIL(Block_t*);
+		vd->free = NULL;
 		fp = (Block_t*)data;
 		SEG(fp)  = seg;
 		SIZE(fp) = ((Vmuchar_t*)BLOCK(seg->baddr) - (Vmuchar_t*)data) - sizeof(Head_t);
 		seg->free = fp;
-		seg->last = NIL(Block_t*);
+		seg->last = NULL;
 	}
 
 	CLRLOCK(vm, local);
@@ -110,7 +110,7 @@ static int lastfree(Vmalloc_t* vm, reg void* data, int local )
 	return data ? 0 : -1;
 }
 
-static void* lastresize(Vmalloc_t* vm, reg void* data, size_t size, int type, int local)
+static void* lastresize(Vmalloc_t* vm, void* data, size_t size, int type, int local)
 {
 	Block_t		*tp;
 	Seg_t		*seg;
@@ -129,7 +129,7 @@ static void* lastresize(Vmalloc_t* vm, reg void* data, size_t size, int type, in
 	}
 	if(size <= 0)
 	{	(void)lastfree(vm, data, local);
-		return NIL(void*);
+		return NULL;
 	}
 
 	SETLOCK(vm, local);
@@ -143,7 +143,7 @@ static void* lastresize(Vmalloc_t* vm, reg void* data, size_t size, int type, in
 				break;
 		if(!seg || (VLONG(data)%ALIGN) != 0 ||
 		   (seg->last && (Vmuchar_t*)data > (Vmuchar_t*)seg->last) )
-		{	data = NIL(void*);
+		{	data = NULL;
 			goto done;
 		}
 	}
@@ -161,7 +161,7 @@ static void* lastresize(Vmalloc_t* vm, reg void* data, size_t size, int type, in
 			oldsize = s;
 		else
 		{	oldsize = (Vmuchar_t*)tp - (Vmuchar_t*)data;
-			seg->free = NIL(Block_t*);
+			seg->free = NULL;
 		}
 	}
 
@@ -183,12 +183,12 @@ static void* lastresize(Vmalloc_t* vm, reg void* data, size_t size, int type, in
 		else
 		{ do_alloc:
 			if(!(type&(VM_RSMOVE|VM_RSCOPY)) )
-				data = NIL(void*);
+				data = NULL;
 			else
 			{	tp = vd->free;
 				if(!(addr = KPVALLOC(vm,size,lastalloc)) )
 				{	vd->free = tp;
-					data = NIL(void*);
+					data = NULL;
 				}
 				else
 				{	if(type&VM_RSCOPY)
@@ -208,7 +208,7 @@ static void* lastresize(Vmalloc_t* vm, reg void* data, size_t size, int type, in
 					seg = vd->seg;
 					s = (Vmuchar_t*)BLOCK(seg->baddr) -
 					    (Vmuchar_t*)data;
-					seg->free = NIL(Block_t*);
+					seg->free = NULL;
 				}
 			}
 		}
@@ -228,7 +228,7 @@ static void* lastresize(Vmalloc_t* vm, reg void* data, size_t size, int type, in
 			(*_Vmtrace)(vm,(Vmuchar_t*)orgdata,(Vmuchar_t*)data,orgsize,0);
 
 		if((type&VM_RSZERO) && size > oldsize)
-			memset((void*)((Vmuchar_t*)data + oldsize), 0, size-oldsize);
+			memset((Vmuchar_t*)data + oldsize, 0, size-oldsize);
 	}
 
 done:	CLRLOCK(vm, local);
@@ -286,7 +286,7 @@ static int lastcompact(Vmalloc_t* vm, int local)
 		if(!(fp = seg->free))
 			continue;
 
-		seg->free = NIL(Block_t*);
+		seg->free = NULL;
 		if(seg->size == (s = SIZE(fp)&~BITS))
 			s = seg->extent;
 		else	s += sizeof(Head_t);
@@ -296,7 +296,7 @@ static int lastcompact(Vmalloc_t* vm, int local)
 	}
 
 	if((vd->mode&VM_TRACE) && _Vmtrace)
-		(*_Vmtrace)(vm,(Vmuchar_t*)0,(Vmuchar_t*)0,0,0);
+		(*_Vmtrace)(vm,NULL,NULL,0,0);
 
 	CLRLOCK(vm, local);
 	return 0;
@@ -311,7 +311,7 @@ static void* lastalign(Vmalloc_t* vm, size_t size, size_t align, int local)
 	Vmdata_t	*vd = vm->data;
 
 	if(size <= 0 || align <= 0)
-		return NIL(void*);
+		return NULL;
 
 	SETLOCK(vm, local);
 
@@ -343,12 +343,12 @@ static void* lastalign(Vmalloc_t* vm, size_t size, size_t align, int local)
 	vd->free = seg->last = (Block_t*)data;
 
 	if(!local && (vd->mode&VM_TRACE) && _Vmtrace)
-		(*_Vmtrace)(vm,NIL(Vmuchar_t*),data,orgsize,orgalign);
+		(*_Vmtrace)(vm,NULL,data,orgsize,orgalign);
 
 done:
 	CLRLOCK(vm, local);
 
-	return (void*)data;
+	return data;
 }
 
 /* Public method for free-1 allocation */

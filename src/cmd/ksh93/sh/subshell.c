@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -110,9 +110,9 @@ void	sh_subtmpfile(void)
 {
 	if(sfset(sfstdout,0,0)&SF_STRING)
 	{
-		register int fd;
-		register struct checkpt	*pp = (struct checkpt*)sh.jmplist;
-		register struct subshell *sp = subshell_data->pipe;
+		int fd;
+		struct checkpt	*pp = (struct checkpt*)sh.jmplist;
+		struct subshell *sp = subshell_data->pipe;
 		/* save file descriptor 1 if open */
 		if((sp->tmpfd = fd = sh_fcntl(1,F_DUPFD,10)) >= 0)
 		{
@@ -158,7 +158,7 @@ void	sh_subtmpfile(void)
  */
 void sh_subfork(void)
 {
-	register struct subshell *sp = subshell_data;
+	struct subshell *sp = subshell_data;
 	unsigned int curenv = sh.curenv;
 	char comsub = sh.comsub;
 	pid_t pid;
@@ -170,14 +170,14 @@ void sh_subfork(void)
 		sh_subtmpfile();
 	sh.curenv = 0;
 	sh.savesig = -1;
-	if(pid = sh_fork(FSHOWME,NIL(int*)))
+	if(pid = sh_fork(FSHOWME,NULL))
 	{
 		sh.curenv = curenv;
 		/* this is the parent part of the fork */
 		if(sp->subpid==0)
 			sp->subpid = pid;
 		if(trap)
-			free((void*)trap);
+			free(trap);
 		siglongjmp(*sh.jmplist,SH_JMPSUB);
 	}
 	else
@@ -194,17 +194,17 @@ void sh_subfork(void)
 		sh.subshell = 0;
 		sh.comsub = 0;
 		sp->subpid=0;
-		sh.st.trapcom[0] = (comsub==2 ? NIL(char*) : trap);
+		sh.st.trapcom[0] = (comsub==2 ? NULL : trap);
 		sh.savesig = 0;
 		/* sh_fork() increases ${.sh.subshell} but we forked an existing virtual subshell, so undo */
 		sh.realsubshell--;
 	}
 }
 
-int nv_subsaved(register Namval_t *np, int flags)
+int nv_subsaved(Namval_t *np, int flags)
 {
-	register struct subshell	*sp;
-	register struct Link		*lp, *lpprev;
+	struct subshell	*sp;
+	struct Link		*lp, *lpprev;
 	for(sp = (struct subshell*)subshell_data; sp; sp=sp->prev)
 	{
 		lpprev = 0;
@@ -218,14 +218,14 @@ int nv_subsaved(register Namval_t *np, int flags)
 						lpprev->next = lp->next;
 					else
 						sp->svar = lp->next;
-					free((void*)np);
-					free((void*)lp);
+					free(np);
+					free(lp);
 				}
-				return(1);
+				return 1;
 			}
 		}
 	}
-	return(0);
+	return 0;
 }
 
 /*
@@ -256,8 +256,8 @@ void sh_save_rand_seed(struct rand *rp, int reseed)
  */
 void sh_assignok(Namval_t *np,int add)
 {
-	register Namval_t	*mp;
-	register struct Link	*lp;
+	Namval_t		*mp;
+	struct Link		*lp;
 	struct subshell		*sp = subshell_data;
 	Dt_t			*dp= sh.var_tree;
 	Namval_t		*mpnext;
@@ -323,8 +323,8 @@ void sh_assignok(Namval_t *np,int add)
  */
 static void nv_restore(struct subshell *sp)
 {
-	register struct Link *lp, *lq;
-	register Namval_t *mp, *np;
+	struct Link	*lp, *lq;
+	Namval_t	*mp, *np;
 	Namval_t	*mpnext;
 	int		flags,nofree;
 	subshell_noscope = 1;
@@ -339,7 +339,7 @@ static void nv_restore(struct subshell *sp)
 		if(nv_isattr(mp,NV_MINIMAL) && !nv_isattr(np,NV_EXPORT))
 			flags |= NV_MINIMAL;
 		if(nv_isarray(mp))
-			 nv_putsub(mp,NIL(char*),ARRAY_SCAN);
+			 nv_putsub(mp,NULL,ARRAY_SCAN);
 		nofree = mp->nvfun?mp->nvfun->nofree:0;
 		_nv_unset(mp,NV_RDONLY|NV_CLONE);
 		if(nv_isarray(np))
@@ -371,7 +371,7 @@ static void nv_restore(struct subshell *sp)
 			char *name = nv_name(mp);
 			env_change();
 			if(*name=='_' && strcmp(name,"_AST_FEATURES")==0)
-				astconf(NiL, NiL, NiL);
+				astconf(NULL, NULL, NULL);
 		}
 		else if(nv_isattr(np,NV_EXPORT))
 			env_change();
@@ -382,7 +382,7 @@ static void nv_restore(struct subshell *sp)
 			mpnext = *((Namval_t**)mp);
 			dtinsert(lp->dict,mp);
 		}
-		free((void*)lp);
+		free(lp);
 		sp->svar = lq;
 	}
 	subshell_noscope = 0;
@@ -394,7 +394,7 @@ static void nv_restore(struct subshell *sp)
  */
 Dt_t *sh_subtracktree(int create)
 {
-	register struct subshell *sp = subshell_data;
+	struct subshell *sp = subshell_data;
 	if(create && sh.subshell && !sh.subshare)
 	{
 		if(sp && !sp->strack)
@@ -404,7 +404,7 @@ Dt_t *sh_subtracktree(int create)
 			sh.track_tree = sp->strack;
 		}
 	}
-	return(sh.track_tree);
+	return sh.track_tree;
 }
 
 /*
@@ -413,7 +413,7 @@ Dt_t *sh_subtracktree(int create)
  */
 Dt_t *sh_subfuntree(int create)
 {
-	register struct subshell *sp = subshell_data;
+	struct subshell *sp = subshell_data;
 	if(create && sh.subshell && !sh.subshare)
 	{
 		if(sp && !sp->sfun)
@@ -423,24 +423,24 @@ Dt_t *sh_subfuntree(int create)
 			sh.fun_tree = sp->sfun;
 		}
 	}
-	return(sh.fun_tree);
+	return sh.fun_tree;
 }
 
-int sh_subsavefd(register int fd)
+int sh_subsavefd(int fd)
 {
-	register struct subshell *sp = subshell_data;
-	register int old=0;
+	struct subshell *sp = subshell_data;
+	int old=0;
 	if(sh.subshell && !sh.subshare)
 	{
 		old = !(sp->fdsaved&(1<<fd));
 		sp->fdsaved |= (1<<fd);
 	}
-	return(old);
+	return old;
 }
 
 void sh_subjobcheck(pid_t pid)
 {
-	register struct subshell *sp = subshell_data;
+	struct subshell *sp = subshell_data;
 	while(sp)
 	{
 		if(sp->cpid==pid)
@@ -465,7 +465,7 @@ void sh_subjobcheck(pid_t pid)
 Sfio_t *sh_subshell(Shnode_t *t, volatile int flags, int comsub)
 {
 	struct subshell sub_data;
-	register struct subshell *sp = &sub_data;
+	struct subshell *sp = &sub_data;
 	int jmpval,isig,nsig=0,fatalerror=0,saveerrno=0;
 	unsigned int savecurenv = sh.curenv;
 	int savejobpgid = job.curpgid;
@@ -491,7 +491,7 @@ Sfio_t *sh_subshell(Shnode_t *t, volatile int flags, int comsub)
 	savst = sh.st;
 	sh_pushcontext(&checkpoint,SH_JMPSUB);
 	sh.subshell++;		/* increase level of virtual subshells */
-	sh.realsubshell++;		/* increase ${.sh.subshell} */
+	sh.realsubshell++;	/* increase ${.sh.subshell} */
 	sp->prev = subshell_data;
 	sp->sig = 0;
 	subshell_data = sp;
@@ -572,7 +572,7 @@ Sfio_t *sh_subshell(Shnode_t *t, volatile int flags, int comsub)
 				else if(sh.st.trapcom[isig])
 					savsig[isig] = sh_strdup(sh.st.trapcom[isig]);
 				else
-					savsig[isig] = NIL(char*);
+					savsig[isig] = NULL;
 			}
 			/* this is needed for var=$(trap) */
 			sh.st.otrapcom = (char**)savsig;
@@ -600,7 +600,7 @@ Sfio_t *sh_subshell(Shnode_t *t, volatile int flags, int comsub)
 			sh_offstate(SH_MONITOR);
 			sp->pipe = sp;
 			/* save sfstdout and status */
-			sp->saveout = sfswap(sfstdout,NIL(Sfio_t*));
+			sp->saveout = sfswap(sfstdout,NULL);
 			sp->fdstatus = sh.fdstatus[1];
 			sp->tmpfd = -1;
 			sp->pipefd = -1;
@@ -633,22 +633,21 @@ Sfio_t *sh_subshell(Shnode_t *t, volatile int flags, int comsub)
 				if(sp->pwd && access(sp->pwd,X_OK)<0)
 				{
 					free(sp->pwd);
-					sp->pwd = NIL(char*);
+					sp->pwd = NULL;
 				}
 				if(!sp->pwd)
 					sh_subfork();
 			}
 #endif /* _lib_fchdir */
-#ifdef SIGTSTP
 			/* Virtual subshells are not safe to suspend (^Z, SIGTSTP) in the interactive main shell. */
 			if(sh_isstate(SH_INTERACTIVE))
 			{
+				sh_offstate(SH_TTYWAIT);
 				if(comsub)
 					sigblock(SIGTSTP);
 				else
 					sh_subfork();
 			}
-#endif
 			sh_offstate(SH_INTERACTIVE);
 			sh_exec(t,flags);
 		}
@@ -677,10 +676,8 @@ Sfio_t *sh_subshell(Shnode_t *t, volatile int flags, int comsub)
 	nv_restore(sp);
 	if(comsub)
 	{
-#ifdef SIGTSTP
 		if(savst.states & sh_state(SH_INTERACTIVE))
 			sigrelease(SIGTSTP);
-#endif
 		/* re-enable job control */
 		job.jobcontrol = sp->jobcontrol;
 		if(sp->monitor)
@@ -703,12 +700,12 @@ Sfio_t *sh_subshell(Shnode_t *t, volatile int flags, int comsub)
 				sh.pipepid = 0;
 			}
 			/* move tmp file to iop and restore sfstdout */
-			iop = sfswap(sfstdout,NIL(Sfio_t*));
+			iop = sfswap(sfstdout,NULL);
 			if(!iop)
 			{
 				/* maybe locked try again */
 				sfclrlock(sfstdout);
-				iop = sfswap(sfstdout,NIL(Sfio_t*));
+				iop = sfswap(sfstdout,NULL);
 			}
 			if(iop && sffileno(iop)==1)
 			{
@@ -751,7 +748,7 @@ Sfio_t *sh_subshell(Shnode_t *t, volatile int flags, int comsub)
 	if(!sh.subshare)
 	{
 		path_delete((Pathcomp_t*)sh.pathlist);
-		sh.pathlist = (void*)sp->pathlist;
+		sh.pathlist = sp->pathlist;
 	}
 	job_subrestore(sp->jobs);
 	sh.curenv = sh.jobenv = savecurenv;
@@ -821,7 +818,7 @@ Sfio_t *sh_subshell(Shnode_t *t, volatile int flags, int comsub)
 				if (sh.st.trapcom[isig] && sh.st.trapcom[isig]!=Empty)
 					free(sh.st.trapcom[isig]);
 			memcpy((char*)&sh.st.trapcom[0],savsig,nsig*sizeof(char*));
-			free((void*)savsig);
+			free(savsig);
 		}
 		sh.options = sp->options;
 		/* restore the present working directory */
@@ -895,7 +892,7 @@ Sfio_t *sh_subshell(Shnode_t *t, volatile int flags, int comsub)
 		job_wait(sp->subpid);
 	sh.comsub = sp->comsub;
 	if(comsub && iop && sp->pipefd<0)
-		sfseek(iop,(off_t)0,SEEK_SET);
+		sfseek(iop,0,SEEK_SET);
 	if(sh.trapnote)
 		sh_chktrap();
 	if(sh.exitval > SH_EXITSIG)
@@ -918,7 +915,7 @@ Sfio_t *sh_subshell(Shnode_t *t, volatile int flags, int comsub)
 				/* reinit PWD as it will be wrong */
 				if(sh.pwd)
 					free((void*)sh.pwd);
-				sh.pwd = NIL(const char*);
+				sh.pwd = NULL;
 				path_pwd();
 				errno = saveerrno;
 				errormsg(SH_DICT,ERROR_SYSTEM|ERROR_PANIC,"Failed to restore PWD upon exiting subshell");
@@ -934,5 +931,5 @@ Sfio_t *sh_subshell(Shnode_t *t, volatile int flags, int comsub)
 		kill(sh.current_pid,sh.lastsig);
 	if(jmpval && sh.toomany)
 		siglongjmp(*sh.jmplist,jmpval);
-	return(iop);
+	return iop;
 }

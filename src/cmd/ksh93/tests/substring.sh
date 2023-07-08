@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2023 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 2.0                  #
 #                                                                      #
@@ -743,6 +743,27 @@ x='ab'
 got=${x//~(E:(a)|b)/<\1>}
 exp='<a><>'
 [[ $got == "$exp" ]] || err_exit "back-reference (got $(printf %q "$got"), expected $(printf %q "$exp"))"
+
+# ======
+# Anchored empty pattern should match in replacement, e.g. "${@/#/replacement}"
+# https://github.com/ksh93/ksh/issues/558
+set one two three
+exp=Xone/Xtwo/Xthree
+got=$(IFS=/; echo "${*/#/X}")
+[[ $got == "$exp" ]] || err_exit "#-anchored empty pattern vector replacement" \
+	"(got $(printf %q "$got"), expected $(printf %q "$exp"))"
+exp=oneX/twoX/threeX
+got=$(IFS=/; echo "${*/%/X}")
+[[ $got == "$exp" ]] || err_exit "%-anchored empty pattern vector replacement" \
+	"(got $(printf %q "$got"), expected $(printf %q "$exp"))"
+
+# ======
+# In ${expression:offset[:length]}, the arithmetic expressions (offset and length) could not
+# contain ( ) & | as these were internally backslash-escaped, causing a spurious syntax error.
+exp=cde
+got=$(x=abcdefg; set +x; eval 'echo ${x:(10-9)+1:((1&&1)|2)}' 2>&1)
+[[ e=$? -eq 0 && $got == "$exp" ]] || err_exit '${expression:offset:length} with arith containing ( ) & |' \
+	"(expected status 0 and $(printf %q "$exp"), got status $e and $(printf %q "$got"))"
 
 # ======
 exit $((Errors<125?Errors:125))

@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -28,8 +28,6 @@
 **	Written by Kiem-Phong Vo, kpv@research.att.com, 01/16/94.
 */
 
-#if _PACKAGE_ast
-
 #define getpagesize		______getpagesize
 #define _npt_getpagesize	1
 #define brk			______brk
@@ -45,19 +43,6 @@
 #undef				brk
 #undef				sbrk
 #endif
-
-#else
-
-#include	<ast_common.h>
-
-#define _npt_getpagesize	1
-#define _npt_sbrk		1
-
-#undef free
-#undef malloc
-#undef realloc
-
-#endif /*_PACKAGE_ast*/
 
 #include	"FEATURE/vmalloc"
 
@@ -81,10 +66,6 @@ typedef union _body_u	Body_t;
 typedef struct _block_s	Block_t;
 typedef struct _seg_s	Seg_t;
 typedef struct _pfobj_s	Pfobj_t;
-
-#define NIL(t)		((t)0)
-#define reg		register
-
 
 /* convert an address to an integral value */
 #define VLONG(addr)	((Vmulong_t)((Vmuchar_t*)((Vmulong_t)addr) - (Vmuchar_t*)0) )
@@ -159,7 +140,7 @@ extern void		_vmmessage(const char*, long, const char*, long);
 #define SETJUNK(w)	((w) |= JUNK)
 #define CLRJUNK(w)	((w) &= ~JUNK)
 
-#define OFFSET(t,e)	((size_t)(&(((t*)0)->e)) )
+#define OFFSET(t,e)	((size_t)(&((NULL)->e)) )
 
 #define VMETHOD(vd)	((vd)->mode&VM_METHODS)
 
@@ -293,13 +274,6 @@ struct _vmdata_s /* core region data - could be in shared/persistent memory	*/
 
 #include	"vmalloc.h"
 
-#if !_PACKAGE_ast
-/* we don't use these here and they interfere with some local names */
-#undef malloc
-#undef free
-#undef realloc
-#endif
-
 /* segment structure */
 struct _seg_s
 {	Vmdata_t*	vmdt;	/* the data region holding this	*/
@@ -334,7 +308,7 @@ struct _seg_s
 #define SETLINK(b)	(RIGHT(b) =  (b) )
 #define ISLINK(b)	(RIGHT(b) == (b) )
 #define UNLINK(vd,b,i,t) \
-		((((t) = LINK(b)) ? (LEFT(t) = LEFT(b)) : NIL(Block_t*) ), \
+		((((t) = LINK(b)) ? (LEFT(t) = LEFT(b)) : NULL ), \
 		 (((t) = LEFT(b)) ? (LINK(t) = LINK(b)) : (TINY(vd)[i] = LINK(b)) ) )
 
 /* delete a block from a link list or the free tree.
@@ -354,9 +328,9 @@ struct _seg_s
 #define SEGWILD(b)	(((b)->body.data+SIZE(b)+sizeof(Head_t)) >= SEG(b)->baddr)
 #define VMWILD(vd,b)	(((b)->body.data+SIZE(b)+sizeof(Head_t)) >= vd->seg->baddr)
 
-#define VMFLF(vm,fi,ln,fn)	((fi) = (vm)->file, (vm)->file = NIL(char*), \
+#define VMFLF(vm,fi,ln,fn)	((fi) = (vm)->file, (vm)->file = NULL, \
 		 		 (ln) = (vm)->line, (vm)->line = 0 , \
-		 		 (fn) = (vm)->func, (vm)->func = NIL(void*) )
+		 		 (fn) = (vm)->func, (vm)->func = NULL )
 
 /* The lay-out of a Vmprofile block is this:
 **	seg_ size ----data---- _pf_ size
@@ -454,8 +428,6 @@ extern void		_vmoptions(void);
 
 extern Vmextern_t	_Vmextern;
 
-#if _PACKAGE_ast
-
 #if _npt_getpagesize
 extern int		getpagesize(void);
 #endif
@@ -463,19 +435,6 @@ extern int		getpagesize(void);
 extern int		brk( void* );
 extern void*		sbrk( ssize_t );
 #endif
-
-#else
-
-#include	<unistd.h>
-#include	<stdlib.h>
-#include	<string.h>
-
-/* for vmexit.c */
-extern int		onexit( void(*)(void) );
-extern void		_exit( int );
-extern void		_cleanup( void );
-
-#endif /*_PACKAGE_ast*/
 
 /* for vmdcsbrk.c */
 #if !_typ_ssize_t

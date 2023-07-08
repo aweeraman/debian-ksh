@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -55,8 +55,8 @@ static ssize_t unread(Sfio_t*	f,	/* stream involved */
 		      size_t	n,	/* number of bytes to read */
 		      Sfdisc_t*	disc)	/* discipline */
 {
-	reg Union_t*	un;
-	reg ssize_t	r, m;
+	Union_t*	un;
+	ssize_t	r, m;
 
 	un = (Union_t*)disc;
 	m = n;
@@ -80,9 +80,9 @@ static ssize_t unread(Sfio_t*	f,	/* stream involved */
 
 static Sfoff_t unseek(Sfio_t* f, Sfoff_t addr, int type, Sfdisc_t* disc)
 {
-	reg Union_t*	un;
-	reg int		i;
-	reg Sfoff_t	extent, s;
+	Union_t*	un;
+	int		i;
+	Sfoff_t	extent, s;
 
 	un = (Union_t*)disc;
 	if(un->type&UNSEEKABLE)
@@ -133,8 +133,8 @@ static int unexcept(Sfio_t* f, int type, void* data, Sfdisc_t* disc)
 
 int sfdcunion(Sfio_t* f, Sfio_t** array, int n)
 {
-	reg Union_t*	un;
-	reg int		i;
+	Union_t*	un;
+	int		i;
 
 	if(n <= 0)
 		return -1;
@@ -152,7 +152,7 @@ int sfdcunion(Sfio_t* f, Sfio_t** array, int n)
 	for(i = 0; i < n; ++i)
 	{	un->f[i].f = array[i];
 		if(!(un->type&UNSEEKABLE))
-		{	un->f[i].lower = sfseek(array[i],(Sfoff_t)0,1);
+		{	un->f[i].lower = sfseek(array[i],0,1);
 			if(un->f[i].lower < 0)
 				un->type |= UNSEEKABLE;
 		}

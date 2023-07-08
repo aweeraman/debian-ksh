@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -79,5 +79,5 @@ regexec(const regex_t* p, const char* s, size_t nmatch, oldregmatch_t* oldmatch,
 		free(match);
 		return r;
 	}
-	return regexec_20120528(p, s, 0, NiL, flags);
+	return regexec_20120528(p, s, 0, NULL, flags);
 }

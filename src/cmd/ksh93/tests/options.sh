@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2023 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 2.0                  #
 #                                                                      #
@@ -68,8 +68,10 @@ else
 		err_exit '--rc ignores $ENV file'
 	[[ $(print env_hit | $SHELL --norc 2>&1) == "OK" ]] &&
 		err_exit '--norc reads $ENV file'
+	if((!SHOPT_SCRIPTONLY));then
 	[[ $(print env_hit | $SHELL -i 2>&1) == "OK" ]] ||
 		err_exit '-i ignores $ENV file'
+	fi # !SHOPT_SCRIPTONLY
 fi
 
 export ENV=/./dev/null
@@ -181,8 +183,10 @@ else
 		err_exit 'exec -a -ksh ksh 2>/dev/null ignores .profile'
 	[[ $(HOME=$PWD exec -a -ksh $SHELL </dev/null 2>&1) == *$t* ]] ||
 		err_exit 'exec -a -ksh ksh 2>&1 ignores .profile'
+	if((!SHOPT_SCRIPTONLY));then
 	[[ $(HOME=$PWD ./-ksh -i </dev/null 2>&1) == *$t* ]] ||
 		err_exit './-ksh ignores .profile'
+	fi # !SHOPT_SCRIPTONLY
 	[[ $(HOME=$PWD ./-ksh -ip </dev/null 2>&1) == *$t* ]] &&
 		err_exit './-ksh -p does not ignore .profile'
 fi
@@ -202,8 +206,8 @@ set -- \
 	pipefail pipe-fail pipe_fail \
 	trackall track-all track_all \
 	unset verbose
-((SHOPT_ESH)) && set -- "$@" emacs gmacs
-((SHOPT_VSH)) && set -- "$@" vi viraw vi-raw vi_raw
+((SHOPT_ESH && !SHOPT_SCRIPTONLY)) && set -- "$@" emacs gmacs
+((SHOPT_VSH && !SHOPT_SCRIPTONLY)) && set -- "$@" vi viraw vi-raw vi_raw
 for opt
 do	old=$opt
 	if [[ ! -o $opt ]]
@@ -383,14 +387,16 @@ got=$(
 [[ $got == @((12|21)(12|21)) ]] || err_exit "& job delayed by --pipefail, expected '$exp', got '$got'"
 $SHELL -c '[[ $- == *c* ]]' || err_exit 'option c not in $-'
 > $tmp/.profile
-for i in i l r s D E a b e f h k n t u v x $(let SHOPT_BRACEPAT && echo B) C G $(let SHOPT_HISTEXPAND && echo H)
+for i in $(let !SHOPT_SCRIPTONLY && echo i) l r s D E a b e f h k n t u v x \
+	$(let SHOPT_BRACEPAT && echo B) C G $(let "SHOPT_HISTEXPAND && !SHOPT_SCRIPTONLY" && echo H)
 do	HOME=$tmp ENV=/./dev/null $SHELL -$i >/dev/null 2>&1 <<- ++EOF++ || err_exit "option $i not in \$-"
 	[[ \$- == *$i* ]] || exit 1
 	++EOF++
 done
-letters=ilrabefhknuvx$(let SHOPT_BRACEPAT && echo B)CGE
+letters=$(let !SHOPT_SCRIPTONLY && echo i)lrabefhknuvx$(let SHOPT_BRACEPAT && echo B)CGE
 integer j=0
-for i in interactive login restricted allexport notify errexit \
+for i in $(let !SHOPT_SCRIPTONLY && echo interactive) \
+	login restricted allexport notify errexit \
 	noglob trackall keyword noexec nounset verbose xtrace \
 	$(let SHOPT_BRACEPAT && echo braceexpand) \
 	noclobber globstar rc
@@ -400,6 +406,7 @@ do	HOME=$tmp ENV=/./dev/null $SHELL -o $i >/dev/null 2>&1 <<- ++EOF++ || err_exi
 	((j++))
 done
 
+if((!SHOPT_SCRIPTONLY));then
 export ENV=/./dev/null PS1="(:$$:)"
 histfile=$tmp/history
 exp=$(HISTFILE=$histfile $SHELL -c $'function foo\n{\ncat\n}\ntype foo')
@@ -412,6 +419,7 @@ do	got=$( set +x; ( HISTFILE=$histfile $SHELL +E -ic $'unset '$var$'\nfunction f
 	[[ $got == "$exp" ]] || err_exit "function definition inside {...;} with $var unset fails -- got '$got', expected '$exp'"
 done
 ( unset HISTFILE; $SHELL -ic "HISTFILE=$histfile" 2>/dev/null ) || err_exit "setting HISTFILE when not in environment fails"
+fi # !SHOPT_SCRIPTONLY
 
 # the next tests loop on all combinations of
 #	{ SUB PAR CMD ADD }

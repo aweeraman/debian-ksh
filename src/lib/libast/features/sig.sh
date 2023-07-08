@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1985-2011 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2023 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 2.0                  #
 #                                                                      #
@@ -14,6 +14,7 @@
 #                  David Korn <dgk@research.att.com>                   #
 #                   Phong Vo <kpv@research.att.com>                    #
 #                  Martijn Dekker <martijn@inlv.org>                   #
+#            Johnothan King <johnothanking@protonmail.com>             #
 #                                                                      #
 ########################################################################
 : generate sig features
@@ -46,11 +47,11 @@ echo "#include <signal.h>
 #ifdef TYPE
 typedef TYPE (*Sig_handler_t)(ARG);
 #endif
-Sig_handler_t f()
+Sig_handler_t f(void)
 {
 	Sig_handler_t	handler;
 	handler = signal(1, SIG_IGN);
-	return(handler);
+	return handler;
 }" > $tmp.c
 if	$cc -c $tmp.c >/dev/null
 then	:

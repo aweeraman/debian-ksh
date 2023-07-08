@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -38,7 +38,7 @@ getdelim(char** sp, size_t* np, int delim, Sfio_t* f)
 	SFLOCK(f,0);
 
 	if(!(s = (uchar*)(*sp)) || (n = *np) < 0)
-		{ s = NIL(uchar*); n = 0; }
+		{ s = NULL; n = 0; }
 	for(m = 0;; )
 	{	/* read new data */
 		if((p = f->endb - (ps = f->next)) <= 0 )

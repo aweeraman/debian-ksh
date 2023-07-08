@@ -1654,7 +1654,7 @@ name	match		core.*			unknown core dump	x-system/core
 |name	match	*.que	Scheduler Queue Object			application/x-ms-queueobject
 |name	match	*.rc	Resource Template			application/x-ms-rcfile
 |name	match	*.rct	Resource Template			application/x-ms-rcfile
-|name	match	*.reg	Registration Entries			application/x-ms-regfile
+|name	match	*.Registration Entries			application/x-ms-regfile
 |name	match	*.res	Intermediate File			application/x-ms-mdpxfile
 |name	match	*.rmi	MIDI Sequence				audio/mid
 |name	match	*.rnk	Dial-Up Shortcut			application/x-ms-rnkfile

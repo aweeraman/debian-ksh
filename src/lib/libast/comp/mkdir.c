@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -32,8 +32,8 @@ NoN(mkdir)
 int
 mkdir(const char* path, mode_t mode)
 {
-	register int	n;
-	char*		av[3];
+	int	n;
+	char*	av[3];
 
 	static char*	cmd[] = { "/bin/mkdir", 0 };
 
@@ -42,17 +42,17 @@ mkdir(const char* path, mode_t mode)
 	if (!access(path, F_OK))
 	{
 		errno = EEXIST;
-		return(-1);
+		return -1;
 	}
-	if (errno != ENOENT) return(-1);
+	if (errno != ENOENT) return -1;
 	errno = n;
 	av[0] = "mkdir";
 	av[1] = path;
 	av[2] = 0;
 	for (n = 0; n < elementsof(cmd); n++)
-		if (procclose(procopen(cmd[n], av, NiL, NiL, 0)) != -1)
+		if (procclose(procopen(cmd[n], av, NULL, NULL, 0)) != -1)
 			break;
-	return(chmod(path, mode));
+	return chmod(path, mode);
 }
 
 #endif

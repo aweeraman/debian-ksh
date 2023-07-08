@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -45,7 +45,7 @@ static Sfio_t *infile;
 Shnode_t *sh_trestore(Sfio_t *in)
 {
 	infile = in;
-	return(r_tree());
+	return r_tree();
 }
 /*
  * read in a shell tree
@@ -53,10 +53,10 @@ Shnode_t *sh_trestore(Sfio_t *in)
 static Shnode_t *r_tree(void)
 {
 	long l = sfgetl(infile); 
-	register int type;
-	register Shnode_t *t=0;
+	int type;
+	Shnode_t *t=0;
 	if(l<0)
-		return(t);
+		return t;
 	type = l;
 	switch(type&COMMSK)
 	{
@@ -128,15 +128,15 @@ static Shnode_t *r_tree(void)
 			break;
 		case TFUN:
 		{
-			Stak_t *savstak;
+			Stk_t *savstak;
 			struct slnod *slp;
 			struct functnod *fp;
 			t = getnode(functnod);
 			t->funct.functloc = -1;
 			t->funct.functline = sfgetu(infile);
 			t->funct.functnam = r_string();
-			savstak = stakcreate(STAK_SMALL);
-			savstak = stakinstall(savstak, 0);
+			savstak = stkopen(STK_SMALL);
+			savstak = stkinstall(savstak, 0);
 			slp = (struct slnod*)stkalloc(sh.stk,sizeof(struct slnod)+sizeof(struct functnod));
 			slp->slchild = 0;
 			slp->slnext = sh.st.staklist;
@@ -149,7 +149,7 @@ static Shnode_t *r_tree(void)
 			t->funct.functtre = r_tree();
 			t->funct.functstak = slp;
 			t->funct.functargs = (struct comnod*)r_tree();
-			slp->slptr =  stakinstall(savstak,0);
+			slp->slptr = stkinstall(savstak,0);
 			slp->slchild = sh.st.staklist;
 			break;
 		}
@@ -167,13 +167,13 @@ static Shnode_t *r_tree(void)
 	}
 	if(t)
 		t->tre.tretyp = type;
-	return(t);
+	return t;
 }
 
 static struct argnod *r_arg(void)
 {
-	register struct argnod *ap=0, *apold, *aptop=0;
-	register long l;
+	struct argnod	*ap=0, *apold, *aptop=0;
+	long		l;
 	Stk_t		*stkp=sh.stk;
 	while((l=sfgetu(infile))>0)
 	{
@@ -205,13 +205,13 @@ static struct argnod *r_arg(void)
 	}
 	if(ap)
 		ap->argnxt.ap = 0;
-	return(aptop);
+	return aptop;
 }
 
 static struct ionod *r_redirect(void)
 {
-	register long l;
-	register struct ionod *iop=0, *iopold, *ioptop=0;
+	long l;
+	struct ionod *iop=0, *iopold, *ioptop=0;
 	while((l=sfgetl(infile))>=0)
 	{
 		iop = (struct ionod*)getnode(ionod);
@@ -228,7 +228,7 @@ static struct ionod *r_redirect(void)
 		{
 			iop->iosize = sfgetl(infile);
 			if(sh.heredocs)
-				iop->iooffset = sfseek(sh.heredocs,(off_t)0,SEEK_END);
+				iop->iooffset = sfseek(sh.heredocs,0,SEEK_END);
 			else
 			{
 				sh.heredocs = sftmp(512);
@@ -245,7 +245,7 @@ static struct ionod *r_redirect(void)
 	}
 	if(iop)
 		iop->ionxt = 0;
-	return(ioptop);
+	return ioptop;
 }
 
 static void r_comarg(struct comnod *com)
@@ -267,11 +267,11 @@ static void r_comarg(struct comnod *com)
 	if(cmdname)
 	{
 		char *cp;
-		com->comnamp = (void*)nv_search(cmdname,sh.fun_tree,0);
+		com->comnamp = nv_search(cmdname,sh.fun_tree,0);
 		if(com->comnamp && (cp =strrchr(cmdname+1,'.')))
 		{
 			*cp = 0;
-			com->comnamp =  (void*)nv_open(cmdname,sh.var_tree,NV_VARNAME|NV_NOADD|NV_NOARRAY);
+			com->comnamp = nv_open(cmdname,sh.var_tree,NV_VARNAME|NV_NOADD|NV_NOARRAY);
 			*cp = '.';
 		}
 	}
@@ -281,9 +281,9 @@ static void r_comarg(struct comnod *com)
 
 static struct dolnod *r_comlist(void)
 {
-	register struct dolnod *dol=0;
-	register long l;
-	register char **argv;
+	struct dolnod *dol=0;
+	long l;
+	char **argv;
 	if((l=sfgetl(infile))>0)
 	{
 		dol = (struct dolnod*)stkalloc(sh.stk,sizeof(struct dolnod) + sizeof(char*)*(l+ARG_SPARE));
@@ -292,12 +292,12 @@ static struct dolnod *r_comlist(void)
 		argv = dol->dolval+ARG_SPARE;
 		while(*argv++ = r_string());
 	}
-	return(dol);
+	return dol;
 }
 
 static struct regnod *r_switch(void)
 {
-	register long l;
+	long l;
 	struct regnod *reg=0,*regold,*regtop=0;
 	while((l=sfgetl(infile))>=0)
 	{
@@ -313,23 +313,23 @@ static struct regnod *r_switch(void)
 	}
 	if(reg)
 		reg->regnxt = 0;
-	return(regtop);
+	return regtop;
 }
 
 static char *r_string(void)
 {
-	register Sfio_t *in = infile;
-	register unsigned long l = sfgetu(in);
-	register char *ptr;
+	Sfio_t *in = infile;
+	unsigned long l = sfgetu(in);
+	char *ptr;
 	if(l == 0)
-		return(NIL(char*));
+		return NULL;
 	ptr = stkalloc(sh.stk,(unsigned)l);
 	if(--l > 0)
 	{
 		if(sfread(in,ptr,(size_t)l)!=(size_t)l)
-			return(NIL(char*));
+			return NULL;
 		ccmaps(ptr, l, CC_ASCII, CC_NATIVE);
 	}
 	ptr[l] = 0;
-	return(ptr);
+	return ptr;
 }

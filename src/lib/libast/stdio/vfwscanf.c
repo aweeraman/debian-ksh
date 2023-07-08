@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -67,7 +67,7 @@ wideexcept(Sfio_t* f, int op, void* val, Sfdisc_t* dp)
 static ssize_t
 wideread(Sfio_t* f, void* buf, size_t size, Sfdisc_t* dp)
 {
-	register Wide_t*	w = (Wide_t*)dp;
+	Wide_t*	w = (Wide_t*)dp;
 	wchar_t			wuf[2];
 	ssize_t	r;
 
@@ -89,10 +89,10 @@ vfwscanf(Sfio_t* f, const wchar_t* fmt, va_list args)
 	char	buf[1024];
 
 	FWIDE(f, WEOF);
-	n = wcstombs(NiL, fmt, 0);
+	n = wcstombs(NULL, fmt, 0);
 	if (w = newof(0, Wide_t, 1, n))
 	{
-		if (t = sfnew(NiL, buf, sizeof(buf), (int)astconf_long(CONF_OPEN_MAX)+1, SF_READ))
+		if (t = sfnew(NULL, buf, sizeof(buf), (int)astconf_long(CONF_OPEN_MAX)+1, SF_READ))
 		{
 			w->sfdisc.exceptf = wideexcept;
 			w->sfdisc.readf = wideread;

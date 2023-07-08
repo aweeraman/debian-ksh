@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2023 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 2.0                  #
 #                                                                      #
@@ -542,6 +542,17 @@ if builtin cat 2> /dev/null; then
 	got=$(cat <<<"foo bar baz" 3<&0 <<<"$(</dev/fd/3) bork blah blarg")
 	[[ $got == "$exp" ]] || '3<%0 does not work when 0 is <<< here-doc'
 fi
+
+# ======
+# on ksh 93v-/2020, 'exec cat' with a heredoc is broken
+# https://github.com/ksh93/ksh/pull/604
+exp=hello
+got=$( set +x; { "$SHELL" -c "exec cat <<_EOF
+$exp
+_EOF"; } 2>&1 )
+[[ e=$? -eq 0 && $got == "$exp" ]] || err_exit "'exec cat' with a heredoc" \
+	"(expected status 0, '$exp';" \
+	"got status $e$( ((e>128)) && print -n /SIG && kill -l "$e"), $(printf %q "$got"))"
 
 # ======
 exit $((Errors<125?Errors:125))

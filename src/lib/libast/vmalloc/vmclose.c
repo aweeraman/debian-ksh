@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -44,18 +44,18 @@ int vmclose(Vmalloc_t* vm)
 		(*_Vmpfclose)(vm);
 
 	/* remove from linked list of regions */
-	_vmlock(NIL(Vmalloc_t*), 1);
+	_vmlock(NULL, 1);
 	for(last = Vmheap, v = last->next; v; last = v, v = v->next)
 	{	if(v == vm)
 		{	last->next = v->next;
 			break;
 		}
 	}
-	_vmlock(NIL(Vmalloc_t*), 0);
+	_vmlock(NULL, 0);
 
 	if(rv == 0) /* deallocate memory obtained from the system */
 	{	/* lock-free because alzheimer can cause deadlocks :) */
-		vmseg = NIL(Seg_t*);
+		vmseg = NULL;
 		for(seg = vd->seg; seg; seg = next)
 		{	next = seg->next;
 			if(seg->extent == seg->size) /* root segment */
@@ -67,7 +67,7 @@ int vmclose(Vmalloc_t* vm)
 	}
 
 	if(disc->exceptf) /* finalizing closing */
-		(void)(*disc->exceptf)(vm, VM_ENDCLOSE, (void*)0, disc);
+		(void)(*disc->exceptf)(vm, VM_ENDCLOSE, NULL, disc);
 
 	if(!(mode & VM_MEMORYF) )
 		vmfree(Vmheap,vm);

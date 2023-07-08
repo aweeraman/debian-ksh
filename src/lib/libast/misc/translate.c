@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -134,7 +134,7 @@ find(const char* locale, const char* catalog)
 	{
 		if (locale == (const char*)lc_categories[AST_LC_MESSAGES].prev)
 			o = 0;
-		else if (o = setlocale(LC_MESSAGES, NiL))
+		else if (o = setlocale(LC_MESSAGES, NULL))
 		{
 			ast.locale.set |= AST_LC_internal;
 			setlocale(LC_MESSAGES, locale);
@@ -154,25 +154,25 @@ find(const char* locale, const char* catalog)
  */
 
 static Catalog_t*
-init(register char* s)
+init(char* s)
 {
-	register Catalog_t*	cp;
-	register int		n;
-	register int		m;
-	register int		set;
-	nl_catd			d;
+	Catalog_t*	cp;
+	int		n;
+	int		m;
+	int		set;
+	nl_catd		d;
 
 	/*
 	 * insert into the catalog dictionary
 	 */
 
 	if (!(cp = newof(0, Catalog_t, 1, strlen(s))))
-		return 0;
+		return NULL;
 	strcpy(cp->name, s);
 	if (!dtinsert(state.catalogs, cp))
 	{
 		free(cp);
-		return 0;
+		return NULL;
 	}
 	cp->cat = NOCAT;
 
@@ -225,8 +225,8 @@ init(register char* s)
 static Message_t*
 match(const char* cat, const char* msg)
 {
-	register char*	s;
-	register char*	t;
+	char*	s;
+	char*	t;
 	Catalog_t*	cp;
 	Message_t*	mp;
 	size_t		n;
@@ -257,7 +257,7 @@ match(const char* cat, const char* msg)
 			break;
 		s = t + 1;
 	}
-	return 0;
+	return NULL;
 }
 
 /*
@@ -291,7 +291,7 @@ match(const char* cat, const char* msg)
 char*
 translate(const char* loc, const char* cmd, const char* cat, const char* msg)
 {
-	register char*	r;
+	char*		r;
 	char*		t;
 	int		p;
 	int		oerrno;

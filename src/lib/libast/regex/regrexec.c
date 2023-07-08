@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2013 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -32,26 +32,26 @@
 int
 regrexec_20120528(const regex_t* p, const char* s, size_t len, size_t nmatch, regmatch_t* match, regflags_t flags, int sep, void* handle, regrecord_t record)
 {
-	register unsigned char*	buf;
-	register unsigned char*	beg;
-	register unsigned char*	l;
-	register unsigned char*	r;
-	register unsigned char*	x;
-	register size_t*	skip;
-	register size_t*	fail;
-	register Bm_mask_t**	mask;
-	register size_t		index;
-	register ssize_t	n;
-	unsigned char*		end;
-	size_t			mid;
-	int			complete;
-	int			exactlen;
-	int			leftlen;
-	int			rightlen;
-	int			inv;
-	Bm_mask_t		m;
-	Env_t*			env;
-	Rex_t*			e;
+	unsigned char*	buf;
+	unsigned char*	beg;
+	unsigned char*	l;
+	unsigned char*	r;
+	unsigned char*	x;
+	size_t*		skip;
+	size_t*		fail;
+	Bm_mask_t**	mask;
+	size_t		index;
+	ssize_t		n;
+	unsigned char*	end;
+	size_t		mid;
+	int		complete;
+	int		exactlen;
+	int		leftlen;
+	int		rightlen;
+	int		inv;
+	Bm_mask_t	m;
+	Env_t*		env;
+	Rex_t*		e;
 
 	if (!s || !p || !(env = p->env) || (e = env->rex)->type != REX_BM)
 		return REG_BADPAT;
@@ -171,5 +171,5 @@ regrexec(const regex_t* p, const char* s, size_t len, size_t nmatch, oldregmatch
 		free(match);
 		return r;
 	}
-	return regrexec_20120528(p, s, len, 0, NiL, flags, sep, handle, record);
+	return regrexec_20120528(p, s, len, 0, NULL, flags, sep, handle, record);
 }

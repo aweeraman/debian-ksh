@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -30,15 +30,15 @@ static void* heapmem(Vmalloc_t*	vm,	/* region doing allocation from 	*/
 		     Vmdisc_t*	disc)	/* discipline structure			*/
 {
 	if(csize == 0 && nsize == 0)
-		return NIL(void*);
+		return NULL;
 	else if(csize == 0)
 		return vmalloc(Vmheap,nsize);
 	else if(nsize == 0)
-		return vmfree(Vmheap,caddr) >= 0 ? caddr : NIL(void*);
+		return vmfree(Vmheap,caddr) >= 0 ? caddr : NULL;
 	else	return vmresize(Vmheap,caddr,nsize,0);
 }
 
-static Vmdisc_t _Vmdcheap = { heapmem, NIL(Vmexcept_f), 0 };
+static Vmdisc_t _Vmdcheap = { heapmem, NULL, 0 };
 Vmdisc_t*	Vmdcheap = &_Vmdcheap;
 
 #ifdef NoF

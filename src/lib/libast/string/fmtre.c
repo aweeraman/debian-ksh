@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -38,15 +38,15 @@ typedef struct Stack_s
 char*
 fmtre(const char* as)
 {
-	register char*		s = (char*)as;
-	register int		c;
-	register char*		t;
-	register Stack_t*	p;
-	char*			x;
-	int			n;
-	int			end;
-	char*			buf;
-	Stack_t			stack[32];
+	char*		s = (char*)as;
+	int		c;
+	char*		t;
+	Stack_t*	p;
+	char*		x;
+	int		n;
+	int		end;
+	char*		buf;
+	Stack_t		stack[32];
 
 	end = 1;
 	c = 2 * strlen(s) + 1;
@@ -64,7 +64,7 @@ fmtre(const char* as)
 			break;
 		case '\\':
 			if (!(c = *s++) || c == '{' || c == '}')
-				return 0;
+				return NULL;
 			*t++ = '\\';
 			if ((*t++ = c) == '(' && *s == '|')
 			{
@@ -93,7 +93,7 @@ fmtre(const char* as)
 			for (;;)
 			{
 				if (!(*t++ = c))
-					return 0;
+					return NULL;
 				if ((c = *s++) == ']')
 				{
 					if (n)
@@ -108,7 +108,7 @@ fmtre(const char* as)
 			if (*x++ && (*x == '(' || *x == '-' && *(x + 1) == '('))
 			{
 				if (p >= &stack[elementsof(stack)])
-					return 0;
+					return NULL;
 				p->beg = s - 1;
 				s = x;
 				p->len = s - p->beg;
@@ -135,7 +135,7 @@ fmtre(const char* as)
 			if (*s == '(' || c != '~' && *s == '-' && *(s + 1) == '(')
 			{
 				if (p >= &stack[elementsof(stack)])
-					return 0;
+					return NULL;
 				p->beg = s - 1;
 				if (c == '~')
 				{
@@ -178,7 +178,7 @@ fmtre(const char* as)
 			continue;
 		case '(':
 			if (p >= &stack[elementsof(stack)])
-				return 0;
+				return NULL;
 			p->beg = s - 1;
 			p->len = 0;
 			p->min = 0;
@@ -187,7 +187,7 @@ fmtre(const char* as)
 			continue;
 		case ')':
 			if (p == stack)
-				return 0;
+				return NULL;
 			*t++ = c;
 			p--;
 			for (c = 0; c < p->len; c++)
@@ -203,10 +203,10 @@ fmtre(const char* as)
 			continue;
 		case '|':
 			if (t == buf || *(t - 1) == '(')
-				return 0;
+				return NULL;
 		logical:
 			if (!*s || *s == ')')
-				return 0;
+				return NULL;
 			/* FALLTHROUGH */
 		default:
 			*t++ = c;
@@ -215,7 +215,7 @@ fmtre(const char* as)
 		break;
 	}
 	if (p != stack)
-		return 0;
+		return NULL;
 	if (end)
 		*t++ = '$';
 	*t = 0;

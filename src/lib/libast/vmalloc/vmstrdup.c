@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -23,10 +23,10 @@
  * return a copy of s using vmalloc
  */
 
-char* vmstrdup(Vmalloc_t* v, register const char* s)
+char* vmstrdup(Vmalloc_t* v, const char* s)
 {
-	register char*	t;
-	register size_t	n;
+	char*	t;
+	size_t	n;
 
-	return (s && (t = vmalloc(v, n = strlen(s) + 1))) ? (char*)memcpy(t, s, n) : (char*)0;
+	return (s && (t = vmalloc(v, n = strlen(s) + 1))) ? (char*)memcpy(t, s, n) : NULL;
 }

@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1994-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2023 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 2.0                  #
 #                                                                      #
@@ -26,6 +26,7 @@
 ########################################################################
 
 # Escape from a non-POSIX shell
+min_posix=/if/this/is/csh/ignore/the/error/message || exec sh $0:q $argv:q
 # ('test X -ef Y' is technically non-POSIX, but practically universal)
 min_posix='test / -ef / && path=Bad && case $PATH in (Bad) exit 1;; esac && '\
 'PWD=Bad && cd -P -- / && case $PWD in (/) ;; (*) exit 1;; esac && '\
@@ -46,6 +47,10 @@ readonly min_posix	# use for checksh()
 
 # Set standards compliance mode
 (command set -o posix) 2>/dev/null && set -o posix
+
+# As this code heavily uses field splitting of unquoted variable expansions,
+# turn off global pathname expansion for safety (turn on locally in subshells)
+set -o noglob
 
 # Sanitize 'cd'
 unset CDPATH
@@ -96,7 +101,7 @@ lib="" # need /usr/local/lib /usr/local/shlib
 ccs="/usr/kvm /usr/ccs/bin"
 org="gnu GNU"
 makefiles="Mamfile"  # ksh 93u+m no longer uses these: Nmakefile nmakefile Makefile makefile
-env="HOSTTYPE PACKAGEROOT INSTALLROOT PATH"
+env="HOSTTYPE PACKAGEROOT INSTALLROOT PATH FPATH MANPATH"
 
 package_use='=$HOSTTYPE=$PACKAGEROOT=$INSTALLROOT=$EXECROOT=$CC='
 
@@ -110,12 +115,12 @@ command=${0##*/}
 case $(getopts '[-][123:xyz]' opt --xyz 2>/dev/null; echo 0$opt) in
 0123)	USAGE=$'
 [-?
-@(#)$Id: '$command$' (ksh 93u+m) 2022-08-20 $
+@(#)$Id: '$command$' (ksh 93u+m) 2023-05-28 $
 ]
 [-author?Glenn Fowler <gsf@research.att.com>]
 [-author?Contributors to https://github.com/ksh93/ksh]
 [-copyright?(c) 1994-2012 AT&T Intellectual Property]
-[-copyright?(c) 2020-2022 Contributors to https://github.com/ksh93/ksh]
+[-copyright?(c) 2020-2023 Contributors to ksh 93u+m]
 [-license?https://www.eclipse.org/org/documents/epl-2.0/EPL-2.0.html]
 [+NAME?'$command$' - build, test and install ksh 93u+m]
 [+DESCRIPTION?The \b'$command$'\b command is the main control script
@@ -182,12 +187,6 @@ case $(getopts '[-][123:xyz]' opt --xyz 2>/dev/null; echo 0$opt) in
                 [+cpu?The number of CPUs; 1 if the host is not a
                     multiprocessor.]
                 [+name?The host name.]
-                [+rating?The CPU rating in pseudo mips; the value is
-                    useful useful only in comparisons with rating values of
-                    other hosts. Other than a vax rating (mercifully) fixed
-                    at 1, ratings can vary wildly but consistently from
-                    vendor mips ratings. \bcc\b(1) may be required to
-                    determine the rating.]
                 [+type?The host type, usually in the form
                     \avendor\a.\aarchitecture\a, with an optional trailing
                     -\aversion\a. The main theme is that type names within
@@ -284,7 +283,7 @@ case $(getopts '[-][123:xyz]' opt --xyz 2>/dev/null; echo 0$opt) in
 
 [ qualifier ... ] [ action ] [ arg ... ] [ n=v ... ]
 
-[+SEE ALSO?\bautoconfig\b(1), \bcksum\b(1), \bexecrate\b(1), \bexpmake\b(1),
+[+SEE ALSO?\bautoconfig\b(1), \bcksum\b(1), \bexpmake\b(1),
 	\bgzip\b(1), \bmake\b(1), \bmamake\b(1), \bpax\b(1),
 	\bpkgadd\b(1), \bpkgmk\b(1), \brpm\b(1),
 	\bsh\b(1), \btar\b(1), \boptget\b(3)]
@@ -337,7 +336,6 @@ tab="        "
 verbose=0
 AUTHORIZE=
 DEBUG=
-SHELLMAGIC=-
 
 unset FIGNORE BINDIR DLLDIR ETCDIR FUNDIR INCLUDEDIR LIBDIR LOCALEDIR MANDIR SHAREDIR 2>/dev/null || true
 
@@ -346,7 +344,7 @@ do	case $# in
 	0)	set host type ;;
 	esac
 	case $1 in
-	clean|clobber|export|host|install|make|remove|results|test|use|view)
+	clean|clobber|export|host|install|make|results|test|use|view)
 		action=$1
 		shift
 		break
@@ -441,7 +439,8 @@ DESCRIPTION
     export [ variable ...]
           List name=value for variable, one per line. If the only attribute is
           specified then only the variable values are listed. If no variables
-          are specified then HOSTTYPE PACKAGEROOT INSTALLROOT PATH are assumed.
+          are specified then HOSTTYPE PACKAGEROOT INSTALLROOT PATH FPATH
+          MANPATH are assumed.
     help [ action ]
           Display help text on the standard error (standard output for action).
     host [ attribute ... ]
@@ -453,12 +452,6 @@ DESCRIPTION
                   An external host type name to be converted to package syntax.
             cpu   The number of CPUs; 1 if the host is not a multiprocessor.
             name  The host name.
-            rating
-                  The CPU rating in pseudo mips; the value is useful useful
-                  only in comparisons with rating values of other hosts. Other
-                  than a vax rating (mercifully) fixed at 1, ratings can vary
-                  wildly but consistently from vendor mips ratings. cc(1) may
-                  be required to determine the rating.
             type  The host type, usually in the form vendor.architecture, with
                   an optional trailing -version. The main theme is that type
                   names within a family of architectures are named in a
@@ -546,15 +539,15 @@ DETAILS
   a new $INSTALLROOT.
 
 SEE ALSO
-  autoconfig(1), cksum(1), execrate(1), expmake(1), gzip(1), make(1),
-  mamake(1), pax(1), pkgadd(1), pkgmk(1), rpm(1), sh(1), tar(1), optget(3)
+  autoconfig(1), cksum(1), expmake(1), gzip(1), make(1), mamake(1), pax(1),
+  pkgadd(1), pkgmk(1), rpm(1), sh(1), tar(1), optget(3)
 
 IMPLEMENTATION
-  version         package (ksh 93u+m) 2022-08-20
+  version         package (ksh 93u+m) 2023-03-29
   author          Glenn Fowler <gsf@research.att.com>
   author          Contributors to https://github.com/ksh93/ksh
   copyright       (c) 1994-2012 AT&T Intellectual Property
-  copyright       (c) 2020-2022 Contributors to https://github.com/ksh93/ksh
+  copyright       (c) 2020-2023 Contributors to ksh 93u+m
   license         https://www.eclipse.org/org/documents/epl-2.0/EPL-2.0.html'
 		case $1 in
 		html)	echo "</pre></body></html>" ;;
@@ -580,9 +573,8 @@ hostopts()
 {
 	_ifs_=$IFS
 	IFS=,
-	set '' $HOSTTYPE
+	set -- $HOSTTYPE
 	IFS=$_ifs_
-	shift
 	while	:
 	do	case $# in
 		0|1)	break ;;
@@ -714,23 +706,6 @@ executable() # [!] command
 	esac
 }
 
-# initialize SHELLMAGIC
-# tangible proof of Cygwin's disdain for Unix (well, this and execrate)
-
-shellmagic()
-{
-	case $SHELLMAGIC in
-	'')	;;
-	-)	if	test -f /emx/bin/sh.exe
-		then	SHELLMAGIC='#!/emx/bin/sh.exe'$nl
-		elif	test -f /bin/env.exe
-		then	SHELLMAGIC='#!/bin/env sh'$nl
-		else	SHELLMAGIC=
-		fi
-		;;
-	esac
-}
-
 # true if arg is executable command on $PATH
 
 onpath() # command
@@ -745,9 +720,8 @@ onpath() # command
 		;;
 	esac
 	IFS=':'
-	set '' $PATH
+	set -- $PATH
 	IFS=$ifs
-	shift
 	for _onpath_d
 	do	case $_onpath_d in
 		'')	_onpath_d=. ;;
@@ -801,7 +775,7 @@ hostinfo() # attribute ...
 			canon)	canon=-
 				something=1
 				;;
-			cpu|name|rating|type)
+			cpu|name|type)
 				something=1
 				;;
 			*)	err_out "$action: $info: unknown attribute"
@@ -940,11 +914,11 @@ hostinfo() # attribute ...
 		0|1)	cpu=$(
 			cd "$TMPDIR"
 			tmp=hi$$
-			trap 'rm -f $tmp.*' 0 1 2
+			trap 'set +o noglob; exec rm -f $tmp.*' 0 1 2
 			cat > $tmp.c <<!
 #include <stdio.h>
 #include <pthread.h>
-int main()
+int main(void)
 {
 	printf("%d\n", pthread_num_processors_np());
 	return 0;
@@ -969,107 +943,6 @@ int main()
 	name)	_name_=$(hostname || uname -n || cat /etc/whoami || echo local)
 		_hostinfo_="$_hostinfo_ $_name_"
 		;;
-	rating)	for rating in $(grep -i ^bogomips /proc/cpuinfo 2>/dev/null | sed -e 's,.*:[ 	]*,,' -e 's,\(...*\)\..*,\1,' -e 's,\(\..\).*,\1,')
-		do	case $rating in
-			[0123456789]*)	break ;;
-			esac
-		done
-		case $rating in
-		[0123456789]*)	;;
-		*)	cd "$TMPDIR"
-			tmp=hi$$
-			trap 'rm -f $tmp.*' 0 1 2
-			cat > $tmp.c <<!
-#include <stdio.h>
-#include <sys/types.h>
-#if TD || TZ
-#include <sys/time.h>
-#else
-extern time_t	time();
-#endif
-int main()
-{
-	register unsigned long	i;
-	register unsigned long	j;
-	register unsigned long	k;
-	unsigned long		l;
-	unsigned long		m;
-	unsigned long		t;
-	int			x;
-#if TD || TZ
-	struct timeval		b;
-	struct timeval		e;
-#if TZ
-	struct timezone		z;
-#endif
-#endif
-	l = 500;
-	m = 890;
-	x = 0;
-	for (;;)
-	{
-#if TD || TZ
-#if TZ
-		gettimeofday(&b, &z);
-#else
-		gettimeofday(&b);
-#endif
-#else
-		t = (unsigned long)time((time_t*)0);
-#endif
-		k = 0;
-		for (i = 0; i < l; i++)
-			for (j = 0; j < 50000; j++)
-				k += j;
-#if TD || TZ
-#if TZ
-		gettimeofday(&e, &z);
-#else
-		gettimeofday(&e);
-#endif
-		t = (e.tv_sec - b.tv_sec) * 1000 + (e.tv_usec - b.tv_usec) / 1000;
-		if (!x++ && t < 1000)
-		{
-			t = 10000 / t;
-			l = (l * t) / 10;
-			continue;
-		}
-#else
-		t = ((unsigned long)time((time_t*)0) - t) * 1000;
-		if (!x++ && t < 20000)
-		{
-			t = 200000l / t;
-			l = (l * t) / 10;
-			continue;
-		}
-#endif
-#if PR
-		printf("[ k=%lu l=%lu m=%lu t=%lu ] ", k, l, m, t);
-#endif
-		if (t == 0)
-			t = 1;
-		break;
-	}
-	printf("%lu\n", ((l * m) / 10) / t);
-	return k == 0;
-}
-!
-			rating=
-			for o in -DTZ -DTD ''
-			do	if	$CC $o -O -o $tmp.exe $tmp.c >/dev/null 2>&1 ||
-					gcc $o -O -o $tmp.exe $tmp.c >/dev/null 2>&1
-				then	rating=$(./$tmp.exe)
-					break
-				fi
-			done
-			case $rating in
-			[0123456789]*)	;;
-			*)	rating=1 ;;
-			esac
-			;;
-		esac
-		_hostinfo_="$_hostinfo_ $rating"
-		;;
 	type|canon)
 		case $CROSS:$canon in
 		0:)	case $cc in
@@ -1088,28 +961,29 @@ int main()
 			esac
 			;;
 		esac
-		case $cc in
-		/*)	a=$($cc -dumpmachine $CCFLAGS 2>/dev/null)
-			case $a in
-			'')	case $CCFLAGS in
-				?*)	a=$($cc -dumpmachine 2>/dev/null) ;;
-				esac
-				;;
+		a=$($cc -dumpmachine $CCFLAGS 2>/dev/null)
+		case $a in
+		'')	case $CCFLAGS in
+			?*)	a=$($cc -dumpmachine 2>/dev/null) ;;
 			esac
-			case $a in
-			''|*' '*|*/*:*)
-				;;
-			*.*-*)	_hostinfo_="$_hostinfo_ $a"
-				continue
-				;;
-			*-*-*)	case $canon in
-				'')	canon=$a ;;
-				esac
-				;;
-			*)	_hostinfo_="$_hostinfo_ $a"
-				continue
-				;;
+			;;
+		esac
+		case $a in
+		''|*' '*|*/*:*)
+			;;
+		*.*-*)	_hostinfo_="$_hostinfo_ $a"
+			continue
+			;;
+		*-*-*)	case $canon in
+			'')	canon=$a ;;
 			esac
+			;;
+		*-*)	case $canon in
+			'')	canon=${a%-*}-unknown-${a#*-} ;;
+			esac
+			;;
+		*)	_hostinfo_="$_hostinfo_ $a"
+			continue
 			;;
 		esac
 		IFS=:
@@ -1153,6 +1027,13 @@ int main()
 
 		# inconsistent -dumpmachine filtered here
 
+		case $canon in
+		*-*-linux-gnu*)
+			;;
+		*-linux-gnu*)
+			# fix missing machine field, e.g. aarch64-linux-gnu => aarch64-unknown-linux-gnu
+			canon=${canon%%-*}-unknown-${canon#*-} ;;
+		esac
 		case -${canon}- in
 		--|*-powerpc-*)
 			h=$(hostname || uname -n || cat /etc/whoami)
@@ -1203,6 +1084,12 @@ int main()
 		type=unknown
 		case $host in
 		*.*)	host=$(echo $host | sed -e 's/\..*//') ;;
+		esac
+		case $arch in
+		aarch64)
+			# some call it aarch64, some arm64 -- let's stick to one
+			arch=arm64
+			;;
 		esac
 		case $mach in
 		unknown)
@@ -1555,7 +1442,8 @@ int main()
 			bsdi)			lhs=bsd ;;
 			darwin)			case $(/usr/bin/cc --version) in
 						*'(GCC)'*)	case $rel in
-								[0-9].*|10.*)	lhs=darwin07 ;;
+								'' | [0-9].* | 10.*)
+										lhs=darwin07 ;;
 								*)		lhs=darwin11 ;;
 								esac ;;
 						esac
@@ -1594,13 +1482,13 @@ int main()
 			*)	pwd=$PWD
 				cd "$TMPDIR"
 				tmp=hi$$
-				trap 'rm -f $tmp.*' 0 1 2
+				trap 'set +o noglob; rm -rf $tmp.*' 0 1 2
 				cat > $tmp.a.c <<!
-extern int b();
-int main() { return b(); }
+extern int b(void);
+int main(void) { return b(); }
 !
 				cat > $tmp.b.c <<!
-int b() { return 0; }
+int b(void) { return 0; }
 !
 				abi=
 				if	$cc -c $tmp.a.c
@@ -1624,7 +1512,7 @@ int b() { return 0; }
 						fi
 					done
 				fi </dev/null >/dev/null 2>&1
-				rm -f $tmp.*
+				(set +o noglob; rm -rf $tmp.*)
 				trap - 0 1 2
 				cd $pwd
 				;;
@@ -1650,8 +1538,8 @@ int b() { return 0; }
 			'')	bits=$(	set -e
 					cd "$TMPDIR"
 					tmp=hi$$
-					trap 'rm -rf "$tmp".*' 0 1 2
-					echo 'int main() { return 0; }' > $tmp.a.c
+					trap 'set +o noglob; exec rm -rf "$tmp".*' 0 1 2
+					echo 'int main(void) { return 0; }' > $tmp.a.c
 					checkcc
 					$cc $CCFLAGS -o $tmp.a.exe $tmp.a.c </dev/null >/dev/null 2>&1
 					file $tmp.a.exe 2>/dev/null | sed "s/$tmp\.a\.exe//g"  )
@@ -1690,8 +1578,7 @@ int b() { return 0; }
 		;;
 	esac
 	done
-	set '' $_hostinfo_
-	shift
+	set -- $_hostinfo_
 	_hostinfo_=$*
 
 	# restore the global state
@@ -1815,8 +1702,7 @@ case $x in
 			case $show in
 			echo)	exec=echo make=echo show=echo ;;
 			esac
-			set '' $args
-			shift
+			set -- $args
 			case $# in
 			0)	;;
 			*)	case $1 in
@@ -1912,7 +1798,7 @@ case $x in
 	export HOSTTYPE
 	INSTALLROOT=$PACKAGEROOT/arch/$HOSTTYPE
 	case $action in
-	install|make|remove|test|view)
+	install|make|test|view)
 		;;
 	*)	if	test ! -d $INSTALLROOT
 		then	INSTALLROOT=$PACKAGEROOT
@@ -1958,29 +1844,12 @@ case $x in
 		then
 			# update the basic package commands
 
-			for i in execrate ignore mamprobe silent
+			for i in mamprobe
 			do	test -h $PACKAGEROOT/bin/$i 2>/dev/null ||
 				case $(ls -t $INITROOT/$i.sh $PACKAGEROOT/bin/$i 2>/dev/null) in
 				"$INITROOT/$i.sh"*)
 					note "update $PACKAGEROOT/bin/$i"
-					shellmagic
-					case $SHELLMAGIC in
-					'')	$exec cp $INITROOT/$i.sh $PACKAGEROOT/bin/$i || exit
-						;;
-					*)	case $exec in
-						'')	{
-							echo "$SHELLMAGIC"
-							cat $INITROOT/$i.sh
-							} > $PACKAGEROOT/bin/$i || exit
-							;;
-						*)	echo "{
-echo \"$SHELLMAGIC\"
-cat $INITROOT/$i.sh
-} > $PACKAGEROOT/bin/$i"
-							;;
-						esac
-						;;
-					esac
+					$exec cp $INITROOT/$i.sh $PACKAGEROOT/bin/$i || exit
 					$exec chmod +x $PACKAGEROOT/bin/$i || exit
 					;;
 				esac
@@ -2011,7 +1880,7 @@ cat $INITROOT/$i.sh
 				then	code=0
 				else	code=1
 				fi
-				rm -f pkg$$.*
+				(set +o noglob; rm -f pkg$$.*)
 				exit $code
 			)
 			code=$?
@@ -2176,11 +2045,23 @@ cat $INITROOT/$i.sh
 		$INSTALLROOT/bin:*)
 			;;
 		*)	PATH=$INSTALLROOT/bin:$PATH
+			test -n "${MANPATH+s}" && MANPATH=$INSTALLROOT/man:$MANPATH
 			;;
 		esac
-		$show PATH=$PATH
-		$show export PATH
+		case $FPATH: in
+		$INSTALLROOT/fun:*)
+			;;
+		*)	FPATH=$INSTALLROOT/fun${FPATH:+:$FPATH}
+			;;
+		esac
+		$show "export PATH=$PATH"
 		export PATH
+		$show "export FPATH=$FPATH"
+		export FPATH
+		if	test -n "${MANPATH+s}"
+		then	export MANPATH
+			$show "export MANPATH=$PATH"
+		fi
 		;;
 	*)	for i in package
 		do	if	onpath $i
@@ -2256,8 +2137,7 @@ cat $INITROOT/$i.sh
 	case $USER_VPATH in
 	'')	case $VPATH in
 		?*)	IFS=':'
-			set '' $VPATH
-			shift
+			set -- $VPATH
 			IFS=$ifs
 			USER_VPATH=
 			for i
@@ -2278,8 +2158,7 @@ cat $INITROOT/$i.sh
 	esac
 	case $USER_VPATH in
 	?*)	IFS=':'
-		set '' $USER_VPATH
-		shift
+		set -- $USER_VPATH
 		IFS=$ifs
 		USER_VPATH=
 		USER_VPATH_CHAIN=
@@ -2301,8 +2180,7 @@ esac
 
 PACKAGEBIN=$INSTALLROOT/lib/package
 case $action:$run in
-use:-)	set '' $args
-	shift
+use:-)	set -- $args
 	case $# in
 	0)	;;
 	*)	shift ;;
@@ -2358,8 +2236,7 @@ $show VPATH=$VPATH
 $show export VPATH
 export VPATH
 IFS=':'
-set '' $VPATH
-shift
+set -- $VPATH
 IFS=$ifs
 for i
 do	case $i in
@@ -2421,13 +2298,9 @@ view() # [test] [-|type] [src|bin|all] file
 case $action in
 *)	package=
 	target=
-	set '' $args
-	while	:
-	do	shift
-		case $# in
-		0)	break ;;
-		esac
-		case $1 in
+	set -- $args
+	while	test "$#" -gt 0
+	do	case $1 in
 		''|-)	target="$target $package"
 			package=
 			;;
@@ -2438,6 +2311,7 @@ case $action in
 			fi
 			;;
 		esac
+		shift
 	done
 	;;
 esac
@@ -2532,17 +2406,6 @@ checkaout()	# cmd ...
 	return 0
 }
 
-# list main environment values
-
-showenv()
-{
-	case $1 in
-	''|make)for __i__ in CC SHELL $env
-		do	eval echo $__i__='$'$__i__
-		done
-		;;
-	esac
-}
 
 # capture command output
 
@@ -2577,7 +2440,7 @@ capture() # file command ...
 				then	mv $o.out $o.out.2
 				fi
 			elif	test -f $o.out
-			then	for i in $(ls -t $o.out.? 2>/dev/null)
+			then	for i in $(set +o noglob; ls -t $o.out.? 2>/dev/null)
 				do	break
 				done
 				case $i in
@@ -2627,7 +2490,18 @@ capture() # file command ...
 			case $s in
 			?*)	echo "$s"  ;;
 			esac
-			showenv $action
+			case $action in
+			'' | make)
+				# list main environment values
+				for i in CC SHELL $env
+				do	case $i in
+					FPATH | MANPATH)
+						continue ;;  # not relevant for building
+					esac
+					eval "echo \"$i=\$$i\""
+				done
+				;;
+			esac
 			"$@"
 		} < /dev/null > $o 2>&1
 		;;
@@ -2658,57 +2532,48 @@ do_install() # dir [ command ... ]
 {
 	cd "$INSTALLROOT"
 	printf 'install: installing from %s\n' "$PWD"
-	set -o errexit
 	dd=$1
 	shift
 	case $dd in
 	'' | [!/]*)
 		err_out "ERROR: destination directory '$dd' must begin with a /" ;;
+	/)
+		# avoid //foo
+		dd='' ;;
 	esac
 	# commands to install by default
-	test "$#" -eq 0 && set -- ksh shcomp  # pty suid_exec
+	test "$#" -eq 0 && set -- ksh shcomp
 	for f
 	do	test -f "bin/$f" || err_out "Not found: $f" "Build first? Run $0 make"
 	done
 	# set install directories
 	bindir=$dd/bin
-	mandir=$dd/share/man
-	man1dir=$mandir/man1
+	man1dir=${dd:-/usr}/share/man/man1
+	fundir=${dd:-/usr}/share/fun
 	# and off we go
-	trace mkdir -p "$bindir" "$man1dir"
+	trace mkdir -p "$bindir" "$man1dir" || exit
 	for f
 	do	# install executable
-		trace cp "bin/$f" "$bindir/"
-		# install manual
+		trace cp "bin/$f" "$bindir/" || exit
+		# install manual and autoloadable functions
 		case $f in
-		ksh)	trace cp "$PACKAGEROOT/src/cmd/ksh93/sh.1" "$man1dir/ksh.1"
+		ksh)	trace cp "$PACKAGEROOT/src/cmd/ksh93/sh.1" "$man1dir/ksh.1" || exit
+			trace mkdir -p "$fundir" || exit
+			(set +o noglob; trace cp "$PACKAGEROOT"/src/cmd/ksh93/fun/* "$fundir/") || exit
 			;;
 		*)	# AT&T --man, etc. is a glorified error message: writes to stderr and exits with status 2 :-/
+			# So we cannot reliably check for success; must check the result, too.
 			manfile=$man1dir/${f##*/}.1
-			bin/ksh -c '"$@" 2>&1; exit 0' _ "bin/$f" --nroff >$manfile
-			# ...so we cannot check for success; instead, check the result.
-			if	grep -q '^.TH .* 1' "$manfile"
-			then	printf "install: wrote '%s --nroff' output into %s\n" "bin/$f" "$manfile"
+			bin/ksh -c '"$@" 2>&1' _ "bin/$f" --\?\?nroff >$manfile
+			if	test "$?" -eq 2 &&
+				read -r magic < "$manfile" &&
+				test "X$magic" = 'X.\" format with nroff|troff|groff -man'  # string from optget.c
+			then	printf '%s: executing: %s --\\?\\?nroff > %s\n' "$action" "bin/$f" "$manfile"
 			else	rm "$manfile"
 			fi
 			;;
 		esac
 	done
-}
-
-# check for native ASCII 0:yes 1:no
-
-__isascii__=
-
-isascii()
-{
-	case $__isascii__ in
-	'')	case $(echo A | od -o | sed -e 's/[ 	]*$//' -e '/[ 	]/!d' -e 's/.*[ 	]//') in
-		005101|040412)	__isascii__=0 ;;
-		*)		__isascii__=1 ;;
-		esac
-	esac
-	return $__isascii__
 }
 
 error_status=0
@@ -2751,17 +2616,12 @@ export)	case $INSTALLROOT in
 	0)	v='$i=' ;;
 	*)	v= ;;
 	esac
-	set '' $target $package
-	case $# in
-	1)	set '' $env ;;
-	esac
-	while	:
-	do	case $# in
-		1)	break ;;
-		esac
+	set -- $target $package
+	test "$#" -eq 0 && set -- $env
+	while	test "$#" -gt 0
+	do	i=$1
+		eval "echo \"$v\$$i\""
 		shift
-		i=$1
-		eval echo ${v}'$'${i}
 	done
 	;;
 
@@ -2889,7 +2749,7 @@ make|view)
 					;;
 				$s*)	$exec cd $INSTALLROOT/lib/package/gen
 					tmp=pkg$$
-					$exec eval "echo 'int main(){return 0;}' > $tmp.c"
+					$exec eval "echo 'int main(void){return 0;}' > $tmp.c"
 					if	$exec $s -o $tmp.exe $tmp.c >/dev/null 2>&1 &&
 						test -x $tmp.exe
 					then	case $HOSTTYPE in
@@ -2904,7 +2764,7 @@ make|view)
 							;;
 						esac
 					fi
-					$exec rm -f $tmp.*
+					(set +o noglob; $exec rm -rf $tmp.*)
 					$exec touch "$t"
 					cd $PACKAGEROOT
 					;;
@@ -2963,7 +2823,7 @@ make|view)
 	case $exec in
 	'')	cd $INSTALLROOT/lib/package/gen
 		tmp=pkg$$
-		echo 'int main(){return 0;}' > $tmp.c
+		echo 'int main(void){return 0;}' > $tmp.c
 		if	$CC -o $tmp.exe $tmp.c > /dev/null 2> $tmp.err &&
 			test -x $tmp.exe
 		then	: ok
@@ -2973,10 +2833,10 @@ make|view)
 			then	cat $tmp.err >&2
 			else	note "$CC: not a C compiler"
 			fi
-			rm -f $tmp.*
+			(set +o noglob; rm -rf $tmp.*)
 			exit 1
 		fi
-		rm -f $tmp.*
+		(set +o noglob; rm -rf $tmp.*)
 		cd $PACKAGEROOT
 		;;
 	esac
@@ -3031,19 +2891,10 @@ make|view)
 		$i*)	;;
 		*)	if	test -f "$j" && test -f "$k"
 			then	note "update $i"
-				shellmagic
 				case $exec in
-				'')	{
-					case $SHELLMAGIC in
-					?*)	echo "$SHELLMAGIC" ;;
-					esac
-					cat $j $k
-					} > $i || exit
+				'')	cat $j $k > $i || exit
 					;;
-				*)	echo "{
-echo $SHELLMAGIC
-cat $j $k
-} > $i"
+				*)	echo "cat $j $k > $i"
 					;;
 				esac
 				$exec chmod +x $i || exit
@@ -3056,28 +2907,6 @@ cat $j $k
 
 	checkaout mamake || exit
 
-	# execrate if necessary
-
-	if	(execrate) >/dev/null 2>&1
-	then	execrate=execrate
-		$make cd $INSTALLROOT/bin
-		for i in chmod chgrp cmp cp ln mv rm
-		do	if	test ! -x "ok/$i" && test -x "/bin/$i.exe"
-			then	shellmagic
-				case $exec in
-				'')	echo "$SHELLMAGIC"'execrate /bin/'$i' "$@"' > ok/$i
-					chmod +x ok/$i
-					;;
-				*)	$exec echo \'"$SHELLMAGIC"'execrate /bin/'$i' "$@"'\'' >' ok/$i
-					$exec chmod +x ok/$i
-					;;
-				esac
-			fi
-		done
-		PATH=$INSTALLROOT/bin/ok:$PATH
-		export PATH
-	else	execrate=
-	fi
 	case $action in
 	view)	exit 0 ;;
 	esac
@@ -3201,7 +3030,9 @@ cat $j $k
 			esac
 			case $p in
 			'')	p="PLUGIN_LIB=cmd"
-				if	grep '^setv mam_cc_DIALECT .* EXPORT=[AD]LL' $INSTALLROOT/lib/probe/C/mam/* >/dev/null 2>&1
+				if	(	set +o noglob
+						grep '^setv mam_cc_DIALECT .* EXPORT=[AD]LL' "$INSTALLROOT"/lib/probe/C/mam/*
+					) >/dev/null 2>&1
 				then	p=no$p
 				fi
 				m=1
@@ -3241,16 +3072,16 @@ cat $j $k
 		do	executable $i && {
 				cmp -s $i ok/$i 2>/dev/null || {
 					test -f ok/$i &&
-					$exec $execrate $rm ok/$i </dev/null
+					$exec $rm ok/$i </dev/null
 					test -f ok/$i &&
-					$exec $execrate $mv ok/$i ok/$i.old </dev/null
+					$exec $mv ok/$i ok/$i.old </dev/null
 					test -f ok/$i &&
 					case $exec:$i in
 					:ksh)
 						err_out "ok/$i: cannot update [may be in use by a running process] remove manually and try again"
 						;;
 					esac
-					$exec $execrate $cp $i ok/$i
+					$exec $cp $i ok/$i
 				}
 			}
 		done
@@ -3319,8 +3150,7 @@ cat $j $k
 	esac
 	;;
 
-results)set '' $target
-	shift
+results)set -- $target
 	def=make
 	dir=$PACKAGEBIN/gen
 	case $verbose in
@@ -3474,7 +3304,7 @@ use)	# finalize the environment
 	then	SHELL=$INSTALLROOT/bin/ksh
 	fi
 	x=:..
-	for d in $( cd $PACKAGEROOT; ls src/*/Mamfile 2>/dev/null | sed 's,/[^/]*$,,' | sort -u )
+	for d in $(set +o noglob; cd $PACKAGEROOT; ls src/*/Mamfile 2>/dev/null | sed 's,/[^/]*$,,' | sort -u)
 	do	x=$x:$INSTALLROOT/$d
 	done
 	x=$x:$INSTALLROOT

@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -27,15 +27,15 @@ NoN(memmove)
 #else
 
 void*
-memmove(void* to, const void* from, register size_t n)
+memmove(void* to, const void* from, size_t n)
 {
-	register char*	out = (char*)to;
-	register char*	in = (char*)from;
+	char*	out = (char*)to;
+	char*	in = (char*)from;
 
 	if (n <= 0)	/* works if size_t is signed or not */
 		;
 	else if (in + n <= out || out + n <= in)
-		return(memcpy(to, from, n));	/* hope it's fast */
+		return memcpy(to, from, n);	/* hope it's fast */
 	else if (out < in)
 		do *out++ = *in++; while (--n > 0);
 	else
@@ -44,7 +44,7 @@ memmove(void* to, const void* from, register size_t n)
 		in += n;
 		do *--out = *--in; while(--n > 0);
 	}
-	return(to);
+	return to;
 }
 
 #endif

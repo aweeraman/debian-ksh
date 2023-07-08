@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -27,12 +27,12 @@
 */
 
 int sfpoll(Sfio_t** fa,	/* array of streams to poll		*/
-	   reg int n,	/* number of streams in array		*/
+	   int n,	/* number of streams in array		*/
 	   int tm)	/* time in milliseconds for select/poll	*/
 {
-	reg int		r, c, m, np, eintr;
-	reg Sfio_t*	f;
-	reg int		*status, *check;
+	int		r, c, m, np, eintr;
+	Sfio_t*		f;
+	int		*status, *check;
 
 	if(n <= 0 || !fa)
 		return -1;
@@ -152,7 +152,7 @@ int sfpoll(Sfio_t** fa,	/* array of streams to poll		*/
 			}
 		}
 
-		free((void*)fds);
+		free(fds);
 	}
 #endif /*_lib_poll*/
 
@@ -183,14 +183,14 @@ int sfpoll(Sfio_t** fa,	/* array of streams to poll		*/
 			}
 		}
 		if(tm < 0)
-			tmp = NIL(struct timeval*);
+			tmp = NULL;
 		else
 		{	tmp = &tmb;
 			tmb.tv_sec = tm/SECOND;
 			tmb.tv_usec = (tm%SECOND)*SECOND;
 		}
 
-		while((np = select(m+1,&rd,&wr,NIL(fd_set*),tmp)) < 0 )
+		while((np = select(m+1,&rd,&wr,NULL,tmp)) < 0 )
 		{	if(errno == eintr)
 				errno = 0;
 			else	goto report;
@@ -239,6 +239,6 @@ int sfpoll(Sfio_t** fa,	/* array of streams to poll		*/
 		r += 1;
 	}
 
-	free((void*)status);
+	free(status);
 	return r ? r : np < 0 ? -1 : 0;
 }

@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -61,13 +61,13 @@ static const char usage[] =
 int
 b_mkdir(int argc, char** argv, Shbltin_t* context)
 {
-	register char*	path;
-	register int	n;
-	register mode_t	mode = DIRMODE;
-	register mode_t	mask = 0;
-	register int	mflag = 0;
-	register int	pflag = 0;
-	register int	vflag = 0;
+	char*		path;
+	int		n;
+	mode_t		mode = DIRMODE;
+	mode_t		mask = 0;
+	int		mflag = 0;
+	int		pflag = 0;
+	int		vflag = 0;
 	int		made;
 	char*		part;
 	mode_t		dmode;
@@ -102,7 +102,7 @@ b_mkdir(int argc, char** argv, Shbltin_t* context)
 	argv += opt_info.index;
 	if (error_info.errors || !*argv)
 	{
-		error(ERROR_usage(2), "%s", optusage(NiL));
+		error(ERROR_usage(2), "%s", optusage(NULL));
 		UNREACHABLE();
 	}
 	mask = umask(0);

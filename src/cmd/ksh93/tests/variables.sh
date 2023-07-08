@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2023 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 2.0                  #
 #                                                                      #
@@ -935,6 +935,18 @@ actual=$(_test_isset var)
 actual=$(_test_isset IFS)
 [[ "$actual" = "$expect" ]] || err_exit "\${IFS+s} expansion fails in loops (expected '$expect', got '$actual')"
 
+got=$(
+	unset -v var
+	for i in 1 2 3 4 5; do
+		case ${var+s} in
+		( s )   print -n S; unset -v var;;
+		( '' )  print -n U; var.get() { : ; };;
+		esac
+	done
+)
+exp='USUSU'
+[[ $got == "$exp" ]] || err_exit "loop variants optimizer vs. discipline function (expected '$exp', got '$got')"
+
 # [[ -v var ]] within a loop.
 _test_v() { eval "
 	$1=initial_value
@@ -1562,6 +1574,40 @@ exp=3,[a/-/b]
 [[ $got == "$exp" ]] || err_exit "Field-split fallback string containing brackets and a dash" \
 	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
 IFS=$' \t\n'  # restore default
+
+# ======
+# 'read' mistakenly parsed assignment-arguments instead of variable names
+# https://github.com/ksh93/ksh/issues/606#issuecomment-1474858962
+exp=': read: foo=bar: invalid variable name'
+got=$(set +x; { read foo=bar; } <<<baz 2>&1)
+[[ e=$? -eq 1 && $got == *"$exp" ]] || err_exit 'read foo=bar' \
+	"(expected status 1, *$(printf %q "$exp"); got status $e, $(printf %q "$got"))"
+
+# ======
+# Corruption of $_ causing crash when running subshell + discipline functions + shared-state comsub
+# https://github.com/ksh93/ksh/issues/616
+exp=$'OK1\nOK2'
+got=$(set +x; { "$SHELL" -c '
+	foo.get()
+	{
+		.sh.value=foo;
+	}
+	bar.get()
+	{
+		.sh.value=${ echo foo; }
+	}
+	: OK1
+	(
+		: $bar
+		: $foo
+	)
+	echo "$_"
+	: OK2
+	echo "$_"
+';} 2>&1)
+[[ e=$? -eq 0 && $got == "$exp" ]] || err_exit '$_ corruption' \
+	"(expected status 0, $(printf %q "$exp");" \
+	"got status $e$( ((e>128)) && print -n /SIG && kill -l "$e"), $(printf %q "$got"))"
 
 # ======
 exit $((Errors<125?Errors:125))

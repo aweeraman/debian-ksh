@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -141,17 +141,17 @@ pretty(Sfio_t *out, int o, int delim, int flags)
 static int
 cmp(const char* file1, Sfio_t* f1, const char* file2, Sfio_t* f2, int flags, Sfoff_t count, Sfoff_t differences)
 {
-	register int		c1;
-	register int		c2;
-	register unsigned char*	p1 = 0;
-	register unsigned char*	p2 = 0;
-	register Sfoff_t	lines = 1;
-	register unsigned char*	e1 = 0;
-	register unsigned char*	e2 = 0;
-	Sfoff_t			pos = 0;
-	int			n1 = 0;
-	int			ret = 0;
-	unsigned char*		last;
+	int		c1;
+	int		c2;
+	unsigned char*	p1 = 0;
+	unsigned char*	p2 = 0;
+	Sfoff_t	lines = 1;
+	unsigned char*	e1 = 0;
+	unsigned char*	e2 = 0;
+	Sfoff_t		pos = 0;
+	int		n1 = 0;
+	int		ret = 0;
+	unsigned char*	last;
 
 	for (;;)
 	{
@@ -252,7 +252,7 @@ cmp(const char* file1, Sfio_t* f1, const char* file2, Sfio_t* f2, int flags, Sfo
 }
 
 int
-b_cmp(int argc, register char** argv, Shbltin_t* context)
+b_cmp(int argc, char** argv, Shbltin_t* context)
 {
 	char*		s;
 	char*		e;
@@ -319,13 +319,13 @@ b_cmp(int argc, register char** argv, Shbltin_t* context)
 	argv += opt_info.index;
 	if (error_info.errors || !(file1 = *argv++) || !(file2 = *argv++))
 	{
-		error(ERROR_usage(2), "%s", optusage(NiL));
+		error(ERROR_usage(2), "%s", optusage(NULL));
 		UNREACHABLE();
 	}
 	n = 2;
 	if (streq(file1, "-"))
 		f1 = sfstdin;
-	else if (!(f1 = sfopen(NiL, file1, "r")))
+	else if (!(f1 = sfopen(NULL, file1, "r")))
 	{
 		if (!(flags & CMP_SILENT))
 			error(ERROR_system(0), "%s: cannot open", file1);
@@ -333,7 +333,7 @@ b_cmp(int argc, register char** argv, Shbltin_t* context)
 	}
 	if (streq(file2, "-"))
 		f2 = sfstdin;
-	else if (!(f2 = sfopen(NiL, file2, "r")))
+	else if (!(f2 = sfopen(NULL, file2, "r")))
 	{
 		if (!(flags & CMP_SILENT))
 			error(ERROR_system(0), "%s: cannot open", file2);
@@ -358,7 +358,7 @@ b_cmp(int argc, register char** argv, Shbltin_t* context)
 		}
 		if (*argv)
 		{
-			error(ERROR_usage(0), "%s", optusage(NiL));
+			error(ERROR_usage(0), "%s", optusage(NULL));
 			goto done;
 		}
 	}

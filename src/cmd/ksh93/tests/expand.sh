@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2011 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2023 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 2.0                  #
 #                                                                      #
@@ -19,7 +19,10 @@
 
 # {...} expansion tests -- ignore if not supported
 
-[[ $(print a{0,1}z) == "a0z a1z" ]] || exit 0
+if	((!SHOPT_BRACEPAT))
+then	warning "brace expansion compiled out; tests skipped"
+	exit 0
+fi
 
 integer Line=$LINENO+1
 set -- \

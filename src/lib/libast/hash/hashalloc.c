@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -37,15 +37,15 @@ Hash_info_t	hash_info = { 0 };
 Hash_table_t*
 hashalloc(Hash_table_t* ref, ...)
 {
-	register Hash_table_t*	tab;
-	register Hash_table_t*	ret = 0;
-	register int		internal;
-	int			n;
-	va_list			ap;
-	va_list			va[4];
-	va_list*		vp = va;
-	Hash_region_f		region = 0;
-	void*			handle;
+	Hash_table_t*	tab;
+	Hash_table_t*	ret = 0;
+	int		internal;
+	int		n;
+	va_list		ap;
+	va_list		va[4];
+	va_list*	vp = va;
+	Hash_region_f	region = 0;
+	void*		handle;
 
 	va_start(ap, ref);
 
@@ -59,7 +59,7 @@ hashalloc(Hash_table_t* ref, ...)
 		region = va_arg(ap, Hash_region_f);
 		handle = va_arg(ap, void*);
 		n = va_arg(ap, int);
-		if (!(tab = (Hash_table_t*)(*region)(handle, NiL, sizeof(Hash_table_t), 0)))
+		if (!(tab = (Hash_table_t*)(*region)(handle, NULL, sizeof(Hash_table_t), 0)))
 			goto out;
 		memset(tab, 0, sizeof(Hash_table_t));
 	}
@@ -76,7 +76,7 @@ hashalloc(Hash_table_t* ref, ...)
 	{
 		if (region)
 		{
-			if (!(tab->root = (Hash_root_t*)(*region)(handle, NiL, sizeof(Hash_root_t), 0)))
+			if (!(tab->root = (Hash_root_t*)(*region)(handle, NULL, sizeof(Hash_root_t), 0)))
 				goto out;
 			memset(tab->root, 0, sizeof(Hash_root_t));
 		}
@@ -178,7 +178,7 @@ hashalloc(Hash_table_t* ref, ...)
 			{
 				if (region)
 				{
-					if (!(tab->table = (Hash_bucket_t**)(*region)(handle, NiL, sizeof(Hash_bucket_t*) * tab->size, 0)))
+					if (!(tab->table = (Hash_bucket_t**)(*region)(handle, NULL, sizeof(Hash_bucket_t*) * tab->size, 0)))
 						goto out;
 					memset(tab->table, 0, sizeof(Hash_bucket_t*) * tab->size);
 				}
@@ -205,5 +205,5 @@ hashalloc(Hash_table_t* ref, ...)
  out:
 	va_end(ap);
 	if (!ret) hashfree(tab);
-	return(ret);
+	return ret;
 }

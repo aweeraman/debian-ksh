@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -38,8 +38,8 @@
 
 int	b_umask(int argc,char *argv[],Shbltin_t *context)
 {
-	register char *mask;
-	register int flag = 0, sflag = 0;
+	char *mask;
+	int flag = 0, sflag = 0;
 	NOT_USED(context);
 	while((argc = optget(argv,sh_optumask))) switch(argc)
 	{
@@ -55,13 +55,13 @@ int	b_umask(int argc,char *argv[],Shbltin_t *context)
 	}
 	if(error_info.errors)
 	{
-		errormsg(SH_DICT,ERROR_usage(2),"%s",optusage((char*)0));
+		errormsg(SH_DICT,ERROR_usage(2),"%s",optusage(NULL));
 		UNREACHABLE();
 	}
 	argv += opt_info.index;
 	if(mask = *argv)
 	{
-		register int c;	
+		int c;	
 		if(isdigit(*mask))
 		{
 			while(c = *mask++)
@@ -98,5 +98,5 @@ int	b_umask(int argc,char *argv[],Shbltin_t *context)
 		else
 			sfprintf(sfstdout,"%0#4o\n",flag);
 	}
-	return(0);
+	return 0;
 }

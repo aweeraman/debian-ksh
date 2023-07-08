@@ -14,7 +14,7 @@
 #                                                                      #
 ########################################################################
 
-# proto(1) has been removed. This is a backwards compatibility stub that allows
+# proto(1) has been removed. This is a backward compatibility stub that allows
 # compiling older AST code (with Mamfiles containing proto commands) using the
 # current INIT system. This stub ignores all options, then invokes 'cat'.
 

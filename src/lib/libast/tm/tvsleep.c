@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2013 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -15,9 +15,11 @@
 *                     Phong Vo <phongvo@gmail.com>                     *
 *                  Martijn Dekker <martijn@inlv.org>                   *
 *                  Lev Kujawski <int21h@mailbox.org>                   *
+*            Johnothan King <johnothanking@protonmail.com>             *
 *                                                                      *
 ***********************************************************************/
 
+#include <ast.h>
 #include <assert.h>
 #include <tv.h>
 #include <tm.h>
@@ -51,7 +53,7 @@
  */
 
 int
-tvsleep(register const Tv_t* tv, register Tv_t* rv)
+tvsleep(const Tv_t* tv, Tv_t* rv)
 {
 	assert(tv); /* Validate argument */
 
@@ -90,7 +92,7 @@ tvsleep(register const Tv_t* tv, register Tv_t* rv)
 	struct timeval tvSleep = { tv->tv_sec, tv->tv_nsec / 1000 };
 	if (tv->tv_nsec % 1000)
 		++tvSleep.tv_usec;
-	(void)select(0, NiL, NiL, NiL, &tvSleep);
+	(void)select(0, NULL, NULL, NULL, &tvSleep);
 
 #elif _lib_poll
 

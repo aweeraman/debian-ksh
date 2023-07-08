@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2013 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -29,7 +29,7 @@
 
 #define DEBUG_TEST(f,y,n)	((debug&(debug_flag=f))?(y):(n))
 #define DEBUG_CODE(f,y,n)	do if(debug&(f)){y}else{n} while(0)
-#define DEBUG_INIT()		do { char* t; if (!debug) { debug = 0x80000000; if (t = getenv("_AST_regex_exec_debug")) debug |= strtoul(t, NiL, 0); } } while (0)
+#define DEBUG_INIT()		do { char* t; if (!debug) { debug = 0x80000000; if (t = getenv("_AST_regex_exec_debug")) debug |= strtoul(t, NULL, 0); } } while (0)
 
 static unsigned long	debug;
 static unsigned long	debug_flag;
@@ -149,11 +149,11 @@ vecopen(int inc, int siz)
 	if (inc <= 0)
 		inc = 16;
 	if (!(sp = stkopen(STK_SMALL|STK_NULL)))
-		return 0;
+		return NULL;
 	if (!(v = (Vector_t*)stkseek(sp, sizeof(Vector_t) + inc * siz)))
 	{
 		stkclose(sp);
-		return 0;
+		return NULL;
 	}
 	v->stk = sp;
 	v->vec = (char*)v + sizeof(Vector_t);
@@ -172,7 +172,7 @@ vecseek(Vector_t** p, int index)
 	{
 		while ((v->max += v->inc) <= index);
 		if (!(v = (Vector_t*)stkseek(v->stk, sizeof(Vector_t) + v->max * v->siz)))
-			return 0;
+			return NULL;
 		*p = v;
 		v->vec = (char*)v + sizeof(Vector_t);
 	}
@@ -208,7 +208,7 @@ stkpush(Stk_t* sp, size_t size)
 	stknew(sp, &p);
 	size = sizeof(Stk_frame_t) + sizeof(size_t) + size - 1;
 	if (!(f = (Stk_frame_t*)stkalloc(sp, sizeof(Stk_frame_t) + sizeof(Stk_frame_t*) + size - 1)))
-		return 0;
+		return NULL;
 	f->pos = p;
 	stkframe(sp) = f;
 	return f->data;
@@ -576,7 +576,7 @@ parsetrie(Env_t* env, Trie_node_t* x, Rex_t* rex, Rex_t* cont, unsigned char* s)
 }
 
 static int
-collelt(register Celt_t* ce, char* key, int c, int x)
+collelt(Celt_t* ce, char* key, int c, int x)
 {
 	Ckey_t	elt;
 
@@ -612,7 +612,7 @@ collelt(register Celt_t* ce, char* key, int c, int x)
 }
 
 static int
-collic(register Celt_t* ce, char* key, register char* nxt, int c, int x)
+collic(Celt_t* ce, char* key, char* nxt, int c, int x)
 {
 	if (!x)
 	{
@@ -717,10 +717,10 @@ collmatch(Rex_t* rex, unsigned char* s, unsigned char* e, unsigned char** p)
 }
 
 static unsigned char*
-nestmatch(register unsigned char* s, register unsigned char* e, const unsigned short* type, register int co)
+nestmatch(unsigned char* s, unsigned char* e, const unsigned short* type, int co)
 {
-	register int	c;
-	register int	cc;
+	int		c;
+	int		cc;
 	unsigned int	n;
 	int		oc;
 
@@ -759,7 +759,7 @@ nestmatch(register unsigned char* s, register unsigned char* e, const unsigned s
 				break;
 			case REX_NEST_escape:
 				if (s >= e)
-					return 0;
+					return NULL;
 				s++;
 				break;
 			case REX_NEST_open|REX_NEST_close:
@@ -773,14 +773,14 @@ nestmatch(register unsigned char* s, register unsigned char* e, const unsigned s
 				if (c == co)
 				{
 					if (!++n)
-						return 0;
+						return NULL;
 				}
 				else if (!(s = nestmatch(s, e, type, c)))
-					return 0;
+					return NULL;
 				break;
 			case REX_NEST_close:
 				if (c != cc)
-					return 0;
+					return NULL;
 				if (!--n)
 					return s;
 				break;
@@ -788,7 +788,7 @@ nestmatch(register unsigned char* s, register unsigned char* e, const unsigned s
 		}
 		return (oc || !(type[UCHAR_MAX+1] & REX_NEST_terminator)) ? 0 : s;
 	}
-	return 0;
+	return NULL;
 }
 
 static int
@@ -1182,7 +1182,7 @@ DEBUG_TEST(0x0200,(sfprintf(sfstdout,"AHA#%04d 0x%04x parse %s `%-.*s'\n", __LIN
 					env->match[rex->re.group.number].rm_so = s - env->beg;
 				if (pospush(env, rex, s, BEG_SUB))
 					return BAD;
-				catcher.re.group_catch.eo = rex->re.group.number ? &env->match[rex->re.group.number].rm_eo : (regoff_t*)0;
+				catcher.re.group_catch.eo = rex->re.group.number ? &env->match[rex->re.group.number].rm_eo : NULL;
 			}
 			catcher.type = REX_GROUP_CATCH;
 			catcher.serial = rex->serial;
@@ -1224,7 +1224,7 @@ DEBUG_TEST(0x0200,(sfprintf(sfstdout,"AHA#%04d 0x%04x parse %s=>%s `%-.*s'\n", _
 		case REX_GROUP_AHEAD_CATCH:
 			return follow(env, rex, rex->re.rep_catch.cont, rex->re.rep_catch.beg);
 		case REX_GROUP_AHEAD_NOT:
-			r = parse(env, rex->re.group.expr.rex, NiL, s);
+			r = parse(env, rex->re.group.expr.rex, NULL, s);
 			if (r == NONE)
 				r = follow(env, rex, cont, s);
 			else if (r != BAD)
@@ -1854,21 +1854,21 @@ list(Env_t* env, Rex_t* rex)
 int
 regnexec_20120528(const regex_t* p, const char* s, size_t len, size_t nmatch, regmatch_t* match, regflags_t flags)
 {
-	register ssize_t	n;
-	register int		i;
-	int			j;
-	int			k;
-	int			m;
-	int			advance;
-	Env_t*			env;
-	Rex_t*			e;
+	ssize_t		n;
+	int		i;
+	int		j;
+	int		k;
+	int		m;
+	int		advance;
+	Env_t*		env;
+	Rex_t*		e;
 
 	DEBUG_INIT();
 	DEBUG_TEST(0x0001,(sfprintf(sfstdout, "AHA#%04d 0x%04x regnexec %d 0x%08x `%-.*s'\n", __LINE__, debug_flag, nmatch, flags, len, s)),(0));
 	if (!p || !(env = p->env))
 		return REG_BADPAT;
 	if (!s)
-		return fatal(env->disc, REG_BADPAT, NiL);
+		return fatal(env->disc, REG_BADPAT, NULL);
 	if (len < env->min)
 	{
 		DEBUG_TEST(0x0080,(sfprintf(sfstdout, "AHA#%04d REG_NOMATCH %d %d\n", __LINE__, len, env->min)),(0));
@@ -1912,12 +1912,12 @@ regnexec_20120528(const regex_t* p, const char* s, size_t len, size_t nmatch, re
 		}
 		else if (!(flags & REG_LEFT))
 		{
-			register unsigned char*	buf = (unsigned char*)s;
-			register size_t		index = e->re.bm.left + e->re.bm.size;
-			register size_t		mid = len - e->re.bm.right;
-			register size_t*	skip = e->re.bm.skip;
-			register size_t*	fail = e->re.bm.fail;
-			register Bm_mask_t**	mask = e->re.bm.mask;
+			unsigned char*	buf = (unsigned char*)s;
+			size_t		index = e->re.bm.left + e->re.bm.size;
+			size_t		mid = len - e->re.bm.right;
+			size_t*	skip = e->re.bm.skip;
+			size_t*	fail = e->re.bm.fail;
+			Bm_mask_t**	mask = e->re.bm.mask;
 			Bm_mask_t		m;
 			size_t			x;
 
@@ -2022,7 +2022,7 @@ regnexec_20120528(const regex_t* p, const char* s, size_t len, size_t nmatch, re
 	stkold(env->mst, &env->stk);
 	env->stk.base = 0;
 	if (k > REG_NOMATCH)
-		fatal(p->env->disc, k, NiL);
+		fatal(p->env->disc, k, NULL);
 	return k;
 }
 
@@ -2084,5 +2084,5 @@ regnexec(const regex_t* p, const char* s, size_t len, size_t nmatch, oldregmatch
 		free(match);
 		return r;
 	}
-	return regnexec_20120528(p, s, len, 0, NiL, flags);
+	return regnexec_20120528(p, s, len, 0, NULL, flags);
 }

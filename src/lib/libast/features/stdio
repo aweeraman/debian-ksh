@@ -41,10 +41,6 @@ cat{
 	#define EOF		(-1)
 	#endif
 
-	#ifndef NULL
-	#define NULL		0
-	#endif
-
 	#ifndef SEEK_SET
 	#define SEEK_SET	0
 	#define SEEK_CUR	1
@@ -104,7 +100,7 @@ output{
 	#define TMP_MAX		33520641
 	#endif
 	int
-	main()
+	main(void)
 	{
 		printf("#ifndef FILENAME_MAX\n");
 		printf("#define FILENAME_MAX	%d\n", FILENAME_MAX);

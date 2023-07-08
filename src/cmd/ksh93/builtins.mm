@@ -161,10 +161,10 @@ int b_hello(int argc, char *argv[], void *context)
         if(argc != 2)
         {
                 fprintf(stderr,"Usage: hello arg\en");
-                return(2);
+                return 2;
         }
         printf("hello %s\en",argv[1]);
-        return(0);
+        return 0;
 }
 SHLIB(hello)
 .EE
@@ -273,7 +273,7 @@ Addison Wesley, xxxx
 .P
 The best thing to do is to include the header file \f5<shell.h>\fP.
 This header file causes the \f5<ast.h>\fP header, the
-\f5<error.h>\fP header and the \f5<stak.h>\fP
+\f5<error.h>\fP header and the \f5<stk.h>\fP
 header to be included as well as defining prototypes
 for functions that you can call to get shell
 services for your builtins.
@@ -295,7 +295,7 @@ You should include \f5<ast.h>\fP instead of one or more of
 these headers.
 The \f5<error.h>\fP header provides the interface to the error
 and option parsing routines defined below.
-The \f5<stak.h>\fP header provides the interface to the memory
+The \f5<stk.h>\fP header provides the interface to the memory
 allocation routines described below.
 .P
 Programs that want to use the information in \f5<sys/stat.h>\fP
@@ -465,15 +465,15 @@ be freed before returning from you built-in, because by default,
 interrupt and the memory will not be freed.
 .P
 The best way to allocate variable sized storage is
-through calls to the \fBstak\fP library
+through calls to the \fBstk\fP library
 which is included in \fBlibast\fP
 and which is used extensively by \f5ksh\fP itself.
-Objects allocated with the \f5stakalloc()\fP
+Objects allocated with the \f5stkalloc()\fP
 function are freed when you function completes
 or aborts. 
-The \fBstak\fP library provides a convenient way to
+The \fBstk\fP library provides a convenient way to
 build variable length strings and other objects dynamically.
-The man page for the \fBstak\fP library is contained
+The man page for the \fBstk\fP library is contained
 in the Appendix.
 .P
 Before \f5ksh\fP calls each built-in command, it saves
@@ -490,13 +490,13 @@ an efficient manner:
 {
         char	*savebase;
         int	saveoffset;
-        if(saveoffset=staktell())
-        	savebase = stakfreeze(0);
+        if(saveoffset=stktell(stkstd))
+        	savebase = stkfreeze(stkstd,0);
         \fR...\fP
         if(saveoffset)
-        	stakset(savebase,saveoffset);
+        	stkset(stkstd,savebase,saveoffset);
         else
-        	stakseek(0);
+        	stkseek(stkstd,0);
 }
 .EE
 .H 1 "CALLING \f5ksh\fP SERVICES"

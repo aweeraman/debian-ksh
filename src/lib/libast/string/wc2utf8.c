@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -47,10 +47,10 @@ static const Utf8_t	ops[] =
 };
 
 int
-wc2utf8(register char* s, register uint32_t w)
+wc2utf8(char* s, uint32_t w)
 {
-	register int	i;
-	char*		b;
+	int	i;
+	char*	b;
 
 	for (i = 0; i < elementsof(ops); i++)
 		if (w < ops[i].range)

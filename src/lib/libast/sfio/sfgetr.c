@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -34,12 +34,12 @@ char* sfgetr(Sfio_t*	f,	/* stream to read from	*/
 	Sfrsrv_t*	rsrv;
 
 	if(!f || rc < 0 || (f->mode != SF_READ && _sfmode(f,SF_READ,0) < 0))
-		return NIL(char*);
+		return NULL;
 	SFLOCK(f,0);
 
 	/* buffer to be returned */
-	rsrv = NIL(Sfrsrv_t*);
-	us = NIL(uchar*);
+	rsrv = NULL;
+	us = NULL;
 	un = 0;
 	found = 0;
 
@@ -68,7 +68,7 @@ char* sfgetr(Sfio_t*	f,	/* stream to read from	*/
 
 			/* fill buffer the conventional way */
 			if(SFRPEEK(f,s,n) <= 0)
-			{	us = NIL(uchar*);
+			{	us = NULL;
 				goto done;
 			}
 			else
@@ -108,7 +108,7 @@ char* sfgetr(Sfio_t*	f,	/* stream to read from	*/
 		n = s - f->next;
 
 		if(!found && (_Sfmaxr > 0 && un+n+1 >= _Sfmaxr || (f->flags&SF_STRING))) /* already exceed limit */
-		{	us = NIL(uchar*);
+		{	us = NULL;
 			goto done;
 		}
 
@@ -116,10 +116,10 @@ char* sfgetr(Sfio_t*	f,	/* stream to read from	*/
 		if(!rsrv || rsrv->size < un+n+1)
 		{	if(rsrv)
 				rsrv->slen = un;
-			if((rsrv = _sfrsrv(f,un+n+1)) != NIL(Sfrsrv_t*))
+			if((rsrv = _sfrsrv(f,un+n+1)) != NULL)
 				us = rsrv->data;
 			else
-			{	us = NIL(uchar*);
+			{	us = NULL;
 				goto done;
 			}
 		}

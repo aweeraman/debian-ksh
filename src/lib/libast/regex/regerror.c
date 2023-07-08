@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -84,9 +84,9 @@ fatal(regdisc_t* disc, int code, const char* pattern)
 	if (disc->re_errorf)
 	{
 		if (pattern)
-			(*disc->re_errorf)(NiL, disc, disc->re_errorlevel, "regular expression: %s: %s", pattern, reg_error[code+1]);
+			(*disc->re_errorf)(NULL, disc, disc->re_errorlevel, "regular expression: %s: %s", pattern, reg_error[code+1]);
 		else
-			(*disc->re_errorf)(NiL, disc, disc->re_errorlevel, "regular expression: %s", reg_error[code+1]);
+			(*disc->re_errorf)(NULL, disc, disc->re_errorlevel, "regular expression: %s", reg_error[code+1]);
 	}
 	return code;
 }

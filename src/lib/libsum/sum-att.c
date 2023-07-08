@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1996-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -51,13 +51,13 @@
 
 /* Inmos transputer would love this algorithm */
 static int
-att_block(register Sum_t* p, const void* s, size_t n)
+att_block(Sum_t* p, const void* s, size_t n)
 {
-	register uint32_t	c = ((Integral_t*)p)->sum;
-	register const unsigned char*	b = (const unsigned char*)s;
-	register const unsigned char*	e = b + n;
-	register uint32_t s0, s1, s2, s3, s4, s5, s6, s7;
-	register unsigned int i;
+	uint32_t	c = ((Integral_t*)p)->sum;
+	const unsigned char*	b = (const unsigned char*)s;
+	const unsigned char*	e = b + n;
+	uint32_t s0, s1, s2, s3, s4, s5, s6, s7;
+	unsigned int i;
 
 	s0=s1=s2=s3=s4=s5=s6=s7=0U;
 
@@ -102,11 +102,11 @@ att_block(register Sum_t* p, const void* s, size_t n)
 
 #else
 static int
-att_block(register Sum_t* p, const void* s, size_t n)
+att_block(Sum_t* p, const void* s, size_t n)
 {
-	register uint32_t	c = ((Integral_t*)p)->sum;
-	register unsigned char*	b = (unsigned char*)s;
-	register unsigned char*	e = b + n;
+	uint32_t	c = ((Integral_t*)p)->sum;
+	unsigned char*	b = (unsigned char*)s;
+	unsigned char*	e = b + n;
 
 	while (b < e)
 		c += *b++;
@@ -118,7 +118,7 @@ att_block(register Sum_t* p, const void* s, size_t n)
 static int
 att_done(Sum_t* p)
 {
-	register uint32_t	c = ((Integral_t*)p)->sum;
+	uint32_t	c = ((Integral_t*)p)->sum;
 
 	c = (c & 0xffff) + ((c >> 16) & 0xffff);
 	c = (c & 0xffff) + (c >> 16);

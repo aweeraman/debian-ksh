@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -43,8 +43,8 @@
 extern char*
 _ast_strdup(const char* s)
 {
-	register char*	t;
-	register int	n;
+	char*	t;
+	int	n;
 
-	return (s && (t = oldof(0, char, n = strlen(s) + 1, 0))) ? (char*)memcpy(t, s, n) : (char*)0;
+	return (s && (t = oldof(0, char, n = strlen(s) + 1, 0))) ? (char*)memcpy(t, s, n) : NULL;
 }

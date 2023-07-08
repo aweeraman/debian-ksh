@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -37,7 +37,9 @@
 #include	"edit.h"
 
 #define	R_FLAG	1	/* raw mode */
+#if !SHOPT_SCRIPTONLY
 #define	S_FLAG	2	/* save in history file */
+#endif
 #define	A_FLAG	4	/* read into array */
 #define N_FLAG	8	/* fixed size read at most */
 #define NN_FLAG	0x10	/* fixed size read exact */
@@ -61,7 +63,8 @@ int	b_read(int argc,char *argv[], Shbltin_t *context)
 {
 	Sfdouble_t sec;
 	char *prompt;
-	register int r, flags=0, fd=0;
+	const char *msg = e_file+4;
+	int r, flags=0, fd=0;
 	ssize_t	len=0;
 	long timeout = 1000*sh.st.tmout;
 	int save_prompt, fixargs=context->invariant;
@@ -71,8 +74,8 @@ int	b_read(int argc,char *argv[], Shbltin_t *context)
 	if(argc==0)
 	{
 		if(rp)
-			free((void*)rp);
-		return(0);
+			free(rp);
+		return 0;
 	}
 	if(rp)
 	{
@@ -93,24 +96,21 @@ int	b_read(int argc,char *argv[], Shbltin_t *context)
 		flags |= C_FLAG;
 		break;
 	    case 't':
-		sec = sh_strnum(opt_info.arg, (char**)0,1);
+		sec = sh_strnum(opt_info.arg, NULL,1);
 		timeout = sec ? 1000*sec : 1;
 		break;
 	    case 'd':
 		if(opt_info.arg && *opt_info.arg!='\n')
 		{
-			char *cp = opt_info.arg;
+			const unsigned char c = *(unsigned char*)opt_info.arg;
 			flags &= ((1<<D_FLAG+1)-1);
-			flags |= (mbchar(cp)<<D_FLAG+1) | (1<<D_FLAG);
+			flags |= (c<<D_FLAG+1) | (1<<D_FLAG);
 		}
 		break;
 	    case 'p':
 	    coprocess:
-		if((fd = sh.cpipe[0])<=0)
-		{
-			errormsg(SH_DICT,ERROR_exit(1),e_query);
-			UNREACHABLE();
-		}
+		fd = sh.cpipe[0];
+		msg = e_query;
 		break;
 	    case 'n': case 'N':
 		flags &= ((1<<D_FLAG)-1);
@@ -120,10 +120,12 @@ int	b_read(int argc,char *argv[], Shbltin_t *context)
 	    case 'r':
 		flags |= R_FLAG;
 		break;
+#if !SHOPT_SCRIPTONLY
 	    case 's':
 		/* save in history file */
 		flags |= S_FLAG;
 		break;
+#endif
 	    case 'S':
 		flags |= SS_FLAG;
 		break;
@@ -147,14 +149,14 @@ int	b_read(int argc,char *argv[], Shbltin_t *context)
 	argv += opt_info.index;
 	if(error_info.errors)
 	{
-		errormsg(SH_DICT,ERROR_usage(2), "%s", optusage((char*)0));
+		errormsg(SH_DICT,ERROR_usage(2), "%s", optusage(NULL));
 		UNREACHABLE();
 	}
 	if(!((r=sh.fdstatus[fd])&IOREAD)  || !(r&(IOSEEK|IONOSEEK)))
 		r = sh_iocheckfd(fd);
 	if(fd<0 || !(r&IOREAD))
 	{
-		errormsg(SH_DICT,ERROR_system(1),e_file+4);
+		errormsg(SH_DICT,ERROR_system(1),msg);
 		UNREACHABLE();
 	}
 	/* look for prompt */
@@ -164,7 +166,7 @@ int	b_read(int argc,char *argv[], Shbltin_t *context)
 		r = 0;
 	if(argc==fixargs)
 	{
-		rp = sh_newof(NIL(struct read_save*),struct read_save,1,0);
+		rp = sh_newof(NULL,struct read_save,1,0);
 		context->data = (void*)rp;
 		rp->fd = fd;
 		rp->flags = flags;
@@ -191,7 +193,7 @@ bypass:
 		if(fd == sh.cpipe[0] && errno!=EINTR)
 			sh_pclose(sh.cpipe);
 	}
-	return(r);
+	return r;
 }
 
 /*
@@ -212,11 +214,11 @@ static void timedout(void *handle)
  */
 int sh_readline(char **names, volatile int fd, int flags, ssize_t size, long timeout)
 {
-	register ssize_t	c;
-	register unsigned char	*cp;
-	register Namval_t	*np;
-	register char		*name, *val;
-	register Sfio_t		*iop;
+	ssize_t			c;
+	unsigned char		*cp;
+	Namval_t		*np;
+	char			*name, *val;
+	Sfio_t			*iop;
 	Namfun_t		*nfp;
 	char			*ifs;
 	unsigned char		*cpmax;
@@ -232,22 +234,32 @@ int sh_readline(char **names, volatile int fd, int flags, ssize_t size, long tim
 	int			delim = '\n';
 	int			jmpval=0;
 	int			binary;
-	int			oflags=NV_ASSIGN|NV_VARNAME;
+	int			oflags=NV_VARNAME;
 	char			inquote = 0;
-	struct	checkpt		buff;
+	struct checkpt		buff;
 	Edit_t			*ep = (struct edit*)sh.ed_context;
 	if(!(iop=sh.sftable[fd]) && !(iop=sh_iostream(fd)))
-		return(1);
+		return 1;
 	sh_stats(STAT_READS);
 	if(names && (name = *names))
 	{
 		Namval_t *mp;
 		if(val= strchr(name,'?'))
 			*val = 0;
-		if(flags&C_FLAG)
-			oflags |= NV_ARRAY;
+		/*
+		 * For -C to work, we need not only NV_ARRAY but also NV_ASSIGN. But an actual 'variable=value'
+		 * assignment-argument would be nonsense and crashes the shell if allowed, so avoid setting
+		 * NV_ASSIGN in that case, which lets nv_open issue the 'invalid variable name' error message.
+		 */
+		if(flags&C_FLAG && !strchr(name,'='))
+			oflags |= NV_ARRAY|NV_ASSIGN;
 		np = nv_open(name,sh.var_tree,oflags);
-		if(np && nv_isarray(np) && (mp=nv_opensub(np)))
+		if(!np)
+		{
+			errormsg(SH_DICT, ERROR_exit(2), e_create, name);
+			UNREACHABLE();
+		}
+		if(nv_isarray(np) && (mp=nv_opensub(np)))
 			np = mp;
 		if((flags&V_FLAG) && sh.ed_context)
 			((struct edit*)sh.ed_context)->e_default = np;
@@ -261,7 +273,7 @@ int sh_readline(char **names, volatile int fd, int flags, ssize_t size, long tim
 			nv_unset(np);
 			if((ap=nv_arrayptr(np)) && !ap->fun)
 				ap->nelem--;
-			nv_putsub(np,NIL(char*),0L);
+			nv_putsub(np,NULL,0L);
 		}
 		else if(flags&C_FLAG)
 		{
@@ -329,7 +341,7 @@ int sh_readline(char **names, volatile int fd, int flags, ssize_t size, long tim
 		{
 			Namval_t *mp = nv_open(name,sh.var_tree,oflags|NV_NOREF);
 			if((c=(*nfp->disc->readf)(mp,iop,delim,nfp))>=0)
-				return(c);
+				return c;
 		}
 	}
 	if(binary && !(flags&(N_FLAG|NN_FLAG)))
@@ -347,7 +359,7 @@ int sh_readline(char **names, volatile int fd, int flags, ssize_t size, long tim
 		if(jmpval)
 			goto done;
 		if(timeout)
-	                timeslot = (void*)sh_timeradd(timeout,0,timedout,(void*)iop);
+	                timeslot = sh_timeradd(timeout,0,timedout,iop);
 	}
 	if(flags&(N_FLAG|NN_FLAG))
 	{
@@ -427,7 +439,7 @@ int sh_readline(char **names, volatile int fd, int flags, ssize_t size, long tim
 						up = var + ux;
 					}
 					if(cur!=(char*)cp)
-						memcpy((void*)cur,cp,c);
+						memcpy(cur,cp,c);
 					if(f)
 						sfread(iop,cp,c);
 					cur += c;
@@ -464,7 +476,13 @@ int sh_readline(char **names, volatile int fd, int flags, ssize_t size, long tim
 			sh_timerdel(timeslot);
 		if(binary && !((size=nv_size(np)) && nv_isarray(np) && c!=size))
 		{
-			if((c==size) && np->nvalue.cp && !nv_isarray(np))
+#if SHOPT_OPTIMIZE
+			/* only optimize this operation if the loop invariants optimizer is not being used */
+			int optimize = !np->nvfun || !nv_hasdisc(np,&OPTIMIZE_disc);
+#else
+			int optimize = 1;
+#endif
+			if(optimize && c==size && np->nvalue.cp && !nv_isarray(np))
 				memcpy((char*)np->nvalue.cp,var,c);
 			else
 			{
@@ -481,7 +499,7 @@ int sh_readline(char **names, volatile int fd, int flags, ssize_t size, long tim
 		{
 			nv_putval(np,var,0);
 			if(var!=buf)
-				free((void*)var);
+				free(var);
 		}
 		goto done;
 	}
@@ -498,12 +516,14 @@ int sh_readline(char **names, volatile int fd, int flags, ssize_t size, long tim
 	}
 	if(timeslot)
 		sh_timerdel(timeslot);
+#if !SHOPT_SCRIPTONLY
 	if((flags&S_FLAG) && !sh.hist_ptr)
 	{
 		sh_histinit();
 		if(!sh.hist_ptr)
 			flags &= ~S_FLAG;
 	}
+#endif
 	if(cp)
 	{
 		cpmax = cp + c;
@@ -513,8 +533,10 @@ int sh_readline(char **names, volatile int fd, int flags, ssize_t size, long tim
 #endif /* SHOPT_CRNL */
 		if(*(cpmax-1) != delim)
 			*(cpmax-1) = delim;
+#if !SHOPT_SCRIPTONLY
 		if(flags&S_FLAG)
 			sfwrite(sh.hist_ptr->histfp,(char*)cp,c);
+#endif
 		c = sh.ifstable[*cp++];
 #if !SHOPT_MULTIBYTE
 		if(!name && (flags&R_FLAG)) /* special case single argument */
@@ -523,7 +545,7 @@ int sh_readline(char **names, volatile int fd, int flags, ssize_t size, long tim
 			while(c==S_SPACE)
 				c = sh.ifstable[*cp++];
 			/* strip trailing delimiters */
-			if(cpmax[-1] == '\n')
+			if(cpmax[-1] == delim)
 				cpmax--;
 			if(cpmax>cp)
 			{
@@ -546,7 +568,7 @@ int sh_readline(char **names, volatile int fd, int flags, ssize_t size, long tim
 	else
 		c = S_NL;
 	sh.nextprompt = 2;
-	rel= staktell();
+	rel = stktell(sh.stk);
 	mbinit();
 	/* val==0 at the start of a field */
 	val = 0;
@@ -581,13 +603,13 @@ int sh_readline(char **names, volatile int fd, int flags, ssize_t size, long tim
 				inquote = !inquote;
 			if(val)
 			{
-				stakputs(val);
+				sfputr(sh.stk,val,-1);
 				use_stak = 1;
 				*val = 0;
 			}
 			if(c==-1)
 			{
-				stakputc('"');
+				sfputc(sh.stk,'"');
 				c = sh.ifstable[*cp++];
 			}
 			continue;
@@ -599,7 +621,7 @@ int sh_readline(char **names, volatile int fd, int flags, ssize_t size, long tim
 				c = 0;
 			if(val)
 			{
-				stakputs(val);
+				sfputr(sh.stk,val,-1);
 				use_stak = 1;
 				was_escape = 1;
 				*val = 0;
@@ -613,7 +635,7 @@ int sh_readline(char **names, volatile int fd, int flags, ssize_t size, long tim
 			/* check for end of buffer */
 			if(val && *val)
 			{
-				stakputs(val);
+				sfputr(sh.stk,val,-1);
 				use_stak = 1;
 			}
 			val = 0;
@@ -637,8 +659,10 @@ int sh_readline(char **names, volatile int fd, int flags, ssize_t size, long tim
 					c = sfvalue(iop)+1;
 				if(cp)
 				{
+#if !SHOPT_SCRIPTONLY
 					if(flags&S_FLAG)
 						sfwrite(sh.hist_ptr->histfp,(char*)cp,c);
+#endif
 					cpmax = cp + c;
 					c = sh.ifstable[*cp++];
 					val=0;
@@ -711,7 +735,7 @@ int sh_readline(char **names, volatile int fd, int flags, ssize_t size, long tim
 						{
 							if(val)
 							{
-								stakwrite(val,cp-(unsigned char*)val);
+								sfwrite(sh.stk,val,cp-(unsigned char*)val);
 								use_stak = 1;
 							}
 							val = (char*)++cp;
@@ -725,7 +749,7 @@ int sh_readline(char **names, volatile int fd, int flags, ssize_t size, long tim
 						{
 							if(val)
 							{
-								stakwrite(val,cp-(unsigned char*)val);
+								sfwrite(sh.stk,val,cp-(unsigned char*)val);
 								use_stak=1;
 							}
 							if(cp = (unsigned char*)sfgetr(iop,delim,0))
@@ -755,14 +779,13 @@ int sh_readline(char **names, volatile int fd, int flags, ssize_t size, long tim
 			val = "";
 		if(use_stak)
 		{
-			stakputs(val);
-			stakputc(0);
-			val = stakptr(rel);
+			sfputr(sh.stk,val,0);
+			val = stkptr(sh.stk,rel);
 		}
 		if(!name && *val)
 		{
 			/* strip off trailing space delimiters */
-			register unsigned char	*vp = (unsigned char*)val + strlen(val);
+			unsigned char	*vp = (unsigned char*)val + strlen(val);
 			while(sh.ifstable[*--vp]==S_SPACE);
 			if(vp==del)
 			{
@@ -784,12 +807,12 @@ int sh_readline(char **names, volatile int fd, int flags, ssize_t size, long tim
 		del = 0;
 		if(use_stak)
 		{
-			stakseek(rel);
+			stkseek(sh.stk,rel);
 			use_stak = 0;
 		}
 		if(array_index)
 		{
-			nv_putsub(np, NIL(char*), array_index++);
+			nv_putsub(np, NULL, array_index++);
 			if(c!=S_NL)
 				continue;
 			name = *++names;
@@ -825,9 +848,11 @@ done:
 		sfset(iop,SF_SHARE,0);
 	if((sh.fdstatus[fd]&IOTTY) && !keytrap)
 		tty_cooked(fd);
+#if !SHOPT_SCRIPTONLY
 	if(flags&S_FLAG)
 		hist_flush(sh.hist_ptr);
+#endif
 	if(jmpval > 1)
 		siglongjmp(*sh.jmplist,jmpval);
-	return(jmpval);
+	return jmpval;
 }

@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -35,20 +35,20 @@ void*
 memcpy(void* s1, void* s2, size_t n)
 {
 	bcopy(s2, s1, n);
-	return(s1);
+	return s1;
 }
 
 #else
 
 void*
-memcpy(void* as1, const void* as2, register size_t n)
+memcpy(void* as1, const void* as2, size_t n)
 {
-	register char*		s1 = (char*)as1;
-	register const char*	s2 = (const char*)as2;
+	char*		s1 = (char*)as1;
+	const char*	s2 = (const char*)as2;
 
 	while (n-- > 0)
 		*s1++ = *s2++;
-	return(as1);
+	return as1;
 }
 
 #endif

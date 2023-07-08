@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -48,14 +48,14 @@ static int infof(Opt_t* op, Sfio_t* sp, const char* s, Optdisc_t* dp)
 		sfputr(sp,sh_mactry(stkfreeze(stkp,1)),-1);
 		stkset(stkp,savptr,savtop);
 	}
-        return(1);
+        return 1;
 }
 
 int	b_getopts(int argc,char *argv[],Shbltin_t *context)
 {
-	register char *options=error_info.context->id;
-	register Namval_t *np;
-	register int flag, mode;
+	char *options=error_info.context->id;
+	Namval_t *np;
+	int flag, mode;
 	char value[2], key[2];
 	int jmpval;
 	volatile int extended, r= -1;
@@ -82,7 +82,7 @@ int	b_getopts(int argc,char *argv[],Shbltin_t *context)
 	argc -= opt_info.index;
 	if(error_info.errors || argc<2)
 	{
-		errormsg(SH_DICT,ERROR_usage(2), "%s", optusage((char*)0));
+		errormsg(SH_DICT,ERROR_usage(2), "%s", optusage(NULL));
 		UNREACHABLE();
 	}
 	error_info.context->flags |= ERROR_SILENT;
@@ -111,7 +111,7 @@ int	b_getopts(int argc,char *argv[],Shbltin_t *context)
 		sh_popcontext(&buff);
 		sh.st.opterror = 1;
 		if(r==0)
-			return(2);
+			return 2;
 		pp = (struct checkpt*)sh.jmplist;
 		pp->mode = SH_JMPERREXIT;
 		sh_exit(2);
@@ -159,7 +159,7 @@ int	b_getopts(int argc,char *argv[],Shbltin_t *context)
 			opt_info.index = flag;
 			if(!mode && strchr(options,' '))
 			{
-				errormsg(SH_DICT,ERROR_usage(2), "%s", optusage((char*)0));
+				errormsg(SH_DICT,ERROR_usage(2), "%s", optusage(NULL));
 				UNREACHABLE();
 			}
 		}
@@ -197,5 +197,5 @@ int	b_getopts(int argc,char *argv[],Shbltin_t *context)
 		nv_putval(np, opt_info.arg, NV_RDONLY);
 	sh_popcontext(&buff);
         opt_info.disc = 0;
-	return(r);
+	return r;
 }

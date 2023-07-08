@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2023 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 2.0                  #
 #                                                                      #
@@ -162,9 +162,11 @@ if	[[ 3x > 4x ]]
 then	err_exit '3x < 4x'
 fi
 x='@(bin|dev|?)'
-cd /
-if	[[ $(print $x) != "$x" ]]
-then	err_exit 'extended pattern matching on command arguments'
+: >bin >dev >X
+got=$(print $x)
+exp=$x
+if	[[ $got != "$exp" ]]
+then	err_exit "extended pattern matching on command arguments (expected $(printf %q "$exp"), got $(printf %q "$got"))"
 fi
 if	[[ dev != $x ]]
 then	err_exit 'extended pattern matching not working on variables'
@@ -574,6 +576,19 @@ p=\\
 [[ \\x == \\${p}x ]] &&		warning "match: ormaaj case test 14 [unspecified]"
 [[ \\x == \\"\\"x ]] &&		err_exit "match: ormaaj case test 15"
 [[ \\x == \\\\x ]] &&		err_exit "match: ormaaj case test 16"
+
+# ======
+# negator quoting
+[[ \\ == [!X] ]] || err_exit "negator ! not working"
+[[ \\ == [^X] ]] || err_exit "negator ^ not working"
+[[ \\ == [\!X] ]] && err_exit "\\ mismatches \\!"
+[[ \\ == [\^X] ]] && err_exit "\\ mismatches \\^"
+[[ \\ == ['!'X] ]] && err_exit "\\ mismatches '!'"
+[[ \\ == ['^'X] ]] && err_exit "\\ mismatches '^'"
+[[ \\ == ["!"X] ]] && err_exit "\\ mismatches \"!\""
+[[ \\ == ["^"X] ]] && err_exit "\\ mismatches \"^\""
+[[ \\ == [$'!'X] ]] && err_exit "\\ mismatches \$'!'"
+[[ \\ == [$'^'X] ]] && err_exit "\\ mismatches \$'^'"
 
 # ======
 exit $((Errors<125?Errors:125))

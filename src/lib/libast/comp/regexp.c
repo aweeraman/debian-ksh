@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -38,11 +38,11 @@ typedef struct
 static void*
 block(void* handle, void* data, size_t size)
 {
-	register Env_t*	env = (Env_t*)handle;
+	Env_t*	env = (Env_t*)handle;
 
 	if (data || (size = roundof(size, ALIGN_BOUND2)) > (env->buf + env->size - env->cur))
-		return 0;
-	data = (void*)env->cur;
+		return NULL;
+	data = env->cur;
 	env->cur += size;
 	return data;
 }
@@ -50,8 +50,8 @@ block(void* handle, void* data, size_t size)
 int
 _re_comp(regexp_t* re, const char* pattern, char* handle, unsigned int size)
 {
-	register Env_t*	env = (Env_t*)handle;
-	register int	n;
+	Env_t*	env = (Env_t*)handle;
+	int	n;
 
 	if (size <= sizeof(Env_t))
 		return 50;
@@ -89,8 +89,8 @@ _re_comp(regexp_t* re, const char* pattern, char* handle, unsigned int size)
 int
 _re_exec(regexp_t* re, const char* subject, const char* handle, int anchor)
 {
-	register Env_t*	env = (Env_t*)handle;
-	register int	n;
+	Env_t*		env = (Env_t*)handle;
+	int		n;
 	regmatch_t	match[elementsof(re->re_braslist)+1];
 
 	if (regexec(&env->re, subject, elementsof(match), match, 0) || anchor && match[0].rm_so)
@@ -111,9 +111,9 @@ _re_putc(int c)
 	static Sfio_t*	sp;
 
 	if (!sp && !(sp = sfstropen()))
-		return 0;
+		return NULL;
 	if (!c)
 		return sfstruse(sp);
 	sfputc(sp, c);
-	return 0;
+	return NULL;
 }

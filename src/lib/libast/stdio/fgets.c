@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -27,7 +27,7 @@ _stdgets(Sfio_t* f, char* us, int n, int isgets)
 	unsigned char*	ps;
 
 	if(n <= 0 || !us || (f->mode != SF_READ && _sfmode(f,SF_READ,0) < 0))
-		return NIL(char*);
+		return NULL;
 
 	SFLOCK(f,0);
 
@@ -47,7 +47,7 @@ _stdgets(Sfio_t* f, char* us, int n, int isgets)
 			p = n;
 
 #if _lib_memccpy
-		if((ps = (uchar*)memccpy((char*)is,(char*)ps,'\n',p)) != NIL(uchar*))
+		if((ps = (uchar*)memccpy((char*)is,(char*)ps,'\n',p)) != NULL)
 			p = ps-is;
 		is += p;
 		ps  = f->next+p;
@@ -58,7 +58,7 @@ _stdgets(Sfio_t* f, char* us, int n, int isgets)
 			p = ps-f->next;
 		}
 		else
-		{	reg int	c = ps[p-1];
+		{	int	c = ps[p-1];
 			if(c != '\n')
 				ps[p-1] = '\n';
 			while((*is++ = *ps++) != '\n')
@@ -80,7 +80,7 @@ _stdgets(Sfio_t* f, char* us, int n, int isgets)
 	}
 
 	if((_Sfi = is - ((uchar*)us)) <= 0)
-		us = NIL(char*);
+		us = NULL;
 	else if(isgets && is[-1] == '\n')
 	{	is[-1] = '\0';
 		_Sfi -= 1;

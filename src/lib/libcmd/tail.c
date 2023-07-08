@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2013 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -49,7 +49,7 @@ static const char usage[] =
 		"[+Gi?1024*1024*1024 (gibi)]"
 		"[+...?and so on for T, Ti, P, Pi, E, and Ei.]"
 	"}"
-"[+?For backwards compatibility, \b-\b\anumber\a is equivalent to "
+"[+?For backward compatibility, \b-\b\anumber\a is equivalent to "
 	"\b-n\b \anumber\a and \b+\b\anumber\a is equivalent to "
 	"\b-n -\b\anumber\a. \anumber\a may also have these option "
 	"suffixes: \bb c f g k l m r\b.]"
@@ -120,7 +120,7 @@ static const char usage[] =
 #define TIMEOUT		(1<<10)
 #define VERBOSE		(1<<11)
 
-#define NOW		(unsigned long)time(NiL)
+#define NOW		(unsigned long)time(NULL)
 
 #define DEFAULT		10
 
@@ -153,19 +153,19 @@ static const char	header_fmt[] = "\n==> %s <==\n";
  */
 
 static Sfoff_t
-tailpos(register Sfio_t* fp, register Sfoff_t number, int delim)
+tailpos(Sfio_t* fp, Sfoff_t number, int delim)
 {
-	register size_t		n;
-	register Sfoff_t	offset;
-	register Sfoff_t	first;
-	register Sfoff_t	last;
-	register char*		s;
-	register char*		t;
+	size_t		n;
+	Sfoff_t	offset;
+	Sfoff_t	first;
+	Sfoff_t	last;
+	char*		s;
+	char*		t;
 	unsigned char		incomplete;
 	struct stat		st;
 
 	last = sfsize(fp);
-	if ((first = sfseek(fp, (Sfoff_t)0, SEEK_CUR)) < 0)
+	if ((first = sfseek(fp, 0, SEEK_CUR)) < 0)
 		return last || fstat(sffileno(fp), &st) || st.st_size || FIFO(st.st_mode) ? -1 : 0;
 	if (delim < 0)
 	{
@@ -213,13 +213,13 @@ tailpos(register Sfio_t* fp, register Sfoff_t number, int delim)
 static void
 pipetail(Sfio_t* infile, Sfio_t* outfile, Sfoff_t number, int delim)
 {
-	register Sfio_t*	out;
-	register Sfoff_t	n;
-	register Sfoff_t	nleft = number;
-	register size_t		a = 2 * SF_BUFSIZE;
-	register int		fno = 0;
-	Sfoff_t			offset[2];
-	Sfio_t*			tmp[2];
+	Sfio_t*		out;
+	Sfoff_t		n;
+	Sfoff_t		nleft = number;
+	size_t		a = 2 * SF_BUFSIZE;
+	int		fno = 0;
+	Sfoff_t		offset[2];
+	Sfio_t*		tmp[2];
 
 	if (delim < 0 && a > number)
 		a = number;
@@ -232,7 +232,7 @@ pipetail(Sfio_t* infile, Sfio_t* outfile, Sfoff_t number, int delim)
 		if ((nleft -= n) <= 0)
 		{
 			out = tmp[fno= !fno];
-			sfseek(out, (Sfoff_t)0, SEEK_SET);
+			sfseek(out, 0, SEEK_SET);
 			nleft = number;
 		}
 	}
@@ -241,7 +241,7 @@ pipetail(Sfio_t* infile, Sfio_t* outfile, Sfoff_t number, int delim)
 		offset[fno] = 0;
 		fno= !fno;
 	}
-	sfseek(tmp[0], (Sfoff_t)0, SEEK_SET);
+	sfseek(tmp[0], 0, SEEK_SET);
 
 	/*
 	 * see whether both files are needed
@@ -249,9 +249,9 @@ pipetail(Sfio_t* infile, Sfio_t* outfile, Sfoff_t number, int delim)
 
 	if (offset[fno])
 	{
-		sfseek(tmp[1], (Sfoff_t)0, SEEK_SET);
+		sfseek(tmp[1], 0, SEEK_SET);
 		if ((n = number - nleft) > 0) 
-			sfmove(tmp[!fno], NiL, n, delim); 
+			sfmove(tmp[!fno], NULL, n, delim); 
 		if ((n = offset[!fno] - sftell(tmp[!fno])) > 0)
 			sfmove(tmp[!fno], outfile, n, -1); 
 	}
@@ -300,8 +300,8 @@ init(Tail_t* tp, Sfoff_t number, int delim, int flags, const char** format)
 			sfset(tp->sp, SF_SHARE, !(flags & FOLLOW));
 			if (number < -1)
 			{
-				sfmove(tp->sp, NiL, -number - 1, delim);
-				offset = sfseek(tp->sp, (Sfoff_t)0, SEEK_CUR);
+				sfmove(tp->sp, NULL, -number - 1, delim);
+				offset = sfseek(tp->sp, 0, SEEK_CUR);
 			}
 			else
 				offset = 0;
@@ -330,8 +330,8 @@ init(Tail_t* tp, Sfoff_t number, int delim, int flags, const char** format)
 			pipetail(tp->sp ? tp->sp : sfstdin, op, number, delim);
 			if (flags & REVERSE)
 			{
-				sfseek(op, (Sfoff_t)0, SEEK_SET);
-				rev_line(op, sfstdout, (Sfoff_t)0);
+				sfseek(op, 0, SEEK_SET);
+				rev_line(op, sfstdout, 0);
 				sfclose(op);
 			}
 		}
@@ -360,7 +360,7 @@ init(Tail_t* tp, Sfoff_t number, int delim, int flags, const char** format)
  */
 
 static intmax_t
-num(register const char* s, char** e, int* f, int o)
+num(const char* s, char** e, int* f, int o)
 {
 	intmax_t	number;
 	char*		t;
@@ -380,7 +380,7 @@ num(register const char* s, char** e, int* f, int o)
 	while (*s == '0' && isdigit(*(s + 1)))
 		s++;
 	errno = 0;
-	number = strtonll(s, &t, NiL, 0);
+	number = strtonll(s, &t, NULL, 0);
 	if (t == s)
 		number = DEFAULT;
 	if (o && *t)
@@ -413,30 +413,30 @@ num(register const char* s, char** e, int* f, int o)
 int
 b_tail(int argc, char** argv, Shbltin_t* context)
 {
-	register Sfio_t*	ip;
-	register int		n;
-	register int		i;
-	int			delim;
-	int			flags = HEADERS|LINES;
-	int			blocks = 0;
-	char*			s;
-	char*			t;
-	char*			r;
-	char*			file;
-	Sfoff_t			moved;
-	Sfoff_t			offset;
-	Sfoff_t			number = DEFAULT;
-	unsigned long		timeout = 0;
-	struct stat		st;
-	const char*		format = header_fmt+1;
-	ssize_t			z;
-	ssize_t			w;
-	Sfio_t*			op;
-	register Tail_t*	fp;
-	register Tail_t*	pp;
-	register Tail_t*	hp;
-	Tail_t*			files;
-	Tv_t			tv;
+	Sfio_t*		ip;
+	int		n;
+	int		i;
+	int		delim;
+	int		flags = HEADERS|LINES;
+	int		blocks = 0;
+	char*		s;
+	char*		t;
+	char*		r;
+	char*		file;
+	Sfoff_t		moved;
+	Sfoff_t		offset;
+	Sfoff_t		number = DEFAULT;
+	unsigned long	timeout = 0;
+	struct stat	st;
+	const char*	format = header_fmt+1;
+	ssize_t		z;
+	ssize_t		w;
+	Sfio_t*		op;
+	Tail_t*		fp;
+	Tail_t*		pp;
+	Tail_t*		hp;
+	Tail_t*		files;
+	Tv_t		tv;
 
 	cmdinit(argc, argv, context, ERROR_CATALOG, ERROR_NOTIFY);
 	for (;;)
@@ -624,12 +624,12 @@ b_tail(int argc, char** argv, Shbltin_t* context)
 	}
 	if (error_info.errors)
 	{
-		error(ERROR_usage(2), "%s", optusage(NiL));
+		error(ERROR_usage(2), "%s", optusage(NULL));
 		UNREACHABLE();
 	}
 	if (flags & FOLLOW)
 	{
-		if (!(fp = (Tail_t*)stakalloc(argc * sizeof(Tail_t))))
+		if (!(fp = (Tail_t*)stkalloc(stkstd, argc * sizeof(Tail_t))))
 		{
 			error(ERROR_SYSTEM|ERROR_PANIC, "out of memory");
 			UNREACHABLE();
@@ -662,7 +662,7 @@ b_tail(int argc, char** argv, Shbltin_t* context)
 		{
 			if (n)
 				n = 0;
-			else if (sh_checksig(context) || tvsleep(&tv, NiL) && sh_checksig(context))
+			else if (sh_checksig(context) || tvsleep(&tv, NULL) && sh_checksig(context))
 			{
 				error_info.errors++;
 				break;
@@ -715,7 +715,7 @@ b_tail(int argc, char** argv, Shbltin_t* context)
 								goto done;
 							}
 							else
-								tvsleep(&tv, NiL);
+								tvsleep(&tv, NULL);
 						if (i && (fp->dev != st.st_dev || fp->ino != st.st_ino) && !init(fp, 0, 0, flags, &format))
 						{
 							if (!(flags & SILENT))
@@ -761,7 +761,7 @@ b_tail(int argc, char** argv, Shbltin_t* context)
 				file = "/dev/stdin";
 				ip = sfstdin;
 			}
-			else if (!(ip = sfopen(NiL, file, "r")))
+			else if (!(ip = sfopen(NULL, file, "r")))
 			{
 				error(ERROR_system(0), "%s: cannot open", file);
 				continue;
@@ -774,10 +774,10 @@ b_tail(int argc, char** argv, Shbltin_t* context)
 			if (number < 0 || !number && (flags & POSITIVE))
 			{
 				sfset(ip, SF_SHARE, 1);
-				if (number < -1 && (moved = sfmove(ip, NiL, -(number + 1), delim)) >= 0 && delim >= 0 && moved < -(number + 1))
+				if (number < -1 && (moved = sfmove(ip, NULL, -(number + 1), delim)) >= 0 && delim >= 0 && moved < -(number + 1))
 					(void)sfgetr(ip, delim, SF_LASTR);
 				if (flags & REVERSE)
-					rev_line(ip, sfstdout, sfseek(ip, (Sfoff_t)0, SEEK_CUR));
+					rev_line(ip, sfstdout, sfseek(ip, 0, SEEK_CUR));
 				else
 					sfmove(ip, sfstdout, SF_UNBOUND, -1);
 			}
@@ -800,8 +800,8 @@ b_tail(int argc, char** argv, Shbltin_t* context)
 					pipetail(ip, op, number, delim);
 					if (flags & REVERSE)
 					{
-						sfseek(op, (Sfoff_t)0, SEEK_SET);
-						rev_line(op, sfstdout, (Sfoff_t)0);
+						sfseek(op, 0, SEEK_SET);
+						rev_line(op, sfstdout, 0);
 						sfclose(op);
 					}
 					flags = 0;

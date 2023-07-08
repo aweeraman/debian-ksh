@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2023 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 2.0                  #
 #                                                                      #
@@ -943,6 +943,16 @@ def()
 [[ $(def) == def ]] || err_exit '.sh.fun.set not capturing name()'
 unset -f .sh.fun.set
 
+# the traceback function above has set .sh.level in a loop; this should not break 'break'/'continue'
+for i in 1
+do	break
+	err_exit "'break' broken after setting .sh.level in a loop"
+done
+for i in 1
+do	continue
+	err_exit "'continue' broken after setting .sh.level in a loop"
+done
+
 # tests for debug functions
 basefile=${.sh.file}
 integer baseline
@@ -1255,7 +1265,7 @@ actual=$(
 	print 'function cd { echo "Func cd called with |$*|"; command cd "$@"; }' >"$prefix/functions/cd"
 	typeset -fu cd
 
-	PATH=$tmp/arglebargle:$PATH:$tmp/usr/bin:$tmp/bin
+	PATH=$tmp/arglebargle:$tmp/usr/bin:$tmp/bin
 	cd "$tmp/usr"
 	pwd
 )
@@ -1410,7 +1420,7 @@ fi
 # ======
 # funcname.ksh crashed
 # https://github.com/ksh93/ksh/issues/212
-cat >$tmp/funcname.ksh <<-'EOF'
+cat >$tmp/funcname.ksh <<'EOF'
 # tweaked version of funname.ksh by Daniel Douglas
 # https://gist.github.com/ormaaj/12874b68acd06ee98b59
 # Used by permission: "Consider all my gists MIT / do whatever."
@@ -1536,6 +1546,32 @@ f() "$v234567890" hello
 f || err_exit "$m"
 unset -f f
 unset -v "${!v2@}"
+
+# ======
+# Test 'unset -f' in subshell
+# https://github.com/ksh93/ksh/issues/646
+# NOTE: for ast commands, '--version' is expected to exit with status 2
+exp='^  version         [[:alpha:]]{2,} (.*) ....-..-..$'
+for b in cd disown fg getopts printf pwd read ulimit umask whence
+do	got=$(unset -f "$b"; PATH=/dev/null; "$b" --version 2>&1)
+	[[ e=$? -eq 2 && $got =~ $exp ]] || err_exit "'unset -f $b' fails in subshell (1a)" \
+		"(expected status 2 and ERE match of $(printf %q "$exp"), got status $e and $(printf %q "$got"))"
+
+	# the extra 'exit' is needed to avoid optimising out the subshell
+	got=$("$SHELL" -c "(unset -f $b; PATH=/dev/null; $b --version); exit" 2>&1)
+	[[ e=$? -eq 2 && $got =~ $exp ]] || err_exit "'unset -f $b' fails in subshell (1b)" \
+		"(expected status 2 and ERE match of $(printf %q "$exp"), got status $e and $(printf %q "$got"))"
+
+	eval "$b() { echo BAD; }"
+	got=$(unset -f "$b"; PATH=/dev/null; "$b" --version 2>&1)
+	[[ e=$? -eq 2 && $got =~ $exp ]] || err_exit "'unset -f $b' fails in subshell (2a)" \
+		"(expected status 2 and ERE match of $(printf %q "$exp"), got status $e and $(printf %q "$got"))"
+	unset -f "$b"
+
+	got=$("$SHELL" -c "$b() { :; }; (unset -f $b; PATH=/dev/null; $b --version); exit" 2>&1)
+	[[ e=$? -eq 2 && $got =~ $exp ]] || err_exit "'unset -f $b' fails in subshell (2b)" \
+		"(expected status 2 and ERE match of $(printf %q "$exp"), got status $e and $(printf %q "$got"))"
+done
 
 # ======
 exit $((Errors<125?Errors:125))

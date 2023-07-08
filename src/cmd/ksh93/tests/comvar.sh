@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2023 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 2.0                  #
 #                                                                      #
@@ -711,6 +711,15 @@ got=$(set +x; eval 'typeset -a arr=( ( (a $(($(echo 1) + 1)) c)1))' 2>&1; typese
 exp='typeset -a arr=(((a 2 c) 1) )'
 [[ $got == "$exp" ]] || err_exit "'echo' environment messed up by compound assignment" \
 	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
+# crash in 'read -C' when given assignment-like variable name
+# https://github.com/ksh93/ksh/issues/606#issuecomment-1474858962
+exp=': read: foo=bar: invalid variable name'
+got=$({ "$SHELL" -c 'read -C foo=bar </dev/null'; } 2>&1)
+[[ e=$? -eq 1 && $got == *"$exp" ]] || err_exit 'read -C foo=bar' \
+	"(expected status 1, *$(printf %q "$exp");" \
+	"got status $e$( ((e>128)) && print -n /SIG && kill -l "$e"), $(printf %q "$got"))"
 
 # ======
 exit $((Errors<125?Errors:125))

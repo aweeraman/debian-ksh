@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -55,12 +55,12 @@ static int
 spliceline(Sfio_t* s, int op, void* val, Sfdisc_t* ad)
 {
 	Splice_t*	d = (Splice_t*)ad;
-	register char*	b;
-	register int	c;
-	register int	n;
-	register int	q;
-	register int	j;
-	register char*	e;
+	char*		b;
+	int		c;
+	int		n;
+	int		q;
+	int		j;
+	char*		e;
 	char*		buf;
 
 	NoP(val);
@@ -163,19 +163,19 @@ tokline(const char* arg, int flags, int* line)
 	static int	hidden;
 
 	if (!(d = newof(0, Splice_t, 1, 0)))
-		return 0;
-	if (!(s = sfopen(NiL, NiL, "s")))
+		return NULL;
+	if (!(s = sfopen(NULL, NULL, "s")))
 	{
 		free(d);
-		return 0;
+		return NULL;
 	}
 	if (!(flags & (SF_STRING|SF_READ)))
 		f = (Sfio_t*)arg;
-	else if (!(f = sfopen(NiL, arg, (flags & SF_STRING) ? "s" : "r")))
+	else if (!(f = sfopen(NULL, arg, (flags & SF_STRING) ? "s" : "r")))
 	{
 		free(d);
 		sfclose(s);
-		return 0;
+		return NULL;
 	}
 	else if ((p = sfreserve(f, 0, 0)) && sfvalue(f) > 11 && strmatch(p, "#!!! +([-0-9]) *([!\n]) !!!\n*") && (e = strchr(p, '\n')))
 	{
