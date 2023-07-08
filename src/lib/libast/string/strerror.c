@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -100,7 +100,7 @@ _ast_strerror(int err)
 					t = fmtbuf(z = strlen(s) + 1);
 					strcpy(t, s);
 					ast.locale.set |= AST_LC_internal;
-					p = setlocale(LC_MESSAGES, NiL);
+					p = setlocale(LC_MESSAGES, NULL);
 					setlocale(LC_MESSAGES, "C");
 					sys = (s = strerror(1)) && strcmp(s, t) ? 1 : -1;
 					setlocale(LC_MESSAGES, p);
@@ -110,12 +110,12 @@ _ast_strerror(int err)
 			if (sys > 0)
 				return msg;
 #endif
-			return ERROR_translate(NiL, NiL, "errlist", msg);
+			return ERROR_translate(NULL, NULL, "errlist", msg);
 		}
 		return msg;
 	}
 	msg = fmtbuf(z = 32);
-	sfsprintf(msg, z, ERROR_translate(NiL, NiL, "errlist", "Error %d"), err);
+	sfsprintf(msg, z, ERROR_translate(NULL, NULL, "errlist", "Error %d"), err);
 	return msg;
 }
 

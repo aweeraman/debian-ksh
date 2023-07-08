@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -68,7 +68,7 @@ static const char usage[] =
 "	an odd number of arguments then the last time argument is differenced"
 "	with the current time.]"
 "[f:format?Output the date according to the \bstrftime\b(3) \aformat\a."
-"	For backwards compatibility, a first argument of the form"
+"	For backward compatibility, a first argument of the form"
 "	\b+\b\aformat\a is equivalent to \b-f\b format."
 "	\aformat\a is in \bprintf\b(3) style, where %\afield\a names"
 "	a fixed size field, zero padded if necessary,"
@@ -222,7 +222,7 @@ settime(Shbltin_t* context, const char* cmd, Time_t now, int adjust, int network
 	*argv++ = "command";
 	*argv++ = "-px";
 	*argv++ = "date";
-	if (streq(astconf("UNIVERSE", NiL, NiL), "att"))
+	if (streq(astconf("UNIVERSE", NULL, NULL), "att"))
 	{
 		tmxfmt(buf, sizeof(buf), "%m%d%H" "%M%Y.%S", now);
 		if (adjust)
@@ -252,7 +252,7 @@ settime(Shbltin_t* context, const char* cmd, Time_t now, int adjust, int network
  */
 
 static Time_t
-convert(register Fmt_t* f, char* s, Time_t now)
+convert(Fmt_t* f, char* s, Time_t now)
 {
 	char*	t;
 	char*	u;
@@ -269,11 +269,11 @@ convert(register Fmt_t* f, char* s, Time_t now)
 }
 
 int
-b_date(int argc, register char** argv, Shbltin_t* context)
+b_date(int argc, char** argv, Shbltin_t* context)
 {
-	register int	n;
-	register char*	s;
-	register Fmt_t*	f;
+	int		n;
+	char*		s;
+	Fmt_t*		f;
 	char*		t;
 	unsigned long	u;
 	Time_t		now;
@@ -387,7 +387,7 @@ b_date(int argc, register char** argv, Shbltin_t* context)
 	argv += opt_info.index;
 	if (error_info.errors)
 	{
-		error(ERROR_usage(2), "%s", optusage(NiL));
+		error(ERROR_usage(2), "%s", optusage(NULL));
 		UNREACHABLE();
 	}
 	now = tmxgettime();
@@ -438,7 +438,7 @@ b_date(int argc, register char** argv, Shbltin_t* context)
 	{
 		if (!*argv)
 		{
-			error(ERROR_usage(2), "%s", optusage(NiL));
+			error(ERROR_usage(2), "%s", optusage(NULL));
 			UNREACHABLE();
 		}
 		n = argv[1] != 0;
@@ -481,7 +481,7 @@ b_date(int argc, register char** argv, Shbltin_t* context)
 		{
 			if (*argv && string)
 			{
-				error(ERROR_usage(2), "%s", optusage(NiL));
+				error(ERROR_usage(2), "%s", optusage(NULL));
 				UNREACHABLE();
 			}
 			now = convert(fmts, s, now);

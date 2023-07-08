@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -26,11 +26,7 @@
 
 #define VMALLOC_VERSION	20110808L
 
-#if _PACKAGE_ast
 #include	<ast_std.h>
-#else
-#include	<ast_common.h>
-#endif
 
 typedef struct _vmalloc_s	Vmalloc_t;
 typedef struct _vmstat_s	Vmstat_t;
@@ -51,7 +47,7 @@ struct _vmstat_s
 	size_t	extent;			/* total size of region		*/
 	int	n_region;		/* #parallel regions (Vmregion)	*/
 	int	n_open;			/* #calls that finds open reg	*/
-	int	n_lock;			/* #calls where reg was locked	*/
+	int	n_lock;			/* #calls where was locked	*/
 	int	n_probe;		/* #probes to find a region	*/
 	int	mode;			/* region mode bits		*/
 };
@@ -198,7 +194,7 @@ extern int		setregmax( int );
 #if defined(__FILE__)
 #define _VMFILE_(vm)	(_VM_(vm)->file = (char*)__FILE__)
 #else
-#define _VMFILE_(vm)	(_VM_(vm)->file = (char*)0)
+#define _VMFILE_(vm)	(_VM_(vm)->file = NULL)
 #endif
 
 #if defined(__LINE__)
@@ -210,7 +206,7 @@ extern int		setregmax( int );
 #if defined(__FUNCTION__)
 #define _VMFUNC_(vm)	(_VM_(vm)->func = (char*)__FUNCTION__)
 #else
-#define _VMFUNC_(vm)	(_VM_(vm)->func = (char*)0)
+#define _VMFUNC_(vm)	(_VM_(vm)->func = NULL)
 #endif
 
 #define _VMFL_(vm)	(_VMFILE_(vm), _VMLINE_(vm), _VMFUNC_(vm))
@@ -219,9 +215,9 @@ extern int		setregmax( int );
 				 (*(_VM_(vm)->meth.allocf))((vm),(sz),0) )
 #define vmresize(vm,d,sz,type)	(_VMFL_(vm), \
 				 (*(_VM_(vm)->meth.resizef))\
-					((vm),(void*)(d),(sz),(type),0) )
+					((vm),(d),(sz),(type),0) )
 #define vmfree(vm,d)		(_VMFL_(vm), \
-				 (*(_VM_(vm)->meth.freef))((vm),(void*)(d),0) )
+				 (*(_VM_(vm)->meth.freef))((vm),(d),0) )
 #define vmalign(vm,sz,align)	(_VMFL_(vm), \
 				 (*(_VM_(vm)->meth.alignf))((vm),(sz),(align),0) )
 
@@ -235,9 +231,9 @@ extern int		setregmax( int );
 #if _map_malloc
 
 #define malloc(s)		(_VMFL_(Vmregion), _ast_malloc((size_t)(s)) )
-#define realloc(d,s)		(_VMFL_(Vmregion), _ast_realloc((void*)(d),(size_t)(s)) )
+#define realloc(d,s)		(_VMFL_(Vmregion), _ast_realloc((d),(size_t)(s)) )
 #define calloc(n,s)		(_VMFL_(Vmregion), _ast_calloc((size_t)n, (size_t)(s)) )
-#define free(d)			(_VMFL_(Vmregion), _ast_free((void*)(d)) )
+#define free(d)			(_VMFL_(Vmregion), _ast_free(d) )
 #define memalign(a,s)		(_VMFL_(Vmregion), _ast_memalign((size_t)(a),(size_t)(s)) )
 #define valloc(s)		(_VMFL_(Vmregion), _ast_valloc((size_t)(s) )
 
@@ -246,9 +242,9 @@ extern int		setregmax( int );
 #if !_std_malloc
 
 #define malloc(s)		(_VMFL_(Vmregion), malloc((size_t)(s)) )
-#define realloc(d,s)		(_VMFL_(Vmregion), realloc((void*)(d),(size_t)(s)) )
+#define realloc(d,s)		(_VMFL_(Vmregion), realloc((d),(size_t)(s)) )
 #define calloc(n,s)		(_VMFL_(Vmregion), calloc((size_t)n, (size_t)(s)) )
-#define free(d)			(_VMFL_(Vmregion), free((void*)(d)) )
+#define free(d)			(_VMFL_(Vmregion), free(d) )
 #define memalign(a,s)		(_VMFL_(Vmregion), memalign((size_t)(a),(size_t)(s)) )
 #define valloc(s)		(_VMFL_(Vmregion), valloc((size_t)(s) )
 #ifndef strdup
@@ -270,19 +266,19 @@ extern int		setregmax( int );
 
 #ifndef vmresize
 #define vmresize(vm,d,sz,type)	(*(_VM_(vm)->meth.resizef))\
-					((vm),(void*)(d),(sz),(type),0)
+					((vm),(d),(sz),(type),0)
 #endif
 
 #ifndef vmfree
-#define vmfree(vm,d)		(*(_VM_(vm)->meth.freef))((vm),(void*)(d),0)
+#define vmfree(vm,d)		(*(_VM_(vm)->meth.freef))((vm),(d),0)
 #endif
 
 #ifndef vmalign
 #define vmalign(vm,sz,align)	(*(_VM_(vm)->meth.alignf))((vm),(sz),(align),0)
 #endif
 
-#define vmaddr(vm,addr)		(*(_VM_(vm)->meth.addrf))((vm),(void*)(addr),0)
-#define vmsize(vm,addr)		(*(_VM_(vm)->meth.sizef))((vm),(void*)(addr),0)
+#define vmaddr(vm,addr)		(*(_VM_(vm)->meth.addrf))((vm),(addr),0)
+#define vmsize(vm,addr)		(*(_VM_(vm)->meth.sizef))((vm),(addr),0)
 #define vmcompact(vm)		(*(_VM_(vm)->meth.compactf))((vm),0)
 #define vmoldof(v,p,t,n,x)	(t*)vmresize((v), (p), sizeof(t)*(n)+(x), \
 					(VM_RSMOVE) )

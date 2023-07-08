@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -15,6 +15,7 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                  Martijn Dekker <martijn@inlv.org>                   *
 *            Johnothan King <johnothanking@protonmail.com>             *
+*                     Cy Schubert <cy@FreeBSD.org>                     *
 *                                                                      *
 ***********************************************************************/
 
@@ -33,14 +34,6 @@
  *
  * hopefully stable by 2012-12-12
  */
-
-#if !_PACKAGE_ast
-
-#include <stdio.h>
-
-#define sfsprintf	snprintf
-
-#endif
 
 #if defined(_aso_casptr) && (defined(_aso_cas32) || defined(_aso_cas64))
 #define ASO_METHOD		(&_aso_meth_intrinsic)
@@ -181,7 +174,7 @@ _asometh(int type, void* data)
 		for (i = 0; i < elementsof(method) - 1; i++)
 			if (meth == method[i])
 				return method[i+1];
-		return 0;
+		return NULL;
 	}
 	if (type)
 	{
@@ -191,7 +184,7 @@ _asometh(int type, void* data)
 				method[i]->details = (char*)data;
 				return method[i];
 			}
-		return 0;
+		return NULL;
 	}
 	if (!(name = (char*)data))
 		return state.meth;
@@ -203,7 +196,7 @@ _asometh(int type, void* data)
 				method[i]->details = e + 1;
 			return method[i];
 		}
-	return 0;
+	return NULL;
 }
 
 /*
@@ -834,9 +827,9 @@ asocasptr(void volatile* p, void* o, void* n)
 {
 	ssize_t		k;
 
-#if defined(_aso_casptr)
+#if defined(_aso_cas64)
 	if (!state.lockf)
-		return _aso_casptr((void**)p, o, n);
+		return _aso_cas64((void**)p, o, n);
 #endif
 	k = lock(state.data, 0, p);
 	if (*(void* volatile*)p == o)

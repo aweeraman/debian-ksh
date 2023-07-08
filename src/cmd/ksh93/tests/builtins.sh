@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2023 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 2.0                  #
 #                                                                      #
@@ -13,6 +13,7 @@
 #                  David Korn <dgk@research.att.com>                   #
 #                  Martijn Dekker <martijn@inlv.org>                   #
 #            Johnothan King <johnothanking@protonmail.com>             #
+#         hyenias <58673227+hyenias@users.noreply.github.com>          #
 #                                                                      #
 ########################################################################
 
@@ -163,9 +164,6 @@ fi
 if	[[ $(print -f "%(pattern)q" "[^x].*b\$") != '*[!x]*b' ]]
 then	err_exit 'print -f "%(pattern)q" not working'
 fi
-if	[[ $(abc: for i in foo bar;do print $i;break abc;done) != foo ]]
-then	err_exit 'break labels not working'
-fi
 if	[[ $(command -v if)	!= if ]]
 then	err_exit	'command -v not working'
 fi
@@ -241,11 +239,13 @@ if	[[ $(printf "%g\n" x2 2>/dev/null) != 1e-09 ]]
 then	err_exit 'printf "%g" not working correctly'
 fi
 
+if((!SHOPT_SCRIPTONLY));then
 (read -s foobar <<<testing_read_s) 2> /dev/null || err_exit "'read -s var' fails"
 exp=$'^[[:digit:]]+\ttesting_read_s$'
 got=$(fc -l -0)
 [[ $got =~ $exp ]] || err_exit "'read -s' did not write to history file" \
 	"(expected match of regex $(printf %q "$exp"), got $(printf %q "$got"))"
+fi # !SHOPT_SCRIPTONLY
 
 if	[[ $(printf +3 2>/dev/null) !=   +3 ]]
 then	err_exit 'printf is not processing formats beginning with + correctly'
@@ -696,9 +696,11 @@ then	[[ $(kill -l HUP) == "$(kill -L HUP)" ]] || err_exit 'kill -l and kill -L a
 	[[ $(kill -L) == *'9) KILL'* ]] || err_exit 'kill -L output does not contain 9) KILL'
 fi
 
+if((!SHOPT_SCRIPTONLY));then
 export ENV=/./dev/null
 v=$($SHELL 2> /dev/null +o rc -ic $'getopts a:bc: opt --man\nprint $?')
 [[ $v == 2* ]] || err_exit 'getopts --man does not exit 2 for interactive shells'
+fi # !SHOPT_SCRIPTONLY
 
 read baz <<< 'foo\\\\bar'
 [[ $baz == 'foo\\bar' ]] || err_exit 'read of foo\\\\bar not getting foo\\bar'
@@ -1111,6 +1113,7 @@ IMPLEMENTATION
 
 # ======
 # 'sleep -s' should work in interactive shells when seconds > 30.
+if((!SHOPT_SCRIPTONLY));then
 sleepsig="$tmp/sleepsig.sh"
 cat >| "$sleepsig" << 'EOF'
 sleep -s 31 &
@@ -1125,6 +1128,7 @@ else
 fi
 EOF
 "$SHELL" -i "$sleepsig" 2> /dev/null || err_exit "'sleep -s' doesn't work with intervals of more than 30 seconds"
+fi # !SHOPT_SCRIPTONLY
 
 # ======
 # floating point
@@ -1200,6 +1204,8 @@ function test_usage
 {
 	while IFS= read -r bltin <&3
 	do	case $bltin in
+		fc | hist )
+			((SHOPT_SCRIPTONLY)) && continue ;;
 		echo | test | true | false | \[ | : | expr | */expr | getconf | */getconf | uname | */uname | catclose | catgets | catopen | Dt* | _Dt* | X* | login | newgrp )
 			continue ;;
 		/*/*)	expect="Usage: ${bltin##*/} "
@@ -1396,6 +1402,8 @@ got=$(	readonly v=foo
 	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
 
 # ======
+if((!SHOPT_SCRIPTONLY));then
+
 # https://github.com/att/ast/issues/872
 hist_leak=$tmp/hist_leak.sh
 print 'ulimit -n 15' > "$hist_leak"
@@ -1419,6 +1427,8 @@ exp="OK"
 got="$($SHELL -i "$hist_error_leak" 2>&1)"
 [[ $exp == "$got" ]] || err_exit "file descriptor leak after substitution error in hist builtin" \
 	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+fi # !SHOPT_SCRIPTONLY
 
 # ======
 # printf -v works as of 2021-11-18
@@ -1513,9 +1523,11 @@ kill "$sleep_pid" 2>/dev/null
 
 # Backported ksh93v- 2014-06-25 test for eval bug when called
 # from . script in a startup file.
+if((!SHOPT_SCRIPTONLY));then
 print $'eval : foo\nprint ok' > "$tmp/evalbug"
 print ". $tmp/evalbug" > "$tmp/envfile"
 [[ $(ENV=$tmp/envfile "$SHELL" -i -c : 2> /dev/null) == ok ]] || err_exit 'eval inside dot script called from profile file not working'
+fi # !SHOPT_SCRIPTONLY
 
 # Backported ksh93v- 2013-03-18 test for 'read -A', where
 # IFS sets the delimiter to a newline while -d specifies
@@ -1571,10 +1583,83 @@ while IFS= read -r bltin <&3
 do	case $bltin in
 	echo | test | true | false | \[ | : | catclose | catgets | catopen | Dt* | _Dt* | X* | login | newgrp )
 		continue ;;
+	fc | hist )
+		((SHOPT_SCRIPTONLY)) && continue ;;
 	esac
 	got=$({ "$bltin" --version; } 2>&1)  # the extra { } are needed for 'redirect'
 	[[ $got == "  version  "* ]] || err_exit "$bltin does not support --version (got $(printf %q "$got"))"
 done 3< <(builtin)
+
+# ======
+# https://github.com/ksh-community/ksh/issues/19
+# https://github.com/ksh93/ksh/issues/602
+cd /
+cd
+[[ $PWD == "$HOME" ]] || err_exit "'cd' does not chdir to \$HOME"
+
+HOME=/dev cd
+[[ $PWD == /dev ]] || err_exit "'cd' does not chdir to \$HOME (preceding assignment)"
+
+function fn
+{
+	typeset HOME=/tmp
+	cd
+}
+fn
+unset -f fn
+[[ $PWD == /tmp ]] || err_exit "'cd' does not chdir to \$HOME (local assignment)"
+
+# ======
+# Double evaluation of arithmetic expression passed to float conversion operators in printf
+# https://github.com/ksh93/ksh/issues/610#issuecomment-1480530518
+typeset -si i
+unset c
+for c in o x X u U d D i a e f g A E F G
+do	i=0
+	printf "%$c" ++i
+	let i==1 || err_exit "printf %$c: bad arithmetic evaluation (expected 1, got $i)"
+done >/dev/null
+unset c i
+
+# ======
+# segfault with read -rd $'\200' in multibyte locales
+# https://github.com/ksh93/ksh/issues/590
+exp='first line'
+got=$(set +x; { "$SHELL" -c 'read -rd $'\''\200'\'' && echo "$REPLY"';} 2>&1 <<<$'first line\200second line')
+[[ e=$? -eq 0 && $got == "$exp" ]] || err_exit "read -rd \$'\\200'" \
+	"(expected status 0, '$exp';" \
+	"got status $e$( ((e>128)) && print -n /SIG && kill -l "$e"), $(printf %q "$got"))"
+
+# ======
+# printf -v varname %B overwrites/truncates data
+# https://github.com/ksh93/ksh/issues/608
+exp='YWJjZGVmZ2g= / abcdefgh'
+got=$(
+	typeset  -b foo
+	read -N8 foo <<<abcdefghijklmnop &&
+	printf -v got '%s / %B\n' "$foo" foo &&
+	print -rn "$got"
+)
+[[ e=$? -eq 0 && $got == "$exp" ]] || err_exit "read -N8 && printf -v %B" \
+	"(expected status 0, '$exp';" \
+	"got status $e$( ((e>128)) && print -n /SIG && kill -l "$e"), $(printf %q "$got"))"
+# one proposed fix used the stack, breaking %q
+s='one two'
+exp="'$s' / '$s' / '$s'"
+printf -v got "%q / %q / %q" "$s" "$s" "$s"
+[[ $got == "$exp" ]] || err_exit "printf repeated %q" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
+# https://github.com/ksh93/ksh/issues/324
+got=${ printf '%1$s %1$b\n' '\\\\'; }
+exp='\\\\ \\'
+[[ $got == "$exp" ]] || err_exit "printf '%1$s %1$b'" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+got=${ printf '%b %1$s\n' '\\\\'; }
+exp='\\ \\\\'
+[[ $got == "$exp" ]] || err_exit "printf '%b %1$s'" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
 
 # ======
 exit $((Errors<125?Errors:125))

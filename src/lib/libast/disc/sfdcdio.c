@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -69,7 +69,7 @@ static ssize_t diordwr(Sfio_t* f, void* buf, size_t n, Direct_t* di, int type)
 
 			if(rv > 0)
 			{	rw -= rv; done += rv;
-				buf = (void*)((char*)buf + rv);
+				buf = ((char*)buf + rv);
 			}
 
 			if(rv < io || rw < di->dio.d_miniosz)
@@ -97,7 +97,7 @@ static ssize_t dioread(Sfio_t* f, void* buf, size_t n, Sfdisc_t* disc)
 
 static ssize_t diowrite(Sfio_t* f, const void* buf, size_t n, Sfdisc_t* disc)
 {
-	return diordwr(f, (void*)buf, n, (Direct_t*)disc, SF_WRITE);
+	return diordwr(f, buf, n, (Direct_t*)disc, SF_WRITE);
 }
 
 static int dioexcept(Sfio_t* f, int type, void* data, Sfdisc_t* disc)
@@ -153,7 +153,7 @@ int sfdcdio(Sfio_t* f, size_t bufsize)
 	if(!(di = (Direct_t*)malloc(sizeof(Direct_t))) )
 		goto no_direct;
 
-	if(!(buf = (void*)memalign(dio.d_mem,bufsize)) )
+	if(!(buf = memalign(dio.d_mem,bufsize)) )
 	{	free(di);
 		goto no_direct;
 	}
@@ -169,7 +169,7 @@ int sfdcdio(Sfio_t* f, size_t bufsize)
 
 	di->disc.readf = dioread;
 	di->disc.writef = diowrite;
-	di->disc.seekf = NIL(Sfseek_f);
+	di->disc.seekf = NULL;
 	di->disc.exceptf = dioexcept;
 	di->cntl = cntl;
 	di->dio = dio;

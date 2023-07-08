@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -31,32 +31,32 @@ NoN(rmdir)
 int
 rmdir(const char* path)
 {
-	register int	n;
+	int		n;
 	struct stat	st;
 	char*		av[3];
 
 	static char*	cmd[] = { "/bin/rmdir", 0 };
 
-	if (stat(path, &st) < 0) return(-1);
+	if (stat(path, &st) < 0) return -1;
 	if (!S_ISDIR(st.st_mode))
 	{
 		errno = ENOTDIR;
-		return(-1);
+		return -1;
 	}
 	av[0] = "rmdir";
 	av[1] = path;
 	av[2] = 0;
 	for (n = 0; n < elementsof(cmd); n++)
-		if (procclose(procopen(cmd[n], av, NiL, NiL, 0)) != -1)
+		if (procclose(procopen(cmd[n], av, NULL, NULL, 0)) != -1)
 			break;
 	n = errno;
 	if (access(path, F_OK) < 0)
 	{
 		errno = n;
-		return(0);
+		return 0;
 	}
 	errno = EPERM;
-	return(-1);
+	return -1;
 }
 
 #endif

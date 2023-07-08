@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -67,15 +67,6 @@
 #define	MM_NOTOK	3		/* failed completely		*/
 #define	MM_NOMSG	1		/* stderr message failed	*/
 #define MM_NOCON	2		/* console message failed	*/
-
-/* null argument values -- 0 just doesn't get any respect */
-
-#define MM_NULLLBL	(char*)0	/* label			*/
-#define MM_NULLSEV	0		/* severity			*/
-#define	MM_NULLMC	0L		/* class			*/
-#define MM_NULLTXT	(char*)0	/* text				*/
-#define MM_NULLACT	(char*)0	/* action			*/
-#define MM_NULLTAG	(char*)0	/* tag				*/
 
 #ifdef MM_TABLES
 

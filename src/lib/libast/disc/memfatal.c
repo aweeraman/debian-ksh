@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -59,7 +59,7 @@ nomalloc(Vmalloc_t* region, int type, void* obj, Vmdisc_t* disc)
 		error(ERROR_SYSTEM|ERROR_PANIC, "storage allocator out of memory on %lu byte request ( region %lu segments %lu busy %lu:%lu:%lu free %lu:%lu:%lu )", (size_t)obj, st.extent, st.n_seg, st.n_busy, st.s_busy, st.m_busy, st.n_free, st.s_free, st.m_free);
 		UNREACHABLE();
 	}
-	return(0);
+	return 0;
 }
 
 /*
@@ -72,7 +72,7 @@ memfatal(void)
 	Vmdisc_t*	disc;
 
 	malloc(0);
-	if (disc = vmdisc(Vmregion, NiL))
+	if (disc = vmdisc(Vmregion, NULL))
 		disc->exceptf = nomalloc;
 }
 

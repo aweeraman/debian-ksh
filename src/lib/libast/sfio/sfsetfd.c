@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -25,7 +25,7 @@
 
 static int _sfdup(int fd, int newfd)
 {
-	reg int	dupfd;
+	int	dupfd;
 
 #ifdef F_DUPFD	/* the simple case */
 	while((dupfd = fcntl(fd,F_DUPFD,newfd)) < 0 && errno == EINTR)
@@ -48,7 +48,7 @@ static int _sfdup(int fd, int newfd)
 
 int sfsetfd(Sfio_t* f, int newfd)
 {
-	reg int		oldfd;
+	int		oldfd;
 
 	if(!f)
 		return -1;
@@ -96,7 +96,7 @@ int sfsetfd(Sfio_t* f, int newfd)
 #ifdef MAP_TYPE
 				if((f->bits&SF_MMAP) && f->data)
 				{	SFMUNMAP(f,f->data,f->endb-f->data);
-					f->data = NIL(uchar*);
+					f->data = NULL;
 				}
 #endif
 

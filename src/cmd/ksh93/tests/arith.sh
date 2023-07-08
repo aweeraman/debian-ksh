@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2023 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 2.0                  #
 #                                                                      #
@@ -15,6 +15,7 @@
 #            Johnothan King <johnothanking@protonmail.com>             #
 #         hyenias <58673227+hyenias@users.noreply.github.com>          #
 #                  Lev Kujawski <int21h@mailbox.org>                   #
+#                      Phi <phi.debian@gmail.com>                      #
 #                                                                      #
 ########################################################################
 
@@ -987,6 +988,12 @@ got=$(set +x; eval ': $((1 << 2))' 2>&1) \
 || err_exit "bitwise left shift operator fails to parse (got $(printf %q "$got"))"
 got=$(set +x; eval 'got=$( ((y=1<<4)); echo $y )' 2>&1; echo $got) \
 || err_exit "bitwise left shift operator fails to parse in comsub (got $(printf %q "$got"))"
+
+# ======
+# https://github.com/ksh93/ksh/issues/623
+function .sh.math.add x y { .sh.value=x+y; }
+got=$(PATH=/dev/null; typeset -i z; redirect 2>&1; z='add(2 , 3)'; echo $z)
+[[ e=$? -eq 0 && $got == '5' ]] || err_exit ".sh.math.* function parsing: got status $e and $(printf %q "$got")"
 
 # ======
 exit $((Errors<125?Errors:125))

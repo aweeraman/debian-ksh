@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -55,9 +55,9 @@ static const char usage[] =
 static int
 key(void* handle, Sffmt_t* fp, const char* arg, char** ps, Sflong_t* pn)
 {
-	register char*	s;
-	int		fd;
-	long		tid;
+	char*	s;
+	int	fd;
+	long	tid;
 
 	if (!(s = fp->t_str) || streq(s, "pid"))
 		*pn = getpid();
@@ -113,12 +113,12 @@ b_pids(int argc, char** argv, Shbltin_t* context)
 	argv += opt_info.index;
 	if (error_info.errors || *argv)
 	{
-		error(ERROR_usage(2), "%s", optusage(NiL));
+		error(ERROR_usage(2), "%s", optusage(NULL));
 		UNREACHABLE();
 	}
 	if (!format)
 		format = FORMAT;
-	sfkeyprintf(sfstdout, format, format, key, NiL);
+	sfkeyprintf(sfstdout, format, format, key, NULL);
 	sfprintf(sfstdout, "\n");
 	return 0;
 }

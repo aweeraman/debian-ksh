@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -27,9 +27,9 @@ ssize_t sfread(Sfio_t*	f,	/* read from this stream. 	*/
 	       void*	buf,	/* buffer to read into		*/
 	       size_t	n)	/* number of bytes to be read. 	*/
 {
-	reg uchar	*s, *begs;
-	reg ssize_t	r;
-	reg int		local, justseek;
+	uchar		*s, *begs;
+	ssize_t		r;
+	int		local, justseek;
 
 	if(!f)
 		return (ssize_t)(-1);

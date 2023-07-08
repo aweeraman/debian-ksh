@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -32,16 +32,16 @@ NoN(memccpy)
  */
 
 void*
-memccpy(void* as1, const void* as2, register int c, size_t n)
+memccpy(void* as1, const void* as2, int c, size_t n)
 {
-	register char*		s1 = (char*)as1;
-	register const char*	s2 = (char*)as2;
-	register const char*	ep = s2 + n;
+	char*		s1 = (char*)as1;
+	const char*	s2 = (char*)as2;
+	const char*	ep = s2 + n;
 
 	while (s2 < ep)
 		if ((*s1++ = *s2++) == c)
-			return(s1);
-	return(0);
+			return s1;
+	return NULL;
 }
 
 #endif

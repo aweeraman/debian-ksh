@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -45,6 +45,24 @@ typedef struct
 	int hist_char;
 } Histloc_t;
 
+#if SHOPT_SCRIPTONLY
+
+#define hist_min(hp)	0
+#define hist_max(hp)	0
+#define sh_histinit()	0
+#define hist_cancel(h)	0
+#define hist_close(h)	0
+#define hist_copy(h)	0
+#define hist_eof(h)	0
+#define hist_flush(h)	0
+#define hist_list(a,out,c,d,e)	sfputr(out,sh_translate(e_unknown),'\n')
+#define hist_match(a,b,c,d)	0
+#define hist_tell(a,b)		0
+#define hist_seek(a,b)		0
+#define hist_word(a,b,c)	0
+
+#else
+
 /* the following are readonly */
 extern const char	hist_fname[];
 
@@ -67,5 +85,7 @@ extern char 		*hist_word(char*, int, int);
 #if SHOPT_ESH
     extern Histloc_t	hist_locate(History_t*,int, int, int);
 #endif	/* SHOPT_ESH */
+
+#endif /* SHOPT_SCRIPTONLY */
 
 #endif /* HIST_VERSION */

@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -27,7 +27,6 @@
 #include	<setjmp.h>
 #include	<error.h>
 #include	<sfio.h>
-#include	"FEATURE/setjmp"
 #include	"FEATURE/sigfeatures"
 
 
@@ -48,7 +47,7 @@ typedef void (*SH_SIGTYPE)(int,void(*)(int));
 #define SH_TRAP			0200	/* bit for internal traps */
 #define SH_ERRTRAP		0	/* trap for non-zero exit status */
 #define SH_KEYTRAP		1	/* trap for keyboard event */
-#define SH_DEBUGTRAP		4	/* must be last internal trap */
+#define SH_DEBUGTRAP		2	/* must be last internal trap */
 
 #define SH_SIGBITS		8
 #define SH_SIGFAULT		1	/* signal handler is sh_fault */

@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -27,9 +27,9 @@
 
 /* synchronize unseekable write streams */
 static void _sfwrsync(void)
-{	reg Sfpool_t*	p;
-	reg Sfio_t*	f;
-	reg int		n;
+{	Sfpool_t*	p;
+	Sfio_t*		f;
+	int		n;
 
 	/* sync all pool heads */
 	for(p = _Sfpool.next; p; p = p->next)
@@ -54,8 +54,8 @@ static void _sfwrsync(void)
 ssize_t sfrd(Sfio_t* f, void* buf, size_t n, Sfdisc_t* disc)
 {
 	Sfoff_t		r;
-	reg Sfdisc_t*	dc;
-	reg int		local, rcrv, dosync, oerrno;
+	Sfdisc_t*	dc;
+	int		local, rcrv, dosync, oerrno;
 
 	if(!f)
 		return -1;
@@ -81,7 +81,7 @@ ssize_t sfrd(Sfio_t* f, void* buf, size_t n, Sfdisc_t* disc)
 #ifdef MAP_TYPE
 			if((f->bits&SF_MMAP) && f->data)
 			{	SFMUNMAP(f, f->data, f->endb-f->data);
-				f->data = NIL(uchar*);
+				f->data = NULL;
 			}
 #endif
 			f->next = f->endb = f->endr = f->endw = f->data;
@@ -107,7 +107,7 @@ ssize_t sfrd(Sfio_t* f, void* buf, size_t n, Sfdisc_t* disc)
 		/* warn that a read is about to happen */
 		SFDISC(f,dc,readf);
 		if(dc && dc->exceptf && (f->flags&SF_IOCHECK) )
-		{	reg int	rv;
+		{	int	rv;
 			if(local)
 				SETLOCAL(f);
 			if((rv = _sfexcept(f,SF_READ,n,dc)) > 0)
@@ -120,18 +120,18 @@ ssize_t sfrd(Sfio_t* f, void* buf, size_t n, Sfdisc_t* disc)
 
 #ifdef MAP_TYPE
 		if(f->bits&SF_MMAP)
-		{	reg ssize_t	a, round;
+		{	ssize_t	a, round;
 			struct stat	st;
 
 			/* determine if we have to copy data to buffer */
 			if((uchar*)buf >= f->data && (uchar*)buf <= f->endb)
 			{	n += f->endb - f->next;
-				buf = NIL(char*);
+				buf = NULL;
 			}
 
 			/* actual seek location */
 			if((f->flags&(SF_SHARE|SF_PUBLIC)) == (SF_SHARE|SF_PUBLIC) &&
-			   (r = SFSK(f,(Sfoff_t)0,SEEK_CUR,dc)) != f->here)
+			   (r = SFSK(f,0,SEEK_CUR,dc)) != f->here)
 				f->here = r;
 			else	f->here -= f->endb-f->next;
 
@@ -159,14 +159,14 @@ ssize_t sfrd(Sfio_t* f, void* buf, size_t n, Sfdisc_t* disc)
 				SFMUNMAP(f, f->data, f->endb-f->data);
 
 			for(;;)
-			{	f->data = (uchar*) mmap((caddr_t)0, (size_t)r,
+			{	f->data = (uchar*) mmap(NULL, (size_t)r,
 							(PROT_READ|PROT_WRITE),
 							MAP_PRIVATE,
 							f->file, (off_t)f->here);
 				if(f->data && (caddr_t)f->data != (caddr_t)(-1))
 					break;
 				else
-				{	f->data = NIL(uchar*);
+				{	f->data = NULL;
 					if((r >>= 1) < (_Sfpage*SF_NMAP) ||
 					   (errno != EAGAIN && errno != ENOMEM) )
 						break;
@@ -202,10 +202,10 @@ ssize_t sfrd(Sfio_t* f, void* buf, size_t n, Sfdisc_t* disc)
 				(void)SFSK(f,f->here,SEEK_SET,dc);
 
 				/* make a buffer */
-				(void)SFSETBUF(f,(void*)f->tiny,(size_t)SF_UNBOUND);
+				(void)SFSETBUF(f,f->tiny,(size_t)SF_UNBOUND);
 
 				if(!buf)
-				{	buf = (void*)f->data;
+				{	buf = f->data;
 					n = f->size;
 				}
 			}
@@ -222,7 +222,7 @@ ssize_t sfrd(Sfio_t* f, void* buf, size_t n, Sfdisc_t* disc)
 		if(f->extent >= 0 && (f->flags&SF_SHARE) )
 		{	if(!(f->flags&SF_PUBLIC) )
 				f->here = SFSK(f,f->here,SEEK_SET,dc);
-			else	f->here = SFSK(f,(Sfoff_t)0,SEEK_CUR,dc);
+			else	f->here = SFSK(f,0,SEEK_CUR,dc);
 		}
 
 		oerrno = errno;

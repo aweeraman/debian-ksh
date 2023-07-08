@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2023 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 2.0                  #
 #                                                                      #
@@ -830,13 +830,45 @@ exp=$'typeset -A a=([0]=1 [1]=2 [2]=3)\ntypeset -a a=(1 2 3)'
 # ======
 # spurious command execution of a word starting with '[' but not containing ']=' in associative array assignments
 # https://github.com/ksh93/ksh/issues/427
-exp='*: syntax error at line *: `\[badword]'\'' unexpected'
-got=$(set +x; PATH=/dev/null; eval 'typeset -A badword=([x]=1 \[badword])' 2>&1)
-case $((e=$?)),$got in
-3,$exp)	;;
-*)	err_exit 'spurious command execution in invalid associative array assignment' \
-		"(expected status 3 and $(printf %q "$exp"), got status $e and $(printf %q "$got"))" ;;
-esac
+exp=': syntax error at line 1: `[badword]'\'' unexpected'
+got=$(set +x -f; PATH=/dev/null; eval 'typeset -A badword=([x]=1 \[badword])' 2>&1)
+[[ e=$? -eq 3 && $got == *"$exp" ]] || err_exit 'issue 427 test 1' \
+		"(expected status 3 and *$(printf %q "$exp"), got status $e and $(printf %q "$got"))"
+exp=': syntax error at line 1: `[bar_key\]=]'\'' unexpected'
+got=$(set +x -f; PATH=/dev/null; eval 'fn=([foo_key]=foo_val [bar_key\]=])' 2>&1)
+[[ e=$? -eq 3 && $got == *"$exp" ]] || err_exit 'issue 427 test 2' \
+		"(expected status 3 and *$(printf %q "$exp"), got status $e and $(printf %q "$got"))"
+exp=': syntax error at line 1: `[abcdefg]\=r_key'\'' unexpected'
+got=$(set +x -f; PATH=/dev/null; eval 'fn=([foo]=bar [abcdefg]\=r_key)' 2>&1)
+[[ e=$? -eq 3 && $got == *"$exp" ]] || err_exit 'issue 427 test 3' \
+		"(expected status 3 and *$(printf %q "$exp"), got status $e and $(printf %q "$got"))"
+exp=''
+got=$(set +x -f; PATH=/dev/null; eval 'fn=([foo]=bar [abcdef"g"]=r_key)' 2>&1)
+[[ e=$? -eq 0 && $got == "$exp" ]] || err_exit 'issue 427 test 4' \
+		"(expected status 0 and $(printf %q "$exp"), got status $e and $(printf %q "$got"))"
+exp=': syntax error at line 1: `[badword]=good'\'' unexpected'
+got=$(set +x -f; PATH=/dev/null; eval 'badword=([x]=1 \[badword]=good)' 2>&1)
+[[ e=$? -eq 3 && $got == *"$exp" ]] || err_exit 'issue 427 test 5' \
+		"(expected status 3 and *$(printf %q "$exp"), got status $e and $(printf %q "$got"))"
+
+# ======
+# arithmetic subscript that yields 0 while incrementing variable caused crash (in 'read')
+# or spurious error (in 'printf -v') due to double evaluation of the arithmetic expression
+# https://github.com/ksh93/ksh/issues/606
+unset i n a
+exp=$'typeset -a a=(foo bar)\ntypeset -l -i n=2'
+got=$(set +x; { "$SHELL" -c 'integer n=0; read a\[n++] <<< foo; read a\[n++] <<< bar; typeset -p a n';} 2>&1)
+[[ e=$? -eq 0 && $got == "$exp" ]] || err_exit '2x read a[n++]' \
+	"(expected status 0, $(printf %q "$exp");" \
+	"got status $e$( ((e>128)) && print -n /SIG && kill -l "$e"), $(printf %q "$got"))"
+got=$(integer n=0; printf -v a\[n++] foo 2>&1; printf -v a\[n++] bar 2>&1; typeset -p a n)
+[[ (e=$? -eq 0 && $got == "$exp") || .sh.version -lt 20211118 ]] || err_exit '2x printf -v a[n++]' \
+	"(expected status 0, $(printf %q "$exp"); got status $e, $(printf %q "$got"))"
+# check for 'typeset -a a=(foo)' (ARRAY_FILL) and not 'typeset -a a=foo'
+exp=$'i=1\ntypeset -a a=(foo)'
+got=$(i=0; typeset -a a; printf -v a\[i++] foo 2>&1; typeset -p i a)
+[[ (e=$? -eq 0 && $got == "$exp") || .sh.version -lt 20211118 ]] || err_exit '1x printf -v a[i++]' \
+	"(expected status 0, $(printf %q "$exp"); got status $e, $(printf %q "$got"))"
 
 # ======
 exit $((Errors<125?Errors:125))

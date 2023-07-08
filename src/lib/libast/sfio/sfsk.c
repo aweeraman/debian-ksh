@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -25,9 +25,9 @@
 Sfoff_t sfsk(Sfio_t* f, Sfoff_t addr, int type, Sfdisc_t* disc)
 {
 	Sfoff_t		p;
-	reg Sfdisc_t*	dc;
-	reg ssize_t	s;
-	reg int		local, mode;
+	Sfdisc_t*	dc;
+	ssize_t		s;
+	int		local, mode;
 
 	if(!f)
 		return (Sfoff_t)(-1);
@@ -41,7 +41,7 @@ Sfoff_t sfsk(Sfio_t* f, Sfoff_t addr, int type, Sfdisc_t* disc)
 #ifdef MAP_TYPE
 		if(f->mode == SF_READ && (f->bits&SF_MMAP) && f->data)
 		{	SFMUNMAP(f, f->data, f->endb-f->data);
-			f->data = NIL(uchar*);
+			f->data = NULL;
 		}
 #endif
 		f->next = f->endb = f->endr = f->endw = f->data;

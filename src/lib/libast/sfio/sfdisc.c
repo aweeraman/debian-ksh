@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -92,10 +92,10 @@ Sfdisc_t* sfdisc(Sfio_t* f, Sfdisc_t* disc)
 	Sfwrite_f	owritef;
 	Sfseek_f	oseekf;
 	ssize_t		n;
-	Dccache_t	*dcca = NIL(Dccache_t*);
+	Dccache_t	*dcca = NULL;
 
 	if(!f)
-		return NIL(Sfdisc_t*);
+		return NULL;
 
 	if((Sfio_t*)disc == f) /* special case to get the top discipline */
 		return f->disc;
@@ -103,15 +103,15 @@ Sfdisc_t* sfdisc(Sfio_t* f, Sfdisc_t* disc)
 	if((f->flags&SF_READ) && f->proc && (f->mode&SF_WRITE) )
 	{	/* make sure in read mode to check for read-ahead data */
 		if(_sfmode(f,SF_READ,0) < 0)
-			return NIL(Sfdisc_t*);
+			return NULL;
 	}
 	else
 	{	if((f->mode&SF_RDWR) != f->mode && _sfmode(f,0,0) < 0)
-			return NIL(Sfdisc_t*);
+			return NULL;
 	}
 
 	SFLOCK(f,0);
-	rdisc = NIL(Sfdisc_t*);
+	rdisc = NULL;
 
 	/* disallow popping while there is cached data */
 	if(!disc && f->disc && f->disc->disc && f->disc->disc->readf == _dccaread )
@@ -161,14 +161,14 @@ Sfdisc_t* sfdisc(Sfio_t* f, Sfdisc_t* disc)
 	}
 
 	/* save old readf, writef, and seekf to see if stream need reinit */
-#define GETDISCF(func,iof,type) \
+#define GETDISCF(func,iof) \
 	{ \
 	  for(d = f->disc; d && !d->iof; d = d->disc) ; \
-	  func = d ? d->iof : NIL(type); \
+	  func = d ? d->iof : NULL; \
 	}
-	GETDISCF(oreadf,readf,Sfread_f);
-	GETDISCF(owritef,writef,Sfwrite_f);
-	GETDISCF(oseekf,seekf,Sfseek_f);
+	GETDISCF(oreadf,readf);
+	GETDISCF(owritef,writef);
+	GETDISCF(oseekf,seekf);
 
 	if(disc == SF_POPDISC)
 	{	/* popping, warn the being popped discipline */
@@ -177,7 +177,7 @@ Sfdisc_t* sfdisc(Sfio_t* f, Sfdisc_t* disc)
 		disc = d->disc;
 		if(d->exceptf)
 		{	SFOPEN(f,0);
-			if((*(d->exceptf))(f,SF_DPOP,(void*)disc,d) < 0 )
+			if((*(d->exceptf))(f,SF_DPOP,disc,d) < 0 )
 				goto done;
 			SFLOCK(f,0);
 		}
@@ -191,7 +191,7 @@ Sfdisc_t* sfdisc(Sfio_t* f, Sfdisc_t* disc)
 			d = f->disc;
 			if(d && d->exceptf)
 			{	SFOPEN(f,0);
-				if( (*(d->exceptf))(f,SF_DPUSH,(void*)disc,d) < 0 )
+				if( (*(d->exceptf))(f,SF_DPUSH,disc,d) < 0 )
 					goto done;
 				SFLOCK(f,0);
 			}
@@ -214,30 +214,30 @@ Sfdisc_t* sfdisc(Sfio_t* f, Sfdisc_t* disc)
 
 	if(!(f->flags&SF_STRING) )
 	{	/* this stream may have to be reinitialized */
-		reg int	reinit = 0;
-#define DISCF(dst,iof,type)	(dst ? dst->iof : NIL(type)) 
-#define REINIT(oiof,iof,type) \
+		int	reinit = 0;
+#define DISCF(dst,iof)	(dst ? dst->iof : NULL)
+#define REINIT(oiof,iof) \
 		if(!reinit) \
 		{ \
 			for(d = f->disc; d && !d->iof; d = d->disc) ; \
-			if(DISCF(d,iof,type) != oiof) \
+			if(DISCF(d,iof) != oiof) \
 				reinit = 1; \
 		}
 
-		REINIT(oreadf,readf,Sfread_f);
-		REINIT(owritef,writef,Sfwrite_f);
-		REINIT(oseekf,seekf,Sfseek_f);
+		REINIT(oreadf,readf);
+		REINIT(owritef,writef);
+		REINIT(oseekf,seekf);
 
 		if(reinit)
 		{	SETLOCAL(f);
 			f->bits &= ~SF_NULL;	/* turn off /dev/null handling */
 			if((f->bits&SF_MMAP) || (f->mode&SF_INIT))
-				sfsetbuf(f,NIL(void*),(size_t)SF_UNBOUND);
+				sfsetbuf(f,NULL,(size_t)SF_UNBOUND);
 			else if(f->data == f->tiny)
-				sfsetbuf(f,NIL(void*),0);
+				sfsetbuf(f,NULL,0);
 			else
 			{	int	flags = f->flags;
-				sfsetbuf(f,(void*)f->data,f->size);
+				sfsetbuf(f,f->data,f->size);
 				f->flags |= (flags&SF_MALLOC);
 			}
 		}

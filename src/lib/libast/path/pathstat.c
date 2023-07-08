@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -32,10 +32,10 @@ pathstat(const char* path, struct stat* st)
 	int	oerrno;
 
 	oerrno = errno;
-	if (!stat(path, st)) return(0);
+	if (!stat(path, st)) return 0;
 	errno = oerrno;
-	return(lstat(path, st));
+	return lstat(path, st);
 #else
-	return(stat(path, st));
+	return stat(path, st);
 #endif
 }

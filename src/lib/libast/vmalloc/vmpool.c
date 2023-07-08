@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -31,20 +31,20 @@
 **	Written by Kiem-Phong Vo, kpv@research.att.com, 01/16/94.
 */
 
-static void* poolalloc(Vmalloc_t* vm, reg size_t size, int local)
+static void* poolalloc(Vmalloc_t* vm, size_t size, int local)
 {
-	reg Block_t	*tp, *next;
-	reg size_t	s;
-	reg Seg_t	*seg;
-	reg Vmdata_t	*vd = vm->data;
+	Block_t	*tp, *next;
+	size_t	s;
+	Seg_t	*seg;
+	Vmdata_t	*vd = vm->data;
 
 	if(size <= 0)
-		return NIL(void*);
+		return NULL;
 
 	if(size != vd->pool)
 	{	if(vd->pool <= 0)
 			vd->pool = size;
-		else	return NIL(void*);
+		else	return NULL;
 	}
 
 	SETLOCK(vm, local);
@@ -57,13 +57,13 @@ static void* poolalloc(Vmalloc_t* vm, reg size_t size, int local)
 	size = ROUND(size,ALIGN);
 
 	/* look through all segments for a suitable free block */
-	for(tp = NIL(Block_t*), seg = vd->seg; seg; seg = seg->next)
+	for(tp = NULL, seg = vd->seg; seg; seg = seg->next)
 	{	if((tp = seg->free) &&
 		   (s = (SIZE(tp) & ~BITS) + sizeof(Head_t)) >= size )
 			goto got_blk;
 	}
 
-	if((tp = (*_Vmextend)(vm,ROUND(size,vd->incr),NIL(Vmsearch_f))) )
+	if((tp = (*_Vmextend)(vm,ROUND(size,vd->incr),NULL)) )
 	{	s = (SIZE(tp) & ~BITS) + sizeof(Head_t);
 		seg = SEG(tp);
 		goto got_blk;
@@ -79,7 +79,7 @@ got_blk: /* if get here, (tp, s, seg) must be well-defined */
 			vd->free = next;
 			next = (Block_t*)((Vmuchar_t*)next + size);
 		}
-		seg->free = NIL(Block_t*);
+		seg->free = NULL;
 	}
 	else
 	{	SIZE(next) = s - sizeof(Head_t);
@@ -89,14 +89,14 @@ got_blk: /* if get here, (tp, s, seg) must be well-defined */
 
 done:
 	if(!local && (vd->mode&VM_TRACE) && _Vmtrace && tp)
-		(*_Vmtrace)(vm,NIL(Vmuchar_t*),(Vmuchar_t*)tp,vd->pool,0);
+		(*_Vmtrace)(vm,NULL,(Vmuchar_t*)tp,vd->pool,0);
 
 	CLRLOCK(vm, local);
 
-	return (void*)tp;
+	return tp;
 }
 
-static long pooladdr(Vmalloc_t* vm, reg void* addr, int local)
+static long pooladdr(Vmalloc_t* vm, void* addr, int local)
 {
 	Block_t		*bp, *tp;
 	Vmuchar_t	*laddr, *baddr;
@@ -134,7 +134,7 @@ done :
 	return offset;
 }
 
-static int poolfree(reg Vmalloc_t* vm, reg void* data, int local )
+static int poolfree(Vmalloc_t* vm, void* data, int local )
 {
 	Block_t		*bp;
 	Vmdata_t	*vd = vm->data;
@@ -153,7 +153,7 @@ static int poolfree(reg Vmalloc_t* vm, reg void* data, int local )
 	vd->free = bp;
 
 	if(!local && (vd->mode&VM_TRACE) && _Vmtrace)
-		(*_Vmtrace)(vm, (Vmuchar_t*)data, NIL(Vmuchar_t*), vd->pool, 0);
+		(*_Vmtrace)(vm, (Vmuchar_t*)data, NULL, vd->pool, 0);
 
 	CLRLOCK(vm, local);
 
@@ -174,10 +174,10 @@ static void* poolresize(Vmalloc_t* vm, void* data, size_t size, int type, int lo
 	}
 	if(size == 0)
 	{	(void)poolfree(vm, data, local);
-		return NIL(void*);
+		return NULL;
 	}
 	if(size != vd->pool)
-		return NIL(void*);
+		return NULL;
 
 	SETLOCK(vm, local);
 
@@ -211,7 +211,7 @@ static int poolcompact(Vmalloc_t* vm, int local)
 		if(!(fp = seg->free))
 			continue;
 
-		seg->free = NIL(Block_t*);
+		seg->free = NULL;
 		if(seg->size == (s = SIZE(fp)&~BITS))
 			s = seg->extent;
 		else	s += sizeof(Head_t);
@@ -221,7 +221,7 @@ static int poolcompact(Vmalloc_t* vm, int local)
 	}
 
 	if(!local && (vd->mode&VM_TRACE) && _Vmtrace)
-		(*_Vmtrace)(vm, (Vmuchar_t*)0, (Vmuchar_t*)0, 0, 0);
+		(*_Vmtrace)(vm, NULL, NULL, 0, 0);
 
 	CLRLOCK(vm, local);
 
@@ -233,7 +233,7 @@ static void* poolalign(Vmalloc_t* vm, size_t size, size_t align, int local)
 	NOT_USED(vm);
 	NOT_USED(size);
 	NOT_USED(align);
-	return NIL(void*);
+	return NULL;
 }
 
 /* Public interface */

@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -262,18 +262,18 @@ typedef struct
 #define strneq(a,b,n)	(*(a)==*(b)&&!strncmp(a,b,n))
 #define strsignal(s)	fmtsignal(s)
 
-#define NiL		0
+#define NiL		NULL			/* for backward compatibility */
 #define NoP(x)		do (void)(x); while(0)	/* for silencing "unused parameter" warnings */
 
 #if !defined(NoF)
-#define NoF(x)		void _DATA_ ## x () {}
+#define NoF(x)		void _DATA_ ## x (void) {}
 #if !defined(_DATA_)
 #define _DATA_
 #endif
 #endif
 
 #if !defined(NoN)
-#define NoN(x)		void _STUB_ ## x () {}
+#define NoN(x)		void _STUB_ ## x (void) {}
 #if !defined(_STUB_)
 #define _STUB_
 #endif
@@ -312,8 +312,8 @@ extern void		astwinsize(int, int*, int*);
 #define CONF_NGROUPS_MAX	"NGROUPS_MAX"
 #define CONF_OPEN_MAX		"OPEN_MAX"
 #define CONF_PAGESIZE		"PAGESIZE"
-#define astconf_long(x)		strtol(astconf(x,NiL,NiL),NiL,0)
-#define astconf_ulong(x)	strtoul(astconf(x,NiL,NiL),NiL,0)
+#define astconf_long(x)		strtol(astconf(x,NULL,NULL),NULL,0)
+#define astconf_ulong(x)	strtoul(astconf(x,NULL,NULL),NULL,0)
 #endif
 
 extern ssize_t		base64encode(const void*, size_t, void**, void*, size_t, void**);

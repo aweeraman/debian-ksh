@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -135,19 +135,19 @@ static Mmvm_t* mmfix(Mmvm_t* mmvm, Mmdisc_t* mmdc, int fd)
 	void	*base = mmvm->base;
 	ssize_t	size = mmvm->size;
 
-	if(base != (void*)mmvm) /* mmvm is not right yet */
+	if(base != mmvm) /* mmvm is not right yet */
 	{	/**/ASSERT(!base || (base && (VLONG(base)%_Vmpagesize) == 0) );
 		if(mmdc->proj < 0)
-		{	munmap((void*)mmvm, size); 
+		{	munmap(mmvm, size); 
 			mmvm = (Mmvm_t*)mmap(base, size, (PROT_READ|PROT_WRITE),
-					     (MAP_FIXED|MAP_SHARED), fd, (off_t)0 );
+					     (MAP_FIXED|MAP_SHARED), fd, 0 );
 		}
 		else
-		{	shmdt((void*)mmvm);
+		{	shmdt(mmvm);
 			mmvm = (Mmvm_t*)shmat(mmdc->shmid, base, 0);
 		}
 		if(!mmvm || mmvm == (Mmvm_t*)(-1) )
-			mmvm = NIL(Mmvm_t*);
+			mmvm = NULL;
 	}
 
 	return mmvm;
@@ -161,7 +161,7 @@ static int mminit(Mmdisc_t* mmdc)
 	int		fd = -1;
 	key_t		key = -1;
 	ssize_t		extent, size = 0;
-	Mmvm_t		*mmvm = NIL(Mmvm_t*);
+	Mmvm_t		*mmvm = NULL;
 	int		rv = -1;
 
 	if(mmdc->mmvm) /* already done this */
@@ -189,15 +189,15 @@ static int mminit(Mmdisc_t* mmdc)
 	/* get/create the initial segment of data */
 	if(mmdc->proj < 0 ) /* proj < 0 means doing mmap() */
 	{	/* Note that the location being written to is always zero! */
-		if((extent = (ssize_t)lseek(fd, (off_t)0, SEEK_END)) < 0)
+		if((extent = (ssize_t)lseek(fd, 0, SEEK_END)) < 0)
 			goto done;
 		if(extent < size) /* make the file size large enough */
 			if(lseek(fd, (off_t)size, 0) != (off_t)size || write(fd, "", 1) != 1 )
 				goto done;
 
 		/* map the file into memory */
-		mmvm = (Mmvm_t*)mmap(NIL(void*), size, (PROT_READ|PROT_WRITE),
-		 		     MAP_SHARED, fd, (off_t)0 );
+		mmvm = (Mmvm_t*)mmap(NULL, size, (PROT_READ|PROT_WRITE),
+		 		     MAP_SHARED, fd, 0 );
 	}
 	else 
 	{	/* make the key and get/create an ID for the share mem segment */
@@ -207,7 +207,7 @@ static int mminit(Mmdisc_t* mmdc)
 			goto done;
 
 		/* map the data segment into memory */
-		mmvm = (Mmvm_t*)shmat(mmdc->shmid, NIL(void*), 0);
+		mmvm = (Mmvm_t*)shmat(mmdc->shmid, NULL, 0);
 	}
 
 	if(!mmvm || mmvm == (Mmvm_t*)(-1) ) /* initial mapping failed */
@@ -216,7 +216,7 @@ static int mminit(Mmdisc_t* mmdc)
 	/* all processes compete for the chore to initialize data */
 	if(asocasint(&mmvm->magic, 0, MM_LETMEDOIT) == 0 ) /* lucky winner: us! */
 	{	if(!(base = vmmaddress(size)) ) /* get a suitable base for the map */
-			base = (void*)mmvm;
+			base = mmvm;
 		mmdc->flag |= MM_INIT;
 		mmvm->base = base;
 		mmvm->size = size;
@@ -224,9 +224,9 @@ static int mminit(Mmdisc_t* mmdc)
 		mmvm->proj = mmdc->proj;
 		strcpy(mmvm->file, mmdc->file);
 		if(mmdc->proj < 0 ) /* flush to file */
-			msync((void*)mmvm, MMHEAD(mmvm->file), MS_SYNC);
+			msync(mmvm, MMHEAD(mmvm->file), MS_SYNC);
 
-		if(mmvm->base != (void*)mmvm) /* not yet at the right address */
+		if(mmvm->base != mmvm) /* not yet at the right address */
 			if(!(mmvm = mmfix(mmvm, mmdc, fd)) )
 				goto done;
 		rv = 0; /* success, return this value to indicate a new map */
@@ -247,7 +247,7 @@ static int mminit(Mmdisc_t* mmdc)
 		if(mmvm->proj != mmdc->proj || strcmp(mmvm->file, mmdc->file) != 0 )
 			goto done;
 
-		if(mmvm->base != (void*)mmvm) /* not yet at the right address */
+		if(mmvm->base != mmvm) /* not yet at the right address */
 			if(!(mmvm = mmfix(mmvm, mmdc, fd)) )
 				goto done;
 		rv = 1; /* success, return this value to indicate a finished map */
@@ -261,8 +261,8 @@ done:	(void)close(fd);
 	}
 	else if(mmvm && mmvm != (Mmvm_t*)(-1)) /* error, remove map */
 	{	if(mmdc->proj < 0)
-			(void)munmap((void*)mmvm, size);
-		else	(void)shmdt((void*)mmvm);
+			(void)munmap(mmvm, size);
+		else	(void)shmdt(mmvm);
 	}
 
 	return rv;
@@ -297,7 +297,7 @@ static int mmend(Mmdisc_t* mmdc)
 		}
 	}
 
-	mmdc->mmvm = NIL(Mmvm_t*);
+	mmdc->mmvm = NULL;
 	return 0;
 }
 
@@ -308,7 +308,7 @@ static void* mmgetmem(Vmalloc_t* vm, void* caddr,
 	Mmdisc_t	*mmdc = (Mmdisc_t*)disc;
 
 	if(!(mmvm = mmdc->mmvm) ) /* bad data */
-		return NIL(void*);
+		return NULL;
 
 	/* this region allows only a single busy block! */
 	if(caddr) /* resizing/freeing an existing block */
@@ -316,14 +316,14 @@ static void* mmgetmem(Vmalloc_t* vm, void* caddr,
 		{	mmvm->busy = nsize;
 			return MMDATA(mmvm);
 		}
-		else	return NIL(void*);
+		else	return NULL;
 	}
 	else /* requesting a new block */
 	{	if(mmvm->busy == 0 )
 		{	mmvm->busy = nsize;
 			return MMDATA(mmvm);
 		}
-		else	return NIL(void*);
+		else	return NULL;
 	}
 }
 
@@ -356,7 +356,7 @@ static int mmexcept(Vmalloc_t* vm, int type, void* data, Vmdisc_t* disc)
 			asocasint(&mmdc->mmvm->magic, MM_LETMEDOIT, MM_MAGIC);
 
 			if(mmdc->proj < 0) /* sync data to file now */
-				msync((void*)mmdc->mmvm, MMHEAD(mmdc->file), MS_SYNC);
+				msync(mmdc->mmvm, MMHEAD(mmdc->file), MS_SYNC);
 		} /**/ASSERT(mmdc->mmvm->magic == MM_MAGIC);
 		return 0;
 	}
@@ -380,16 +380,16 @@ Vmalloc_t* vmmopen(char*	file,	/* file for key or data backing */
 	GETPAGESIZE(_Vmpagesize);
 
 	if(!file || !file[0] )
-		return NIL(Vmalloc_t*);
+		return NULL;
 
 	/* create discipline structure for getting memory from mmap */
 	if(!(mmdc = vmalloc(Vmheap, sizeof(Mmdisc_t)+strlen(file))) )
-		return NIL(Vmalloc_t*);
+		return NULL;
 	memset(mmdc, 0, sizeof(Mmdisc_t));
 	mmdc->disc.memoryf = mmgetmem;
 	mmdc->disc.exceptf = mmexcept;
 	mmdc->disc.round   = _Vmpagesize; /* round request to this size */
-	mmdc->mmvm = NIL(Mmvm_t*);
+	mmdc->mmvm = NULL;
 	mmdc->size = size;
 	mmdc->shmid = -1;
 	mmdc->flag = 0;
@@ -400,7 +400,7 @@ Vmalloc_t* vmmopen(char*	file,	/* file for key or data backing */
 	if(!(vm = vmopen(&mmdc->disc, Vmbest, VM_SHARE)) )
 	{	(void)mmend(mmdc);
 		(void)vmfree(Vmheap, mmdc);
-		return NIL(Vmalloc_t*);
+		return NULL;
 	}
 	else
 	{	/**/ASSERT(mmdc->mmvm && mmdc->mmvm->magic == MM_MAGIC);
@@ -420,7 +420,7 @@ void* vmmvalue(Vmalloc_t*	vm,	/* a region based on vmmapopen	*/
 
 	/* check to see if operation is well-defined */
 	if(oper != VM_MMGET && oper != VM_MMSET && oper != VM_MMADD)
-		return NIL(void*);
+		return NULL;
 
 	SETLOCK(vm, 0);
 
@@ -431,7 +431,7 @@ void* vmmvalue(Vmalloc_t*	vm,	/* a region based on vmmapopen	*/
 
 	if(!u && (oper == VM_MMSET || oper == VM_MMADD) )
 	{	if((u = KPVALLOC(vm, sizeof(Mmuser_t), vm->meth.allocf)) )
-		{	u->val  = NIL(void*);
+		{	u->val  = NULL;
 			u->key  = key;
 			u->next = mmvm->user;
 			mmvm->user = u;
@@ -445,7 +445,7 @@ void* vmmvalue(Vmalloc_t*	vm,	/* a region based on vmmapopen	*/
 			u->val = (void*)((long)(u->val) + (long)(val));
 		val = u->val;
 	}
-	else	val = NIL(void*);
+	else	val = NULL;
 
 	CLRLOCK(vm, 0);
 
@@ -465,7 +465,7 @@ void vmmrelease(Vmalloc_t* vm, int type)
 void* vmmaddress(size_t size)
 {
 #if !defined(_map_min) || !defined(_map_max) || !defined(_map_dir)
-	return NIL(void*);
+	return NULL;
 #else
 	void			*avail;
 	static Vmuchar_t	*min = (Vmuchar_t*)_map_min;
@@ -475,14 +475,14 @@ void* vmmaddress(size_t size)
 	size = ROUND(size, _Vmpagesize);
 
 	if(_map_dir == 0 || (min+size) > max)
-		avail = NIL(void*);
+		avail = NULL;
 	else if(_map_dir > 0)
-	{	avail = (void*)min;
+	{	avail = min;
 		min += size;
 	}
 	else 
 	{	max -= size;
-		avail = (void*)max;
+		avail = max;
 	}
 
 	return avail;

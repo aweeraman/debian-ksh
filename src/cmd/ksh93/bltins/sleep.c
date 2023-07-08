@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -33,10 +33,10 @@
 #include	"FEATURE/time"
 #include	"FEATURE/poll"
 
-int	b_sleep(register int argc,char *argv[],Shbltin_t *context)
+int	b_sleep(int argc,char *argv[],Shbltin_t *context)
 {
-	register char *cp;
-	register double d=0;
+	char *cp;
+	double d=0;
 	int sflag=0;
 	time_t tloc = 0;
 	char *last;
@@ -124,11 +124,11 @@ skip:
 		if(sflag || tloc==0 || errno!=EINTR || sh.lastsig)
 			break;
 		sh_sigcheck();
-		if(tloc < (now=time(NIL(time_t*))))
+		if(tloc < (now=time(NULL)))
 			break;
 		d = (double)(tloc-now);
 	}
-	return(0);
+	return 0;
 }
 
 /*

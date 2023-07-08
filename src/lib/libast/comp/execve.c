@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -44,11 +44,11 @@ execve(const char* path, char* const argv[], char* const arge[])
 	int	status;
 
 	if ((childpid = spawnve(path, argv, arge)) < 0)
-		return(-1);
+		return -1;
 	for (status = 0; status < 64; status++)
 		signal(status, execsig);
 	while (waitpid(childpid, &status, 0) == -1)
-		if (errno != EINTR) return(-1);
+		if (errno != EINTR) return -1;
 	if (WIFSIGNALED(status))
 	{
 		signal(WTERMSIG(status), SIG_DFL);

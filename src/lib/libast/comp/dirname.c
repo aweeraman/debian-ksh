@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -22,9 +22,9 @@
 
 #include <ast_std.h>
 
-extern char *dirname(register char *pathname)
+extern char *dirname(char *pathname)
 {
-	register char  *last;
+	char  *last;
 	/* go to end of path */
 	for(last=pathname; *last; last++);
 	/* back over trailing '/' */
@@ -49,5 +49,5 @@ extern char *dirname(register char *pathname)
 			last++;
 	}
 	*(last + 1) = 0;
-	return(pathname);
+	return pathname;
 }

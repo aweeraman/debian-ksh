@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -63,7 +63,7 @@ _ast_getopt(int argc, char* const* argv, const char* optstring)
 		{
 			if (!error_info.id)
 				error_info.id = argv[0];
-			errormsg(NiL, 2, opt_info.arg);
+			errormsg(NULL, 2, opt_info.arg);
 		}
 		optopt = opt_info.option[1];
 		break;

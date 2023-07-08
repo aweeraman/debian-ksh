@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -75,7 +75,7 @@ static const char usage[] =
 #   ifdef NCC
 #	define NCCS	NCC
 #   else
-#	define NCCS	elementsof(((struct termio*)0)->c_cc)
+#	define NCCS	elementsof((NULL)->c_cc)
 #   endif
 #endif
 
@@ -357,9 +357,9 @@ static const Tty_t Ttable[] =
 #define cntl(x)		(((x)=='?')?ccmapc(0177,CC_ASCII,CC_NATIVE):ccmapc(ccmapc(x,CC_NATIVE,CC_ASCII)&037,CC_ASCII,CC_NATIVE))
 #endif
 
-static void sane(register struct termios *sp)
+static void sane(struct termios *sp)
 {
-	register const Tty_t*	tp;
+	const Tty_t*	tp;
 
 	for (tp = Ttable; tp < &Ttable[elementsof(Ttable)]; tp++)
 		if (tp->flags & (SS|US))
@@ -403,49 +403,49 @@ static void sane(register struct termios *sp)
 
 static int gin(char *arg,struct termios *sp)
 {
-	register int i;
+	int i;
 	if(*arg++ != ':')
-		return(0);
+		return 0;
 	sp->c_iflag = strtol(arg,&arg,16);
 	if(*arg++ != ':')
-		return(0);
+		return 0;
 	sp->c_oflag = strtol(arg,&arg,16);
 	if(*arg++ != ':')
-		return(0);
+		return 0;
 	sp->c_cflag = strtol(arg,&arg,16);
 	if(*arg++ != ':')
-		return(0);
+		return 0;
 	sp->c_lflag = strtol(arg,&arg,16);
 	if(*arg++ != ':')
-		return(0);
+		return 0;
 	for(i=0;i< NCCS; i++)
 	{
 		sp->c_cc[i] = strtol(arg,&arg,16);
 		if(*arg++ != ':')
-			return(0);
+			return 0;
 	}
 #if _mem_c_line_termios
 	sp->c_line =
 #endif
 		strtol(arg,&arg,16);
 	if(*arg++ != ':')
-		return(0);
+		return 0;
 	i = strtol(arg,&arg,16);
 	if(*arg++ != ':')
-		return(0);
+		return 0;
 	cfsetispeed(sp, i);
 	i = strtol(arg,&arg,16);
 	if(*arg++ != ':')
-		return(0);
+		return 0;
 	cfsetospeed(sp, i);
 	if(*arg)
-		return(0);
-	return(1);
+		return 0;
+	return 1;
 }
 
 static void gout(struct termios *sp)
 {
-	register int i;
+	int i;
 	sfprintf(sfstdout,":%x",sp->c_iflag);
 	sfprintf(sfstdout,":%x",sp->c_oflag);
 	sfprintf(sfstdout,":%x",sp->c_cflag);
@@ -466,8 +466,8 @@ static void output(struct termios *sp, int flags)
 {
 	const Tty_t *tp;
 	struct termios tty;
-	register int delim = ' ';
-	register int i,off,off2;
+	int delim = ' ';
+	int i,off,off2;
 	char schar[2];
 	unsigned int ispeed = cfgetispeed(sp);
 	unsigned int ospeed = cfgetospeed(sp);
@@ -587,51 +587,51 @@ static void output(struct termios *sp, int flags)
 
 static const Tty_t *lookup(const char *name)
 {
-	register int i;
+	int i;
 	for(i=0; i < elementsof(Ttable); i++)
 	{
 		if(strcmp(Ttable[i].name,name)==0)
-			return(&Ttable[i]);
+			return &Ttable[i];
 	}
-	return(0);
+	return NULL;
 }
 
 static const Tty_t *getspeed(unsigned long val)
 {
-	register int i;
+	int i;
 	for(i=0; i < elementsof(Ttable); i++)
 	{
 		if(Ttable[i].type==SPEED && Ttable[i].mask==val)
-			return(&Ttable[i]);
+			return &Ttable[i];
 	}
-	return(0);
+	return NULL;
 }
 
-static int gettchar(register const char *cp)
+static int gettchar(const char *cp)
 {
 	if(*cp==0)
-		return(-1);
+		return -1;
 	if(cp[1]==0)
-		return((unsigned)cp[0]);
+		return (unsigned)cp[0];
 	if(*cp=='^' && cp[1] && cp[2]==0)
 	{
 		switch(cp[1])
 		{
 		    case '-':
-			return(-1);
+			return -1;
 		    default:
-			return(cntl(cp[1]));
+			return cntl(cp[1]);
 		}
 	}
 	if(streq(cp,"undef") || streq(cp,"<undef>"))
-		return(-1);
-	return(*((unsigned char*)cp));
+		return -1;
+	return *((unsigned char*)cp);
 }
 
 static void set(char *argv[], struct termios *sp)
 {
 	const Tty_t *tp;
-	register int c,off;
+	int c,off;
 	char *cp;
 	char *ep;
 	while(cp = *argv++)
@@ -925,7 +925,7 @@ static int infof(Opt_t* op, Sfio_t* sp, const char* s, Optdisc_t* dp)
 	listmode(sp,"tabs");
 	listmode(sp,"LCASE");
 	sfputc(sp,'}');
-	return(1);
+	return 1;
 }
 
 #ifndef _lib_tcgetpgrp
@@ -941,8 +941,8 @@ int
 b_stty(int argc, char** argv, Shbltin_t* context)
 {
 	struct termios		tty;
-	register int		n;
-	register int		flags = 0;
+	int			n;
+	int			flags = 0;
 	int			fd = 0;
 	const Tty_t*		tp;
 	Optdisc_t		disc;
@@ -997,7 +997,7 @@ b_stty(int argc, char** argv, Shbltin_t* context)
 	argv += opt_info.index;
 	if (error_info.errors || (flags && *argv) || (flags&(flags-1)))
 	{
-		error(ERROR_usage(2), "%s", optusage(NiL));
+		error(ERROR_usage(2), "%s", optusage(NULL));
 		UNREACHABLE();
 	}
 	if (tcgetattr(fd, &tty) < 0)

@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -32,15 +32,15 @@ int vmclear(Vmalloc_t* vm)
 
 	SETLOCK(vm, 0);
 
-	vd->free = vd->wild = NIL(Block_t*);
+	vd->free = vd->wild = NULL;
 	vd->pool = 0;
 
 	if(vd->mode&(VM_MTBEST|VM_MTDEBUG|VM_MTPROFILE) )
-	{	vd->root = NIL(Block_t*);
+	{	vd->root = NULL;
 		for(s = 0; s < S_TINY; ++s)
-			TINY(vd)[s] = NIL(Block_t*);
+			TINY(vd)[s] = NULL;
 		for(s = 0; s <= S_CACHE; ++s)
-			CACHE(vd)[s] = NIL(Block_t*);
+			CACHE(vd)[s] = NULL;
 	}
 
 	for(seg = vd->seg; seg; seg = next)

@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -31,17 +31,17 @@
 Sfoff_t sfmove(Sfio_t*	fr,	/* moving data from this stream */
 	       Sfio_t*	fw,	/* moving data to this stream */
                Sfoff_t	n,	/* number of bytes/records to move. <0 for unbounded move */
-	       reg int	rc)	/* record separator */
+	       int	rc)	/* record separator */
 {
-	reg uchar	*cp, *next;
-	reg ssize_t	r, w;
-	reg uchar	*endb;
-	reg int		direct;
+	uchar		*cp, *next;
+	ssize_t		r, w;
+	uchar		*endb;
+	int		direct;
 	Sfoff_t		n_move, sk, cur;
-	uchar		*rbuf = NIL(uchar*);
+	uchar		*rbuf = NULL;
 	ssize_t		rsize = 0;
 
-	if(!(fr)) return (Sfoff_t)0;
+	if(!(fr)) return 0;
 
 	for(n_move = 0; n != 0; )
 	{
@@ -83,7 +83,7 @@ Sfoff_t sfmove(Sfio_t*	fr,	/* moving data from this stream */
 				if(SFFLSBUF(fw,-1) < 0 )
 					break;
 		}
-		else if((cur = SFSEEK(fr, (Sfoff_t)0, SEEK_CUR)) >= 0 )
+		else if((cur = SFSEEK(fr, 0, SEEK_CUR)) >= 0 )
 		{	sk = n > 0 ? SFSEEK(fr, n, SEEK_CUR) : SFSEEK(fr, 0, SEEK_END);
 			if(sk > cur) /* safe to skip over data in current stream */
 			{	n_move += sk - cur;
@@ -121,7 +121,7 @@ Sfoff_t sfmove(Sfio_t*	fr,	/* moving data from this stream */
 			*/
 			if(!(fr->flags&SF_STRING) && !(fr->bits&SF_MMAP) &&
 			   (n < 0 || fr->extent >= 0) )
-			{	reg ssize_t maxw = 4*(_Sfpage > 0 ? _Sfpage : SF_PAGE);
+			{	ssize_t maxw = 4*(_Sfpage > 0 ? _Sfpage : SF_PAGE);
 
 				/* direct transfer to a seekable write stream */
 				if(fw && fw->extent >= 0 && w <= (fw->endb-fw->next) )
@@ -183,7 +183,7 @@ Sfoff_t sfmove(Sfio_t*	fr,	/* moving data from this stream */
 		{	/* move leftover to read stream */
 			if(w > fr->size)
 				w = fr->size;
-			memmove((void*)fr->data,(void*)cp,w);
+			memmove(fr->data,cp,w);
 			fr->endb = fr->data+w;
 			if((w = endb - (cp+w)) > 0)
 				(void)SFSK(fr,(Sfoff_t)(-w),SEEK_CUR,fr->disc);
@@ -193,10 +193,10 @@ Sfoff_t sfmove(Sfio_t*	fr,	/* moving data from this stream */
 		{	if(direct == SF_WRITE)
 				fw->next += r;
 			else if(r <= (fw->endb-fw->next) )
-			{	memmove((void*)fw->next,(void*)next,r);
+			{	memmove(fw->next,next,r);
 				fw->next += r;
 			}
-			else if((w = SFWRITE(fw,(void*)next,r)) != r)
+			else if((w = SFWRITE(fw,next,r)) != r)
 			{	/* a write error happened */
 				if(w > 0)
 				{	r -= w;

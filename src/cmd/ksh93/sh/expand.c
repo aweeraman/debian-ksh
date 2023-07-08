@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -13,6 +13,7 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                  Martijn Dekker <martijn@inlv.org>                   *
 *            Johnothan King <johnothanking@protonmail.com>             *
+*               K. Eugene Carlson <kvngncrlsn@gmail.com>               *
 *                                                                      *
 ***********************************************************************/
 /*
@@ -29,7 +30,6 @@
 #include	"test.h"
 #include	<glob.h>
 #include	<ls.h>
-#include	<stak.h>
 #include	<ast_dir.h>
 #include	"io.h"
 #include	"path.h"
@@ -42,7 +42,6 @@ static	int		scantree(Dt_t*,const char*, struct argnod**);
 
 /*
  * This routine builds a list of files that match a given pathname
- * Uses external routine strgrpmatch() to match each component
  * A leading . must match explicitly
  */
 
@@ -57,18 +56,18 @@ static char *nextdir(glob_t *gp, char *dir)
 		pp = path_get(Empty);
 	else
 		pp = pp->next;
-	gp->gl_handle = (void*)pp;
+	gp->gl_handle = pp;
 	if(pp)
-		return(pp->name);
-	return(0);
+		return pp->name;
+	return NULL;
 }
 
-int path_expand(const char *pattern, struct argnod **arghead)
+int path_expand(const char *pattern, struct argnod **arghead, int musttrim)
 {
 	glob_t gdata;
-	register struct argnod *ap;
-	register glob_t *gp= &gdata;
-	register int flags,extra=0;
+	struct argnod *ap;
+	glob_t *gp= &gdata;
+	int flags,extra=0;
 	sh_stats(STAT_GLOBS);
 	memset(gp,0,sizeof(gdata));
 	flags = GLOB_GROUP|GLOB_AUGMENTED|GLOB_NOCHECK|GLOB_NOSORT|GLOB_STACK|GLOB_LIST|GLOB_DISC;
@@ -95,9 +94,34 @@ int path_expand(const char *pattern, struct argnod **arghead)
 		gp->gl_suffix = sufstr;
 	gp->gl_intr = &sh.trapnote;
 	suflen = 0;
-	if(strncmp(pattern,"~(N",3)==0)
-		flags &= ~GLOB_NOCHECK;
-	glob(pattern, flags, 0, gp);
+	/*
+	 * If we expanded an unquoted variable/comsub containing a pattern, that pattern
+	 * will have shell-special characters backslash-escaped for correct expansion of
+	 * the value. However, the pattern must be trimmed of those escapes before
+	 * resolving it, while keeping the escapes if the pattern doesn't resolve.
+	 */
+	if(musttrim)
+	{
+		char *trimmedpat;
+		sfputr(sh.strbuf,pattern,-1);
+		trimmedpat = sfstruse(sh.strbuf);
+		sh_trim(trimmedpat);
+		glob(trimmedpat,flags,0,gp);
+		/*
+		 * If there is only one result and it is identical to the trimmed pattern, then the pattern didn't
+		 * resolve, and we now need to replace it with the untrimmed pattern to avoid regressions with the
+		 * expansion of unquoted variables. (Note: globlist_t (glob.h) is binary compatible with struct
+		 * argnod (argnod.h); thus, gl_path and argval have the same offset (ARGVAL) in the struct.)
+		 */
+		if((ap = (struct argnod*)gp->gl_list) && !ap->argnxt.ap && strcmp(ap->argval,trimmedpat)==0)
+		{
+			gp->gl_list = (globlist_t*)stkalloc(sh.stk,ARGVAL+strlen(pattern)+1);
+			memcpy(gp->gl_list,ap,ARGVAL);  /* copy fields *before* argval/gl_path */
+			strcpy(gp->gl_list->gl_path,pattern);
+		}
+	}
+	else
+		glob(pattern,flags,0,gp);
 	sh_sigcheck();
 	for(ap= (struct argnod*)gp->gl_list; ap; ap = ap->argnxt.ap)
 	{
@@ -107,7 +131,7 @@ int path_expand(const char *pattern, struct argnod **arghead)
 	}
 	if(gp->gl_list)
 		*arghead = (struct argnod*)gp->gl_list;
-	return(gp->gl_pathc+extra);
+	return gp->gl_pathc+extra;
 }
 
 /*
@@ -115,26 +139,27 @@ int path_expand(const char *pattern, struct argnod **arghead)
  */
 static int scantree(Dt_t *tree, const char *pattern, struct argnod **arghead)
 {
-	register Namval_t *np;
-	register struct argnod *ap;
-	register int nmatch=0;
-	register char *cp;
-	np = (Namval_t*)dtfirst(tree);
-	for(;np && !nv_isnull(np);(np = (Namval_t*)dtnext(tree,np)))
+	Namval_t *np;
+	struct argnod *ap;
+	int nmatch=0;
+	char *cp;
+	for(np=(Namval_t*)dtfirst(tree); np; np=(Namval_t*)dtnext(tree,np))
 	{
+		if(nv_isnull(np))
+			continue;
 		if(strmatch(cp=nv_name(np),pattern))
 		{
-			(void)stakseek(ARGVAL);
-			stakputs(cp);
-			ap = (struct argnod*)stakfreeze(1);
-			ap->argbegin = NIL(char*);
+			(void)stkseek(sh.stk,ARGVAL);
+			sfputr(sh.stk,cp,-1);
+			ap = (struct argnod*)stkfreeze(sh.stk,1);
+			ap->argbegin = NULL;
 			ap->argchn.ap = *arghead;
 			ap->argflag = ARG_RAW|ARG_MAKE;
 			*arghead = ap;
 			nmatch++;
 		}
 	}
-	return(nmatch);
+	return nmatch;
 }
 
 /*
@@ -142,11 +167,11 @@ static int scantree(Dt_t *tree, const char *pattern, struct argnod **arghead)
  * generate the list of files found by adding an suffix to end of name
  * The number of matches is returned
  */
-int path_complete(const char *name,register const char *suffix, struct argnod **arghead)
+int path_complete(const char *name,const char *suffix, struct argnod **arghead)
 {
 	sufstr = suffix;
 	suflen = strlen(suffix);
-	return(path_expand(name,arghead));
+	return path_expand(name,arghead,0);
 }
 
 #if SHOPT_BRACEPAT
@@ -156,15 +181,67 @@ static int checkfmt(Sfio_t* sp, void* vp, Sffmt_t* fp)
 	return -1;
 }
 
-int path_generate(struct argnod *todo, struct argnod **arghead)
+/*
+ * Return 1 if ~(...) pattern options indicate a pattern type that is
+ * syntactically incompatible with brace expansion because it uses braces
+ * for its own purposes (e.g., bounds in regular expressions).
+ * Return 0 if not.
+ * Return -1 if pat is not a ~(...) pattern or no relevant options are given.
+ * Do the minimum parsing of the option syntax necessary to determine this.
+ *
+ * NOTE: cp is expected to point to the character *after* the '~'.
+ */
+static int must_disallow_bracepat(char *cp, int withbackslash)
+{
+	int32_t incompat = 0;
+	char change = 0, shellpat = 0, minus = 0, c;
+	if ((withbackslash && *cp++ != '\\') || *cp++ != '(')
+		return -1;
+	while ((c = *cp++) && c != ':' && c != ')') switch (c)
+	{
+		case 'A':  /* augmented regular expression (AST) */
+		case 'B':  /* basic regular expression */
+		case 'E':  /* extended regular expression */
+		case 'F':  /* fixed pattern */
+		case 'G':  /* basic regular expression */
+		case 'L':  /* fixed pattern */
+		case 'P':  /* Perl regular expression */
+		case 'V':  /* System V regular expression */
+		case 'X':  /* augmented regular expression (AST) */
+			if (!minus)
+			{
+				incompat |= 1 << c - 'A';
+				shellpat = 0;
+			}
+			else
+				incompat &= ~(1 << c - 'A');
+			change = 1;
+			break;
+		case 'K':  /* ksh glob pattern */
+		case 'S':  /* sh glob pattern */
+			shellpat = !minus;
+			change = 1;
+			break;
+		case '-':  /* disable the following options */
+			minus = 1;
+			break;
+		case '+':  /* enable the following options */
+			minus = 0;
+			break;
+	}
+	return change ? (c && incompat && !shellpat) : -1;
+}
+
+int path_generate(struct argnod *todo, struct argnod **arghead, int musttrim)
 /*@
 	assume todo!=0;
 	return count satisfying count>=1;
 @*/
 {
-	register char *cp;
-	register int brace;
-	register struct argnod *ap;
+	char *cp;
+	int brace;
+	int nobracepat = 0;
+	struct argnod *ap;
 	struct argnod *top = 0;
 	struct argnod *apin;
 	char *pat, *rescan;
@@ -182,11 +259,11 @@ again:
 	while(1) switch(*cp++)
 	{
 		case '{':
-			if(brace++==0)
+			if(!nobracepat && brace++==0)
 				pat = cp;
 			break;
 		case '}':
-			if(--brace>0)
+			if(!nobracepat && --brace>0)
 				break;
 			if(brace==0 && comma && *cp!='(')
 				goto endloop1;
@@ -272,6 +349,14 @@ again:
 		case '\\':
 			cp++;
 			break;
+		case '~':
+			if(!brace)
+			{
+				int r = must_disallow_bracepat(cp,musttrim);
+				if(r>=0)
+					nobracepat = r;
+			}
+			break;
 		case 0:
 			/* insert on stack */
 			ap->argchn.ap = top;
@@ -282,7 +367,7 @@ again:
 			{
 				apin = ap->argchn.ap;
 				if(!sh_isoption(SH_NOGLOB) || sh_isstate(SH_COMPLETE) || sh_isstate(SH_FCOMPLETE))
-					brace=path_expand(ap->argval,arghead);
+					brace = path_expand(ap->argval,arghead,musttrim);
 				else
 				{
 					ap->argchn.ap = *arghead;
@@ -295,7 +380,7 @@ again:
 					(*arghead)->argflag |= ARG_MAKE;
 				}
 			}
-			return(count);
+			return count;
 	}
 endloop1:
 	rescan = cp;
@@ -344,13 +429,13 @@ endloop1:
 		brace = *cp;
 		*cp = 0;
 		sh_sigcheck();
-		ap = (struct argnod*)stakseek(ARGVAL);
+		ap = (struct argnod*)stkseek(sh.stk,ARGVAL);
 		ap->argflag = ARG_RAW;
 		ap->argchn.ap = todo;
-		stakputs(apin->argval);
-		stakputs(pat);
-		stakputs(rescan);
-		todo = ap = (struct argnod*)stakfreeze(1);
+		sfputr(sh.stk,apin->argval,-1);
+		sfputr(sh.stk,pat,-1);
+		sfputr(sh.stk,rescan,-1);
+		todo = ap = (struct argnod*)stkfreeze(sh.stk,1);
 		if(brace == '}')
 			break;
 		if(!range)

@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -32,7 +32,6 @@
 
 #include <ast.h>
 #include <ctype.h>
-#include <preroot.h>
 #include <ls.h>
 
 char*
@@ -48,19 +47,19 @@ pathkey(char* key, char* attr, const char* lang, const char* tool, const char* p
 char*
 pathkey_20100601(const char* lang, const char* tool, const char* apath, char* key, size_t keysize, char* attr, size_t attrsize)
 {
-	register char*		path = (char*)apath;
-	register char*		s;
-	register char*		k;
-	char*			t;
-	char*			flags;
-	char**			p;
-	int			c;
-	unsigned long		n;
-	char			buf[15];
-	char*			usr[16];
-	char*			env[elementsof(usr) + 3];
-	char*			ver[2];
-	char			tmp[PATH_MAX];
+	char*		path = (char*)apath;
+	char*		s;
+	char*		k;
+	char*		t;
+	char*		flags;
+	char**		p;
+	int		c;
+	unsigned long	n;
+	char		buf[15];
+	char*		usr[16];
+	char*		env[elementsof(usr) + 3];
+	char*		ver[2];
+	char		tmp[PATH_MAX];
 
 	static char		let[] = "ABCDEFGHIJKLMNOP";
 
@@ -103,23 +102,12 @@ pathkey_20100601(const char* lang, const char* tool, const char* apath, char* ke
 
 		if (attr)
 			attr = strcopy(attr, "PREROOT='");
-#if FS_PREROOT
-		if (k = getenv(PR_BASE))
-		{
-			if (s = strrchr(k, '/'))
-				k = s + 1;
-			n = memsum(k, strlen(k), n);
-		}
-		if (attr && (getpreroot(attr, path) || getpreroot(attr, NiL)))
-			attr += strlen(attr);
-#else
 		if ((k = getenv("VIRTUAL_ROOT")) && *k == '/')
 		{
 			n = memsum(k, strlen(k), n);
 			if (attr)
 				attr = strcopy(attr, k);
 		}
-#endif
 
 		/*
 		 * universe
@@ -127,7 +115,7 @@ pathkey_20100601(const char* lang, const char* tool, const char* apath, char* ke
 
 		if (attr)
 			attr = strcopy(attr, "' UNIVERSE='");
-		if (k = astconf("UNIVERSE", NiL, NiL))
+		if (k = astconf("UNIVERSE", NULL, NULL))
 		{
 			n = memsum(k, strlen(k), n);
 			if (attr)

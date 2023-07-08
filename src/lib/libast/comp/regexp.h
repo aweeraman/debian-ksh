@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -66,9 +66,9 @@ extern char*	_re_read(regexp_t*, const char*, char*, const char*, int);
 regexp_t	_re_info;
 
 char*
-_re_read(register regexp_t* re, const char* instring, char* ep, const char* endbuf, int seof)
+_re_read(regexp_t* re, const char* instring, char* ep, const char* endbuf, int seof)
 {
-	register int		c;
+	int		c;
 
 	static const char*	prev;
 

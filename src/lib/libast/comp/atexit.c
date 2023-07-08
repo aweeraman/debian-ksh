@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -38,7 +38,7 @@ extern int		onexit(void(*)(void));
 int
 atexit(void (*func)(void))
 {
-	return(onexit(func));
+	return onexit(func);
 }
 
 #else
@@ -56,19 +56,19 @@ extern void		_exit(int);
 int
 atexit(void (*func)(void))
 {
-	register struct list*	p;
+	struct list*	p;
 
-	if (!(p = newof(0, struct list, 1, 0))) return(-1);
+	if (!(p = newof(0, struct list, 1, 0))) return -1;
 	p->func = func;
 	p->next = funclist;
 	funclist = p;
-	return(0);
+	return 0;
 }
 
 void
 _ast_atexit(void)
 {
-	register struct list*	p;
+	struct list*	p;
 
 	while (p = funclist)
 	{

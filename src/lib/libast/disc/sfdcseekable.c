@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -57,7 +57,7 @@ static ssize_t skread(Sfio_t*	f,	/* stream involved */
 	if(sk->eof)
 		return sfread(sf,buf,n);
 
-	addr = sfseek(sf,(Sfoff_t)0,SEEK_CUR);
+	addr = sfseek(sf,0,SEEK_CUR);
 
 	if(addr+n <= sk->extent)
 		return sfread(sf,buf,n);
@@ -156,7 +156,7 @@ static int skexcept(Sfio_t* f, int type, void* data, Sfdisc_t* disc)
 		sk->eof = 0;
 		sk->discard += sk->extent;
 		sk->extent = 0;
-		sfseek(sk->shadow,(Sfoff_t)0,SEEK_SET);
+		sfseek(sk->shadow,0,SEEK_SET);
 		break;
 	}
 	return 0;
@@ -164,10 +164,10 @@ static int skexcept(Sfio_t* f, int type, void* data, Sfdisc_t* disc)
 
 int sfdcseekable(Sfio_t* f)
 {
-	reg Seek_t*	sk;
+	Seek_t*	sk;
 
 	/* see if already seekable */
-	if(sfseek(f,(Sfoff_t)0,SEEK_CUR) >= 0)
+	if(sfseek(f,0,SEEK_CUR) >= 0)
 		return 0;
 
 	if(!(sk = (Seek_t*)malloc(sizeof(Seek_t))) )

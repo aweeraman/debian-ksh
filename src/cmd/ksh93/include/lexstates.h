@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -46,7 +46,6 @@
 #define S_ENDCH	28	/* macro expansion terminator */
 #define S_SLASH	29	/* / character terminates ~ expansion */
 #define S_COLON	30	/* for character : */
-#define S_LABEL	31	/* for goto label */
 #define S_EDOL	32	/* ends $identifier */
 #define S_BRACE	33	/* left brace */
 #define S_DOT	34	/* . char */
@@ -130,7 +129,6 @@ extern const char *sh_lexrstates[ST_NONE];
 extern const char e_lexversion[];
 extern const char e_lexspace[];
 extern const char e_lexslash[];
-extern const char e_lexlabignore[];
 extern const char e_lexlabunknown[];
 extern const char e_lexsyntax1[];
 extern const char e_lexsyntax2[];
@@ -145,7 +143,6 @@ extern const char e_lexobsolete3[];
 extern const char e_lexobsolete4[];
 extern const char e_lexobsolete5[];
 extern const char e_lexobsolete6[];
-extern const char e_lexnonstandard[];
 extern const char e_lexusebrace[];
 extern const char e_lexusequote[];
 extern const char e_lexescape[];

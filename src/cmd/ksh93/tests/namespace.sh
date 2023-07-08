@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2023 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 2.0                  #
 #                                                                      #
@@ -180,6 +180,58 @@ else
 	done
 	unset exp
 fi
+
+# ======
+# Test 'unset -f' in subshell in namespace
+# https://github.com/ksh93/ksh/issues/648
+# NOTE: for ast commands, '--version' is expected to exit with status 2
+exp='^  version         [[:alpha:]]{2,} (.*) ....-..-..$'
+for b in cd disown fg getopts printf pwd read ulimit umask whence
+do
+	got=$(
+		namespace ns
+		{
+			eval "$b() { echo BAD; }"
+			(unset -f "$b"; PATH=/dev/null; "$b" --version 2>&1)
+			exit	# avoid optimizing out the subshell
+		}
+	)
+	[[ e=$? -eq 2 && $got =~ $exp ]] || err_exit "'unset -f $b' fails in subshell (1a)" \
+		"(expected status 2 and ERE match of $(printf %q "$exp"), got status $e and $(printf %q "$got"))"
+
+	namespace ns
+	{
+		got=$(
+			eval "$b() { echo BAD; }"
+			(unset -f "$b"; PATH=/dev/null; "$b" --version 2>&1)
+			exit	# avoid optimizing out the subshell
+		)
+	}
+	[[ e=$? -eq 2 && $got =~ $exp ]] || err_exit "'unset -f $b' fails in subshell (1b)" \
+		"(expected status 2 and ERE match of $(printf %q "$exp"), got status $e and $(printf %q "$got"))"
+
+	got=$(
+		namespace ns
+		{
+			eval "$b() { echo BAD; }"
+			(unset -f .ns."$b"; PATH=/dev/null; .ns."$b" 2>/dev/null || { let "$?==127" && "$b" --version 2>&1; })
+			exit	# avoid optimizing out the subshell
+		}
+	)
+	[[ e=$? -eq 2 && $got =~ $exp ]] || err_exit "'unset -f .ns.$b' fails in subshell (2a)" \
+		"(expected status 2 and ERE match of $(printf %q "$exp"), got status $e and $(printf %q "$got"))"
+
+	namespace ns
+	{
+		got=$(
+			eval "$b() { echo BAD; }"
+			(unset -f .ns."$b"; PATH=/dev/null; .ns."$b" 2>/dev/null || { let "$?==127" && "$b" --version 2>&1; })
+			exit	# avoid optimizing out the subshell
+		)
+	}
+	[[ e=$? -eq 2 && $got =~ $exp ]] || err_exit "'unset -f .ns.$b' fails in subshell (2b)" \
+		"(expected status 2 and ERE match of $(printf %q "$exp"), got status $e and $(printf %q "$got"))"
+done
 
 # ======
 exit $((Errors<125?Errors:125))

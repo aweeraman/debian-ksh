@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2023 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 2.0                  #
 #                                                                      #
@@ -420,6 +420,39 @@ unset LANG "${!LC_@}"
 (LC_NUMERIC=C  && LC_ALL=C_EU && let ,5) || err_exit "radix point not updated by LC_ALL"
 (LC_ALL=C_EU && unset LC_ALL && LANG=C && let .5) || err_exit "radix point not updated by LANG"
 (LC_ALL=C && unset LC_ALL && LANG=C_EU && let ,5) || err_exit "radix point not updated by LANG"
+
+# ======
+# Segmentation fault or quiet failure when using $"..."
+# https://github.com/ksh93/ksh/issues/599
+# Test based on reproducer by Koichi Nakashima (@ko1nksm), license: https://creativecommons.org/publicdomain/zero/1.0/
+if	((SHOPT_MULTIBYTE))
+then	unset LANG "${!LC_@}" i
+	for locale in "${locales[@]}"
+	do	[[ $locale =~ ^ja_JP.*[Uu][Tt][Ff]-?8$ ]] && export LANG=$locale && break
+	done
+	if	! [[ -v LANG ]] || ! whence -qp gencat
+	then	warning "ja_JP locale or gencat not available - skipping issue 599 test"
+	else	orig='Hello World!'
+		exp='こんにちは世界！'
+		catalogname=ksh93-i18n
+		mkdir -p locale/C locale/$LANG
+		printf '$quote "\n$set 3 This is the C locale message set\n1 "%s"\n' "$orig" > locale/C/$catalogname.msg
+		printf '$quote "\n$set 3 This is the ja locale message set\n1 "%s"\n' "$exp" > locale/$LANG/$catalogname.msg
+		for i in C "$LANG"
+		do	gencat "locale/$i/$catalogname.cat" "locale/$i/$catalogname.msg"
+		done
+		# be crash-proof: fork the subshell with ulimit
+		got=$(set +x; ulimit -t unlimited 2>/dev/null; {
+			# %L matches full locale name, e.g. ja_JP.UTF-8 (whereas lowercase %l matches language name, e.g. ja)
+			# (Also good to know: %N matches $(basename $0) -- note $0 changes when calling a ksh function)
+			export NLSPATH=locale/%L/$catalogname.cat
+			eval "echo \$\"$orig\""
+		} 2>&1)
+		[[ e=$? -eq 0 && $got == "$exp" ]] || err_exit '$"..." fails' \
+			"(expected status 0, '$exp';" \
+			"got status $e$( ((e>128)) && print -n /SIG && kill -l "$e"), $(printf %q "$got"))"
+	fi
+fi
 
 # ======
 exit $((Errors<125?Errors:125))

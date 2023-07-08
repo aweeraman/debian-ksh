@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -105,7 +105,7 @@ b_mktemp(int argc, char** argv, Shbltin_t* context)
 			fdp = 0;
 			continue;
 		case 'R':
-			if (!pathtemp(NiL, 0, opt_info.arg, "/seed", NiL))
+			if (!pathtemp(NULL, 0, opt_info.arg, "/seed", NULL))
 				error(2, "%s: regression test initialization failed", opt_info.arg);
 			continue;
 		case ':':
@@ -120,7 +120,7 @@ b_mktemp(int argc, char** argv, Shbltin_t* context)
 	argv += opt_info.index;
 	if (error_info.errors || (pfx = *argv++) && *argv)
 	{
-		error(ERROR_usage(2), "%s", optusage(NiL));
+		error(ERROR_usage(2), "%s", optusage(NULL));
 		UNREACHABLE();
 	}
 	mask = umask(0);

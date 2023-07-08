@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2013 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -96,10 +96,10 @@ typedef struct State_s			/* program state		*/
  */
 
 static int
-rm(State_t* state, register FTSENT* ent)
+rm(State_t* state, FTSENT* ent)
 {
-	register char*	path;
-	register int	n;
+	char*		path;
+	int		n;
 	int		v;
 	struct stat	st;
 
@@ -118,7 +118,7 @@ rm(State_t* state, register FTSENT* ent)
 				break;
 			if (!chmod(ent->fts_name, (ent->fts_statp->st_mode & S_IPERM)|S_IRWXU))
 			{
-				fts_set(NiL, ent, FTS_AGAIN);
+				fts_set(NULL, ent, FTS_AGAIN);
 				break;
 			}
 			error_info.errors++;
@@ -127,7 +127,7 @@ rm(State_t* state, register FTSENT* ent)
 			error(2, "%s: cannot %s directory", ent->fts_path, (ent->fts_info & FTS_NR) ? "read" : "search");
 		else
 			error_info.errors++;
-		fts_set(NiL, ent, FTS_SKIP);
+		fts_set(NULL, ent, FTS_SKIP);
 		nonempty(ent);
 		break;
 	case FTS_D:
@@ -135,7 +135,7 @@ rm(State_t* state, register FTSENT* ent)
 		path = ent->fts_name;
 		if (path[0] == '.' && (!path[1] || path[1] == '.' && !path[2]) && (ent->fts_level > 0 || path[1]))
 		{
-			fts_set(NiL, ent, FTS_SKIP);
+			fts_set(NULL, ent, FTS_SKIP);
 			if (!state->force)
 				error(2, "%s: cannot remove", ent->fts_path);
 			else
@@ -144,7 +144,7 @@ rm(State_t* state, register FTSENT* ent)
 		}
 		if (!state->recursive)
 		{
-			fts_set(NiL, ent, FTS_SKIP);
+			fts_set(NULL, ent, FTS_SKIP);
 			if (!state->directory)
 			{
 				error(2, "%s: directory", ent->fts_path);
@@ -169,7 +169,7 @@ rm(State_t* state, register FTSENT* ent)
 					*s = '/';
 				}
 				if (v)
-					v = st.st_nlink <= 2 || st.st_ino == ent->fts_parent->fts_statp->st_ino && st.st_dev == ent->fts_parent->fts_statp->st_dev || strchr(astconf("PATH_ATTRIBUTES", path, NiL), 'l');
+					v = st.st_nlink <= 2 || st.st_ino == ent->fts_parent->fts_statp->st_ino && st.st_dev == ent->fts_parent->fts_statp->st_dev || strchr(astconf("PATH_ATTRIBUTES", path, NULL), 'l');
 			}
 			else
 				v = 1;
@@ -181,7 +181,7 @@ rm(State_t* state, register FTSENT* ent)
 						return -1;
 					if (v > 0)
 					{
-						fts_set(NiL, ent, FTS_SKIP);
+						fts_set(NULL, ent, FTS_SKIP);
 						nonempty(ent);
 					}
 				}
@@ -218,7 +218,7 @@ rm(State_t* state, register FTSENT* ent)
 						if (ent->fts_info == FTS_DP && !beenhere(ent))
 						{
 							retry(ent);
-							fts_set(NiL, ent, FTS_AGAIN);
+							fts_set(NULL, ent, FTS_AGAIN);
 							break;
 						}
 						/* FALLTHROUGH */
@@ -321,7 +321,7 @@ rm(State_t* state, register FTSENT* ent)
 }
 
 int
-b_rm(int argc, register char** argv, Shbltin_t* context)
+b_rm(int argc, char** argv, Shbltin_t* context)
 {
 	State_t		state;
 	FTS*		fts;
@@ -376,7 +376,7 @@ b_rm(int argc, register char** argv, Shbltin_t* context)
 		argv++;
 	if (error_info.errors || !*argv && !state.force)
 	{
-		error(ERROR_usage(2), "%s", optusage(NiL));
+		error(ERROR_usage(2), "%s", optusage(NULL));
 		UNREACHABLE();
 	}
 	if (!*argv)
@@ -392,7 +392,7 @@ b_rm(int argc, register char** argv, Shbltin_t* context)
 		state.verbose = 0;
 	state.uid = geteuid();
 	state.unconditional = state.unconditional && state.recursive && state.force;
-	if (fts = fts_open(argv, FTS_PHYSICAL, NiL))
+	if (fts = fts_open(argv, FTS_PHYSICAL, NULL))
 	{
 		while (!sh_checksig(context) && (ent = fts_read(fts)) && !rm(&state, ent));
 		fts_close(fts);

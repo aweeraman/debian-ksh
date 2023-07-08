@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -31,7 +31,6 @@
 #include	"streval.h"
 #include	<ctype.h>
 #include	<error.h>
-#include	<stak.h>
 #include	"FEATURE/externs"
 
 #ifndef ERROR_dictionary
@@ -54,9 +53,9 @@
 
 #define pow2size(x)		((x)<=2?2:(x)<=4?4:(x)<=8?8:(x)<=16?16:(x)<=32?32:64)
 #define round(x,size)		(((x)+(size)-1)&~((size)-1))
-#define stakpush(v,val,type)	((((v)->offset=round(staktell(),pow2size(sizeof(type)))),\
-				stakseek((v)->offset+sizeof(type)), \
-				*((type*)stakptr((v)->offset)) = (val)),(v)->offset)
+#define stkpush(stk,v,val,type)	((((v)->offset=round(stktell(stk),pow2size(sizeof(type)))),\
+				stkseek(stk,(v)->offset+sizeof(type)), \
+				*((type*)stkptr(stk,(v)->offset)) = (val)),(v)->offset)
 #define roundptr(ep,cp,type)	(((unsigned char*)(ep))+round(cp-((unsigned char*)(ep)),pow2size(sizeof(type))))
 
 struct vars				/* vars stacked per invocation */
@@ -105,10 +104,10 @@ typedef int        (*Math_3i_f)(Sfdouble_t,Sfdouble_t,Sfdouble_t);
 #endif
 
 #define seterror(v,msg)		_seterror(v,ERROR_dictionary(msg))
-#define ERROR(vp,msg)		return(seterror((vp),msg))
+#define ERROR(vp,msg)		return seterror((vp),msg)
 
 /*
- * set error message string and return(0)
+ * set error message string and return 0
  */
 static int _seterror(struct vars *vp,const char *msg)
 {
@@ -116,7 +115,7 @@ static int _seterror(struct vars *vp,const char *msg)
 		vp->errmsg.value = (char*)msg;
 	vp->errchr = vp->nextchr;
 	vp->nextchr = "";
-	return(0);
+	return 0;
 }
 
 
@@ -147,16 +146,16 @@ static Sfdouble_t U2F(Sfulong_t u)
 
 Sfdouble_t	arith_exec(Arith_t *ep)
 {
-	register Sfdouble_t num=0,*dp,*sp;
-	register unsigned char *cp = ep->code;
-	register int c,type=0;
-	register char *tp;
-	Sfdouble_t small_stack[SMALL_STACK+1],arg[9];
-	const char *ptr = "";
-	char	*lastval=0;
-	int	lastsub;
-	Math_f fun;
-	struct lval node;
+	Sfdouble_t	num=0,*dp,*sp;
+	unsigned char	*cp = ep->code;
+	int		c,type=0;
+	char		*tp;
+	Sfdouble_t	small_stack[SMALL_STACK+1],arg[9];
+	const char	*ptr = "";
+	char		*lastval=0;
+	int		lastsub;
+	Math_f		fun;
+	struct lval	node;
 	node.emode = ep->emode;
 	node.expr = ep->expr;
 	node.elen = ep->elen;
@@ -168,12 +167,12 @@ Sfdouble_t	arith_exec(Arith_t *ep)
 	if(sh.arithrecursion++ >= MAXLEVEL)
 	{
 		arith_error(e_recursive,ep->expr,ep->emode);
-		return(0);
+		return 0;
 	}
 	if(ep->staksize < SMALL_STACK)
 		sp = small_stack;
 	else
-		sp = (Sfdouble_t*)stakalloc(ep->staksize*(sizeof(Sfdouble_t)+1));
+		sp = (Sfdouble_t*)stkalloc(sh.stk,ep->staksize*(sizeof(Sfdouble_t)+1));
 	tp = (char*)(sp+ep->staksize);
 	tp--,sp--;
 	while(c = *cp++)
@@ -422,7 +421,7 @@ Sfdouble_t	arith_exec(Arith_t *ep)
 				c &= ~T_BINARY;
 				arg[0] = num;
 				arg[1] = 0;
-				num = sh_mathfun((void*)fun,1,arg);
+				num = sh_mathfun(fun,1,arg);
 				break;
 			}
 			num = (*((Math_1f_f)fun))(num);
@@ -443,7 +442,7 @@ Sfdouble_t	arith_exec(Arith_t *ep)
 				arg[0] = sp[1];
 				arg[1] = num;
 				arg[2] = 0;
-				num = sh_mathfun((void*)fun,2,arg);
+				num = sh_mathfun(fun,2,arg);
 				break;
 			}
 			if(c&T_NOFLOAT)
@@ -468,7 +467,7 @@ Sfdouble_t	arith_exec(Arith_t *ep)
 				arg[1] = sp[2];
 				arg[2] = num;
 				arg[3] = 0;
-				num = sh_mathfun((void*)fun,3,arg);
+				num = sh_mathfun(fun,3,arg);
 				break;
 			}
 			num = (*((Math_3f_f)fun))(sp[1],sp[2],num);
@@ -489,15 +488,15 @@ Sfdouble_t	arith_exec(Arith_t *ep)
 		sh.arithrecursion--;
 	if(type==0 && !num)
 		num = 0;
-	return(num);
+	return num;
 }
 
 /*
  * This returns operator tokens or A_REG or A_NUM
  */
-static int gettok(register struct vars *vp)
+static int gettok(struct vars *vp)
 {
-	register int c,op;
+	int c,op;
 	vp->errchr = vp->nextchr;
 	while(1)
 	{
@@ -555,16 +554,16 @@ static int gettok(register struct vars *vp)
 				op--;
 			}
 		}
-		return(op);
+		return op;
 	}
 }
 
 /*   
  * evaluate a subexpression with precedence
  */
-static int expr(register struct vars *vp,register int precedence)
+static int expr(struct vars *vp,int precedence)
 {
-	register int	c, op;
+	int		c, op;
 	int		invalid,wasop=0;
 	struct lval	lvalue,assignop;
 	const char	*pos;
@@ -583,7 +582,7 @@ again:
 	    case A_EOF:
 		if(precedence>2)
 			ERROR(vp,e_moretokens);
-		return(1);
+		return 1;
 	    case A_MINUS:
 		op =  A_UMINUS;
 		goto common;
@@ -601,8 +600,8 @@ again:
 		op |= T_NOFLOAT;
 	    common:
 		if(!expr(vp,c))
-			return(0);
-		stakputc(op);
+			return 0;
+		sfputc(sh.stk,op);
 		break;
 	    default:
 		vp->nextchr = vp->errchr;
@@ -645,12 +644,12 @@ again:
 			if(vp->staksize++>=vp->stakmaxsize)
 				vp->stakmaxsize = vp->staksize;
 			if(op==A_EQ || op==A_NEQ)
-				stakputc(A_ENUM);
-			stakputc(assignop.value?A_ASSIGNOP1:A_PUSHV);
-			stakpush(vp,lvalue.value,char*);
+				sfputc(sh.stk,A_ENUM);
+			sfputc(sh.stk,assignop.value?A_ASSIGNOP1:A_PUSHV);
+			stkpush(sh.stk,vp,lvalue.value,char*);
 			if(lvalue.flag<0)
 				lvalue.flag = 0;
-			stakpush(vp,lvalue.flag,short);
+			stkpush(sh.stk,vp,lvalue.flag,short);
 			if(vp->nextchr==0)
 				ERROR(vp,e_number);
 			if(!(strval_precedence[op]&SEQPOINT))
@@ -669,7 +668,7 @@ again:
 		{
 			wasop = 0;
 			if(!expr(vp,c))
-				return(0);
+				return 0;
 		}
 		switch(op)
 		{
@@ -686,13 +685,13 @@ again:
 				vp->infun++;
 			else
 			{
-				stakputc(A_POP);
+				sfputc(sh.stk,A_POP);
 				vp->staksize--;
 			}
 			if(!expr(vp,c))
 			{
-				stakseek(staktell()-1);
-				return(0);
+				stkseek(sh.stk,stktell(sh.stk)-1);
+				return 0;
 			}
 			lvalue.value = 0;
 			break;
@@ -716,9 +715,9 @@ again:
 					userfun = T_BINARY;
 				else if((int)lvalue.nargs&040)
 					userfun = T_NOFLOAT;
-				stakputc(A_PUSHF);
-				stakpush(vp,fun,Math_f);
-				stakputc(1);
+				sfputc(sh.stk,A_PUSHF);
+				stkpush(sh.stk,vp,fun,Math_f);
+				sfputc(sh.stk,1);
 			}
 			else
 				vp->infun = 0;
@@ -726,7 +725,7 @@ again:
 				ERROR(vp,e_synbad);
 			vp->paren++;
 			if(!expr(vp,1))
-				return(0);
+				return 0;
 			vp->paren--;
 			if(fun)
 			{
@@ -736,7 +735,7 @@ again:
 					ERROR(vp,e_argcount);
 				if((vp->staksize+=nargs)>=vp->stakmaxsize)
 					vp->stakmaxsize = vp->staksize+nargs;
-				stakputc(A_CALL1F+userfun+nargs+x);
+				sfputc(sh.stk,A_CALL1F+userfun+nargs+x);
 				vp->staksize -= nargs;
 			}
 			vp->infun = infun;
@@ -756,33 +755,33 @@ again:
 				ERROR(vp,e_notlvalue);
 			if(op==A_ASSIGN)
 			{
-				stakputc(A_STORE);
-				stakpush(vp,lvalue.value,char*);
-				stakpush(vp,lvalue.flag,short);
+				sfputc(sh.stk,A_STORE);
+				stkpush(sh.stk,vp,lvalue.value,char*);
+				stkpush(sh.stk,vp,lvalue.flag,short);
 				vp->staksize--;
 			}
 			else
-				stakputc(op);
+				sfputc(sh.stk,op);
 			lvalue.value = 0;
 			break;
 
 		case A_QUEST:
 		{
 			int offset1,offset2;
-			stakputc(A_JMPZ);
-			offset1 = stakpush(vp,0,short);
-			stakputc(A_POP);
+			sfputc(sh.stk,A_JMPZ);
+			offset1 = stkpush(sh.stk,vp,0,short);
+			sfputc(sh.stk,A_POP);
 			if(!expr(vp,1))
-				return(0);
+				return 0;
 			if(gettok(vp)!=A_COLON)
 				ERROR(vp,e_questcolon);
-			stakputc(A_JMP);
-			offset2 = stakpush(vp,0,short);
-			*((short*)stakptr(offset1)) = staktell();
-			stakputc(A_POP);
+			sfputc(sh.stk,A_JMP);
+			offset2 = stkpush(sh.stk,vp,0,short);
+			*((short*)stkptr(sh.stk,offset1)) = stktell(sh.stk);
+			sfputc(sh.stk,A_POP);
 			if(!expr(vp,3))
-				return(0);
-			*((short*)stakptr(offset2)) = staktell();
+				return 0;
+			*((short*)stkptr(sh.stk,offset2)) = stktell(sh.stk);
 			lvalue.value = 0;
 			wasop = 0;
 			break;
@@ -801,14 +800,14 @@ again:
 				op = A_JMPZ;
 			else
 				op = A_JMPNZ;
-			stakputc(op);
-			offset = stakpush(vp,0,short);
-			stakputc(A_POP);
+			sfputc(sh.stk,op);
+			offset = stkpush(sh.stk,vp,0,short);
+			sfputc(sh.stk,A_POP);
 			if(!expr(vp,c))
-				return(0);
-			*((short*)stakptr(offset)) = staktell();
+				return 0;
+			*((short*)stkptr(sh.stk,offset)) = stktell(sh.stk);
 			if(op!=A_QCOLON)
-				stakputc(A_NOTNOT);
+				sfputc(sh.stk,A_NOTNOT);
 			lvalue.value = 0;
 			wasop=0;
 			break;
@@ -820,7 +819,7 @@ again:
 		case A_PLUS:	case A_MINUS:	case A_TIMES:	case A_DIV:
 		case A_EQ:	case A_NEQ:	case A_LT:	case A_LE:
 		case A_GT:	case A_GE:	case A_POW:
-			stakputc(op|T_BINARY);
+			sfputc(sh.stk,op|T_BINARY);
 			vp->staksize--;
 			break;
 		case A_NOT: case A_TILDE:
@@ -861,11 +860,11 @@ again:
 			}
 			if(op==A_DIG || op==A_LIT)
 			{
-				stakputc(A_PUSHN);
+				sfputc(sh.stk,A_PUSHN);
 				if(vp->staksize++>=vp->stakmaxsize)
 					vp->stakmaxsize = vp->staksize;
-				stakpush(vp,d,Sfdouble_t);
-				stakputc(lvalue.isfloat);
+				stkpush(sh.stk,vp,d,Sfdouble_t);
+				sfputc(sh.stk,lvalue.isfloat);
 			}
 			/* check for function call */
 			if(lvalue.fun)
@@ -879,43 +878,43 @@ again:
 				vp->stakmaxsize = vp->staksize;
 			if(assignop.flag<0)
 				assignop.flag = 0;
-			stakputc(c&1?A_ASSIGNOP:A_STORE);
-			stakpush(vp,assignop.value,char*);
-			stakpush(vp,assignop.flag,short);
+			sfputc(sh.stk,c&1?A_ASSIGNOP:A_STORE);
+			stkpush(sh.stk,vp,assignop.value,char*);
+			stkpush(sh.stk,vp,assignop.flag,short);
 		}
 	}
  done:
 	vp->nextchr = vp->errchr;
-	return(1);
+	return 1;
 }
 
 Arith_t *arith_compile(const char *string,char **last,Sfdouble_t(*fun)(const char**,struct lval*,int,Sfdouble_t),int emode)
 {
 	struct vars cur;
-	register Arith_t *ep;
+	Arith_t *ep;
 	int offset;
-	memset((void*)&cur,0,sizeof(cur));
+	memset(&cur,0,sizeof(cur));
      	cur.expr = cur.nextchr = string;
 	cur.convert = fun;
 	cur.emode = emode;
 	cur.errmsg.value = 0;
 	cur.errmsg.emode = emode;
-	stakseek(sizeof(Arith_t));
+	stkseek(sh.stk,sizeof(Arith_t));
 	if(!expr(&cur,0) && cur.errmsg.value)
         {
 		if(cur.errstr)
 			string = cur.errstr;
 		if((*fun)( &string , &cur.errmsg, MESSAGE, 0) < 0)
 		{
-			stakseek(0);
+			stkseek(sh.stk,0);
 			*last = (char*)Empty;
-			return(0);
+			return NULL;
 		}
 		cur.nextchr = cur.errchr;
 	}
-	stakputc(0);
-	offset = staktell();
-	ep = (Arith_t*)stakfreeze(0);
+	sfputc(sh.stk,0);
+	offset = stktell(sh.stk);
+	ep = (Arith_t*)stkfreeze(sh.stk,0);
 	ep->expr = string;
 	ep->elen = strlen(string);
 	ep->code = (unsigned char*)(ep+1);
@@ -925,7 +924,7 @@ Arith_t *arith_compile(const char *string,char **last,Sfdouble_t(*fun)(const cha
 	ep->staksize = cur.stakmaxsize+1;
 	if(last)
 		*last = (char*)(cur.nextchr);
-	return(ep);
+	return ep;
 }
 
 /*
@@ -946,13 +945,13 @@ Sfdouble_t arith_strval(const char *s, char **end, Sfdouble_t(*convert)(const ch
 	Sfdouble_t d;
 	char *sp=0;
 	int offset;
-	if(offset=staktell())
-		sp = stakfreeze(1);
+	if(offset=stktell(sh.stk))
+		sp = stkfreeze(sh.stk,1);
 	ep = arith_compile(s,end,convert,emode);
 	ep->emode = emode;
 	d = arith_exec(ep);
-	stakset(sp?sp:(char*)ep,offset);
-	return(d);
+	stkset(sh.stk,sp?sp:(char*)ep,offset);
+	return d;
 }
 
 #if _mem_name__exception
@@ -998,7 +997,7 @@ Sfdouble_t arith_strval(const char *s, char **end, Sfdouble_t(*convert)(const ch
 		break;
 #endif
 	    default:
-		return(1);
+		return 1;
 	}
 	errormsg(SH_DICT,ERROR_exit(1),message,ep->name);
 	UNREACHABLE();

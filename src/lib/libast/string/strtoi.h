@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -195,28 +195,28 @@ S2I_function(const char* a, char** e, int base)
 #endif
 #endif
 {
-	register unsigned char*	s = (unsigned char*)a;
+	unsigned char*	s = (unsigned char*)a;
 #if S2I_size
-	register unsigned char*	z = s + size;
+	unsigned char*	z = s + size;
 #endif
-	register S2I_unumber	n;
-	register S2I_unumber	x;
-	register int		c = 0;
-	register int		shift;
-	register unsigned char*	p;
-	register unsigned char*	cv;
-	unsigned char*		b;
-	unsigned char*		k;
-	S2I_unumber		v = 0;
+	S2I_unumber	n;
+	S2I_unumber	x;
+	int		c = 0;
+	int		shift;
+	unsigned char*	p;
+	unsigned char*	cv;
+	unsigned char*	b;
+	unsigned char*	k;
+	S2I_unumber	v = 0;
 #if S2I_multiplier
-	register int		base;
+	int		base;
 #endif
-	int			negative;
-	int			overflow = 0;
-	int			decimal = 0;
-	int			thousand = 0;
+	int		negative;
+	int		overflow = 0;
+	int		decimal = 0;
+	int		thousand = 0;
 #if !S2I_unsigned
-	int			qualifier = 0;
+	int		qualifier = 0;
 #endif
 
 #if S2I_multiplier
@@ -227,7 +227,7 @@ S2I_function(const char* a, char** e, int base)
 		static int	conformance = -1;
 
 		if (conformance < 0)
-			conformance = !strcmp(astconf("CONFORMANCE", NiL, NiL), "standard");
+			conformance = !strcmp(astconf("CONFORMANCE", NULL, NULL), "standard");
 		if (conformance)
 			base = 1;
 	}

@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -70,8 +70,8 @@ typedef struct State_s
 static int
 key(void* handle, Sffmt_t* fp, const char* arg, char** ps, Sflong_t* pn)
 {
-	register State_t*	state = (State_t*)handle;
-	register char*		s;
+	State_t*	state = (State_t*)handle;
+	char*		s;
 
 	if (!(s = fp->t_str) || streq(s, "size"))
 		*pn = state->vs.extent;
@@ -151,7 +151,7 @@ visit(Vmalloc_t* vm, void* addr, size_t size, Vmdisc_t* disc, void* handle)
 int
 b_vmstate(int argc, char** argv, Shbltin_t* context)
 {
-	register int	i;
+	int		i;
 	State_t		state;
 
 	memset(&state, 0, sizeof(state));
@@ -175,7 +175,7 @@ b_vmstate(int argc, char** argv, Shbltin_t* context)
 	argv += opt_info.index;
 	if (error_info.errors || *argv)
 	{
-		error(ERROR_usage(2), "%s", optusage(NiL));
+		error(ERROR_usage(2), "%s", optusage(NULL));
 		UNREACHABLE();
 	}
 	if (!state.format)
@@ -185,7 +185,7 @@ b_vmstate(int argc, char** argv, Shbltin_t* context)
 	 * the walk must do no allocations because it locks the regions
 	 */
 
-	vmwalk(NiL, visit, &state);
+	vmwalk(NULL, visit, &state);
 
 	/*
 	 * now we can compute and list the state of each region
@@ -195,7 +195,7 @@ b_vmstate(int argc, char** argv, Shbltin_t* context)
 	{
 		state.vm = state.region[i];
 		vmstat(state.vm, &state.vs);
-		sfkeyprintf(sfstdout, &state, state.format, key, NiL);
+		sfkeyprintf(sfstdout, &state, state.format, key, NULL);
 		sfprintf(sfstdout, "\n");
 	}
 	return 0;

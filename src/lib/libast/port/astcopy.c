@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -46,7 +46,7 @@
 off_t
 astcopy(int rfd, int wfd, off_t n)
 {
-	register off_t	c;
+	off_t	c;
 #ifdef MAPSIZE
 	off_t		pos;
 	off_t		mapsize;
@@ -60,16 +60,16 @@ astcopy(int rfd, int wfd, off_t n)
 	if (n <= 0 || n >= BUFSIZ * 2)
 	{
 #if MAPSIZE
-		if (!fstat(rfd, &st) && S_ISREG(st.st_mode) && (pos = lseek(rfd, (off_t)0, 1)) != ((off_t)-1))
+		if (!fstat(rfd, &st) && S_ISREG(st.st_mode) && (pos = lseek(rfd, 0, 1)) != ((off_t)-1))
 		{
-			if (pos >= st.st_size) return(0);
+			if (pos >= st.st_size) return 0;
 			mapsize = st.st_size - pos;
 			if (mapsize > MAPSIZE) mapsize = (mapsize > n && n > 0) ? n : MAPSIZE;
-			if (mapsize >= BUFSIZ * 2 && (mapbuf = (char*)mmap(NiL, mapsize, PROT_READ, MAP_SHARED, rfd, pos)) != ((caddr_t)-1))
+			if (mapsize >= BUFSIZ * 2 && (mapbuf = (char*)mmap(NULL, mapsize, PROT_READ, MAP_SHARED, rfd, pos)) != ((caddr_t)-1))
 			{
-				if (write(wfd, mapbuf, mapsize) != mapsize || lseek(rfd, mapsize, 1) == ((off_t)-1)) return(-1);
+				if (write(wfd, mapbuf, mapsize) != mapsize || lseek(rfd, mapsize, 1) == ((off_t)-1)) return -1;
 				munmap((caddr_t)mapbuf, mapsize);
-				return(mapsize);
+				return mapsize;
 			}
 		}
 #endif
@@ -79,8 +79,8 @@ astcopy(int rfd, int wfd, off_t n)
 	{
 		if (buf) free(buf);
 		bufsiz = roundof(n, BUFSIZ);
-		if (!(buf = newof(0, char, bufsiz, 0))) return(-1);
+		if (!(buf = newof(0, char, bufsiz, 0))) return -1;
 	}
 	if ((c = read(rfd, buf, (size_t)n)) > 0 && write(wfd, buf, (size_t)c) != c) c = -1;
-	return(c);
+	return c;
 }

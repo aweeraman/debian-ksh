@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -29,7 +29,7 @@ static int	Trfile = -1;
 static char	Trbuf[128];
 
 static char* trstrcpy(char* to, const char* from, int endc)
-{	reg int	n;
+{	int	n;
 
 	n = strlen(from);
 	memcpy(to,from,n);
@@ -49,7 +49,7 @@ static char* tritoa(Vmulong_t	v,	/* value to convert					*/
 	*s-- = '\0';
 
 	if(type == 0)		/* base-16 */
-	{	reg char*	digit = "0123456789abcdef";
+	{	char*	digit = "0123456789abcdef";
 		do
 		{	*s-- = digit[v&0xf];
 			v >>= 4;
@@ -97,7 +97,7 @@ static void trtrace(Vmalloc_t*	vm,		/* region call was made from	*/
 
 	if(oldaddr == (Vmuchar_t*)(-1)) /* printing busy blocks */
 	{	type = 0;
-		oldaddr = NIL(Vmuchar_t*);
+		oldaddr = NULL;
 	}
 	else
 	{	type = vd->mode&VM_METHODS;

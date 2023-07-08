@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -88,9 +88,9 @@ const Namval_t		log_severity[] =
 void
 sendlog(const char* msg)
 {
-	register char*		s;
-	register Namval_t*	p;
-	register int		n;
+	char*		s;
+	Namval_t*	p;
+	int		n;
 
 	n = msg ? strlen(msg) : 0;
 	for (;;)
@@ -137,8 +137,8 @@ extend(Sfio_t* sp, void* vp, Sffmt_t* dp)
 void
 vsyslog(int priority, const char* format, va_list ap)
 {
-	register int	c;
-	register char*	s;
+	int		c;
+	char*		s;
 	Sfio_t*		sp;
 	Sffmt_t		fmt;
 	char		buf[16];
@@ -149,7 +149,7 @@ vsyslog(int priority, const char* format, va_list ap)
 		return;
 	if (sp = sfstropen())
 	{
-		sfputr(sp, fmttime("%b %d %H:%M:%S", time(NiL)), -1);
+		sfputr(sp, fmttime("%b %d %H:%M:%S", time(NULL)), -1);
 		if (log.flags & LOG_LEVEL)
 		{
 			if ((c = LOG_SEVERITY(priority)) < elementsof(log_severity))

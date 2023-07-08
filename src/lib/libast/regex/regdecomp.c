@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2013 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -31,9 +31,9 @@
 static void
 detrie(Trie_node_t* x, Sfio_t* sp, char* b, char* p, char* e, int delimiter)
 {
-	register Trie_node_t*	y;
-	char*			o;
-	int			k;
+	Trie_node_t*	y;
+	char*		o;
+	int		k;
 
 	o = p;
 	k = 1;
@@ -66,7 +66,7 @@ detrie(Trie_node_t* x, Sfio_t* sp, char* b, char* p, char* e, int delimiter)
 }
 
 static int
-decomp(register Rex_t* e, Rex_t* parent, Sfio_t* sp, int type, int delimiter, regflags_t flags)
+decomp(Rex_t* e, Rex_t* parent, Sfio_t* sp, int type, int delimiter, regflags_t flags)
 {
 	Rex_t*		q;
 	unsigned char*	s;

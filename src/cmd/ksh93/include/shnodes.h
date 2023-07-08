@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -182,7 +182,7 @@ struct arithnod
 #define IOVNM		0x10000	/* iovname field is non-zero */
 #define IOLSEEK		0x20000	/* seek operators <# or >#  */
 #define IOARITH		0x40000	/* arithmetic seek <# ((expr))  */
-#define IOREWRITE	0x80000	/* arithmetic seek <# ((expr))  */
+#define IOREWRITE	0x80000	/* rewrite/truncate upon command success: >;word <>;word */
 #define IOCOPY		IOCLOB	/* copy skipped lines onto standard output */
 #define IOPROCSUB	IOARITH	/* process substitution redirection */
 

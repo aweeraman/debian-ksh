@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -17,7 +17,6 @@
 *            Johnothan King <johnothanking@protonmail.com>             *
 *                                                                      *
 ***********************************************************************/
-#pragma clang diagnostic ignored "-Wdeprecated-register"
 #pragma clang diagnostic ignored "-Wparentheses"
 /*
  * Glenn Fowler
@@ -68,10 +67,6 @@ static struct _m_ map[] =
 #ifdef SIGCHLD
 #define HAD_SIGCHLD	1
 "Child status change",		"CHLD",		SIGCHLD,
-#endif
-#ifdef SIGCLD
-#define HAD_SIGCLD	1
-"Death of child", 		"CLD",		SIGCLD,
 #endif
 #ifdef SIGCONT
 #define HAD_SIGCONT	1
@@ -294,15 +289,15 @@ extern char*		strsignal(int);
 #endif
 
 int
-main()
+main(void)
 {
-	register int	i;
-	register int	j;
-	register int	k;
-	int		m;
-	int		n;
+	int	i;
+	int	j;
+	int	k;
+	int	m;
+	int	n;
 #if _lib_strsignal
-	char*		s;
+	char*	s;
 #endif
 
 	k = 0;

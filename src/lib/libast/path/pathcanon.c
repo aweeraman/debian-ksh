@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -52,15 +52,15 @@ pathcanon(char* path, int flags)
 char*
 pathcanon_20100601(char* path, size_t size, int flags)
 {
-	register char*	p;
-	register char*	r;
-	register char*	s;
-	register char*	t;
-	register int	dots;
-	char*		phys;
-	char*		v;
-	int		loop;
-	int		oerrno;
+	char*	p;
+	char*	r;
+	char*	s;
+	char*	t;
+	int	dots;
+	char*	phys;
+	char*	v;
+	int	loop;
+	int	oerrno;
 
 	oerrno = errno;
 	dots = loop = 0;
@@ -70,7 +70,7 @@ pathcanon_20100601(char* path, size_t size, int flags)
 		size = strlen(path) + 1;
 	if (*path == '/')
 	{
-		if (*(path + 1) == '/' && *astconf("PATH_LEADING_SLASHES", NiL, NiL) == '1')
+		if (*(path + 1) == '/' && *astconf("PATH_LEADING_SLASHES", NULL, NULL) == '1')
 			do path++; while (*path == '/' && *(path + 1) == '/');
 		if (!*(path + 1))
 			return path + 1;
@@ -101,7 +101,7 @@ pathcanon_20100601(char* path, size_t size, int flags)
 					if (stat(phys, &st))
 					{
 						strcpy(path, s);
-						return 0;
+						return NULL;
 					}
 					*(t - 2) = '.';
 				}
@@ -138,7 +138,7 @@ pathcanon_20100601(char* path, size_t size, int flags)
 						if (flags & PATH_EXISTS)
 						{
 							strcpy(path, s);
-							return 0;
+							return NULL;
 						}
 						flags &= ~(PATH_PHYSICAL|PATH_DOTDOT);
 					}
@@ -154,7 +154,7 @@ pathcanon_20100601(char* path, size_t size, int flags)
 				if (stat(phys, &st))
 				{
 					strcpy(path, s);
-					return 0;
+					return NULL;
 				}
 				v = t;
 				if (*s) *(t - 1) = '/';

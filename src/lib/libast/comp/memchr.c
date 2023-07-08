@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -27,19 +27,19 @@ NoN(memchr)
 
 /*
  * Return the ptr in sp at which the character c appears;
- * 0 if not found in n chars; don't stop at \0.
+ * NULL if not found in n chars; don't stop at \0.
  */
 
 void*
-memchr(const void* asp, register int c, size_t n)
+memchr(const void* asp, int c, size_t n)
 {
-	register const char*	sp = (char*)asp;
-	register const char*	ep = sp + n;
+	const char*	sp = (char*)asp;
+	const char*	ep = sp + n;
 
 	while (sp < ep)
 		if (*sp++ == c)
-			return(--sp);
-	return(0);
+			return --sp;
+	return NULL;
 }
 
 #endif

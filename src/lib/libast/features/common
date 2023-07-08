@@ -14,15 +14,16 @@ std	noreturn note{ noreturn ok }end compile{
 }end
 
 cat{
-	#pragma clang diagnostic ignored "-Wdeprecated-register"
 	#pragma clang diagnostic ignored "-Wparentheses"
 	#pragma clang diagnostic ignored "-Wstring-plus-int"
 	#pragma clang diagnostic ignored "-Wunused-value"
+	#if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6)
 	#pragma GCC diagnostic ignored "-Wunused-result"
+	#endif
 
-	/* AST backwards compatibility macros */
+	/* AST backward compatibility macros */
 	#undef	_NIL_
-	#define	_NIL_(x)	((x)0)
+	#define	_NIL_(x)	NULL
 	#undef	_STD_
 	#define	_STD_		1
 	#undef	_ARG_
@@ -41,12 +42,6 @@ cat{
 	#define	__STD_C		1
 	#undef	Void_t
 	#define	Void_t		void
-
-	/* disable non-standard Linux/GNU inlines */
-	#ifdef __GNUC__	
-	#	undef	__OPTIMIZE_SIZE__
-	#	define	__OPTIMIZE_SIZE__	1
-	#endif
 
 	/* __INLINE__, if defined, is the inline keyword */
 	#if !defined(__INLINE__) && defined(_WIN32) && !defined(__GNUC__)
@@ -69,7 +64,11 @@ cat{
 
 	#if !_std_noreturn
 	#if defined(__GNUC__) && (__GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ > 4))
-	#define noreturn __attribute__((noreturn))
+	/*
+	 * Note: Cygwin needs noreturn to be __noreturn__ to avoid
+	 * a build failure when using -std=c99.
+	 */
+	#define noreturn __attribute__((__noreturn__))
 	#else
 	#define noreturn
 	#endif /* __GNUC__ */
@@ -172,13 +171,13 @@ tst	- -DN=1 - -DN=2 - -DN=3 - -DN=4 - -DN=5 - -DN=6 - -DN=7 - -DN=8 - -DN=0 outp
 	static int	int_size[] = { 1, 2, 4, 8 };
 	
 	int
-	main()
+	main(void)
 	{
-		register int	t;
-		register int	s;
-		register int	m = 1;
-		register int	b = 1;
-		register int	w = 0;
+		int	t;
+		int	s;
+		int	m = 1;
+		int	b = 1;
+		int	w = 0;
 	
 	#ifdef _ast_int8_t
 		unsigned _ast_int8_t	p;
@@ -261,9 +260,9 @@ tst	- output{
 	};
 	
 	int
-	main()
+	main(void)
 	{
-		register int	t;
+		int	t;
 
 		for (t = 0; t < elementsof(types); t++)
 	#if COND
@@ -312,10 +311,10 @@ tst	- -DN=1 - -DN=0 output{
 	};
 	
 	int
-	main()
+	main(void)
 	{
-		register int	t;
-		register int	m = 1;
+		int	t;
+		int	m = 1;
 	
 	#ifdef _typ_long_double
 		long double	p;
@@ -391,6 +390,15 @@ typ intmax_t stdint.h inttypes.h no{
 	#define	_typ_intmax_t	1
 	typedef _ast_intmax_t intmax_t;
 }end
+typ intptr_t stdint.h inttypes.h no{
+	#undef	_typ_intptr_t
+	#define	_typ_intptr_t	1
+	#if _ast_sizeof_pointer == 8 && defined(_ast_int8_t)
+	typedef _ast_int8_t intptr_t;
+	#else
+	typedef _ast_int4_t intptr_t;
+	#endif
+}end
 typ uintmax_t stdint.h inttypes.h no{
 	#undef	_typ_uintmax_t
 	#define	_typ_uintmax_t	1
@@ -448,7 +456,7 @@ tst	- -DTRY=1 - -DTRY=1 -Dvoid=char - -DTRY=2 - -DTRY=3 - -DTRY=4 output{
 	}
 	#endif
 	int
-	main()
+	main(void)
 	{
 		int	r;
 

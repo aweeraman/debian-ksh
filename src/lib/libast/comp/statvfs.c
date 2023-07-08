@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -56,7 +56,7 @@ NoN(statvfs)
 #endif
 
 static void
-us2v(register struct statfs* ufs, register struct stat* st, register struct statvfs* vfs)
+us2v(struct statfs* ufs, struct stat* st, struct statvfs* vfs)
 {
 	memset(vfs, 0, sizeof(*vfs));
 	vfs->f_bsize = vfs->f_frsize = ufs->f_bsize;
@@ -84,9 +84,9 @@ fstatvfs(int fd, struct statvfs* vfs)
 	struct stat	st;
 
 	if (FSTATFS(fd, &ufs) || fstat(fd, &st))
-		return(-1);
+		return -1;
 	us2v(&ufs, &st, vfs);
-	return(0);
+	return 0;
 }
 
 extern int
@@ -96,15 +96,15 @@ statvfs(const char* path, struct statvfs* vfs)
 	struct stat	st;
 
 	if (STATFS(path, &ufs) || stat(path, &st))
-		return(-1);
+		return -1;
 	us2v(&ufs, &st, vfs);
-	return(0);
+	return 0;
 }
 
 #else
 
 static void
-s2v(register struct stat* st, register struct statvfs* vfs)
+s2v(struct stat* st, struct statvfs* vfs)
 {
 	memset(vfs, 0, sizeof(*vfs));
 	vfs->f_bsize = vfs->f_frsize =
@@ -130,9 +130,9 @@ fstatvfs(int fd, struct statvfs* vfs)
 	struct stat	st;
 
 	if (fstat(fd, &st))
-		return(-1);
+		return -1;
 	s2v(&st, vfs);
-	return(0);
+	return 0;
 }
 
 extern int
@@ -141,9 +141,9 @@ statvfs(const char* path, struct statvfs* vfs)
 	struct stat	st;
 
 	if (stat(path, &st))
-		return(-1);
+		return -1;
 	s2v(&st, vfs);
-	return(0);
+	return 0;
 }
 
 #endif

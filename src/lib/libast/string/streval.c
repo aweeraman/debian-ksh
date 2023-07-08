@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -34,7 +34,7 @@ typedef struct
 static long
 userconv(const char* s, char** end, void* handle)
 {
-	return((*((Handle_t*)handle)->convert)(s, end));
+	return (*((Handle_t*)handle)->convert)(s, end);
 }
 
 long
@@ -42,5 +42,5 @@ streval(const char* s, char** end, Old_convert_t convert)
 {
 	Handle_t	handle;
 
-	return((handle.convert = convert) ? strexpr(s, end, userconv, &handle) : strexpr(s, end, (Convert_t)0, NiL));
+	return (handle.convert = convert) ? strexpr(s, end, userconv, &handle) : strexpr(s, end, NULL, NULL);
 }

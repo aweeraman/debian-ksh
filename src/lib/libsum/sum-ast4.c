@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1996-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -48,7 +48,7 @@ typedef struct Ast4_s
 static int
 ast4_init(Sum_t* p)
 {
-	register Ast4_t*	a = (Ast4_t*)p;
+	Ast4_t*	a = (Ast4_t*)p;
 
 	a->tot.sum0 ^= a->cur.sum0;
 	a->cur.sum0 = 0;
@@ -77,10 +77,10 @@ ast4_open(const Method_t* method, const char* name)
 static int
 ast4_block(Sum_t* p, const void* s, size_t n)
 {
-	register Ast4_sum_t*	a = &((Ast4_t*)p)->cur;
-	register unsigned char*	b = (unsigned char*)s;
-	register unsigned char*	e = b + n;
-	register int		c;
+	Ast4_sum_t*	a = &((Ast4_t*)p)->cur;
+	unsigned char*	b = (unsigned char*)s;
+	unsigned char*	e = b + n;
+	int		c;
 
 	while (b < e)
 	{
@@ -96,7 +96,7 @@ ast4_block(Sum_t* p, const void* s, size_t n)
 static int
 ast4_print(Sum_t* p, Sfio_t* sp, int flags, size_t scale)
 {
-	register Ast4_sum_t*	a;
+	Ast4_sum_t*	a;
 
 	a = (flags & SUM_TOTAL) ? &((Ast4_t*)p)->tot : &((Ast4_t*)p)->cur;
 	sfprintf(sp, "%06..64u%06..64u%06..64u%06..64u", a->sum0, a->sum1, a->sum2, a->sum3);

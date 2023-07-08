@@ -32,12 +32,11 @@ SHOPT NOECHOE=0				# turn off 'echo -e' when SHOPT_ECHOPRINT is disabled
 SHOPT OLDTERMIO=			# support both TCGETA and TCGETS
 SHOPT OPTIMIZE=1			# optimize loop invariants
 SHOPT P_SUID=0				# real UIDs >= this value require -p for set[ug]id (to turn off, use empty, not 0)
-SHOPT RAWONLY=1				# make viraw the only vi mode
 SHOPT REGRESS=				# enable __regress__ builtin and instrumented intercepts for testing
 SHOPT REMOTE=				# enable --rc if running as a remote shell
+SHOPT SCRIPTONLY=0			# build ksh for running scripts only; compile out the interactive shell
 SHOPT SPAWN=				# use spawnveg for fork/exec
 SHOPT STATS=1				# add .sh.stats variable
-SHOPT SUID_EXEC=1			# allow (safe) SUID/SGID shell scripts
 SHOPT SYSRC=				# attempt . /etc/ksh.kshrc if interactive
 SHOPT TEST_L=				# add 'test -l' as an alias for 'test -L'
 SHOPT TIMEOUT=				# number of seconds for shell timeout

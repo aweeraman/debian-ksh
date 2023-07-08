@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -63,10 +63,10 @@ static const char usage[] =
 
 #include <cmd.h>
 
-static void namebase(Sfio_t *outfile, register char *pathname, char *suffix)
+static void namebase(Sfio_t *outfile, char *pathname, char *suffix)
 {
-	register char *first, *last;
-	register int n=0;
+	char *first, *last;
+	int n=0;
 	for(first=last=pathname; *last; last++);
 	/* back over trailing '/' */
 	if(last>first)
@@ -96,7 +96,7 @@ static void namebase(Sfio_t *outfile, register char *pathname, char *suffix)
 }
 
 int
-b_basename(int argc, register char** argv, Shbltin_t* context)
+b_basename(int argc, char** argv, Shbltin_t* context)
 {
 	char*	string;
 	char*	suffix = 0;
@@ -127,7 +127,7 @@ b_basename(int argc, register char** argv, Shbltin_t* context)
 	argc -= opt_info.index;
 	if (error_info.errors || argc < 1 || !all && argc > 2)
 	{
-		error(ERROR_usage(2), "%s", optusage(NiL));
+		error(ERROR_usage(2), "%s", optusage(NULL));
 		UNREACHABLE();
 	}
 	if (!all)

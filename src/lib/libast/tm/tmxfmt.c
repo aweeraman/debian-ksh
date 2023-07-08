@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -39,7 +39,7 @@
  */
 
 static char*
-number(register char* s, register char* e, register long n, register int p, int w, int pad)
+number(char* s, char* e, long n, int p, int w, int pad)
 {
 	char*	b;
 
@@ -94,10 +94,10 @@ typedef struct Stack_s
 char*
 tmxfmt(char* buf, size_t len, const char* format, Time_t t)
 {
-	register char*	cp;
-	register char*	ep;
-	register char*	p;
-	register int	n;
+	char*		cp;
+	char*		ep;
+	char*		p;
+	int		n;
 	int		c;
 	int		i;
 	int		flags;
@@ -121,7 +121,7 @@ tmxfmt(char* buf, size_t len, const char* format, Time_t t)
 	char		fmt[32];
 
 	tmlocale();
-	tm = tmxtm(&ts, t, NiL);
+	tm = tmxtm(&ts, t, NULL);
 	if (!format || !*format)
 		format = tm_info.deformat;
 	oformat = format;
@@ -466,7 +466,7 @@ tmxfmt(char* buf, size_t len, const char* format, Time_t t)
 					case 'z':	/* time zone nation code */
 						if (arg)
 						{
-							if ((zp = tmzone(arg, &e, NiL, NiL)) && !*e)
+							if ((zp = tmzone(arg, &e, NULL, NULL)) && !*e)
 							{
 								tm->tm_zone = zp;
 								flags &= ~TM_UTC;
@@ -498,7 +498,7 @@ tmxfmt(char* buf, size_t len, const char* format, Time_t t)
 					if (t)
 					{
 						now = tmxgettime();
-						p = warped(t, now) ? (char*)0 : (char*)format;
+						p = warped(t, now) ? NULL : (char*)format;
 					}
 					else
 						p = (char*)format;

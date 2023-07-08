@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -40,9 +40,9 @@ static const char lib[] = "libast:magic";
 #include <regex.h>
 #include <swap.h>
 
-#define T(m)		(*m?ERROR_translate(NiL,NiL,lib,m):m)
+#define T(m)		(*m?ERROR_translate(NULL,NULL,lib,m):m)
 
-#define match(s,p)	strgrpmatch(s,p,NiL,0,STR_LEFT|STR_RIGHT|STR_ICASE)
+#define match(s,p)	strgrpmatch(s,p,NULL,0,STR_LEFT|STR_RIGHT|STR_ICASE)
 
 #define MAXNEST		10		/* { ... } nesting limit	*/
 #define MINITEM		4		/* magic buffer rounding	*/
@@ -281,31 +281,31 @@ static Info_t		info[] =
  */
 
 static char*
-getdata(register Magic_t* mp, register long off, register int siz)
+getdata(Magic_t* mp, long off, int siz)
 {
-	register long	n;
+	long	n;
 
 	if (off < 0)
-		return 0;
+		return NULL;
 	if (off + siz <= mp->fbsz)
 		return mp->fbuf + off;
 	if (off < mp->xoff || off + siz > mp->xoff + mp->xbsz)
 	{
 		if (off + siz > mp->fbmx)
-			return 0;
+			return NULL;
 		n = (off / (SF_BUFSIZE / 2)) * (SF_BUFSIZE / 2);
 		if (sfseek(mp->fp, n, SEEK_SET) != n)
-			return 0;
+			return NULL;
 		if ((mp->xbsz = sfread(mp->fp, mp->xbuf, sizeof(mp->xbuf) - 1)) < 0)
 		{
 			mp->xoff = 0;
 			mp->xbsz = 0;
-			return 0;
+			return NULL;
 		}
 		mp->xbuf[mp->xbsz] = 0;
 		mp->xoff = n;
 		if (off + siz > mp->xoff + mp->xbsz)
-			return 0;
+			return NULL;
 	}
 	return mp->xbuf + off - mp->xoff;
 }
@@ -317,10 +317,10 @@ getdata(register Magic_t* mp, register long off, register int siz)
 static long
 indirect(const char* cs, char** e, void* handle)
 {
-	register char*		s = (char*)cs;
-	register Magic_t*	mp = (Magic_t*)handle;
-	register long		n = 0;
-	register char*		p;
+	char*		s = (char*)cs;
+	Magic_t*	mp = (Magic_t*)handle;
+	long		n = 0;
+	char*		p;
 
 	if (s)
 	{
@@ -471,23 +471,23 @@ vcdecomp(char* b, char* e, unsigned char* m, unsigned char* x)
  */
 
 static char*
-ckmagic(register Magic_t* mp, const char* file, char* buf, char* end, struct stat* st, unsigned long off)
+ckmagic(Magic_t* mp, const char* file, char* buf, char* end, struct stat* st, unsigned long off)
 {
-	register Entry_t*	ep;
-	register char*		p;
-	register char*		b;
-	register int		level = 0;
-	int			call = -1;
-	int			all = 0;
-	int			c;
-	int			str;
-	char*			q;
-	char*			t;
-	char*			cur;
-	char*			base = 0;
-	unsigned long		num;
-	unsigned long		mask;
-	regmatch_t		matches[10];
+	Entry_t*	ep;
+	char*		p;
+	char*		b;
+	int		level = 0;
+	int		call = -1;
+	int		all = 0;
+	int		c;
+	int		str;
+	char*		q;
+	char*		t;
+	char*		cur;
+	char*		base = 0;
+	unsigned long	num;
+	unsigned long	mask;
+	regmatch_t	matches[10];
 
 	mp->swap = 0;
 	b = mp->msg[0] = cur = buf;
@@ -566,7 +566,7 @@ ckmagic(register Magic_t* mp, const char* file, char* buf, char* end, struct sta
 			switch (ep->offset)
 			{
 			case 0:
-				num = strexpr(ep->expr, NiL, indirect, mp) + off;
+				num = strexpr(ep->expr, NULL, indirect, mp) + off;
 				break;
 			case INFO_atime:
 				num = st->st_atime;
@@ -925,7 +925,7 @@ ckmagic(register Magic_t* mp, const char* file, char* buf, char* end, struct sta
 		*b = 0;
 		return buf;
 	}
-	return 0;
+	return NULL;
 }
 
 /*
@@ -933,12 +933,12 @@ ckmagic(register Magic_t* mp, const char* file, char* buf, char* end, struct sta
  */
 
 static int
-ckenglish(register Magic_t* mp, int pun, int badpun)
+ckenglish(Magic_t* mp, int pun, int badpun)
 {
-	register char*	s;
-	register int	vowl = 0;
-	register int	freq = 0;
-	register int	rare = 0;
+	char*	s;
+	int	vowl = 0;
+	int	freq = 0;
+	int	rare = 0;
 
 	if (5 * badpun > pun)
 		return 0;
@@ -960,25 +960,25 @@ ckenglish(register Magic_t* mp, int pun, int badpun)
  */
 
 static char*
-cklang(register Magic_t* mp, const char* file, char* buf, char* end, struct stat* st)
+cklang(Magic_t* mp, const char* file, char* buf, char* end, struct stat* st)
 {
-	register int		c;
-	register unsigned char*	b;
-	register unsigned char*	e;
-	register int		q;
-	register char*		s;
-	char*			t;
-	char*			base;
-	char*			suff;
-	char*			t1;
-	char*			t2;
-	char*			t3;
-	int			n;
-	int			badpun;
-	int			code;
-	int			pun;
-	Cctype_t		flags;
-	Info_t*			ip;
+	int		c;
+	unsigned char*	b;
+	unsigned char*	e;
+	int		q;
+	char*		s;
+	char*		t;
+	char*		base;
+	char*		suff;
+	char*		t1;
+	char*		t2;
+	char*		t3;
+	int		n;
+	int		badpun;
+	int		code;
+	int		pun;
+	Cctype_t	flags;
+	Info_t*		ip;
 
 	b = (unsigned char*)mp->fbuf;
 	e = b + mp->fbsz;
@@ -1484,10 +1484,10 @@ cklang(register Magic_t* mp, const char* file, char* buf, char* end, struct stat
  */
 
 static char*
-type(register Magic_t* mp, const char* file, struct stat* st, char* buf, char* end)
+type(Magic_t* mp, const char* file, struct stat* st, char* buf, char* end)
 {
-	register char*	s;
-	register char*	t;
+	char*	s;
+	char*	t;
 
 	mp->mime = 0;
 	if (!S_ISREG(st->st_mode))
@@ -1555,10 +1555,10 @@ type(register Magic_t* mp, const char* file, struct stat* st, char* buf, char* e
 		mp->mime = "application/unknown";
 	else if ((t = strchr(mp->mime, '%')) && *(t + 1) == 's' && !*(t + 2))
 	{
-		register char*	b;
-		register char*	be;
-		register char*	m;
-		register char*	me;
+		char*	b;
+		char*	be;
+		char*	m;
+		char*	me;
 
 		b = mp->mime;
 		me = (m = mp->mime = mp->fbuf) + sizeof(mp->fbuf) - 1;
@@ -1590,24 +1590,24 @@ type(register Magic_t* mp, const char* file, struct stat* st, char* buf, char* e
  */
 
 static int
-load(register Magic_t* mp, char* file, register Sfio_t* fp)
+load(Magic_t* mp, char* file, Sfio_t* fp)
 {
-	register Entry_t*	ep;
-	register char*		p;
-	register char*		p2;
-	char*			p3;
-	char*			next;
-	int			n;
-	int			lge;
-	int			lev;
-	int			ent;
-	int			old;
-	int			cont;
-	Info_t*			ip;
-	Entry_t*		ret;
-	Entry_t*		first;
-	Entry_t*		last = 0;
-	Entry_t*		fun['z' - 'a' + 1];
+	Entry_t*	ep;
+	char*		p;
+	char*		p2;
+	char*		p3;
+	char*		next;
+	int		n;
+	int		lge;
+	int		lev;
+	int		ent;
+	int		old;
+	int		cont;
+	Info_t*		ip;
+	Entry_t*	ret;
+	Entry_t*	first;
+	Entry_t*	last = 0;
+	Entry_t*	fun['z' - 'a' + 1];
 
 	memzero(fun, sizeof(fun));
 	cont = '$';
@@ -1775,7 +1775,7 @@ load(register Magic_t* mp, char* file, register Sfio_t* fp)
 			 * absolute offset
 			 */
 
-			ep->offset = strton(p, &next, NiL, 0);
+			ep->offset = strton(p, &next, NULL, 0);
 			p2 = next;
 		}
 		else
@@ -1861,7 +1861,7 @@ load(register Magic_t* mp, char* file, register Sfio_t* fp)
 			 * old style mask
 			 */
 
-			ep->mask = strton(++p, NiL, NiL, 0);
+			ep->mask = strton(++p, NULL, NULL, 0);
 		}
 		for (; isspace(*p2); p2++);
 		if (ep->mask)
@@ -1943,7 +1943,7 @@ load(register Magic_t* mp, char* file, register Sfio_t* fp)
 		{
 			if (*p == '&')
 			{
-				ep->mask = strton(++p, &next, NiL, 0);
+				ep->mask = strton(++p, &next, NULL, 0);
 				p = next;
 			}
 			switch (*p)
@@ -1994,7 +1994,7 @@ load(register Magic_t* mp, char* file, register Sfio_t* fp)
 					if (!(n = regcomp(ep->value.sub, p, REG_DELIMITED|REG_LENIENT|REG_NULL|REG_DISCIPLINE)))
 					{
 						p += ep->value.sub->re_npat;
-						if (!(n = regsubcomp(ep->value.sub, p, NiL, 0, 0)))
+						if (!(n = regsubcomp(ep->value.sub, p, NULL, 0, 0)))
 							p += ep->value.sub->re_npat;
 					}
 					if (n)
@@ -2052,9 +2052,9 @@ load(register Magic_t* mp, char* file, register Sfio_t* fp)
 						ep->value.loop = vmnewof(mp->vm, 0, Loop_t, 1, 0);
 						ep->value.loop->lab = fun[n];
 						while (*p && *p++ != ',');
-						ep->value.loop->start = strton(p, &t, NiL, 0);
+						ep->value.loop->start = strton(p, &t, NULL, 0);
 						while (*t && *t++ != ',');
-						ep->value.loop->size = strton(t, &t, NiL, 0);
+						ep->value.loop->size = strton(t, &t, NULL, 0);
 					}
 					break;
 				case 'm':
@@ -2072,7 +2072,7 @@ load(register Magic_t* mp, char* file, register Sfio_t* fp)
 			}
 			else
 			{
-				ep->value.num = strton(p, NiL, NiL, 0) + lge;
+				ep->value.num = strton(p, NULL, NULL, 0) + lge;
 				if (ep->op == '@')
 					ep->value.num = swapget(0, (char*)&ep->value.num, sizeof(ep->value.num));
 			}
@@ -2155,15 +2155,15 @@ load(register Magic_t* mp, char* file, register Sfio_t* fp)
  */
 
 int
-magicload(register Magic_t* mp, const char* file, unsigned long flags)
+magicload(Magic_t* mp, const char* file, unsigned long flags)
 {
-	register char*		s;
-	register char*		e;
-	register char*		t;
-	int			n;
-	int			found;
-	int			list;
-	Sfio_t*			fp;
+	char*		s;
+	char*		e;
+	char*		t;
+	int		n;
+	int		found;
+	int		list;
+	Sfio_t*		fp;
 
 	mp->flags = mp->disc->flags | flags;
 	found = 0;
@@ -2194,7 +2194,7 @@ magicload(register Magic_t* mp, const char* file, unsigned long flags)
 		}
 		if (!*s || streq(s, "-"))
 			s = MAGIC_FILE;
-		if (!(fp = sfopen(NiL, s, "r")))
+		if (!(fp = sfopen(NULL, s, "r")))
 		{
 			if (list)
 			{
@@ -2207,7 +2207,7 @@ magicload(register Magic_t* mp, const char* file, unsigned long flags)
 					if (!(t = pathpath(s, "", PATH_REGULAR|PATH_READ, mp->fbuf, sizeof(mp->fbuf))))
 						goto next;
 				}
-				if (!(fp = sfopen(NiL, t, "r")))
+				if (!(fp = sfopen(NULL, t, "r")))
 					goto next;
 			}
 			else
@@ -2250,20 +2250,20 @@ magicload(register Magic_t* mp, const char* file, unsigned long flags)
 Magic_t*
 magicopen(Magicdisc_t* disc)
 {
-	register Magic_t*	mp;
-	register int		i;
-	register int		n;
-	register int		f;
-	register int		c;
-	register Vmalloc_t*	vm;
-	unsigned char*		map[CC_MAPS + 1];
+	Magic_t*	mp;
+	int		i;
+	int		n;
+	int		f;
+	int		c;
+	Vmalloc_t*	vm;
+	unsigned char*	map[CC_MAPS + 1];
 
 	if (!(vm = vmopen(Vmdcheap, Vmbest, 0)))
-		return 0;
+		return NULL;
 	if (!(mp = vmnewof(vm, 0, Magic_t, 1, 0)))
 	{
 		vmclose(vm);
-		return 0;
+		return NULL;
 	}
 	mp->id = lib;
 	mp->disc = disc;
@@ -2273,7 +2273,7 @@ magicopen(Magicdisc_t* disc)
 	mp->redisc.re_flags = REG_NOFREE;
 	mp->redisc.re_errorf = (regerror_t)disc->errorf;
 	mp->redisc.re_resizef = (regresize_t)vmgetmem;
-	mp->redisc.re_resizehandle = (void*)mp->vm;
+	mp->redisc.re_resizehandle = mp->vm;
 	mp->dtdisc.key = offsetof(Info_t, name);
 	mp->dtdisc.link = offsetof(Info_t, link);
 	if (!(mp->tmp = sfstropen()) || !(mp->infotab = dtnew(mp->vm, &mp->dtdisc, Dtoset)))
@@ -2297,7 +2297,7 @@ magicopen(Magicdisc_t* disc)
 	return mp;
  bad:
 	magicclose(mp);
-	return 0;
+	return NULL;
 }
 
 /*
@@ -2305,7 +2305,7 @@ magicopen(Magicdisc_t* disc)
  */
 
 int
-magicclose(register Magic_t* mp)
+magicclose(Magic_t* mp)
 {
 	if (!mp)
 		return -1;
@@ -2321,7 +2321,7 @@ magicclose(register Magic_t* mp)
  */
 
 char*
-magictype(register Magic_t* mp, Sfio_t* fp, const char* file, register struct stat* st)
+magictype(Magic_t* mp, Sfio_t* fp, const char* file, struct stat* st)
 {
 	off_t	off;
 	char*	s;
@@ -2333,7 +2333,7 @@ magictype(register Magic_t* mp, Sfio_t* fp, const char* file, register struct st
 	else
 	{
 		if (mp->fp = fp)
-			off = sfseek(mp->fp, (off_t)0, SEEK_CUR);
+			off = sfseek(mp->fp, 0, SEEK_CUR);
 		s = type(mp, file, st, mp->tbuf, &mp->tbuf[sizeof(mp->tbuf)-1]);
 		if (mp->fp)
 			sfseek(mp->fp, off, SEEK_SET);
@@ -2366,10 +2366,10 @@ magictype(register Magic_t* mp, Sfio_t* fp, const char* file, register struct st
  */
 
 int
-magiclist(register Magic_t* mp, register Sfio_t* sp)
+magiclist(Magic_t* mp, Sfio_t* sp)
 {
-	register Entry_t*	ep = mp->magic;
-	register Entry_t*	rp = 0;
+	Entry_t*	ep = mp->magic;
+	Entry_t*	rp = 0;
 
 	mp->flags = mp->disc->flags;
 	sfprintf(sp, "cont\toffset\ttype\top\tmask\tvalue\tmime\tdesc\n");

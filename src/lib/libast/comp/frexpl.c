@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -47,8 +47,8 @@ static long double	pow2tab[LDBL_MAX_EXP + 1];
 static int
 init(void)
 {
-	register int		x;
-	long double		g;
+	int		x;
+	long double	g;
 
 	g = 1;
 	for (x = 0; x < elementsof(pow2tab); x++)
@@ -72,9 +72,9 @@ init(void)
 extern long double
 frexpl(long double f, int* p)
 {
-	register int		k;
-	register int		x;
-	long double		g;
+	int		k;
+	int		x;
+	long double	g;
 
 	INIT();
 
@@ -140,7 +140,7 @@ frexpl(long double f, int* p)
 #undef	ldexpl
 
 extern long double
-ldexpl(long double f, register int x)
+ldexpl(long double f, int x)
 {
 	INIT();
 	if (x < 0)

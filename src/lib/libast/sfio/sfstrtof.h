@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -132,12 +132,12 @@ typedef int (*S2F_get_f)(void*, int);
 
 #if S2F_size
 #define GET(p)		(((p)<(z))?(*p++):(back=0))
-#define PUT(p)		(end?(*end=(char*)p-back):(char*)0)
+#define PUT(p)		(end?(*end=(char*)p-back):NULL)
 #define REV(p,t,b)	(p=t,back=b)
 #define SET(p,t,b)	(t=p,b=back)
 #else
 #define GET(p)		(*p++)
-#define PUT(p)		(end?(*end=(char*)p-1):(char*)0)
+#define PUT(p)		(end?(*end=(char*)p-1):NULL)
 #define REV(p,t,b)	(p=t)
 #define SET(p,t,b)	(t=p)
 #endif
@@ -169,30 +169,30 @@ S2F_function(const char* str, char** end)
 #endif
 {
 #if !S2F_scan
-	register unsigned char*	s = (unsigned char*)str;
+	unsigned char*	s = (unsigned char*)str;
 #if S2F_size
-	register unsigned char*	z = s + size;
-	int			back = 1;
-	int			b;
+	unsigned char*	z = s + size;
+	int		back = 1;
+	int		b;
 #endif
 	unsigned char*		t;
 #endif
-	register S2F_batch	n;
-	register int		c;
-	register int		digits;
-	register int		m;
-	register unsigned char*	cv;
-	int			negative;
-	int			enegative;
-	int			fraction;
-	int			decimal = 0;
-	int			thousand = 0;
-	int			part = 0;
-	int			back_part = 0;
-	S2F_batch		back_n = 0;
-	S2F_number		v;
-	S2F_number		p;
-	S2F_part_t		parts[16];
+	S2F_batch	n;
+	int		c;
+	int		digits;
+	int		m;
+	unsigned char*	cv;
+	int		negative;
+	int		enegative;
+	int		fraction;
+	int		decimal = 0;
+	int		thousand = 0;
+	int		part = 0;
+	int		back_part = 0;
+	S2F_batch	back_n = 0;
+	S2F_number	v;
+	S2F_number	p;
+	S2F_part_t	parts[16];
 
 	/*
 	 * radix char and thousands separator are locale specific

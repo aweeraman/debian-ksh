@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2023 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 2.0                  #
 #                                                                      #
@@ -851,6 +851,7 @@ actual=$(export bincat binecho; "$SHELL" 2>&1 -c \
 # ======
 # Crash in job handling code when running backtick-style command substitutions (rhbz#825520)
 # The regression sometimes doesn't just crash, but freezes hard, so requires special handling.
+if((!SHOPT_SCRIPTONLY));then
 cat >$tmp/backtick_crash.ksh <<'EOF'
 binfalse=$(whence -p false) || exit
 for ((i=0; i<250; i++))
@@ -864,6 +865,7 @@ sleep_pid=$!
 { wait "$test_pid"; } 2>/dev/null			# get job's exit status, suppressing signal messages
 ((!(e = $?))) || err_exit "backtick comsub crash/freeze (got status $e$( ((e>128)) && print -n /SIG && kill -l "$e"))"
 kill "$sleep_pid" 2>/dev/null
+fi # !SHOPT_SCRIPTONLY
 
 # ======
 # Backtick command substitution hangs when filling out pipe buffer (rhbz#1062296)

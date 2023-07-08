@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2011 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2023 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 2.0                  #
 #                                                                      #
@@ -98,8 +98,10 @@ unalias foo
 unalias foo && err_exit 'unalias should return non-zero when a previously set alias is unaliased twice'
 
 # Removing the history and r aliases should work without an error from free(3)
+if((!SHOPT_SCRIPTONLY));then
 err=$(set +x; { "$SHELL" -i -c 'unalias history; unalias r'; } 2>&1) && [[ -z $err ]] \
 || err_exit "the 'history' and 'r' aliases can't be removed (got $(printf %q "$err"))"
+fi # !SHOPT_SCRIPTONLY
 
 # ======
 # Listing aliases in a script shouldn't break shcomp bytecode
@@ -293,12 +295,14 @@ unalias foo
 # ======
 # Redefining a predefined alias, then unsetting it, caused a crash on trying to free a non-allocated pointer
 # https://github.com/ksh93/ksh/discussions/503#discussioncomment-3337172
+if((!SHOPT_SCRIPTONLY));then
 got=$({ "$SHELL" -i -c 'alias r=foo; unalias r'; } 2>&1) \
 || err_exit "crash on redefining and unsetting predefined alias (got $(printf %q "$got"))"
 echo : >|script
 chmod +x script
 got=$({ "$SHELL" -i -c 'alias r=foo; ./script'; } 2>&1) \
 || err_exit "crash on running script after redefining predefined alias (got $(printf %q "$got"))"
+fi # !SHOPT_SCRIPTONLY
 
 # ======
 exit $((Errors<125?Errors:125))

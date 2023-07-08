@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -25,11 +25,9 @@
 **	Written by Kiem-Phong Vo (5/25/96)
 */
 
-#if _PACKAGE_ast
 #include	<ast.h>
 #if !_BLD_cdt
 #include	<dlldefs.h>
-#endif
 #endif
 
 #include	<cdt.h>
@@ -38,9 +36,9 @@
 
 #include	"debug.h"
 
-/* shorthand notations */
-#define NIL(t)	((t)0)
-#define reg	register
+/* for backward compatibility */
+#define NIL(t)	NULL
+#define reg	/* empty */
 
 /* min #bits for a hash table. (1<<this) is table size */
 #define DT_HTABLE	10
@@ -77,7 +75,7 @@ typedef struct _dtlib_s
 #define DTCLRLOCK(dt)		(((dt)->data->type&DT_SHARE) ? asolock(&(dt)->data->lock,1,ASO_UNLOCK) : 0 )
 #define DTRETURN(ob,rv)		do { (ob) = (rv); goto dt_return; } while(0)
 #define DTERROR(dt, mesg) 	(!((dt)->disc && (dt)->disc->eventf) ? 0 : \
-				  (*(dt)->disc->eventf)((dt),DT_ERROR,(void*)(mesg),(dt)->disc) )
+				  (*(dt)->disc->eventf)((dt),DT_ERROR,(mesg),(dt)->disc) )
 
 /* announce completion of an operation of type (ty) on some object (ob) in dictionary (dt) */
 #define DTANNOUNCE(dt,ob,ty)	( ((ob) && ((ty)&DT_TOANNOUNCE) && ((dt)->data->type&DT_ANNOUNCE) && \
@@ -114,11 +112,5 @@ typedef struct _dtlib_s
 extern Dtlink_t*	_dtmake(Dt_t*, void*, int);
 extern void		_dtfree(Dt_t*, Dtlink_t*, int);
 extern int		_dtlock(Dt_t*, int);
-
-#if !_PACKAGE_ast
-extern void*		malloc(size_t);
-extern void*		realloc(void*, size_t);
-extern void		free(void*);
-#endif
 
 #endif /* _CDTLIB_H */

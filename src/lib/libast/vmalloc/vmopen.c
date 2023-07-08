@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -58,7 +58,7 @@ Vmalloc_t* vmopen(Vmdisc_t*	disc,	/* discipline to get segments	*/
 	int		rv, mt;
 
 	if(!meth || !disc || !disc->memoryf )
-		return NIL(Vmalloc_t*);
+		return NULL;
 
 	GETPAGESIZE(_Vmpagesize);
 
@@ -74,16 +74,16 @@ Vmalloc_t* vmopen(Vmdisc_t*	disc,	/* discipline to get segments	*/
 	size = 0;
 
 	if(disc->exceptf)
-	{	addr = NIL(Vmuchar_t*);
-		if((rv = (*disc->exceptf)(vmp,VM_OPEN,(void*)(&addr),disc)) < 0)
-			return NIL(Vmalloc_t*);
+	{	addr = NULL;
+		if((rv = (*disc->exceptf)(vmp,VM_OPEN,&addr,disc)) < 0)
+			return NULL;
 		else if(rv == 0 )
 		{	if(addr) /* vm itself is in memory from disc->memoryf */
 				mode |= VM_MEMORYF;
 		}
 		else if(rv > 0) /* the data section is being restored */
 		{	if(!(init = (Vminit_t*)addr) )
-				return NIL(Vmalloc_t*);
+				return NULL;
 			size = -1; /* to tell that addr was not from disc->memoryf */
 			vd = &init->vd.vd; /**/ASSERT(VLONG(vd)%ALIGN == 0);
 			goto done;
@@ -94,8 +94,8 @@ Vmalloc_t* vmopen(Vmdisc_t*	disc,	/* discipline to get segments	*/
 	incr = disc->round <= 0 ? _Vmpagesize : disc->round;
 	incr = MULTIPLE(incr,ALIGN);
 	size = ROUND(sizeof(Vminit_t),incr); /* get initial memory */
-	if(!(addr = (Vmuchar_t*)(*disc->memoryf)(vmp, NIL(void*), 0, size, disc)) )
-		return NIL(Vmalloc_t*);
+	if(!(addr = (Vmuchar_t*)(*disc->memoryf)(vmp, NULL, 0, size, disc)) )
+		return NULL;
 	memset(addr, 0, size);
 
 	/* initialize region data */
@@ -105,27 +105,27 @@ Vmalloc_t* vmopen(Vmdisc_t*	disc,	/* discipline to get segments	*/
 	vd->mode = mode | meth->meth;
 	vd->incr = incr;
 	vd->pool = 0;
-	vd->free = vd->wild = NIL(Block_t*);
+	vd->free = vd->wild = NULL;
 
 	if(vd->mode&(VM_MTBEST|VM_MTDEBUG|VM_MTPROFILE))
 	{	int	k;
-		vd->root = NIL(Block_t*);
+		vd->root = NULL;
 		for(k = S_TINY-1; k >= 0; --k)
-			TINY(vd)[k] = NIL(Block_t*);
+			TINY(vd)[k] = NULL;
 		for(k = S_CACHE; k >= 0; --k)
-			CACHE(vd)[k] = NIL(Block_t*);
+			CACHE(vd)[k] = NULL;
 	}
 
 	vd->seg = &init->seg.seg; /**/ ASSERT(VLONG(vd->seg)%ALIGN == 0);
 	seg = vd->seg;
-	seg->next = NIL(Seg_t*);
+	seg->next = NULL;
 	seg->vmdt = vd;
-	seg->addr = (void*)addr;
+	seg->addr = addr;
 	seg->extent = size;
 	seg->baddr = addr + size;
 	seg->size = size; /* Note: this size is unusually large to mark seg as
 			   the root segment and can be freed only at closing */
-	seg->free = NIL(Block_t*);
+	seg->free = NULL;
 
 	/* make a data block out of the remainder */
 	bp = SEGBLOCK(seg);
@@ -153,18 +153,18 @@ done:	/* now make the region handle */
 	else if(!(vm = vmalloc(Vmheap, sizeof(Vmalloc_t))) )
 	{	if(size > 0)
 			(void)(*disc->memoryf)(vmp, addr, size, 0, disc);
-		return NIL(Vmalloc_t*);
+		return NULL;
 	}
 	memcpy(vm, vmp, sizeof(Vmalloc_t));
 	vm->data = vd;
 
 	if(disc->exceptf) /* signaling that vmopen succeeded */
-		(void)(*disc->exceptf)(vm, VM_ENDOPEN, NIL(void*), disc);
+		(void)(*disc->exceptf)(vm, VM_ENDOPEN, NULL, disc);
 
 	/* add to the linked list of regions */
-	_vmlock(NIL(Vmalloc_t*), 1);
+	_vmlock(NULL, 1);
 	vm->next = Vmheap->next; Vmheap->next = vm;
-	_vmlock(NIL(Vmalloc_t*), 0);
+	_vmlock(NULL, 0);
 
 	return vm;
 }

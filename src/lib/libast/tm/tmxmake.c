@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -33,10 +33,10 @@
  */
 
 Tm_t*
-tmxtm(register Tm_t* tm, Time_t t, Tm_zone_t* zone)
+tmxtm(Tm_t* tm, Time_t t, Tm_zone_t* zone)
 {
-	register struct tm*	tp;
-	register Tm_leap_t*	lp;
+	struct tm*		tp;
+	Tm_leap_t*		lp;
 	Time_t			x;
 	time_t			now;
 	int			leapsec;
@@ -132,5 +132,5 @@ tmxmake(Time_t t)
 {
 	static Tm_t		ts;
 
-	return tmxtm(&ts, t, NiL);
+	return tmxtm(&ts, t, NULL);
 }

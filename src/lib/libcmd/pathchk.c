@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -84,12 +84,12 @@ static const char usage[] =
  */ 
 static long mypathconf(const char *path, int op)
 {
-	register long			r;
+	long			r;
 
 	static const char* const	ops[] = { "NAME_MAX", "PATH_MAX" };
 
 	errno = 0;
-	if ((r = strtol(astconf(ops[op], path, NiL), NiL, 0)) < 0 && !errno)
+	if ((r = strtol(astconf(ops[op], path, NULL), NULL, 0)) < 0 && !errno)
 		return LONG_MAX;
 	return r;
 }
@@ -99,9 +99,9 @@ static long mypathconf(const char *path, int op)
  */
 static int pathchk(char* path, int mode)
 {
-	register char *cp=path, *cpold;
-	register int c;
-	register long r,name_max,path_max;
+	char *cp=path, *cpold;
+	int c;
+	long r,name_max,path_max;
 	char buf[2];
 
 	if(!*path)
@@ -129,7 +129,7 @@ static int pathchk(char* path, int mode)
 		{
 			if(name_max==0||path_max==0)
 			{
-				if(!(cpold = getcwd((char*)0, 0)) && errno == EINVAL && (cpold = newof(0, char, PATH_MAX, 0)) && !getcwd(cpold, PATH_MAX))
+				if(!(cpold = getcwd(NULL, 0)) && errno == EINVAL && (cpold = newof(0, char, PATH_MAX, 0)) && !getcwd(cpold, PATH_MAX))
 				{
 					free(cpold);
 					cpold = 0;
@@ -195,7 +195,7 @@ static int pathchk(char* path, int mode)
 	{
 		if((mode & PATH) && *cp == '-')
 		{
-			error(2,"%s: path component begins with '-'",path,fmtquote(buf, NiL, "'", 1, 0));
+			error(2,"%s: path component begins with '-'",path,fmtquote(buf, NULL, "'", 1, 0));
 			return -1;
 		}
 		while((c= *cp++) && c!='/')
@@ -203,7 +203,7 @@ static int pathchk(char* path, int mode)
 			{
 				buf[0] = c;
 				buf[1] = 0;
-				error(2,"%s: '%s' not in portable character set",path,fmtquote(buf, NiL, "'", 1, 0));
+				error(2,"%s: '%s' not in portable character set",path,fmtquote(buf, NULL, "'", 1, 0));
 				return -1;
 			}
 		if((cp-cpold) > name_max)
@@ -227,8 +227,8 @@ static int pathchk(char* path, int mode)
 int
 b_pathchk(int argc, char** argv, Shbltin_t* context)
 {
-	register int	mode = 0;
-	register char*	s;
+	int	mode = 0;
+	char*	s;
 
 	cmdinit(argc, argv, context, ERROR_CATALOG, 0);
 	for (;;)
@@ -256,7 +256,7 @@ b_pathchk(int argc, char** argv, Shbltin_t* context)
 	argv += opt_info.index;
 	if (!*argv || error_info.errors)
 	{
-		error(ERROR_usage(2),"%s", optusage(NiL));
+		error(ERROR_usage(2),"%s", optusage(NULL));
 		UNREACHABLE();
 	}
 	while (s = *argv++)

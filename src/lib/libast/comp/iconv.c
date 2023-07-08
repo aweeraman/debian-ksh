@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -148,16 +148,16 @@ static const _ast_iconv_list_t	codes[] =
  */
 
 int
-_ast_iconv_name(register const char* m, register char* b, size_t n)
+_ast_iconv_name(const char* m, char* b, size_t n)
 {
-	register const _ast_iconv_list_t*	cp;
-	const _ast_iconv_list_t*		bp;
-	register int				c;
-	register char*				e;
-	ssize_t					sub[2];
-	char					buf[16];
+	const _ast_iconv_list_t*	cp;
+	const _ast_iconv_list_t*	bp;
+	int				c;
+	char*				e;
+	ssize_t				sub[2];
+	char				buf[16];
 #if DEBUG_TRACE
-	char*					o;
+	char*				o;
 #endif
 
 	if (!b)
@@ -171,7 +171,7 @@ _ast_iconv_name(register const char* m, register char* b, size_t n)
 	e = b + n - 1;
 	bp = 0;
 	n = 0;
-	cp = ccmaplist(NiL);
+	cp = ccmaplist(NULL);
 #if DEBUG_TRACE
 if (error_info.trace < DEBUG_TRACE) sfprintf(sfstderr, "%s: debug-%d: AHA%d _ast_iconv_name m=\"%s\"\n", error_info.id, error_info.trace, __LINE__, m);
 #endif
@@ -261,15 +261,15 @@ if (error_info.trace < DEBUG_TRACE) sfprintf(sfstderr, "%s: debug-%d: AHA%d _ast
 static size_t
 utf2bin(_ast_iconv_t cd, char** fb, size_t* fn, char** tb, size_t* tn)
 {
-	register unsigned char*		f;
-	register unsigned char*		fe;
-	register unsigned char*		t;
-	register unsigned char*		te;
-	register unsigned char*		p;
-	register int			c;
-	register int			w;
-	size_t				n;
-	int				e;
+	unsigned char*		f;
+	unsigned char*		fe;
+	unsigned char*		t;
+	unsigned char*		te;
+	unsigned char*		p;
+	int			c;
+	int			w;
+	size_t			n;
+	int			e;
 
 	e = 0;
 	f = (unsigned char*)(*fb);
@@ -335,14 +335,14 @@ utf2bin(_ast_iconv_t cd, char** fb, size_t* fn, char** tb, size_t* tn)
 static size_t
 bin2utf(_ast_iconv_t cd, char** fb, size_t* fn, char** tb, size_t* tn)
 {
-	register unsigned char*		f;
-	register unsigned char*		fe;
-	register unsigned char*		t;
-	register unsigned char*		te;
-	register int			c;
-	wchar_t				w;
-	size_t				n;
-	int				e;
+	unsigned char*		f;
+	unsigned char*		fe;
+	unsigned char*		t;
+	unsigned char*		te;
+	int			c;
+	wchar_t			w;
+	size_t			n;
+	int			e;
 
 	e = 0;
 	f = (unsigned char*)(*fb);
@@ -422,9 +422,9 @@ static unsigned char		ume_m[UCHAR_MAX+1];
 static int
 umeinit(void)
 {
-	register const unsigned char*	s;
-	register int			i;
-	register int			c;
+	const unsigned char*	s;
+	int			i;
+	int			c;
 
 	if (!ume_d[ume_D[0]])
 	{
@@ -445,16 +445,16 @@ umeinit(void)
 static size_t
 ume2bin(_ast_iconv_t cd, char** fb, size_t* fn, char** tb, size_t* tn)
 {
-	register unsigned char*		f;
-	register unsigned char*		fe;
-	register unsigned char*		t;
-	register unsigned char*		te;
-	register unsigned char*		p;
-	register int			s;
-	register int			c;
-	register int			w;
-	size_t				n;
-	int				e;
+	unsigned char*		f;
+	unsigned char*		fe;
+	unsigned char*		t;
+	unsigned char*		te;
+	unsigned char*		p;
+	int			s;
+	int			c;
+	int			w;
+	size_t			n;
+	int			e;
 
 	e = 0;
 	UMEINIT();
@@ -521,15 +521,15 @@ ume2bin(_ast_iconv_t cd, char** fb, size_t* fn, char** tb, size_t* tn)
 static size_t
 bin2ume(_ast_iconv_t cd, char** fb, size_t* fn, char** tb, size_t* tn)
 {
-	register unsigned char*		f;
-	register unsigned char*		fe;
-	register unsigned char*		t;
-	register unsigned char*		te;
-	register int			c;
-	register int			s;
-	wchar_t				w;
-	size_t				n;
-	int				e;
+	unsigned char*		f;
+	unsigned char*		fe;
+	unsigned char*		t;
+	unsigned char*		te;
+	int			c;
+	int			s;
+	wchar_t			w;
+	size_t			n;
+	int			e;
 
 	e = 0;
 	UMEINIT();
@@ -595,13 +595,13 @@ bin2ume(_ast_iconv_t cd, char** fb, size_t* fn, char** tb, size_t* tn)
 static size_t
 ucs2bin(_ast_iconv_t cd, char** fb, size_t* fn, char** tb, size_t* tn)
 {
-	register unsigned char*		f;
-	register unsigned char*		fe;
-	register unsigned char*		t;
-	register unsigned char*		te;
-	register int			w;
-	size_t				n;
-	int				e;
+	unsigned char*		f;
+	unsigned char*		fe;
+	unsigned char*		t;
+	unsigned char*		te;
+	int			w;
+	size_t			n;
+	int			e;
 
 	e = 0;
 	f = (unsigned char*)(*fb);
@@ -640,14 +640,14 @@ ucs2bin(_ast_iconv_t cd, char** fb, size_t* fn, char** tb, size_t* tn)
 static size_t
 bin2ucs(_ast_iconv_t cd, char** fb, size_t* fn, char** tb, size_t* tn)
 {
-	register unsigned char*		f;
-	register unsigned char*		fe;
-	register unsigned char*		t;
-	register unsigned char*		te;
-	register int			c;
-	wchar_t				w;
-	size_t				n;
-	int				e;
+	unsigned char*		f;
+	unsigned char*		fe;
+	unsigned char*		t;
+	unsigned char*		te;
+	int			c;
+	wchar_t			w;
+	size_t			n;
+	int			e;
 
 	e = 0;
 	f = (unsigned char*)(*fb);
@@ -686,13 +686,13 @@ bin2ucs(_ast_iconv_t cd, char** fb, size_t* fn, char** tb, size_t* tn)
 static size_t
 scu2bin(_ast_iconv_t cd, char** fb, size_t* fn, char** tb, size_t* tn)
 {
-	register unsigned char*		f;
-	register unsigned char*		fe;
-	register unsigned char*		t;
-	register unsigned char*		te;
-	register int			w;
-	size_t				n;
-	int				e;
+	unsigned char*		f;
+	unsigned char*		fe;
+	unsigned char*		t;
+	unsigned char*		te;
+	int			w;
+	size_t			n;
+	int			e;
 
 	e = 0;
 	f = (unsigned char*)(*fb);
@@ -731,14 +731,14 @@ scu2bin(_ast_iconv_t cd, char** fb, size_t* fn, char** tb, size_t* tn)
 static size_t
 bin2scu(_ast_iconv_t cd, char** fb, size_t* fn, char** tb, size_t* tn)
 {
-	register unsigned char*		f;
-	register unsigned char*		fe;
-	register unsigned char*		t;
-	register unsigned char*		te;
-	register int			c;
-	wchar_t				w;
-	size_t				n;
-	int				e;
+	unsigned char*		f;
+	unsigned char*		fe;
+	unsigned char*		t;
+	unsigned char*		te;
+	int			c;
+	wchar_t			w;
+	size_t			n;
+	int			e;
 
 	e = 0;
 	f = (unsigned char*)(*fb);
@@ -777,13 +777,13 @@ bin2scu(_ast_iconv_t cd, char** fb, size_t* fn, char** tb, size_t* tn)
 _ast_iconv_t
 _ast_iconv_open(const char* t, const char* f)
 {
-	register Conv_t*	cc;
-	int			fc;
-	int			tc;
-	int			i;
+	Conv_t*	cc;
+	int	fc;
+	int	tc;
+	int	i;
 
-	char			fr[64];
-	char			to[64];
+	char	fr[64];
+	char	to[64];
 
 #if DEBUG_TRACE
 error(DEBUG_TRACE, "AHA#%d _ast_iconv_open f=%s t=%s\n", __LINE__, f, t);
@@ -821,7 +821,7 @@ error(DEBUG_TRACE, "AHA#%d _ast_iconv_open f=%s:%s:%d t=%s:%s:%d\n", __LINE__, f
 			 */
 
 			if (cc->cvt != (iconv_t)(-1))
-				iconv(cc->cvt, NiL, NiL, NiL, NiL);
+				iconv(cc->cvt, NULL, NULL, NULL, NULL);
 #endif
 			return cc;
 		}
@@ -962,11 +962,11 @@ size_t
 _ast_iconv(_ast_iconv_t cd, char** fb, size_t* fn, char** tb, size_t* tn)
 {
 	Conv_t*				cc = (Conv_t*)cd;
-	register unsigned char*		f;
-	register unsigned char*		t;
-	register unsigned char*		e;
-	register const unsigned char*	m;
-	register size_t			n;
+	unsigned char*		f;
+	unsigned char*		t;
+	unsigned char*		e;
+	const unsigned char*	m;
+	size_t			n;
 	char*				b;
 	char*				tfb;
 	size_t				tfn;
@@ -1122,11 +1122,11 @@ error(DEBUG_TRACE, "AHA#%d iconv_write %d => %d [%d]", __LINE__, *fn, tn, _r);
 				break;
 			case EINVAL:
 				if (disc->errorf)
-					(*disc->errorf)(NiL, disc, ERROR_SYSTEM|2, "incomplete multibyte sequence at offset %I*u", sizeof(fo), *fb - fo);
+					(*disc->errorf)(NULL, disc, ERROR_SYSTEM|2, "incomplete multibyte sequence at offset %I*u", sizeof(fo), *fb - fo);
 				goto bad;
 			default:
 				if (disc->errorf)
-					(*disc->errorf)(NiL, disc, ERROR_SYSTEM|2, "invalid multibyte sequence at offset %I*u", sizeof(fo), *fb - fo);
+					(*disc->errorf)(NULL, disc, ERROR_SYSTEM|2, "invalid multibyte sequence at offset %I*u", sizeof(fo), *fb - fo);
 			bad:
 				disc->errors++;
 				if (!(disc->flags & ICONV_FATAL))
@@ -1223,14 +1223,14 @@ _ast_iconv_move(_ast_iconv_t cd, Sfio_t* ip, Sfio_t* op, size_t n, Iconv_disc_t*
 				{
 					fe = OK;
 					if (disc->errorf)
-						(*disc->errorf)(NiL, disc, ERROR_SYSTEM|2, "incomplete multibyte sequence at offset %I*u", sizeof(ft), ft + (fo - fn));
+						(*disc->errorf)(NULL, disc, ERROR_SYSTEM|2, "incomplete multibyte sequence at offset %I*u", sizeof(ft), ft + (fo - fn));
 					goto bad;
 				}
 				fe = ft;
 				break;
 			default:
 				if (disc->errorf)
-					(*disc->errorf)(NiL, disc, ERROR_SYSTEM|2, "invalid multibyte sequence at offset %I*u", sizeof(ft), ft + (fo - fn));
+					(*disc->errorf)(NULL, disc, ERROR_SYSTEM|2, "invalid multibyte sequence at offset %I*u", sizeof(ft), ft + (fo - fn));
 			bad:
 				disc->errors++;
 				if (!(disc->flags & ICONV_FATAL))
@@ -1293,8 +1293,8 @@ _ast_iconv_list_t*
 _ast_iconv_list(_ast_iconv_list_t* cp)
 {
 	if (!cp)
-		return ccmaplist(NiL);
+		return ccmaplist(NULL);
 	if (cp->ccode >= 0)
 		return (cp = ccmaplist(cp)) ? cp : (_ast_iconv_list_t*)codes;
-	return (++cp)->name ? cp : (_ast_iconv_list_t*)0;
+	return (++cp)->name ? cp : NULL;
 }

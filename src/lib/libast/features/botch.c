@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -34,7 +34,7 @@ extern int		getgroups(int, gid_t*);
 #endif
 
 int
-main()
+main(void)
 {
 #if _lib_getgroups
 	if (sizeof(int) > sizeof(gid_t))
@@ -48,10 +48,10 @@ main()
 		if ((n = getgroups((sizeof(groups) / sizeof(groups[0])) / r, groups)) > 0)
 			for (i = 1; i <= n; i++)
 			{
-				groups[i] = ((gid_t)0);
+				groups[i] = 0;
 				if (getgroups(i, groups) != i)
 					goto botched;
-				if (groups[i] != ((gid_t)0))
+				if (groups[i] != 0)
 					goto botched;
 				groups[i] = ((gid_t)-1);
 				if (getgroups(i, groups) != i)

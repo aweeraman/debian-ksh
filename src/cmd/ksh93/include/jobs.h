@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -30,29 +30,18 @@
 #ifndef SIGINT
 #   include	<signal.h>
 #endif /* !SIGINT */
-#include	"FEATURE/options"
 #include	<aso.h>
+#include	"terminal.h"
 
-#undef JOBS
-#if defined(SIGCLD) && !defined(SIGCHLD)
-#   define SIGCHLD	SIGCLD
+#ifndef SIGCHLD
+#   error ksh 93u+m requires SIGCHLD
 #endif
-#ifdef SIGCHLD
-#   define JOBS	1
-#   include	"terminal.h"
-#   ifdef FIOLOOKLD
+#ifdef FIOLOOKLD
 	/* Ninth edition */
 	extern int tty_ld, ntty_ld;
 #	define OTTYDISC	tty_ld
 #	define NTTYDISC	ntty_ld
-#   endif	/* FIOLOOKLD */
-#else
-#   undef SIGTSTP
-#   undef SH_MONITOR
-#   define SH_MONITOR	0
-#   define job_set(x)
-#   define job_reset(x)
-#endif
+#endif /* FIOLOOKLD */
 
 struct process
 {
@@ -67,10 +56,8 @@ struct process
 	unsigned short	p_exitmin;	/* minimum exit value for xargs */
 	unsigned short	p_flag;		/* flags - see below */
 	unsigned int	p_env;		/* subshell environment number */
-#ifdef JOBS
 	off_t		p_name;		/* history file offset for command */
 	struct termios	p_stty;		/* terminal state for job */
-#endif /* JOBS */
 };
 
 struct jobs
@@ -90,10 +77,8 @@ struct jobs
 	int		numbjob;	/* number of background jobs */
 #endif /* SHOPT_BGX */
 	short		fd;		/* tty descriptor number */
-#ifdef JOBS
 	int		suspend;	/* suspend character */
 	int		linedisc;	/* line discipline */
-#endif /* JOBS */
 	char		jobcontrol;	/* turned on for interactive shell with control of terminal */
 	char		waitsafe;	/* wait will not block */
 	char		waitall;	/* wait for all jobs in pipe */
@@ -108,8 +93,6 @@ struct jobs
 #define JOB_NLFLAG	8
 
 extern struct jobs job;
-
-#ifdef JOBS
 
 #if !_std_malloc
 #include <vmalloc.h>
@@ -137,21 +120,17 @@ extern const char	e_running[];
 extern const char	e_coredump[];
 extern const char	e_no_proc[];
 extern const char	e_no_job[];
-extern const char	e_badpid[];
 extern const char	e_jobsrunning[];
 extern const char	e_nlspace[];
 extern const char	e_access[];
 extern const char	e_terminate[];
 extern const char	e_no_jctl[];
 extern const char	e_signo[];
-#ifdef SIGTSTP
-   extern const char	e_no_start[];
-#endif /* SIGTSTP */
+extern const char	e_no_start[];
 #ifdef NTTYDISC
    extern const char	e_newtty[];
    extern const char	e_oldtty[];
 #endif /* NTTYDISC */
-#endif	/* JOBS */
 
 /*
  * The following are defined in jobs.c
@@ -168,18 +147,12 @@ extern void	job_subrestore(void*);
 #if SHOPT_BGX
 extern void	job_chldtrap(int);
 #endif /* SHOPT_BGX */
-#ifdef JOBS
-	extern void	job_init(int);
-	extern int	job_close(void);
-	extern int	job_list(struct process*,int);
-	extern int	job_hup(struct process *, int);
-	extern int	job_switch(struct process*,int);
-	extern void	job_fork(pid_t);
-	extern int	job_reap(int);
-#else
-#	define job_init(flag)
-#	define job_close()	(0)
-#	define job_fork(p)
-#endif	/* JOBS */
+extern void	job_init(int);
+extern int	job_close(void);
+extern int	job_list(struct process*,int);
+extern int	job_hup(struct process *, int);
+extern int	job_switch(struct process*,int);
+extern void	job_fork(pid_t);
+extern int	job_reap(int);
 
 #endif /* !JOB_NFLAG */

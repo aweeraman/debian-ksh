@@ -71,8 +71,10 @@ SF_IOINTR
 Sfio_t*    sfnew(Sfio_t* f, void* buf, size_t size, int fd, int flags);
 Sfio_t*    sfopen(Sfio_t* f, const char* string, const char* mode);
 Sfio_t*    sfpopen(Sfio_t* f, const char* cmd, const char* mode);
+Sfio_t*    sfstropen(void);
 Sfio_t*    sftmp(size_t size);
 int        sfclose(Sfio_t* f);
+int        sfstrclose(Sfio_t* f);
 .ft 1
 .fi
 .Ss "INPUT/OUTPUT OPERATIONS"
@@ -189,6 +191,7 @@ int        sfresize(Sfio_t* f, Sfoff_t size);
 int        sfset(Sfio_t* f, int flags, int i);
 int        sfsetfd(Sfio_t* f, int fd);
 Sfio_t*    sfstack(Sfio_t* base, Sfio_t* top);
+char*      sfstruse(Sfio_t *f);
 Sfio_t*    sfswap(Sfio_t* f1, Sfio_t* f2);
 .ft 1
 .fi
@@ -510,6 +513,11 @@ In either case, the interpreter is invoked with 2 arguments, respectively \f3-c\
 and the given command \f3cmd\fP. When the interpreter is \f3/bin/sh\fP or
 \f3/bin/ksh\fP, \f3sfpopen()\fP may execute the command \f3cmd\fP itself
 if there are no shell meta-characters in \f3cmd\fP.
+.Ss "  Sfio_t* sfstropen(void)"
+Shorthand that opens a new string buffer for reading and writing;
+same as \f3sfnew(NULL,NULL,-1,-1,SF_READ|SF_WRITE|SF_STRING)\fP.
+See also
+.BR sfstruse() .
 .Ss "  Sfio_t* sftmp(size_t size)"
 This function creates a stream for temporary data.
 It returns the new stream or \f3NULL\fP on error.
@@ -553,6 +561,11 @@ In either case, if the exception handler returns a negative value,
 \f3sfclose()\fP will immediately return this value.
 If the exception handler returns a positive value,
 \f3sfclose()\fP will immediately return a zero value.
+.Ss "  int sfstrclose(Sfio_t* f)"
+Same as
+.B sfclose
+but intended for string buffers opened with
+.BR sfstropen() .
 .Ss "INPUT/OUTPUT OPERATIONS"
 .Ss "  int sfgetc(Sfio_t* f)"
 .Ss "  int sfputc(Sfio_t* f, int c)"
@@ -642,7 +655,7 @@ Otherwise, \f3n\fP indicates the number of objects to move.
 If either \f3fr\fP or \f3fw\fP is \f3NULL\fP, it acts
 as if it is a stream corresponding to \f3/dev/null\fP,
 the UNIX device that has no read data and throws away any write data.
-For example, the call \f3sfmove(f,(Sfio_t*)0,(Sfoff_t)(-1),'\en')\fP
+For example, the call \f3sfmove(f,NULL,(Sfoff_t)(-1),'\en')\fP
 counts the number of complete lines in stream \f3f\fP.
 .Ss "  ssize_t sfread(Sfio_t* f, void* buf, size_t n)"
 This function reads up to \f3n\fP bytes from \f3f\fP into buffer \f3buf\fP.
@@ -810,7 +823,7 @@ original formatting pair and without any extension functions.
 The top environment of a stack, say \f3fe\fP, is automatically popped whenever
 its format string is completely processed.
 In this case, its event-handling function (if any) is called
-as \f3(*eventf)(f,SF_FINAL,NIL(void*),fe)\fP.
+as \f3(*eventf)(f,SF_FINAL,NULL,fe)\fP.
 The top environment
 can also be popped by giving an argument \f3NULL\fP to \f3%!\fP
 or by returning a negative value in an extension function.
@@ -1539,7 +1552,7 @@ to traverse the entire discipline stack of a stream \f3f\fP as follows:
 .ft 1
 .fi
 
-If \f3disc\fP is \f3SF_POPDISC\fP or \f3(Sfdisc_t*)0\fP,
+If \f3disc\fP is \f3SF_POPDISC\fP or \f3NULL\fP,
 the top element of the stack, if any, is popped and its address is returned.
 Otherwise, \f3disc\fP is pushed onto the discipline stack.
 In this case, if successful, \f3sfdisc()\fP returns
@@ -1564,7 +1577,7 @@ The first three fields of \f3Sfdisc_t\fP specify alternative I/O functions.
 If any of them is \f3NULL\fP, it is inherited
 from a discipline pushed earlier on the stack.
 Note that a file stream always
-has \f3read(2)\fP, \f3write(2)\fP, \f3lseek(2)\fP and \f3NIL(Sfexcept_f)\fP
+has \f3read(2)\fP, \f3write(2)\fP, \f3lseek(2)\fP and \f3NULL\fP
 as the \fIlogical bottom discipline\fP.
 Arguments to I/O discipline functions
 have the same meaning as that of the
@@ -1758,10 +1771,18 @@ This is the base stream of the stack.
 If it is \f3NULL\fP, \f3sfstack()\fP does nothing and returns \f3top\fP.
 .Tp
 \f3top\fP:
-If this is \f3SF_POPSTACK\fP or \f3(Sfio_t*)0\fP,
+If this is \f3SF_POPSTACK\fP or \f3NULL\fP,
 the stack is popped and \f3sfstack()\fP returns the popped stream.
 Otherwise, \f3top\fP is pushed on top of the stack identified by \f3base\fP
 and \f3sfstack()\fP returns the \f3base\fP stream.
+.Ss "  char* sfstruse(Sfio_t* f)"
+Makes the string in a Sfio string buffer ready for use
+and makes the buffer ready for re-use. This is done by
+writing a terminating 0 byte to the given
+.B SF_STRING
+buffer, setting the I/O position to the start of the buffer
+so that subsequent write operations will overwrite it,
+and returning a pointer to the beginning of the string.
 .Ss "  Sfio_t* sfswap(Sfio_t* f1, Sfio_t* f2)"
 This function swaps contents of \f3f1\fP and \f3f2\fP.
 This fails if either stream is in a stream stack but not being a base stream.
@@ -1967,12 +1988,6 @@ as addresses of structures so that static initializations of
 the sort ``\f3FILE*\ f\ =\ stdin;\fP'' would work.
 Such applications should use the compile time flag \f3SF_FILE_STRUCT\fP
 to achieve the desired effect.
-.PP
-The binary Stdio-compatibility libraries, \f3libstdio.a\fP and \f3libstdio-mt.a\fP,
-provide complete implementations of Stdio functions suitable
-for linking applications already compiled with native header \f3stdio.h\fP.
-These functions are also slightly altered or extended
-as discussed above.
 .PP
 Below are the supported Stdio functions:
 .PP

@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2023 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 2.0                  #
 #                                                                      #
@@ -257,6 +257,8 @@ then	{ redirect {n}<#((EOF)) ;} 2> /dev/null || err_exit '{n}<# not working'
 	else	err_exit 'not able to parse {n}</dev/null'
 	fi
 fi
+
+if((!SHOPT_SCRIPTONLY));then
 $SHELL -ic '
 {
     print -u2  || exit 2
@@ -270,6 +272,8 @@ $SHELL -ic '
 }  3> /dev/null 4> /dev/null 5> /dev/null 6> /dev/null 7> /dev/null 8> /dev/null 9> /dev/null' > /dev/null 2>&1
 exitval=$?
 (( exitval ))  && err_exit  "print to unit $exitval failed"
+fi # !SHOPT_SCRIPTONL~Y
+
 $SHELL -c "{ > $tmp/1 ; date;} >&- 2> /dev/null" > $tmp/2
 [[ -s $tmp/1 || -s $tmp/2 ]] && err_exit 'commands with standard output closed produce output'
 $SHELL -c "$SHELL -c ': 3>&1' 1>&- 2>/dev/null" && err_exit 'closed standard output not passed to subshell'
@@ -589,10 +593,12 @@ result=$("$SHELL" -c 'echo ok > >(sed s/ok/good/); wait' 2>&1)
 
 # Process substitution in an interactive shell or profile script shouldn't
 # print the process ID of the asynchronous process.
+if((!SHOPT_SCRIPTONLY));then
 echo 'false >(false)' > "$tmp/procsub-envtest"
 result=$(set +x; ENV=$tmp/procsub-envtest "$SHELL" -ic 'true >(true)' 2>&1)
 [[ -z $result ]] || err_exit 'interactive shells and/or profile scripts print a PID during process substitution' \
 				"(expected '', got $(printf %q "$result"))"
+fi # !SHOPT_SCRIPTONLY
 
 # ======
 # Out of range file descriptors shouldn't cause 'read -u' to segfault
@@ -699,6 +705,7 @@ got=$(command -x cat <(command -x echo foo) 2>&1) || err_exit "process substitut
 
 # ======
 # A redirection with a null command could crash under certain circumstances (rhbz#1200534)
+if((!SHOPT_SCRIPTONLY));then
 "$SHELL" -i >/dev/null 2>&1 -c '
 	function dlog
 	{
@@ -712,6 +719,7 @@ got=$(command -x cat <(command -x echo foo) 2>&1) || err_exit "process substitut
 ' empty_redir_crash_test "$tmp"
 ((!(e = $?))) || err_exit 'crash on null-command redirection with DEBUG trap' \
 	"(got status $e$( ((e>128)) && print -n /SIG && kill -l "$e"), $(printf %q "$got"))"
+fi # !SHOPT_SCRIPTONLY
 
 # ======
 # stdout was misdirected if an EXIT/ERR trap handler was defined in a -c script
@@ -786,8 +794,10 @@ got=$(export tmp; "$SHELL" -ec \
 	}
 	consumer <(producer) > /dev/null
 } & pid=$!
-(sleep 5; kill -HUP $pid) 2> /dev/null &
+(sleep 15; kill -HUP $pid) 2> /dev/null &
+pid2=$!
 wait $pid 2> /dev/null || err_exit "process substitution hangs"
+kill $pid2 2> /dev/null
 
 # ======
 # Test for looping or lingering process substitution processes
@@ -847,8 +857,15 @@ fi
 # file descriptor inside of the command substitution.
 exp='Foo bar'
 { got=$(echo 'Foo bar' 2>/dev/null); } >&-
-[[ $exp == $got ]] || err_exit "BUG_CSUBSTDO: Closing stdout outside of command substitution breaks stdout inside of command substitution" \
+[[ $got == "$exp" ]] || err_exit "\$(Comsub) with closed stdout doesn't reopen stdout" \
 	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+{ got=${ print 'Foo bar' 2>/dev/null; }; } >&-
+[[ $got == "$exp" ]] || err_exit "\${ Comsub; } with closed stdout doesn't reopen stdout" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+{ got=`print 'Foo bar' 2>/dev/null`; } >&-
+[[ $got == "$exp" ]] || err_exit "\`Comsub\` with closed stdout doesn't reopen stdout" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
 
 # ======
 # In shcomp, process substitution did not work when used as the file name to a redirection.
@@ -1000,6 +1017,13 @@ got=$(set +x; eval 'cat >out <(echo OK)' 2>&1; echo ===; cat out)
 exp=$'===\nOK'
 [[ $got == "$exp" ]] || err_exit "process substitution nixes output redirection" \
 	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
+# https://github.com/ksh93/ksh/issues/591
+(ulimit -n 2147483648; "$SHELL" --version) 2>/dev/null
+let "$? <= 128" || err_exit "crash on huge RLIMIT_NOFILE"
+(ulimit -n 8; "$SHELL" --version) 2>/dev/null
+let "$? <= 128" || err_exit "crash on tiny RLIMIT_NOFILE"
 
 # ======
 exit $((Errors<125?Errors:125))

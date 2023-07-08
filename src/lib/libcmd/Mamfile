@@ -6,6 +6,7 @@ note * Mamfiles are processed by mamake (src/cmd/INIT/mamake.c); we added
 note * indentation to improve readability. The language is documented in
 note * src/cmd/INIT/README-mamake.md.
 note *
+setv MAMAKE_STRICT
 setv INSTALLROOT ../../..
 setv PACKAGE_ast_INCLUDE ${INSTALLROOT}/include/ast
 setv PACKAGEROOT ../../../../..
@@ -18,395 +19,342 @@ setv IFFEFLAGS
 setv LDFLAGS ""
 make install
 	make cmd
+		make cmd.req
+			prev ${INSTALLROOT}/bin/mkreq
+			exec - mkreq ${CC} ${mam_cc_FLAGS} ${CCFLAGS} : ${LDFLAGS} : cmd fsg md util ast
+		done cmd.req generated
 		make libcmd.a archive
-			make cmd.req
-				exec - set -
-				exec - echo 'int main(){return 0;}' > 1.${COTEMP}.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -c 1.${COTEMP}.c &&
-				exec - x=`${CC} ${mam_cc_FLAGS} ${CCFLAGS} ${LDFLAGS} -o 1.${COTEMP}.x 1.${COTEMP}.o -l'*' 2>&1 | sed -e 's/[][()+@?]/#/g' || :` &&
-				exec - {
-				exec - case "" in
-				exec - *?) echo " " ;;
-				exec - esac
-				exec - for i in cmd fsg md util ast
-				exec - do case $i in
-				exec - "cmd"|cmd)
-				exec - ;;
-				exec - *) if test -f ${INSTALLROOT}/lib/lib/$i
-				exec - then y=`cat ${INSTALLROOT}/lib/lib/$i`
-				exec - case $y in
-				exec - *-?*) echo "" $y ;;
-				exec - esac
-				exec - continue
-				exec - elif test ! -f ${INSTALLROOT}/lib/lib$i.a
-				exec - then case `{ ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -L${INSTALLROOT}/lib ${LDFLAGS} -o 1.${COTEMP}.x 1.${COTEMP}.o -l$i 2>&1 || echo '' "$x" ;} | sed -e 's/[][()+@?]/#/g' || :` in
-				exec - *$x*) case `{ ${CC} ${mam_cc_FLAGS} ${CCFLAGS} ${LDFLAGS} -o 1.${COTEMP}.x 1.${COTEMP}.o -l$i 2>&1 || echo '' "$x" ;} | sed -e 's/[][()+@?]/#/g' || :` in
-				exec - *$x*) continue ;;
-				exec - esac
-				exec - ;;
-				exec - esac
-				exec - fi
-				exec - ;;
-				exec - esac
-				exec - echo " -l$i"
-				exec - done
-				exec - } > cmd.req
-				exec - rm -f 1.${COTEMP}.*
-			done cmd.req generated
+			prev cmd.req
 			make cmdinit.o
 				make cmdinit.c
-					make ${PACKAGE_ast_INCLUDE}/shcmd.h implicit
-					done ${PACKAGE_ast_INCLUDE}/shcmd.h
+					prev ${PACKAGE_ast_INCLUDE}/shcmd.h implicit
 					make cmd.h implicit
-						make ${PACKAGE_ast_INCLUDE}/dlldefs.h implicit
-						done ${PACKAGE_ast_INCLUDE}/dlldefs.h dontcare ignore
+						prev ${PACKAGE_ast_INCLUDE}/dlldefs.h implicit dontcare
 						make cmdext.h implicit
 							prev cmdinit.c
 							make basename.c
-								prev cmd.h implicit
+								prev cmd.h
 							done basename.c
 							make cat.c
 								make ${PACKAGE_ast_INCLUDE}/endian.h implicit
 									make ${PACKAGE_ast_INCLUDE}/bytesex.h implicit
 										make ${PACKAGE_ast_INCLUDE}/ast_common.h implicit
-											make ${PACKAGE_ast_INCLUDE}/ast_map.h implicit
-											done ${PACKAGE_ast_INCLUDE}/ast_map.h dontcare
-										done ${PACKAGE_ast_INCLUDE}/ast_common.h dontcare
-									done ${PACKAGE_ast_INCLUDE}/bytesex.h dontcare
-								done ${PACKAGE_ast_INCLUDE}/endian.h dontcare
-								prev cmd.h implicit
+											prev ${PACKAGE_ast_INCLUDE}/ast_map.h implicit
+										done ${PACKAGE_ast_INCLUDE}/ast_common.h
+									done ${PACKAGE_ast_INCLUDE}/bytesex.h
+								done ${PACKAGE_ast_INCLUDE}/endian.h
+								prev cmd.h
 							done cat.c
 							make chgrp.c
 								make FEATURE/symlink implicit
-									make features/symlink
-									done features/symlink
+									prev features/symlink
 									bind -lutil
 									bind -last
 									exec - iffe ${IFFEFLAGS} -v -c "${CC} ${mam_cc_FLAGS} ${CCFLAGS} ${LDFLAGS}" ref ${mam_cc_L+-L${INSTALLROOT}/lib} -I${PACKAGE_ast_INCLUDE} -I${INSTALLROOT}/include ${mam_libutil} ${mam_libast} : run features/symlink
 								done FEATURE/symlink generated
 								make ${PACKAGE_ast_INCLUDE}/fts.h implicit
-									make ${PACKAGE_ast_INCLUDE}/ast_mode.h implicit
-									done ${PACKAGE_ast_INCLUDE}/ast_mode.h dontcare
-									make ${PACKAGE_ast_INCLUDE}/ast_fs.h implicit
-									done ${PACKAGE_ast_INCLUDE}/ast_fs.h dontcare
+									prev ${PACKAGE_ast_INCLUDE}/ast_mode.h implicit
+									prev ${PACKAGE_ast_INCLUDE}/ast_fs.h implicit
 									make ${PACKAGE_ast_INCLUDE}/ast_std.h implicit
 										make ${PACKAGE_ast_INCLUDE}/regex.h implicit
-											make ${PACKAGE_ast_INCLUDE}/ast_api.h implicit
-											done ${PACKAGE_ast_INCLUDE}/ast_api.h dontcare
+											prev ${PACKAGE_ast_INCLUDE}/ast_api.h implicit
 											make ${PACKAGE_ast_INCLUDE}/ast_wchar.h implicit
 												make ${PACKAGE_ast_INCLUDE}/wctype.h implicit
 													make ${PACKAGE_ast_INCLUDE}/ast_wctype.h implicit
-														prev ${PACKAGE_ast_INCLUDE}/endian.h implicit
+														prev ${PACKAGE_ast_INCLUDE}/endian.h
 														make ${PACKAGE_ast_INCLUDE}/wchar.h implicit
-															prev ${PACKAGE_ast_INCLUDE}/ast_wchar.h implicit
-														done ${PACKAGE_ast_INCLUDE}/wchar.h dontcare
-													done ${PACKAGE_ast_INCLUDE}/ast_wctype.h dontcare
-												done ${PACKAGE_ast_INCLUDE}/wctype.h dontcare
+															prev ${PACKAGE_ast_INCLUDE}/ast_wchar.h
+														done ${PACKAGE_ast_INCLUDE}/wchar.h
+													done ${PACKAGE_ast_INCLUDE}/ast_wctype.h
+												done ${PACKAGE_ast_INCLUDE}/wctype.h
 												make ${PACKAGE_ast_INCLUDE}/stdio.h implicit
 													make ${PACKAGE_ast_INCLUDE}/ast_stdio.h implicit
-														make ${PACKAGE_ast_INCLUDE}/sfio_s.h implicit
-														done ${PACKAGE_ast_INCLUDE}/sfio_s.h dontcare
-														prev ${PACKAGE_ast_INCLUDE}/ast_std.h implicit
-													done ${PACKAGE_ast_INCLUDE}/ast_stdio.h dontcare
-												done ${PACKAGE_ast_INCLUDE}/stdio.h dontcare
-												prev ${PACKAGE_ast_INCLUDE}/stdio.h implicit
-												prev ${PACKAGE_ast_INCLUDE}/ast_common.h implicit
-											done ${PACKAGE_ast_INCLUDE}/ast_wchar.h dontcare
-											prev ${PACKAGE_ast_INCLUDE}/ast_common.h implicit
-										done ${PACKAGE_ast_INCLUDE}/regex.h dontcare
+														prev ${PACKAGE_ast_INCLUDE}/sfio_s.h implicit
+														prev ${PACKAGE_ast_INCLUDE}/ast_std.h
+													done ${PACKAGE_ast_INCLUDE}/ast_stdio.h
+												done ${PACKAGE_ast_INCLUDE}/stdio.h
+												prev ${PACKAGE_ast_INCLUDE}/ast_common.h
+											done ${PACKAGE_ast_INCLUDE}/ast_wchar.h
+											prev ${PACKAGE_ast_INCLUDE}/ast_common.h
+										done ${PACKAGE_ast_INCLUDE}/regex.h
 										make ${PACKAGE_ast_INCLUDE}/getopt.h implicit
-											make ${PACKAGE_ast_INCLUDE}/ast_getopt.h implicit
-											done ${PACKAGE_ast_INCLUDE}/ast_getopt.h dontcare
-										done ${PACKAGE_ast_INCLUDE}/getopt.h dontcare
-										prev ${PACKAGE_ast_INCLUDE}/ast_map.h implicit
-										make ${PACKAGE_ast_INCLUDE}/ast_botch.h implicit
-										done ${PACKAGE_ast_INCLUDE}/ast_botch.h dontcare
-										make ${PACKAGE_ast_INCLUDE}/ast_limits.h implicit
-										done ${PACKAGE_ast_INCLUDE}/ast_limits.h dontcare
+											prev ${PACKAGE_ast_INCLUDE}/ast_getopt.h implicit
+										done ${PACKAGE_ast_INCLUDE}/getopt.h
+										prev ${PACKAGE_ast_INCLUDE}/ast_map.h
+										prev ${PACKAGE_ast_INCLUDE}/ast_botch.h implicit
+										prev ${PACKAGE_ast_INCLUDE}/ast_limits.h implicit
 										make ${PACKAGE_ast_INCLUDE}/ast_fcntl.h implicit
-											prev ${PACKAGE_ast_INCLUDE}/ast_fs.h implicit
-										done ${PACKAGE_ast_INCLUDE}/ast_fcntl.h dontcare
-										prev ${PACKAGE_ast_INCLUDE}/ast_getopt.h implicit
+											prev ${PACKAGE_ast_INCLUDE}/ast_fs.h
+										done ${PACKAGE_ast_INCLUDE}/ast_fcntl.h
+										prev ${PACKAGE_ast_INCLUDE}/ast_getopt.h
 										make ${PACKAGE_ast_INCLUDE}/ast_sys.h implicit
-											prev ${PACKAGE_ast_INCLUDE}/getopt.h implicit
-											prev ${PACKAGE_ast_INCLUDE}/endian.h implicit
-											prev ${PACKAGE_ast_INCLUDE}/endian.h implicit
-										done ${PACKAGE_ast_INCLUDE}/ast_sys.h dontcare
-										make ${PACKAGE_ast_INCLUDE}/ast_lib.h implicit
-										done ${PACKAGE_ast_INCLUDE}/ast_lib.h dontcare
-										prev ${PACKAGE_ast_INCLUDE}/ast_common.h implicit
-									done ${PACKAGE_ast_INCLUDE}/ast_std.h dontcare
-								done ${PACKAGE_ast_INCLUDE}/fts.h dontcare
-								prev ${PACKAGE_ast_INCLUDE}/endian.h implicit
+											prev ${PACKAGE_ast_INCLUDE}/getopt.h
+											prev ${PACKAGE_ast_INCLUDE}/endian.h
+											prev ${PACKAGE_ast_INCLUDE}/endian.h
+										done ${PACKAGE_ast_INCLUDE}/ast_sys.h
+										prev ${PACKAGE_ast_INCLUDE}/ast_lib.h implicit
+										prev ${PACKAGE_ast_INCLUDE}/ast_common.h
+									done ${PACKAGE_ast_INCLUDE}/ast_std.h
+								done ${PACKAGE_ast_INCLUDE}/fts.h
+								prev ${PACKAGE_ast_INCLUDE}/endian.h
 								make ${PACKAGE_ast_INCLUDE}/ls.h implicit
-									prev ${PACKAGE_ast_INCLUDE}/ast_mode.h implicit
-									prev ${PACKAGE_ast_INCLUDE}/ast_fs.h implicit
-									prev ${PACKAGE_ast_INCLUDE}/ast_std.h implicit
+									prev ${PACKAGE_ast_INCLUDE}/ast_mode.h
+									prev ${PACKAGE_ast_INCLUDE}/ast_fs.h
+									prev ${PACKAGE_ast_INCLUDE}/ast_std.h
 								done ${PACKAGE_ast_INCLUDE}/ls.h
 								make ${PACKAGE_ast_INCLUDE}/cdt.h implicit
-									prev ${PACKAGE_ast_INCLUDE}/ast_common.h implicit
-									prev ${PACKAGE_ast_INCLUDE}/ast_std.h implicit
+									prev ${PACKAGE_ast_INCLUDE}/ast_common.h
+									prev ${PACKAGE_ast_INCLUDE}/ast_std.h
 								done ${PACKAGE_ast_INCLUDE}/cdt.h
-								prev cmd.h implicit
+								prev cmd.h
 							done chgrp.c
 							make chmod.c
-								prev FEATURE/symlink implicit
-								prev ${PACKAGE_ast_INCLUDE}/fts.h implicit
-								prev ${PACKAGE_ast_INCLUDE}/ls.h implicit
-								prev cmd.h implicit
+								prev FEATURE/symlink
+								prev ${PACKAGE_ast_INCLUDE}/fts.h
+								prev ${PACKAGE_ast_INCLUDE}/ls.h
+								prev cmd.h
 							done chmod.c
 							make chown.c
-								prev cmd.h implicit
+								prev cmd.h
 							done chown.c
 							make cksum.c
 								make ${PACKAGE_ast_INCLUDE}/error.h implicit
 									make ${PACKAGE_ast_INCLUDE}/option.h implicit
 										make ${PACKAGE_ast_INCLUDE}/ast.h implicit
-											prev ${PACKAGE_ast_INCLUDE}/ast_api.h implicit
+											prev ${PACKAGE_ast_INCLUDE}/ast_api.h
 											make ${PACKAGE_ast_INCLUDE}/vmalloc.h implicit
-												prev ${PACKAGE_ast_INCLUDE}/ast_common.h implicit
-												prev ${PACKAGE_ast_INCLUDE}/ast_std.h implicit
-											done ${PACKAGE_ast_INCLUDE}/vmalloc.h dontcare
+												prev ${PACKAGE_ast_INCLUDE}/ast_common.h
+												prev ${PACKAGE_ast_INCLUDE}/ast_std.h
+											done ${PACKAGE_ast_INCLUDE}/vmalloc.h
 											make ${PACKAGE_ast_INCLUDE}/sfio.h implicit
-												prev ${PACKAGE_ast_INCLUDE}/sfio_s.h implicit
-												prev ${PACKAGE_ast_INCLUDE}/ast_common.h implicit
-												prev ${PACKAGE_ast_INCLUDE}/ast_std.h implicit
-											done ${PACKAGE_ast_INCLUDE}/sfio.h dontcare
-											prev ${PACKAGE_ast_INCLUDE}/ast_std.h implicit
-										done ${PACKAGE_ast_INCLUDE}/ast.h dontcare
-									done ${PACKAGE_ast_INCLUDE}/option.h dontcare
-									prev ${PACKAGE_ast_INCLUDE}/ast.h implicit
+												prev ${PACKAGE_ast_INCLUDE}/sfio_s.h
+												prev ${PACKAGE_ast_INCLUDE}/ast_common.h
+												prev ${PACKAGE_ast_INCLUDE}/ast_std.h
+											done ${PACKAGE_ast_INCLUDE}/sfio.h
+											prev ${PACKAGE_ast_INCLUDE}/ast_std.h
+										done ${PACKAGE_ast_INCLUDE}/ast.h
+									done ${PACKAGE_ast_INCLUDE}/option.h
+									prev ${PACKAGE_ast_INCLUDE}/ast.h
 								done ${PACKAGE_ast_INCLUDE}/error.h
-								prev ${PACKAGE_ast_INCLUDE}/fts.h implicit
+								prev ${PACKAGE_ast_INCLUDE}/fts.h
 								make ${PACKAGE_ast_INCLUDE}/modex.h implicit
-									make ${PACKAGE_ast_INCLUDE}/modecanon.h implicit
-									done ${PACKAGE_ast_INCLUDE}/modecanon.h dontcare
-									prev ${PACKAGE_ast_INCLUDE}/ast_fs.h implicit
+									prev ${PACKAGE_ast_INCLUDE}/modecanon.h implicit
+									prev ${PACKAGE_ast_INCLUDE}/ast_fs.h
 								done ${PACKAGE_ast_INCLUDE}/modex.h
-								prev ${PACKAGE_ast_INCLUDE}/ls.h implicit
+								prev ${PACKAGE_ast_INCLUDE}/ls.h
 								make ${PACKAGE_ast_INCLUDE}/sum.h implicit
-									prev ${PACKAGE_ast_INCLUDE}/ast.h implicit
+									prev ${PACKAGE_ast_INCLUDE}/ast.h
 								done ${PACKAGE_ast_INCLUDE}/sum.h
-								prev cmd.h implicit
+								prev cmd.h
 							done cksum.c
 							make cmp.c
 								make ${PACKAGE_ast_INCLUDE}/ccode.h implicit
-									make ${PACKAGE_ast_INCLUDE}/ast_ccode.h implicit
-									done ${PACKAGE_ast_INCLUDE}/ast_ccode.h dontcare
-									prev ${PACKAGE_ast_INCLUDE}/ast_common.h implicit
+									prev ${PACKAGE_ast_INCLUDE}/ast_ccode.h implicit
+									prev ${PACKAGE_ast_INCLUDE}/ast_common.h
 								done ${PACKAGE_ast_INCLUDE}/ccode.h
-								prev ${PACKAGE_ast_INCLUDE}/ls.h implicit
-								prev cmd.h implicit
+								prev ${PACKAGE_ast_INCLUDE}/ls.h
+								prev cmd.h
 							done cmp.c
 							make comm.c
-								prev cmd.h implicit
+								prev cmd.h
 							done comm.c
 							make cp.c
 								make ${PACKAGE_ast_INCLUDE}/tmx.h implicit
 									make ${PACKAGE_ast_INCLUDE}/tv.h implicit
-										prev ${PACKAGE_ast_INCLUDE}/ast.h implicit
-									done ${PACKAGE_ast_INCLUDE}/tv.h dontcare
+										prev ${PACKAGE_ast_INCLUDE}/ast.h
+									done ${PACKAGE_ast_INCLUDE}/tv.h
 									make ${PACKAGE_ast_INCLUDE}/tm.h implicit
 										make ${PACKAGE_ast_INCLUDE}/times.h implicit
-											make ${PACKAGE_ast_INCLUDE}/ast_time.h implicit
-											done ${PACKAGE_ast_INCLUDE}/ast_time.h dontcare
-											prev ${PACKAGE_ast_INCLUDE}/ast.h implicit
-										done ${PACKAGE_ast_INCLUDE}/times.h dontcare
-										prev ${PACKAGE_ast_INCLUDE}/ast.h implicit
-									done ${PACKAGE_ast_INCLUDE}/tm.h dontcare
+											prev ${PACKAGE_ast_INCLUDE}/ast_time.h implicit
+											prev ${PACKAGE_ast_INCLUDE}/ast.h
+										done ${PACKAGE_ast_INCLUDE}/times.h
+										prev ${PACKAGE_ast_INCLUDE}/ast.h
+									done ${PACKAGE_ast_INCLUDE}/tm.h
 								done ${PACKAGE_ast_INCLUDE}/tmx.h
 								make ${PACKAGE_ast_INCLUDE}/stk.h implicit
-									prev ${PACKAGE_ast_INCLUDE}/sfio.h implicit
+									prev ${PACKAGE_ast_INCLUDE}/sfio.h
 								done ${PACKAGE_ast_INCLUDE}/stk.h
-								make ${PACKAGE_ast_INCLUDE}/hashkey.h implicit
-								done ${PACKAGE_ast_INCLUDE}/hashkey.h
-								prev ${PACKAGE_ast_INCLUDE}/fts.h implicit
-								prev ${PACKAGE_ast_INCLUDE}/times.h implicit
-								prev ${PACKAGE_ast_INCLUDE}/ls.h implicit
-								prev cmd.h implicit
+								prev ${PACKAGE_ast_INCLUDE}/hashkey.h implicit
+								prev ${PACKAGE_ast_INCLUDE}/fts.h
+								prev ${PACKAGE_ast_INCLUDE}/times.h
+								prev ${PACKAGE_ast_INCLUDE}/ls.h
+								prev cmd.h
 							done cp.c
 							make cut.c
-								prev cmd.h implicit
+								prev cmd.h
 							done cut.c
 							make dirname.c
-								prev cmd.h implicit
+								prev cmd.h
 							done dirname.c
 							make date.c
-								prev ${PACKAGE_ast_INCLUDE}/times.h implicit
-								prev ${PACKAGE_ast_INCLUDE}/tmx.h implicit
+								prev ${PACKAGE_ast_INCLUDE}/times.h
+								prev ${PACKAGE_ast_INCLUDE}/tmx.h
 								make ${PACKAGE_ast_INCLUDE}/proc.h implicit
-									prev ${PACKAGE_ast_INCLUDE}/ast.h implicit
+									prev ${PACKAGE_ast_INCLUDE}/ast.h
 								done ${PACKAGE_ast_INCLUDE}/proc.h
-								prev ${PACKAGE_ast_INCLUDE}/ls.h implicit
-								prev cmd.h implicit
+								prev ${PACKAGE_ast_INCLUDE}/ls.h
+								prev cmd.h
 							done date.c
 							make expr.c
-								prev ${PACKAGE_ast_INCLUDE}/regex.h implicit
-								prev cmd.h implicit
+								prev ${PACKAGE_ast_INCLUDE}/regex.h
+								prev cmd.h
 							done expr.c
 							make fds.c
-								prev ${PACKAGE_ast_INCLUDE}/endian.h implicit
+								prev ${PACKAGE_ast_INCLUDE}/endian.h
 								make FEATURE/sockets implicit
-									make features/sockets
-									done features/sockets
+									prev features/sockets
 									exec - iffe ${IFFEFLAGS} -v -c "${CC} ${mam_cc_FLAGS} ${CCFLAGS} ${LDFLAGS}" ref ${mam_cc_L+-L${INSTALLROOT}/lib} -I${PACKAGE_ast_INCLUDE} -I${INSTALLROOT}/include ${mam_libutil} ${mam_libast} : run features/sockets
 								done FEATURE/sockets generated
-								prev ${PACKAGE_ast_INCLUDE}/ls.h implicit
-								prev cmd.h implicit
+								prev ${PACKAGE_ast_INCLUDE}/ls.h
+								prev cmd.h
 							done fds.c
 							make fmt.c
-								prev cmd.h implicit
+								prev cmd.h
 							done fmt.c
 							make fold.c
-								prev cmd.h implicit
+								prev cmd.h
 							done fold.c
 							make getconf.c
-								prev ${PACKAGE_ast_INCLUDE}/ls.h implicit
-								prev ${PACKAGE_ast_INCLUDE}/proc.h implicit
-								prev cmd.h implicit
+								prev ${PACKAGE_ast_INCLUDE}/ls.h
+								prev ${PACKAGE_ast_INCLUDE}/proc.h
+								prev cmd.h
 							done getconf.c
 							make head.c
-								prev cmd.h implicit
+								prev cmd.h
 							done head.c
 							make id.c
-								make fsg.h implicit
-								done fsg.h dontcare virtual
-								prev ${PACKAGE_ast_INCLUDE}/stdio.h implicit
-								prev ${PACKAGE_ast_INCLUDE}/stdio.h implicit
+								prev fsg.h implicit dontcare virtual
+								prev ${PACKAGE_ast_INCLUDE}/stdio.h
+								prev ${PACKAGE_ast_INCLUDE}/stdio.h
 								make FEATURE/ids implicit
-									make features/ids
-									done features/ids
+									prev features/ids
 									exec - iffe ${IFFEFLAGS} -v -c "${CC} ${mam_cc_FLAGS} ${CCFLAGS} ${LDFLAGS}" ref ${mam_cc_L+-L${INSTALLROOT}/lib} -I${PACKAGE_ast_INCLUDE} -I${INSTALLROOT}/include ${mam_libutil} ${mam_libast} : run features/ids
 								done FEATURE/ids generated
-								prev cmd.h implicit
+								prev cmd.h
 							done id.c
 							make join.c
-								prev ${PACKAGE_ast_INCLUDE}/wctype.h implicit
-								prev ${PACKAGE_ast_INCLUDE}/wchar.h implicit
+								prev ${PACKAGE_ast_INCLUDE}/wctype.h
+								prev ${PACKAGE_ast_INCLUDE}/wchar.h
 								make ${PACKAGE_ast_INCLUDE}/sfdisc.h implicit
-									prev ${PACKAGE_ast_INCLUDE}/ast.h implicit
+									prev ${PACKAGE_ast_INCLUDE}/ast.h
 								done ${PACKAGE_ast_INCLUDE}/sfdisc.h
-								prev cmd.h implicit
+								prev cmd.h
 							done join.c
 							make ln.c
-								prev cmd.h implicit
+								prev cmd.h
 							done ln.c
 							make logname.c
-								prev cmd.h implicit
+								prev cmd.h
 							done logname.c
 							make md5sum.c
-								prev cmd.h implicit
+								prev cmd.h
 							done md5sum.c
 							make mkdir.c
-								prev ${PACKAGE_ast_INCLUDE}/ls.h implicit
-								prev cmd.h implicit
+								prev ${PACKAGE_ast_INCLUDE}/ls.h
+								prev cmd.h
 							done mkdir.c
 							make mkfifo.c
-								prev ${PACKAGE_ast_INCLUDE}/ls.h implicit
-								prev cmd.h implicit
+								prev ${PACKAGE_ast_INCLUDE}/ls.h
+								prev cmd.h
 							done mkfifo.c
 							make mktemp.c
-								prev ${PACKAGE_ast_INCLUDE}/ls.h implicit
-								prev cmd.h implicit
+								prev ${PACKAGE_ast_INCLUDE}/ls.h
+								prev cmd.h
 							done mktemp.c
 							make mv.c
-								prev cmd.h implicit
+								prev cmd.h
 							done mv.c
 							make paste.c
-								prev cmd.h implicit
+								prev cmd.h
 							done paste.c
 							make pathchk.c
-								prev ${PACKAGE_ast_INCLUDE}/ls.h implicit
-								prev cmd.h implicit
+								prev ${PACKAGE_ast_INCLUDE}/ls.h
+								prev cmd.h
 							done pathchk.c
 							make pids.c
-								prev ${PACKAGE_ast_INCLUDE}/sfdisc.h implicit
-								make ${PACKAGE_ast_INCLUDE}/ast_tty.h implicit
-								done ${PACKAGE_ast_INCLUDE}/ast_tty.h
-								prev cmd.h implicit
+								prev ${PACKAGE_ast_INCLUDE}/sfdisc.h
+								prev ${PACKAGE_ast_INCLUDE}/ast_tty.h implicit
+								prev cmd.h
 							done pids.c
 							make rev.c
-								make rev.h implicit
-								done rev.h
-								prev cmd.h implicit
+								prev rev.h implicit
+								prev cmd.h
 							done rev.c
 							make rm.c
-								prev ${PACKAGE_ast_INCLUDE}/fts.h implicit
-								prev ${PACKAGE_ast_INCLUDE}/ls.h implicit
-								prev cmd.h implicit
+								prev ${PACKAGE_ast_INCLUDE}/fts.h
+								prev ${PACKAGE_ast_INCLUDE}/ls.h
+								prev cmd.h
 							done rm.c
 							make rmdir.c
-								prev cmd.h implicit
+								prev cmd.h
 							done rmdir.c
 							make stty.c
-								prev ${PACKAGE_ast_INCLUDE}/ast_tty.h implicit
-								prev ${PACKAGE_ast_INCLUDE}/ccode.h implicit
-								prev cmd.h implicit
+								prev ${PACKAGE_ast_INCLUDE}/ast_tty.h
+								prev ${PACKAGE_ast_INCLUDE}/ccode.h
+								prev cmd.h
 							done stty.c
 							make sum.c
-								prev cmd.h implicit
+								prev cmd.h
 							done sum.c
 							make sync.c
-								prev ${PACKAGE_ast_INCLUDE}/ls.h implicit
-								prev cmd.h implicit
+								prev ${PACKAGE_ast_INCLUDE}/ls.h
+								prev cmd.h
 							done sync.c
 							make tail.c
-								prev rev.h implicit
-								prev ${PACKAGE_ast_INCLUDE}/tv.h implicit
-								prev ${PACKAGE_ast_INCLUDE}/ls.h implicit
-								prev cmd.h implicit
+								prev rev.h
+								prev ${PACKAGE_ast_INCLUDE}/tv.h
+								prev ${PACKAGE_ast_INCLUDE}/ls.h
+								prev cmd.h
 							done tail.c
 							make tee.c
-								make ${PACKAGE_ast_INCLUDE}/sig.h implicit
-								done ${PACKAGE_ast_INCLUDE}/sig.h
-								prev ${PACKAGE_ast_INCLUDE}/ls.h implicit
-								prev cmd.h implicit
+								prev ${PACKAGE_ast_INCLUDE}/sig.h implicit
+								prev ${PACKAGE_ast_INCLUDE}/ls.h
+								prev cmd.h
 							done tee.c
 							make tty.c
-								prev cmd.h implicit
+								prev cmd.h
 							done tty.c
 							make uname.c
 								make FEATURE/utsname implicit
-									make features/utsname
-									done features/utsname
+									prev features/utsname
 									exec - iffe ${IFFEFLAGS} -v -c "${CC} ${mam_cc_FLAGS} ${CCFLAGS} ${LDFLAGS}" ref ${mam_cc_L+-L${INSTALLROOT}/lib} -I${PACKAGE_ast_INCLUDE} -I${INSTALLROOT}/include ${mam_libutil} ${mam_libast} : run features/utsname
 								done FEATURE/utsname generated
-								prev ${PACKAGE_ast_INCLUDE}/proc.h implicit
-								prev cmd.h implicit
+								prev ${PACKAGE_ast_INCLUDE}/proc.h
+								prev cmd.h
 							done uname.c
 							make uniq.c
-								prev cmd.h implicit
+								prev cmd.h
 							done uniq.c
 							make vmstate.c
-								prev ${PACKAGE_ast_INCLUDE}/sfdisc.h implicit
-								prev ${PACKAGE_ast_INCLUDE}/vmalloc.h implicit
-								prev cmd.h implicit
+								prev ${PACKAGE_ast_INCLUDE}/sfdisc.h
+								prev ${PACKAGE_ast_INCLUDE}/vmalloc.h
+								prev cmd.h
 							done vmstate.c
 							make wc.c
-								prev ${PACKAGE_ast_INCLUDE}/ls.h implicit
+								prev ${PACKAGE_ast_INCLUDE}/ls.h
 								make wc.h implicit
-									prev ${PACKAGE_ast_INCLUDE}/ast.h implicit
+									prev ${PACKAGE_ast_INCLUDE}/ast.h
 								done wc.h
-								prev cmd.h implicit
+								prev cmd.h
 							done wc.c
 							make revlib.c
-								prev rev.h implicit
-								prev cmd.h implicit
+								prev rev.h
+								prev cmd.h
 							done revlib.c
 							make wclib.c
 								make ${PACKAGE_ast_INCLUDE}/lc.h implicit
-									prev ${PACKAGE_ast_INCLUDE}/ast.h implicit
-								done ${PACKAGE_ast_INCLUDE}/lc.h dontcare
-								prev ${PACKAGE_ast_INCLUDE}/wctype.h implicit
-								prev ${PACKAGE_ast_INCLUDE}/wchar.h implicit
-								prev wc.h implicit
-								prev cmd.h implicit
+									prev ${PACKAGE_ast_INCLUDE}/ast.h
+								done ${PACKAGE_ast_INCLUDE}/lc.h
+								prev ${PACKAGE_ast_INCLUDE}/wctype.h
+								prev ${PACKAGE_ast_INCLUDE}/wchar.h
+								prev wc.h
+								prev cmd.h
 							done wclib.c
 							make lib.c
-								prev cmd.h implicit
+								prev cmd.h
 							done lib.c
 							exec - {
-							exec - cat <<!
+							exec - ${STDCAT} <<!
 							exec - /*
 							exec -  * -lcmd extern function prototypes
 							exec -  */
@@ -422,247 +370,244 @@ make install
 							exec - ${PACKAGEROOT}/src/lib/libcmd/cmdinit.c ${PACKAGEROOT}/src/lib/libcmd/basename.c ${PACKAGEROOT}/src/lib/libcmd/cat.c ${PACKAGEROOT}/src/lib/libcmd/chgrp.c ${PACKAGEROOT}/src/lib/libcmd/chmod.c ${PACKAGEROOT}/src/lib/libcmd/chown.c ${PACKAGEROOT}/src/lib/libcmd/cksum.c ${PACKAGEROOT}/src/lib/libcmd/cmp.c ${PACKAGEROOT}/src/lib/libcmd/comm.c ${PACKAGEROOT}/src/lib/libcmd/cp.c ${PACKAGEROOT}/src/lib/libcmd/cut.c ${PACKAGEROOT}/src/lib/libcmd/dirname.c ${PACKAGEROOT}/src/lib/libcmd/date.c ${PACKAGEROOT}/src/lib/libcmd/expr.c ${PACKAGEROOT}/src/lib/libcmd/fds.c ${PACKAGEROOT}/src/lib/libcmd/fmt.c ${PACKAGEROOT}/src/lib/libcmd/fold.c ${PACKAGEROOT}/src/lib/libcmd/getconf.c ${PACKAGEROOT}/src/lib/libcmd/head.c ${PACKAGEROOT}/src/lib/libcmd/id.c ${PACKAGEROOT}/src/lib/libcmd/join.c ${PACKAGEROOT}/src/lib/libcmd/ln.c ${PACKAGEROOT}/src/lib/libcmd/logname.c ${PACKAGEROOT}/src/lib/libcmd/md5sum.c ${PACKAGEROOT}/src/lib/libcmd/mkdir.c ${PACKAGEROOT}/src/lib/libcmd/mkfifo.c ${PACKAGEROOT}/src/lib/libcmd/mktemp.c ${PACKAGEROOT}/src/lib/libcmd/mv.c ${PACKAGEROOT}/src/lib/libcmd/paste.c ${PACKAGEROOT}/src/lib/libcmd/pathchk.c ${PACKAGEROOT}/src/lib/libcmd/pids.c ${PACKAGEROOT}/src/lib/libcmd/rev.c ${PACKAGEROOT}/src/lib/libcmd/rm.c ${PACKAGEROOT}/src/lib/libcmd/rmdir.c ${PACKAGEROOT}/src/lib/libcmd/stty.c ${PACKAGEROOT}/src/lib/libcmd/sum.c ${PACKAGEROOT}/src/lib/libcmd/sync.c ${PACKAGEROOT}/src/lib/libcmd/tail.c ${PACKAGEROOT}/src/lib/libcmd/tee.c ${PACKAGEROOT}/src/lib/libcmd/tty.c ${PACKAGEROOT}/src/lib/libcmd/uname.c ${PACKAGEROOT}/src/lib/libcmd/uniq.c ${PACKAGEROOT}/src/lib/libcmd/vmstate.c ${PACKAGEROOT}/src/lib/libcmd/wc.c ${PACKAGEROOT}/src/lib/libcmd/revlib.c ${PACKAGEROOT}/src/lib/libcmd/wclib.c ${PACKAGEROOT}/src/lib/libcmd/lib.c |
 							exec - sort -u
 							exec - } > 1.${COTEMP}.h
-							exec - if cmp -s 1.${COTEMP}.h cmdext.h
-							exec - then rm -f 1.${COTEMP}.h
-							exec - else mv 1.${COTEMP}.h cmdext.h
+							exec - if ${STDCMP} -s 1.${COTEMP}.h cmdext.h
+							exec - then ${STDRM} -f 1.${COTEMP}.h
+							exec - else ${STDMV} 1.${COTEMP}.h cmdext.h
 							exec - fi
-							prev ${PACKAGE_ast_INCLUDE}/shcmd.h implicit
+							prev ${PACKAGE_ast_INCLUDE}/shcmd.h
 						done cmdext.h dontcare generated
-						prev ${PACKAGE_ast_INCLUDE}/shcmd.h implicit
-						make ${PACKAGE_ast_INCLUDE}/stak.h implicit
-							prev ${PACKAGE_ast_INCLUDE}/stk.h implicit
-						done ${PACKAGE_ast_INCLUDE}/stak.h dontcare
-						prev ${PACKAGE_ast_INCLUDE}/error.h implicit
-						prev ${PACKAGE_ast_INCLUDE}/ast.h implicit
+						prev ${PACKAGE_ast_INCLUDE}/shcmd.h
+						prev ${PACKAGE_ast_INCLUDE}/stk.h
+						prev ${PACKAGE_ast_INCLUDE}/error.h
+						prev ${PACKAGE_ast_INCLUDE}/ast.h
 					done cmd.h
 				done cmdinit.c
-				prev cmdinit.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -D_BLD_cmd -D_PACKAGE_ast -c cmdinit.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -D_BLD_cmd -c cmdinit.c
 			done cmdinit.o generated
 			make basename.o
 				prev basename.c
 				prev basename.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -D_PACKAGE_ast -c basename.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -c basename.c
 			done basename.o generated
 			make cat.o
 				prev cat.c
 				prev cat.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -D_PACKAGE_ast -c cat.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -c cat.c
 			done cat.o generated
 			make chgrp.o
 				prev chgrp.c
 				prev chgrp.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_PACKAGE_ast -D_BLD_cmd -c chgrp.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -c chgrp.c
 			done chgrp.o generated
 			make chmod.o
 				prev chmod.c
 				prev chmod.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -D_PACKAGE_ast -c chmod.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -c chmod.c
 			done chmod.o generated
 			make chown.o
 				prev chown.c
 				prev chown.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -D_BLD_cmd -D_PACKAGE_ast -c chown.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -D_BLD_cmd -c chown.c
 			done chown.o generated
 			make cksum.o
 				prev cksum.c
 				prev cksum.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_PACKAGE_ast -D_BLD_cmd -c cksum.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -c cksum.c
 			done cksum.o generated
 			make cmp.o
 				prev cmp.c
 				prev cmp.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -D_PACKAGE_ast -c cmp.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -c cmp.c
 			done cmp.o generated
 			make comm.o
 				prev comm.c
 				prev comm.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -D_PACKAGE_ast -c comm.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -c comm.c
 			done comm.o generated
 			make cp.o
 				prev cp.c
 				prev cp.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_PACKAGE_ast -D_BLD_cmd -c cp.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -c cp.c
 			done cp.o generated
 			make cut.o
 				prev cut.c
 				prev cut.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -D_PACKAGE_ast -c cut.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -c cut.c
 			done cut.o generated
 			make dirname.o
 				prev dirname.c
 				prev dirname.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -D_PACKAGE_ast -c dirname.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -c dirname.c
 			done dirname.o generated
 			make date.o
 				prev date.c
 				prev date.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_PACKAGE_ast -D_BLD_cmd -c date.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -c date.c
 			done date.o generated
 			make expr.o
 				prev expr.c
 				prev expr.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -D_PACKAGE_ast -c expr.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -c expr.c
 			done expr.o generated
 			make fds.o
 				prev fds.c
 				prev fds.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -D_PACKAGE_ast -c fds.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -c fds.c
 			done fds.o generated
 			make fmt.o
 				prev fmt.c
 				prev fmt.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -D_PACKAGE_ast -c fmt.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -c fmt.c
 			done fmt.o generated
 			make fold.o
 				prev fold.c
 				prev fold.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -D_PACKAGE_ast -c fold.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -c fold.c
 			done fold.o generated
 			make getconf.o
 				prev getconf.c
 				prev getconf.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_PACKAGE_ast -D_BLD_cmd -c getconf.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -c getconf.c
 			done getconf.o generated
 			make head.o
 				prev head.c
 				prev head.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -D_PACKAGE_ast -c head.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -c head.c
 			done head.o generated
 			make id.o
 				prev id.c
 				prev id.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} ${-debug-symbols?1?${mam_cc_DEBUG} -D_BLD_DEBUG?${CCFLAGS.FORCE}?} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -D_PACKAGE_ast -c id.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} ${-debug-symbols?1?${mam_cc_DEBUG} -D_BLD_DEBUG?${CCFLAGS.FORCE}?} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -c id.c
 			done id.o generated
 			make join.o
 				prev join.c
 				prev join.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_PACKAGE_ast -D_BLD_cmd -c join.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -c join.c
 			done join.o generated
 			make ln.o
 				prev ln.c
 				prev ln.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -D_BLD_cmd -D_PACKAGE_ast -c ln.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -D_BLD_cmd -c ln.c
 			done ln.o generated
 			make logname.o
 				prev logname.c
 				prev logname.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -D_PACKAGE_ast -c logname.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -c logname.c
 			done logname.o generated
 			make md5sum.o
 				prev md5sum.c
 				prev md5sum.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -D_BLD_cmd -D_PACKAGE_ast -c md5sum.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -D_BLD_cmd -c md5sum.c
 			done md5sum.o generated
 			make mkdir.o
 				prev mkdir.c
 				prev mkdir.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -D_PACKAGE_ast -c mkdir.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -c mkdir.c
 			done mkdir.o generated
 			make mkfifo.o
 				prev mkfifo.c
 				prev mkfifo.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -D_PACKAGE_ast -c mkfifo.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -c mkfifo.c
 			done mkfifo.o generated
 			make mktemp.o
 				prev mktemp.c
 				prev mktemp.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -D_PACKAGE_ast -c mktemp.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -c mktemp.c
 			done mktemp.o generated
 			make mv.o
 				prev mv.c
 				prev mv.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -D_BLD_cmd -D_PACKAGE_ast -c mv.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -D_BLD_cmd -c mv.c
 			done mv.o generated
 			make paste.o
 				prev paste.c
 				prev paste.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -D_PACKAGE_ast -c paste.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -c paste.c
 			done paste.o generated
 			make pathchk.o
 				prev pathchk.c
 				prev pathchk.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -D_PACKAGE_ast -c pathchk.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -c pathchk.c
 			done pathchk.o generated
 			make pids.o
 				prev pids.c
 				prev pids.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_PACKAGE_ast -D_BLD_cmd -c pids.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -c pids.c
 			done pids.o generated
 			make rev.o
 				prev rev.c
 				prev rev.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -D_PACKAGE_ast -c rev.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -c rev.c
 			done rev.o generated
 			make rm.o
 				prev rm.c
 				prev rm.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -D_PACKAGE_ast -c rm.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -c rm.c
 			done rm.o generated
 			make rmdir.o
 				prev rmdir.c
 				prev rmdir.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -D_PACKAGE_ast -c rmdir.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -c rmdir.c
 			done rmdir.o generated
 			make stty.o
 				prev stty.c
 				prev stty.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -D_PACKAGE_ast -c stty.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -c stty.c
 			done stty.o generated
 			make sum.o
 				prev sum.c
 				prev sum.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -D_BLD_cmd -D_PACKAGE_ast -c sum.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -D_BLD_cmd -c sum.c
 			done sum.o generated
 			make sync.o
 				prev sync.c
 				prev sync.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -D_PACKAGE_ast -c sync.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -c sync.c
 			done sync.o generated
 			make tail.o
 				prev tail.c
 				prev tail.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_PACKAGE_ast -D_BLD_cmd -c tail.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -c tail.c
 			done tail.o generated
 			make tee.o
 				prev tee.c
 				prev tee.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -D_PACKAGE_ast -c tee.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -c tee.c
 			done tee.o generated
 			make tty.o
 				prev tty.c
 				prev tty.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -D_PACKAGE_ast -c tty.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -c tty.c
 			done tty.o generated
 			make uname.o
 				prev uname.c
 				prev uname.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -DHOSTTYPE=\""${mam_cc_HOSTTYPE}"\" -D_PACKAGE_ast -D_BLD_cmd -c uname.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -DHOSTTYPE=\""${mam_cc_HOSTTYPE}"\" -D_BLD_cmd -c uname.c
 			done uname.o generated
 			make uniq.o
 				prev uniq.c
 				prev uniq.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -D_PACKAGE_ast -c uniq.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -c uniq.c
 			done uniq.o generated
 			make vmstate.o
 				prev vmstate.c
 				prev vmstate.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_PACKAGE_ast -D_BLD_cmd -c vmstate.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -c vmstate.c
 			done vmstate.o generated
 			make wc.o
 				prev wc.c
 				prev wc.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_PACKAGE_ast -D_BLD_cmd -c wc.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -DERROR_CATALOG=\""libcmd"\" -D_BLD_cmd -c wc.c
 			done wc.o generated
 			make revlib.o
 				prev revlib.c
 				prev revlib.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -D_BLD_cmd -D_PACKAGE_ast -c revlib.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -D_BLD_cmd -c revlib.c
 			done revlib.o generated
 			make wclib.o
 				prev wclib.c
 				prev wclib.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -D_PACKAGE_ast -D_BLD_cmd -c wclib.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -D_BLD_cmd -c wclib.c
 			done wclib.o generated
 			make sumlib.o
 				bind -lsum
@@ -671,27 +616,27 @@ make install
 			make lib.o
 				prev lib.c
 				prev lib.c
-				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -D_BLD_cmd -D_PACKAGE_ast -c lib.c
+				exec - ${CC} ${mam_cc_FLAGS} ${CCFLAGS} -I. -I${PACKAGE_ast_INCLUDE} -D_BLD_cmd -c lib.c
 			done lib.o generated
 			exec - ${AR} rc libcmd.a cmdinit.o basename.o cat.o chgrp.o chmod.o chown.o cksum.o cmp.o comm.o cp.o cut.o dirname.o date.o expr.o fds.o fmt.o fold.o getconf.o head.o id.o join.o ln.o logname.o md5sum.o mkdir.o mkfifo.o mktemp.o mv.o paste.o pathchk.o
 			exec - ${AR} rc libcmd.a pids.o rev.o rm.o rmdir.o stty.o sum.o sync.o tail.o tee.o tty.o uname.o uniq.o vmstate.o wc.o revlib.o wclib.o sumlib.o lib.o
 			exec - (ranlib libcmd.a) >/dev/null 2>&1 || true
 		done libcmd.a generated
 	done cmd virtual
-	prev libcmd.a archive
+	prev libcmd.a
 	make ${INSTALLROOT}/lib
-		exec - if silent test ! -d ${INSTALLROOT}/lib
+		exec - if test ! -d ${INSTALLROOT}/lib
 		exec - then mkdir -p ${INSTALLROOT}/lib
 		exec - fi
 	done ${INSTALLROOT}/lib generated
 	make ${INSTALLROOT}/lib/libcmd.a archive
 		prev ${INSTALLROOT}/lib
-		prev libcmd.a archive
+		prev libcmd.a
 		exec - ${STDCMP} 2>/dev/null -s libcmd.a ${INSTALLROOT}/lib/libcmd.a || { ${STDMV} ${INSTALLROOT}/lib/libcmd.a ${INSTALLROOT}/lib/libcmd.a.old 2>/dev/null || true; ${STDCP} libcmd.a ${INSTALLROOT}/lib/libcmd.a ;}
 		exec - (ranlib ${INSTALLROOT}/lib/libcmd.a) >/dev/null 2>&1 || true
 	done ${INSTALLROOT}/lib/libcmd.a generated
 	make ${INSTALLROOT}/lib/lib
-		exec - if silent test ! -d ${INSTALLROOT}/lib/lib
+		exec - if test ! -d ${INSTALLROOT}/lib/lib
 		exec - then mkdir -p ${INSTALLROOT}/lib/lib
 		exec - fi
 	done ${INSTALLROOT}/lib/lib generated
@@ -701,20 +646,20 @@ make install
 		exec - ${STDCMP} 2>/dev/null -s cmd.req ${INSTALLROOT}/lib/lib/cmd || { ${STDMV} ${INSTALLROOT}/lib/lib/cmd ${INSTALLROOT}/lib/lib/cmd.old 2>/dev/null || true; ${STDCP} cmd.req ${INSTALLROOT}/lib/lib/cmd ;}
 	done ${INSTALLROOT}/lib/lib/cmd generated
 	make ${PACKAGE_ast_INCLUDE}
-		exec - if silent test ! -d ${PACKAGE_ast_INCLUDE}
+		exec - if test ! -d ${PACKAGE_ast_INCLUDE}
 		exec - then mkdir -p ${PACKAGE_ast_INCLUDE}
 		exec - fi
 	done ${PACKAGE_ast_INCLUDE} generated
 	make ${PACKAGE_ast_INCLUDE}/cmd.h
 		prev ${PACKAGE_ast_INCLUDE}
 		prev cmd.h
-		exec - if ! cmp -s cmd.h ${PACKAGE_ast_INCLUDE}/cmd.h
+		exec - if ! ${STDCMP} -s cmd.h ${PACKAGE_ast_INCLUDE}/cmd.h
 		exec - then ${STDCP} cmd.h ${PACKAGE_ast_INCLUDE}/cmd.h
 		exec - fi
 	done ${PACKAGE_ast_INCLUDE}/cmd.h generated
 	make ${PACKAGE_ast_INCLUDE}/cmdext.h
 		prev cmdext.h
-		exec - if ! cmp -s cmdext.h ${PACKAGE_ast_INCLUDE}/cmdext.h
+		exec - if ! ${STDCMP} -s cmdext.h ${PACKAGE_ast_INCLUDE}/cmdext.h
 		exec - then ${STDCP} cmdext.h ${PACKAGE_ast_INCLUDE}/cmdext.h
 		exec - fi
 	done ${PACKAGE_ast_INCLUDE}/cmdext.h generated
@@ -768,7 +713,7 @@ make install
 			prev wclib.c
 			prev lib.c
 			exec - {
-			exec - cat <<!
+			exec - ${STDCAT} <<!
 			exec - /*
 			exec -  * -lcmd function list -- define your own CMDLIST()
 			exec -  */
@@ -782,12 +727,12 @@ make install
 			exec - |
 			exec - sort -u
 			exec - } > 1.${COTEMP}.h
-			exec - if cmp -s 1.${COTEMP}.h cmdlist.h
-			exec - then rm -f 1.${COTEMP}.h
-			exec - else mv 1.${COTEMP}.h cmdlist.h
+			exec - if ${STDCMP} -s 1.${COTEMP}.h cmdlist.h
+			exec - then ${STDRM} -f 1.${COTEMP}.h
+			exec - else ${STDMV} 1.${COTEMP}.h cmdlist.h
 			exec - fi
 		done cmdlist.h generated
-		exec - if ! cmp -s cmdlist.h ${PACKAGE_ast_INCLUDE}/cmdlist.h
+		exec - if ! ${STDCMP} -s cmdlist.h ${PACKAGE_ast_INCLUDE}/cmdlist.h
 		exec - then ${STDCP} cmdlist.h ${PACKAGE_ast_INCLUDE}/cmdlist.h
 		exec - fi
 	done ${PACKAGE_ast_INCLUDE}/cmdlist.h generated

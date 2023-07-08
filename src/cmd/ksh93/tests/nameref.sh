@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2023 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 2.0                  #
 #                                                                      #
@@ -684,6 +684,14 @@ typeset -n ref='arr[2]'
 $SHELL  2> /dev/null -c 'function x { nameref lv=gg ; compound -A lv.c=( [4]=( x=1 )) ; } ; compound gg ; x' || err_exit 'compound array assignment with nameref in a function failed'
 
 $SHELL -c 'unset -n KSH_VERSION' 2> /dev/null || err_exit 'Unable to unset nameref KSH_VERSION.'
+
+# ======
+# bug introduced in ksh 93u 2010-11-22
+# https://github.com/ksh93/ksh/discussions/574
+exp=': d: invalid self reference'
+got=$(nameref a=b b=c c=d d=a 2>&1)
+[[ e=$? -eq 1 && $got == *"$exp" ]] || err_exit 'self-reference loop detection' \
+	"(expected status 1, *$(printf %q "$exp"); got status $e, $(printf %q "$got"))"
 
 # ======
 exit $((Errors<125?Errors:125))

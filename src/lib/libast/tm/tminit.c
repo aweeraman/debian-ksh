@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -112,11 +112,11 @@ _tm_localtime(const time_t* t)
 static int
 tzwest(time_t* clock, int* isdst)
 {
-	register struct tm*	tp;
-	register int		n;
-	register int		m;
-	int			h;
-	time_t			epoch;
+	struct tm*	tp;
+	int		n;
+	int		m;
+	int		h;
+	time_t		epoch;
 
 	/*
 	 * convert to GMT assuming local time
@@ -169,7 +169,7 @@ tmopt(void* a, const void* p, int n, const char* v)
 			tm_info.deformat = (n && (n = strlen(v)) > 0 && (n < 2 || v[n-2] != '%' || v[n-1] != '?')) ? strdup(v) : tm_info.format[TM_DEFAULT];
 			break;
 		case TM_type:
-			tm_info.local->type = (n && *v) ? ((zp = tmtype(v, NiL)) ? zp->type : strdup(v)) : 0;
+			tm_info.local->type = (n && *v) ? ((zp = tmtype(v, NULL)) ? zp->type : strdup(v)) : 0;
 			break;
 		default:
 			if (n)
@@ -188,10 +188,10 @@ tmopt(void* a, const void* p, int n, const char* v)
 static void
 tmlocal(void)
 {
-	register Tm_zone_t*	zp;
-	register int		n;
-	register char*		s;
-	register char*		e;
+	Tm_zone_t*		zp;
+	int			n;
+	char*			s;
+	char*			e;
 	int			i;
 	int			m;
 	int			isdst;
@@ -293,24 +293,6 @@ tmlocal(void)
 			s = "";
 		local.daylight = s;
 	}
-	else if ((s = getenv("TZ")) && *s && *s != ':' && (s = strdup(s)))
-	{
-		/*
-		 * POSIX style but skipped by tmlocaltime()
-		 */
-
-		local.standard = s;
-		if (*++s && *++s && *++s)
-		{
-			*s++ = 0;
-			tmgoff(s, &t, 0);
-			for (s = t; isalpha(*t); t++);
-			*t = 0;
-		}
-		else
-			s = "";
-		local.daylight = s;
-	}
 	else
 	{
 		/*
@@ -360,7 +342,7 @@ tmlocal(void)
 	}
 	if (!*local.standard && !local.west && !local.dst && (s = getenv("TZ")))
 	{
-		if ((zp = tmzone(s, &t, NiL, NiL)) && !*t)
+		if ((zp = tmzone(s, &t, NULL, NULL)) && !*t)
 		{
 			local.standard = strdup(zp->standard);
 			if (zp->daylight)
@@ -380,7 +362,7 @@ tmlocal(void)
 	 * set the options
 	 */
 
-	stropt(getenv("TM_OPTIONS"), options, sizeof(*options), tmopt, NiL);
+	stropt(getenv("TM_OPTIONS"), options, sizeof(*options), tmopt, NULL);
 
 	/*
 	 * the time zone type is probably related to the locale
@@ -394,7 +376,7 @@ tmlocal(void)
 		{
 			if (zp->type)
 				t = zp->type;
-			if (tmword(s, NiL, zp->standard, NiL, 0))
+			if (tmword(s, NULL, zp->standard, NULL, 0))
 			{
 				local.type = t;
 				break;
@@ -420,7 +402,7 @@ tmlocal(void)
 		if (local.daylight)
 			zp++;
 		for (; !zp->type && zp->standard; zp++)
-			if (tmword(s, NiL, zp->standard, NiL, 0))
+			if (tmword(s, NULL, zp->standard, NULL, 0))
 			{
 				tm_info.flags |= TM_UTC;
 				break;
@@ -433,7 +415,7 @@ tmlocal(void)
  */
 
 void
-tminit(register Tm_zone_t* zp)
+tminit(Tm_zone_t* zp)
 {
 	static uint32_t		serial = ~(uint32_t)0;
 

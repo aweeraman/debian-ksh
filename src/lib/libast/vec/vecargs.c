@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -38,21 +38,21 @@
  */
 
 int
-vecargs(register char** vec, int* argcp, char*** argvp)
+vecargs(char** vec, int* argcp, char*** argvp)
 {
-	register char**	argv;
-	register char**	oargv;
+	char**		argv;
+	char**		oargv;
 	char**		ovec;
 	char*		s;
 	int		num;
 
-	if (!vec) return(-1);
+	if (!vec) return -1;
 	if ((num = (char**)(*(vec - 1)) - vec) > 0)
 	{
 		if (!(argv = newof(0, char*, num + *argcp + 1, 0)))
 		{
 			vecfree(vec, 0);
-			return(-1);
+			return -1;
 		}
 		oargv = *argvp;
 		*argvp = argv;
@@ -68,5 +68,5 @@ vecargs(register char** vec, int* argcp, char*** argvp)
 		*argcp = argv - *argvp;
 	}
 	else vecfree(vec, 0);
-	return(0);
+	return 0;
 }

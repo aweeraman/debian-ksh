@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -56,11 +56,11 @@ static const char usage[] =
  */
 static int rev_char(Sfio_t *in, Sfio_t *out)
 {
-	register int c;
-	register char *ep, *bp, *cp;
-	register wchar_t *wp, *xp;
-	register size_t n;
-	register size_t w;
+	int c;
+	char *ep, *bp, *cp;
+	wchar_t *wp, *xp;
+	size_t n;
+	size_t w;
 	if (mbwide())
 	{
 		wp = 0;
@@ -105,17 +105,17 @@ static int rev_char(Sfio_t *in, Sfio_t *out)
 				*bp++ = c;
 			}
 			if(sfwrite(out,cp,n)<0)
-				return(-1);
+				return -1;
 		}
-	return(0);
+	return 0;
 }
 
 int
-b_rev(int argc, register char** argv, Shbltin_t* context)
+b_rev(int argc, char** argv, Shbltin_t* context)
 {
-	register Sfio_t *fp;
-	register char *cp;
-	register int n, line=0;
+	Sfio_t *fp;
+	char *cp;
+	int n, line=0;
 	NOT_USED(argc);
 
 	cmdinit(argc, argv, context, ERROR_CATALOG, 0);
@@ -138,7 +138,7 @@ b_rev(int argc, register char** argv, Shbltin_t* context)
 	argv += opt_info.index;
 	if(error_info.errors)
 	{
-		error(ERROR_usage(2),"%s",optusage((char*)0));
+		error(ERROR_usage(2),"%s",optusage(NULL));
 		UNREACHABLE();
 	}
 	n=0;
@@ -148,7 +148,7 @@ b_rev(int argc, register char** argv, Shbltin_t* context)
 	{
 		if(!cp || streq(cp,"-"))
 			fp = sfstdin;
-		else if(!(fp = sfopen((Sfio_t*)0,cp,"r")))
+		else if(!(fp = sfopen(NULL,cp,"r")))
 		{
 			error(ERROR_system(0),"%s: cannot open",cp);
 			n=1;
@@ -167,5 +167,5 @@ b_rev(int argc, register char** argv, Shbltin_t* context)
 		}
 	}
 	while(cp= *argv++);
-	return(n);
+	return n;
 }

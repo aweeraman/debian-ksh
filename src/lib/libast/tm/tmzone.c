@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -44,10 +44,10 @@
  */
 
 Tm_zone_t*
-tmzone(register const char* name, char** end, const char* type, int* dst)
+tmzone(const char* name, char** end, const char* type, int* dst)
 {
-	register Tm_zone_t*	zp;
-	register char*		p;
+	Tm_zone_t*		zp;
+	char*			p;
 	char*			e;
 	int			d;
 
@@ -118,13 +118,13 @@ tmzone(register const char* name, char** end, const char* type, int* dst)
 			p = zp->type;
 		if (!type || type == p || !p)
 		{
-			if (tmword(name, end, zp->standard, NiL, 0))
+			if (tmword(name, end, zp->standard, NULL, 0))
 			{
 				if (dst)
 					*dst = 0;
 				return zp;
 			}
-			if (zp->dst && zp->daylight && tmword(name, end, zp->daylight, NiL, 0))
+			if (zp->dst && zp->daylight && tmword(name, end, zp->daylight, NULL, 0))
 			{
 				if (dst)
 					*dst = zp->dst;
@@ -136,5 +136,5 @@ tmzone(register const char* name, char** end, const char* type, int* dst)
 		else
 			zp++;
 	} while (zp->standard);
-	return 0;
+	return NULL;
 }

@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -130,10 +130,10 @@ typedef struct Path_s
 int
 b_getconf(int argc, char** argv, Shbltin_t* context)
 {
-	register char*		name;
-	register char*		path;
-	register char*		value;
-	register const char*	s;
+	char*			name;
+	char*			path;
+	char*			value;
+	const char*		s;
 	char*			pattern;
 	char*			native;
 	int			flags;
@@ -143,7 +143,7 @@ b_getconf(int argc, char** argv, Shbltin_t* context)
 
 	cmdinit(argc, argv, context, ERROR_CATALOG, 0);
 	oargv = argv;
-	if (*(native = astconf("GETCONF", NiL, NiL)) != '/')
+	if (*(native = astconf("GETCONF", NULL, NULL)) != '/')
 		native = 0;
 	flags = 0;
 	name = 0;
@@ -222,7 +222,7 @@ b_getconf(int argc, char** argv, Shbltin_t* context)
 	}
 	if (error_info.errors || !name && *argv)
 	{
-		error(ERROR_usage(2), "%s", optusage(NiL));
+		error(ERROR_usage(2), "%s", optusage(NULL));
 		UNREACHABLE();
 	}
 	if (!name)

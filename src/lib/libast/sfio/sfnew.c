@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -31,25 +31,25 @@ Sfio_t* sfnew(Sfio_t*	oldf,	/* old stream to be reused */
 	      int	file,	/* file descriptor to read/write from */
 	      int	flags)	/* type of file stream */
 {
-	reg Sfio_t*	f;
-	reg int		sflags;
+	Sfio_t*		f;
+	int		sflags;
 
 
 	if(!(flags&SF_RDWR))
-		return NIL(Sfio_t*);
+		return NULL;
 
 	sflags = 0;
 	if((f = oldf) )
 	{	if(flags&SF_EOF)
 		{	SFCLEAR(f);
-			oldf = NIL(Sfio_t*);
+			oldf = NULL;
 		}
 		else if(f->mode&SF_AVAIL)
 		{	/* only allow SF_STATIC to be already closed */
 			if(!(f->flags&SF_STATIC) )
-				return NIL(Sfio_t*);
+				return NULL;
 			sflags = f->flags;
-			oldf = NIL(Sfio_t*);
+			oldf = NULL;
 		}
 		else
 		{	/* reopening an open stream, close it first */
@@ -57,12 +57,12 @@ Sfio_t* sfnew(Sfio_t*	oldf,	/* old stream to be reused */
 
 			if(((f->mode&SF_RDWR) != f->mode && _sfmode(f,0,0) < 0) ||
 			   SFCLOSE(f) < 0 )
-				return NIL(Sfio_t*);
+				return NULL;
 
 			if(f->data && ((flags&SF_STRING) || size != (size_t)SF_UNBOUND) )
 			{	if(sflags&SF_MALLOC)
-					free((void*)f->data);
-				f->data = NIL(uchar*);
+					free(f->data);
+				f->data = NULL;
 			}
 			if(!f->data)
 				sflags &= ~SF_MALLOC;
@@ -78,13 +78,13 @@ Sfio_t* sfnew(Sfio_t*	oldf,	/* old stream to be reused */
 				{	sflags = f->flags;
 					SFCLEAR(f);
 				}
-				else	f = NIL(Sfio_t*);
+				else	f = NULL;
 			}
 		}
 
 		if(!f)
 		{	if(!(f = (Sfio_t*)malloc(sizeof(Sfio_t))) )
-				return NIL(Sfio_t*);
+				return NULL;
 			SFCLEAR(f);
 		}
 	}
@@ -100,7 +100,7 @@ Sfio_t* sfnew(Sfio_t*	oldf,	/* old stream to be reused */
 	f->mode |= SF_INIT;
 	if(size != (size_t)SF_UNBOUND)
 	{	f->size = size;
-		f->data = size <= 0 ? NIL(uchar*) : (uchar*)buf;
+		f->data = size <= 0 ? NULL : (uchar*)buf;
 	}
 	f->endb = f->endr = f->endw = f->next = f->data;
 

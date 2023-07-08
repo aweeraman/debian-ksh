@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2014 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -68,9 +68,9 @@ typedef struct
  */
 
 static Time_t
-gen(register Tm_t* tm, register Set_t* set)
+gen(Tm_t* tm, Set_t* set)
 {
-	register int	n;
+	int		n;
 	int		z;
 	Time_t		t;
 
@@ -163,12 +163,12 @@ gen(register Tm_t* tm, register Set_t* set)
  */
 
 static Time_t
-scan(register const char* s, char** e, const char* format, char** f, Time_t t, long flags)
+scan(const char* s, char** e, const char* format, char** f, Time_t t, long flags)
 {
-	register int	d;
-	register int	n;
-	register char*	p;
-	register Tm_t*	tm;
+	int		d;
+	int		n;
+	char*		p;
+	Tm_t*		tm;
 	const char*	b;
 	char*		stack[4];
 	int		m;
@@ -188,7 +188,7 @@ scan(register const char* s, char** e, const char* format, char** f, Time_t t, l
 	b = s;
  again:
 	CLEAR(set);
-	tm = tmxtm(&ts, t, NiL);
+	tm = tmxtm(&ts, t, NULL);
 	pedantic = (flags & TM_PEDANTIC) != 0;
 	for (;;)
 	{
@@ -219,7 +219,7 @@ scan(register const char* s, char** e, const char* format, char** f, Time_t t, l
 				lo = pedantic ? TM_DAY : TM_DAY_ABBREV;
 				hi = TM_TIME;
 			get_wday:
-				if ((n = tmlex(s, &u, tm_info.format + lo, hi - lo, NiL, 0)) < 0)
+				if ((n = tmlex(s, &u, tm_info.format + lo, hi - lo, NULL, 0)) < 0)
 					goto next;
 				s = u;
 				INDEX(TM_DAY_ABBREV, TM_DAY);
@@ -234,7 +234,7 @@ scan(register const char* s, char** e, const char* format, char** f, Time_t t, l
 				lo = pedantic ? TM_MONTH : TM_MONTH_ABBREV;
 				hi = TM_DAY_ABBREV;
 			get_mon:
-				if ((n = tmlex(s, &u, tm_info.format + lo, hi - lo, NiL, 0)) < 0)
+				if ((n = tmlex(s, &u, tm_info.format + lo, hi - lo, NULL, 0)) < 0)
 					goto next;
 				s = u;
 				INDEX(TM_MONTH_ABBREV, TM_MONTH);
@@ -308,7 +308,7 @@ scan(register const char* s, char** e, const char* format, char** f, Time_t t, l
 				set.nsec = n;
 				continue;
 			case 'p':
-				if ((n = tmlex(s, &u, tm_info.format + TM_MERIDIAN, TM_UT - TM_MERIDIAN, NiL, 0)) < 0)
+				if ((n = tmlex(s, &u, tm_info.format + TM_MERIDIAN, TM_UT - TM_MERIDIAN, NULL, 0)) < 0)
 					goto next;
 				set.meridian = n;
 				s = u;
@@ -462,8 +462,8 @@ scan(register const char* s, char** e, const char* format, char** f, Time_t t, l
 Time_t
 tmxscan(const char* s, char** e, const char* format, char** f, Time_t t, long flags)
 {
-	register char*	v;
-	register char**	p;
+	char*	v;
+	char**	p;
 	char*		q;
 	char*		r;
 	Time_t		x;
@@ -476,12 +476,12 @@ tmxscan(const char* s, char** e, const char* format, char** f, Time_t t, long fl
 	{
 		if (!initialized)
 		{
-			register Sfio_t*	sp;
-			register int		n;
+			Sfio_t*	sp;
+			int		n;
 			off_t			m;
 
 			initialized = 1;
-			if ((v = getenv("DATEMSK")) && *v && (sp = sfopen(NiL, v, "r")))
+			if ((v = getenv("DATEMSK")) && *v && (sp = sfopen(NULL, v, "r")))
 			{
 				for (n = 1; sfgetr(sp, '\n', 0); n++);
 				m = sfseek(sp, 0L, SEEK_CUR);

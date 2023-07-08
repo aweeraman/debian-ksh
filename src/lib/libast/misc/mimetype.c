@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -47,7 +47,7 @@ char*
 mimetype(Mime_t* mp, Sfio_t* fp, const char* file, struct stat* st)
 {
 	if (mp->disc->flags & MIME_NOMAGIC)
-		return 0;
+		return NULL;
 	if (!mp->magic)
 	{
 		mp->magicd.version = MAGIC_VERSION;
@@ -56,10 +56,10 @@ mimetype(Mime_t* mp, Sfio_t* fp, const char* file, struct stat* st)
 		if (!(mp->magic = magicopen(&mp->magicd)))
 		{
 			mp->disc->flags |= MIME_NOMAGIC;
-			return 0;
+			return NULL;
 		}
 		mp->freef = drop;
-		magicload(mp->magic, NiL, 0);
+		magicload(mp->magic, NULL, 0);
 	}
 	return magictype(mp->magic, fp, file, st);
 }

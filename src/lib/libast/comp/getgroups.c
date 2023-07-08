@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -44,26 +44,26 @@ ast_getgroups(int len, gid_t* set)
 #undef	NGROUPS_MAX
 #define NGROUPS_MAX	1
 #endif
-	register int	i;
-	int		big[NGROUPS_MAX];
+	int	i;
+	int	big[NGROUPS_MAX];
 #else
 #undef	NGROUPS_MAX
 #define NGROUPS_MAX	1
 #endif
-	if (!len) return(NGROUPS_MAX);
+	if (!len) return NGROUPS_MAX;
 	if (len < 0 || !set)
 	{
 		errno = EINVAL;
-		return(-1);
+		return -1;
 	}
 #if botched
 	len = getgroups(len > NGROUPS_MAX ? NGROUPS_MAX : len, big);
 	for (i = 0; i < len; i++)
 		set[i] = big[i];
-	return(len);
+	return len;
 #else
 	*set = getgid();
-	return(1);
+	return 1;
 #endif
 }
 

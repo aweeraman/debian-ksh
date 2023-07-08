@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -29,8 +29,8 @@
 
 /* hole preserving writes */
 static ssize_t sfoutput(Sfio_t* f, char* buf, size_t n)
-{	reg char	*sp, *wbuf, *endbuf;
-	reg ssize_t	s, w, wr;
+{	char	*sp, *wbuf, *endbuf;
+	ssize_t	s, w, wr;
 
 	s = w = 0;
 	wbuf = buf;
@@ -96,7 +96,7 @@ static ssize_t sfoutput(Sfio_t* f, char* buf, size_t n)
 		/* seek to a rounded boundary within the hole */
 		if(s >= _Sfpage)
 		{	s = (s/_Sfpage)*_Sfpage;
-			if(SFSK(f,(Sfoff_t)s,SEEK_CUR,NIL(Sfdisc_t*)) < 0)
+			if(SFSK(f,(Sfoff_t)s,SEEK_CUR,NULL) < 0)
 				break;
 			w += s;
 			n -= s;
@@ -117,9 +117,9 @@ static ssize_t sfoutput(Sfio_t* f, char* buf, size_t n)
 
 ssize_t sfwr(Sfio_t* f, const void* buf, size_t n, Sfdisc_t* disc)
 {
-	reg ssize_t	w;
-	reg Sfdisc_t*	dc;
-	reg int		local, oerrno;
+	ssize_t		w;
+	Sfdisc_t*	dc;
+	int		local, oerrno;
 
 	if(!f)
 		return (ssize_t)(-1);
@@ -135,7 +135,7 @@ ssize_t sfwr(Sfio_t* f, const void* buf, size_t n, Sfdisc_t* disc)
 	for(;;)
 	{	/* stream locked by sfsetfd() */
 		if(!(f->flags&SF_STRING) && f->file < 0)
-			return (ssize_t)0;
+			return 0;
 
 		/* clear current error states */
 		f->flags &= ~(SF_EOF|SF_ERROR);
@@ -147,7 +147,7 @@ ssize_t sfwr(Sfio_t* f, const void* buf, size_t n, Sfdisc_t* disc)
 		{	/* warn that a write is about to happen */
 			SFDISC(f,dc,writef);
 			if(dc && dc->exceptf && (f->flags&SF_IOCHECK) )
-			{	reg int	rv;
+			{	int	rv;
 				if(local)
 					SETLOCAL(f);
 				if((rv = _sfexcept(f,SF_WRITE,n,dc)) > 0)
@@ -162,7 +162,7 @@ ssize_t sfwr(Sfio_t* f, const void* buf, size_t n, Sfdisc_t* disc)
 			{	/* make sure we are at the right place to write */
 				if(f->flags&SF_APPENDWR)
 				{	if(f->here != f->extent || (f->flags&SF_SHARE))
-					{	f->here = SFSK(f,(Sfoff_t)0,SEEK_END,dc);
+					{	f->here = SFSK(f,0,SEEK_END,dc);
 						f->extent = f->here;
 					}
 				}
@@ -199,7 +199,7 @@ ssize_t sfwr(Sfio_t* f, const void* buf, size_t n, Sfdisc_t* disc)
 			if(w > 0)
 			{	if(!(f->bits&SF_DCDOWN) )
 				{	if((f->flags&(SF_APPENDWR|SF_PUBLIC)) && f->extent >= 0 )
-						f->here = SFSK(f,(Sfoff_t)0,SEEK_CUR,dc);
+						f->here = SFSK(f,0,SEEK_CUR,dc);
 					else	f->here += w;
 					if(f->extent >= 0 && f->here > f->extent)
 						f->extent = f->here;

@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2013 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -15,6 +15,7 @@
 *                   Phong Vo <kpv@research.att.com>                    *
 *                  Martijn Dekker <martijn@inlv.org>                   *
 *            Johnothan King <johnothanking@protonmail.com>             *
+*                      Phi <phi.debian@gmail.com>                      *
 *                                                                      *
 ***********************************************************************/
 
@@ -23,10 +24,7 @@
  */
 
 #include "reglib.h"
-
-#if _PACKAGE_ast
 #include "lclib.h"
-#endif
 
 #define serialize		re_serialize	/* hp.ia64 <unistd.h>! */
 
@@ -37,7 +35,7 @@
 
 #define DEBUG_TEST(f,y,n)	((debug&(debug_flag=f))?(y):(n))
 #define DEBUG_CODE(f,y,n)	do if(debug&(f)){y}else{n} while(0)
-#define DEBUG_INIT()		do { char* t; if (!debug) { debug = 0x80000000; if (t = getenv("_AST_regex_comp_debug")) debug |= strtoul(t, NiL, 0); } } while (0)
+#define DEBUG_INIT()		do { char* t; if (!debug) { debug = 0x80000000; if (t = getenv("_AST_regex_comp_debug")) debug |= strtoul(t, NULL, 0); } } while (0)
 
 static unsigned long	debug;
 static unsigned long	debug_flag;
@@ -50,16 +48,12 @@ static unsigned long	debug_flag;
 
 #endif
 
-#if _PACKAGE_ast
-
 typedef struct Cchr_s
 {
 	Dtlink_t	lnk;
 	unsigned char	nam[2];
 	Ckey_t		key;
 } Cchr_t;
-
-#endif
 
 #define eat(p)		do{if ((p)->token.push)(p)->token.push=0;else (p)->cursor+=(p)->token.len;}while (0)
 
@@ -141,7 +135,7 @@ typedef struct Cenv_s
 static Rex_t*
 node(Cenv_t* env, int type, int lo, int hi, size_t extra)
 {
-	register Rex_t*	e;
+	Rex_t*	e;
 
 	DEBUG_TEST(0x0800,(sfprintf(sfstdout, "%s:%d node(%d,%d,%d,%u)\n", file, line, type, lo, hi, sizeof(Rex_t) + extra)),(0));
 	if (e = (Rex_t*)alloc(env->disc, 0, sizeof(Rex_t) + extra))
@@ -225,7 +219,7 @@ drop(regdisc_t* disc, Rex_t* e)
  */
 
 static void
-mark(register Rex_t* e, int set)
+mark(Rex_t* e, int set)
 {
 	if (e && !e->marked)
 		do
@@ -311,7 +305,7 @@ cat(Cenv_t* env, Rex_t* e, Rex_t* f)
 	if (!f)
 	{
 		drop(env->disc, e);
-		return 0;
+		return NULL;
 	}
 	if (e->type == REX_NULL)
 	{
@@ -358,10 +352,10 @@ cat(Cenv_t* env, Rex_t* e, Rex_t* f)
  */
 
 static int
-stats(register Cenv_t* env, register Rex_t* e)
+stats(Cenv_t* env, Rex_t* e)
 {
-	register unsigned long	n;
-	register unsigned long	m;
+	unsigned long	n;
+	unsigned long	m;
 	unsigned long		cm;
 	unsigned long		nm;
 	unsigned long		cn;
@@ -636,15 +630,15 @@ stats(register Cenv_t* env, register Rex_t* e)
 static int	token(Cenv_t*);
 
 static int
-magic(register Cenv_t* env, register int c, int escaped)
+magic(Cenv_t* env, int c, int escaped)
 {
-	register char*	sp;
-	register int	n;
-	int		o = c;
-	int		e = env->error;
-	int		l = env->token.len;
-	short*		mp;
-	char*		ep;
+	char*	sp;
+	int	n;
+	int	o = c;
+	int	e = env->error;
+	int	l = env->token.len;
+	short*	mp;
+	char*	ep;
 
 	if (mp = state.magic[c])
 	{
@@ -912,7 +906,7 @@ magic(register Cenv_t* env, register int c, int escaped)
 }
 
 static int
-token(register Cenv_t* env)
+token(Cenv_t* env)
 {
 	int	c;
 	int	posixkludge;
@@ -1028,14 +1022,14 @@ token(register Cenv_t* env)
 static Celt_t*
 col(Celt_t* ce, int ic, unsigned char* bp, int bw, int bc, unsigned char* ep, int ew, int ec)
 {
-	register char*		s;
-	register unsigned char*	k;
-	register unsigned char*	e;
-	register int		c;
-	register int		cc;
-	int			bt;
-	int			et;
-	Ckey_t			key;
+	char*		s;
+	unsigned char*	k;
+	unsigned char*	e;
+	int		c;
+	int		cc;
+	int		bt;
+	int		et;
+	Ckey_t		key;
 
 	cc = 0;
 	for (;;)
@@ -1186,13 +1180,11 @@ bra(Cenv_t* env)
 	unsigned char*	s;
 	regclass_t	f;
 	unsigned char	buf[4 * (COLL_KEY_MAX + 1)];
-#if _PACKAGE_ast
 	int		ic;
 	char		mbc[COLL_KEY_MAX + 1];
-#endif
 
 	if (!(e = node(env, REX_CLASS, 1, 1, sizeof(Set_t))))
-		return 0;
+		return NULL;
 	collate = complicated = elements = 0;
 	if (*env->cursor == '^' || env->type >= SRE && *env->cursor == '!')
 	{
@@ -1363,7 +1355,7 @@ bra(Cenv_t* env)
 					setadd(e->re.charclass, last);
 					elements++;
 				}
-				if ((c = regcollate((char*)env->cursor, (char**)&env->cursor, (char*)buf, sizeof(buf), NiL)) < 0)
+				if ((c = regcollate((char*)env->cursor, (char**)&env->cursor, (char*)buf, sizeof(buf), NULL)) < 0)
 					goto ecollate;
 				if (c > 1)
 					collate++;
@@ -1377,7 +1369,7 @@ bra(Cenv_t* env)
 			case '.':
 				if (env->flags & REG_REGEXP)
 					goto normal;
-				if ((c = regcollate((char*)env->cursor, (char**)&env->cursor, (char*)buf, sizeof(buf), NiL)) < 0)
+				if ((c = regcollate((char*)env->cursor, (char**)&env->cursor, (char*)buf, sizeof(buf), NULL)) < 0)
 					goto ecollate;
 				if (c > 1)
 					collate++;
@@ -1423,7 +1415,6 @@ bra(Cenv_t* env)
 			inrange = 1;
 		last = c;
 	}
-#if _PACKAGE_ast
 	if (complicated && mbcoll())
 	{
 		Dt_t*			dt;
@@ -1457,14 +1448,14 @@ bra(Cenv_t* env)
 				for (i = 0; i < elementsof(cc->key); i++)
 					cc->key[i] = ~0;
 				dtinsert(dt, cc);
-				LCINFO(AST_LC_COLLATE)->data = (void*)dt;
+				LCINFO(AST_LC_COLLATE)->data = dt;
 			}
 			else
 			{
 				if (cc)
 					free(cc);
 				drop(env->disc, e);
-				return 0;
+				return NULL;
 			}
 		}
 		if (dt)
@@ -1473,7 +1464,7 @@ bra(Cenv_t* env)
 			if (ic = env->flags & REG_ICASE)
 				elements *= 2;
 			if (!(e = node(env, REX_COLL_CLASS, 1, 1, (elements + 3) * sizeof(Celt_t))))
-				return 0;
+				return NULL;
 			ce = (Celt_t*)e->re.data;
 			e->re.collate.invert = neg;
 			e->re.collate.elements = ce;
@@ -1526,7 +1517,7 @@ bra(Cenv_t* env)
 						}
 					}
 				}
-				else if (c == ']')
+				else if (c == ']' && !(neg && first == pp))
 				{
 					if (env->cursor == begin)
 					{
@@ -1537,9 +1528,9 @@ bra(Cenv_t* env)
 					}
 					if (inrange != 0)
 					{
-						ce = col(ce, ic, rp, rw, rc, NiL, 0, 0);
+						ce = col(ce, ic, rp, rw, rc, NULL, 0, 0);
 						if (inrange == 2)
-							ce = col(ce, ic, NiL, 1, '-', NiL, 0, 0);
+							ce = col(ce, ic, NULL, 1, '-', NULL, 0, 0);
 					}
 					break;
 				}
@@ -1567,7 +1558,7 @@ bra(Cenv_t* env)
 						if (env->flags & REG_REGEXP)
 							goto complicated_normal;
 						if (inrange == 1)
-							ce = col(ce, ic, rp, rw, rc, NiL, 0, 0);
+							ce = col(ce, ic, rp, rw, rc, NULL, 0, 0);
 						if (!(f = regclass((char*)env->cursor, (char**)&env->cursor)))
 						{
 							if (env->cursor == start && (c = *(env->cursor + 1)) && *(env->cursor + 2) == ':' && *(env->cursor + 3) == ']' && *(env->cursor + 4) == ']')
@@ -1605,7 +1596,7 @@ bra(Cenv_t* env)
 						if (inrange == 2)
 							goto erange;
 						if (inrange == 1)
-							ce = col(ce, ic, rp, rw, rc, NiL, 0, 0);
+							ce = col(ce, ic, rp, rw, rc, NULL, 0, 0);
 						pp = (unsigned char*)cb[inrange];
 						rp = env->cursor + 1;
 						if ((rw = regcollate((char*)env->cursor, (char**)&env->cursor, (char*)pp, COLL_KEY_MAX, &wc)) < 0)
@@ -1681,7 +1672,7 @@ bra(Cenv_t* env)
 						if (env->flags & REG_REGEXP)
 							goto complicated_normal;
 						pp = (unsigned char*)cb[inrange];
-						if ((w = regcollate((char*)env->cursor, (char**)&env->cursor, (char*)pp, COLL_KEY_MAX, NiL)) < 0)
+						if ((w = regcollate((char*)env->cursor, (char**)&env->cursor, (char*)pp, COLL_KEY_MAX, NULL)) < 0)
 							goto ecollate;
 						c = *pp;
 						break;
@@ -1708,7 +1699,7 @@ bra(Cenv_t* env)
 					inrange = env->type >= SRE || (env->flags & (REG_LENIENT|REG_REGEXP));
 				}
 				else if (inrange == 1)
-					ce = col(ce, ic, rp, rw, rc, NiL, 0, 0);
+					ce = col(ce, ic, rp, rw, rc, NULL, 0, 0);
 				else
 					inrange = 1;
 				rp = pp;
@@ -1719,7 +1710,6 @@ bra(Cenv_t* env)
 			return e;
 		}
 	}
-#endif
 	if (collate)
 		goto ecollate;
 	if (env->flags & REG_ICASE)
@@ -1751,7 +1741,7 @@ bra(Cenv_t* env)
 	drop(env->disc, e);
 	if (!env->error)
 		env->error = REG_EBRACK;
-	return 0;
+	return NULL;
 }
 
 static Rex_t*
@@ -1765,12 +1755,12 @@ ccl(Cenv_t* env, int type)
 	if (!(f = classfun(type)))
 	{
 		env->error = REG_BADESC;
-		return 0;
+		return NULL;
 	}
 	if (!mbcoll())
 	{
 		if (!(e = node(env, REX_CLASS, 1, 1, sizeof(Set_t))))
-			return 0;
+			return NULL;
 		for (i = 0; i <= UCHAR_MAX; i++)
 			if ((*f)(i))
 				setadd(e->re.charclass, i);
@@ -1780,7 +1770,7 @@ ccl(Cenv_t* env, int type)
 	else
 	{
 		if (!(e = node(env, REX_COLL_CLASS, 1, 1, 2 * sizeof(Celt_t))))
-			return 0;
+			return NULL;
 		ce = (Celt_t*)e->re.data;
 		e->re.collate.invert = 0;
 		e->re.collate.elements = ce;
@@ -1801,7 +1791,7 @@ rep(Cenv_t* env, Rex_t* e, int number, int last)
 	int		minimal = -1;
 
 	if (!e)
-		return 0;
+		return NULL;
 	switch (token(env))
 	{
 	case T_BANG:
@@ -1809,7 +1799,7 @@ rep(Cenv_t* env, Rex_t* e, int number, int last)
 		if (!(f = node(env, REX_NEG, m, n, 0)))
 		{
 			drop(env->disc, e);
-			return 0;
+			return NULL;
 		}
 		f->re.group.expr.rex = e;
 		return f;
@@ -1869,7 +1859,7 @@ rep(Cenv_t* env, Rex_t* e, int number, int last)
 	case REX_WORD_NOT:
 		env->error = REG_BADRPT;
 		drop(env->disc, e);
-		return 0;
+		return NULL;
 	}
 	if (m == 1 && n == 1)
 	{
@@ -1880,7 +1870,7 @@ rep(Cenv_t* env, Rex_t* e, int number, int last)
 	if (!(f = node(env, REX_REP, m, n, 0)))
 	{
 		drop(env->disc, e);
-		return 0;
+		return NULL;
 	}
 	f->re.group.expr.rex = e;
 	f->re.group.number = number;
@@ -1984,18 +1974,18 @@ trie(Cenv_t* env, Rex_t* e, Rex_t* f)
 	Rex_t*	g;
 
 	if (e->next || f->next || !isstring(e) || e->flags != f->flags)
-		return 0;
+		return NULL;
 	if (isstring(f))
 	{
 		if (!(g = node(env, REX_TRIE, 0, 0, (UCHAR_MAX + 1) * sizeof(Trie_node_t*))))
-			return 0;
+			return NULL;
 		g->re.trie.min = INT_MAX;
 		if (insert(env, f, g))
 			goto nospace;
 		drop(env->disc, f);
 	}
 	else if (f->type != REX_TRIE)
-		return 0;
+		return NULL;
 	else
 		g = f;
 	if (insert(env, e, g))
@@ -2005,13 +1995,13 @@ trie(Cenv_t* env, Rex_t* e, Rex_t* f)
  nospace:
 	if (g != f)
 		drop(env->disc, g);
-	return 0;
+	return NULL;
 }
 
 static Rex_t*		alt(Cenv_t*, int, int);
 
 static int
-chr(register Cenv_t* env, int* escaped)
+chr(Cenv_t* env, int* escaped)
 {
 	unsigned char*	p;
 	int		c;
@@ -2105,7 +2095,7 @@ grp(Cenv_t* env, int parno)
 				if (!(env->flags & (REG_LITERAL|REG_SHELL)))
 				{
 					env->error = REG_BADRPT;
-					return 0;
+					return NULL;
 				}
 				/* FALLTHROUGH */
 			case 0:
@@ -2244,7 +2234,7 @@ grp(Cenv_t* env, int parno)
 				break;
 			default:
 				env->error = REG_BADRPT;
-				return 0;
+				return NULL;
 			}
 			eat(env);
 			c = token(env);
@@ -2272,7 +2262,7 @@ grp(Cenv_t* env, int parno)
 			break;
 		default:
 			env->error = REG_BADRPT;
-			return 0;
+			return NULL;
 		}
 		eat(env);
 		break;
@@ -2293,7 +2283,7 @@ grp(Cenv_t* env, int parno)
 			invalid:
 				env->cursor -= esc + 1;
 				env->error = REG_EPAREN;
-				return 0;
+				return NULL;
 			case 'D':
 				x = REX_NEST_delimiter;
 				/* FALLTHROUGH */
@@ -2377,7 +2367,7 @@ grp(Cenv_t* env, int parno)
 				if (!(f = node(env, REX_GROUP, 0, 0, 0)))
 				{
 					drop(env->disc, e);
-					return 0;
+					return NULL;
 				}
 				if (parno < elementsof(env->paren))
 					env->paren[parno] = f;
@@ -2397,14 +2387,14 @@ grp(Cenv_t* env, int parno)
 				if (c > (INT_MAX / 10))
 				{
 					env->error = REG_BADRPT;
-					return 0;
+					return NULL;
 				}
 				c = c * 10 + (*env->cursor++ - '0');
 			} while (isdigit(*env->cursor));
 			if (*env->cursor++ != ')')
 			{
 				env->error = REG_BADRPT;
-				return 0;
+				return NULL;
 			}
 			if (c && env->type >= SRE)
 				c = c * 2 - 1;
@@ -2413,7 +2403,7 @@ grp(Cenv_t* env, int parno)
 				if (!(env->flags & (REG_LENIENT|REG_REGEXP)))
 				{
 					env->error = REG_ESUBREG;
-					return 0;
+					return NULL;
 				}
 				if (c)
 					c = -1;
@@ -2424,27 +2414,27 @@ grp(Cenv_t* env, int parno)
 			if (env->type < SRE && *env->cursor++ != '?')
 			{
 				env->error = REG_BADRPT;
-				return 0;
+				return NULL;
 			}
 			if (!(f = grp(env, parno + 1)) && env->error)
-				return 0;
+				return NULL;
 		}
 		if (!(e = node(env, REX_GROUP_COND, 0, 0, 0)))
 		{
 			drop(env->disc, f);
-			return 0;
+			return NULL;
 		}
 		e->re.group.size = c;
 		e->re.group.expr.binary.left = f;
 		if (!(e->re.group.expr.binary.right = alt(env, parno, 1)))
 		{
 			drop(env->disc, e);
-			return 0;
+			return NULL;
 		}
 		if (token(env) != T_CLOSE)
 		{
 			env->error = REG_EPAREN;
-			return 0;
+			return NULL;
 		}
 		eat(env);
 		env->parnest--;
@@ -2467,24 +2457,24 @@ grp(Cenv_t* env, int parno)
 		if (c != '}')
 		{
 			env->error = REG_EBRACE;
-			return 0;
+			return NULL;
 		}
 		if (*++env->cursor != ')')
 		{
 			env->error = REG_EPAREN;
-			return 0;
+			return NULL;
 		}
 		env->cursor++;
 		env->parnest--;
 		if (env->disc->re_version < REG_VERSION_EXEC)
 		{
 			env->error = REG_BADRPT;
-			return 0;
+			return NULL;
 		}
 		if (!env->disc->re_execf)
-			return 0;
+			return NULL;
 		if (!(e = node(env, REX_EXEC, 0, 0, 0)))
-			return 0;
+			return NULL;
 		e->re.exec.text = (const char*)p;
 		e->re.exec.size = env->cursor - p - 2;
 		if (!env->disc->re_compf)
@@ -2500,7 +2490,7 @@ grp(Cenv_t* env, int parno)
 			if (c > (INT_MAX / 10))
 			{
 				env->error = REG_ESUBREG;
-				return 0;
+				return NULL;
 			}
 			c = c * 10 + *env->cursor++ - '0';
 		}
@@ -2512,7 +2502,7 @@ grp(Cenv_t* env, int parno)
 			if (c > env->parno || !env->paren[c])
 			{
 				env->error = REG_ESUBREG;
-				return 0;
+				return NULL;
 			}
 			env->paren[c]->re.group.back = 1;
 			return rep(env, node(env, REX_BACK, c, 0, 0), 0, 0);
@@ -2520,7 +2510,7 @@ grp(Cenv_t* env, int parno)
 		/* FALLTHROUGH */
 	default:
 		env->error = REG_BADRPT;
-		return 0;
+		return NULL;
 	}
 	p = env->pattern;
 	i = env->type;
@@ -2547,7 +2537,7 @@ grp(Cenv_t* env, int parno)
 	{
 		if (typ >= 0)
 			env->type = typ;
-		return 0;
+		return NULL;
 	}
 	if (!(f = node(env, x, 0, 0, 0)))
 	{
@@ -2580,7 +2570,7 @@ grp(Cenv_t* env, int parno)
 	env->flags = g;
 	env->pattern = p;
 	env->type = i;
-	return 0;
+	return NULL;
 }
 
 static Rex_t*
@@ -2640,7 +2630,7 @@ seq(Cenv_t* env)
 			eat(env);
 		}
 		if (c == T_BAD)
-			return 0;
+			return NULL;
 		if (s > buf)
 			switch (c)
 			{
@@ -2655,7 +2645,7 @@ seq(Cenv_t* env)
 				{
 					i = s - buf;
 					if (!(e = node(env, REX_STRING, 0, 0, i)))
-						return 0;
+						return NULL;
 					memcpy((char*)(e->re.string.base = (unsigned char*)e->re.data), (char*)buf, i);
 					e->re.string.size = i;
 				}
@@ -2664,21 +2654,21 @@ seq(Cenv_t* env)
 					if (!(f = node(env, REX_ONECHAR, 1, 1, 0)))
 					{
 						drop(env->disc, e);
-						return 0;
+						return NULL;
 					}
 					f->re.onechar = (env->flags & REG_ICASE) ? toupper(x) : x;
 				}
 				else
 				{
 					if (!(f = node(env, REX_STRING, 0, 0, n)))
-						return 0;
+						return NULL;
 					memcpy((char*)(f->re.string.base = (unsigned char*)f->re.data), (char*)p, n);
 					f->re.string.size = n;
 				}
 				if (!(f = rep(env, f, 0, 0)) || !(f = cat(env, f, seq(env))))
 				{
 					drop(env->disc, e);
-					return 0;
+					return NULL;
 				}
 				if (e)
 					f = cat(env, e, f);
@@ -2686,7 +2676,7 @@ seq(Cenv_t* env)
 			default:
 				c = s - buf;
 				if (!(e = node(env, REX_STRING, 0, 0, c)))
-					return 0;
+					return NULL;
 				memcpy((char*)(e->re.string.base = (unsigned char*)e->re.data), (char*)buf, c);
 				e->re.string.size = c;
 				return cat(env, e, seq(env));
@@ -2698,7 +2688,7 @@ seq(Cenv_t* env)
 			if (c > env->parno || !env->paren[c])
 			{
 				env->error = REG_ESUBREG;
-				return 0;
+				return NULL;
 			}
 			env->paren[c]->re.group.back = 1;
 			e = rep(env, node(env, REX_BACK, c, 0, 0), 0, 0);
@@ -2737,20 +2727,20 @@ seq(Cenv_t* env)
 				{
 					drop(env->disc, e);
 					env->error = (*env->cursor == 0 || *env->cursor == env->delimiter || *env->cursor == env->terminator) ? REG_EPAREN : REG_ENULL;
-					return 0;
+					return NULL;
 				} 
 				if (token(env) != T_CLOSE)
 				{
 					drop(env->disc, e);
 					env->error = REG_EPAREN;
-					return 0;
+					return NULL;
 				} 
 				env->parnest--;
 				eat(env);
 				if (!(f = node(env, REX_GROUP, 0, 0, 0)))
 				{
 					drop(env->disc, e);
-					return 0;
+					return NULL;
 				}
 				if (parno < elementsof(env->paren))
 					env->paren[parno] = f;
@@ -2763,13 +2753,13 @@ seq(Cenv_t* env)
 					env->token = tok;
 				}
 				if (!(e = rep(env, f, parno, env->parno)))
-					return 0;
+					return NULL;
 				if (env->type == KRE)
 				{
 					if (!(f = node(env, REX_GROUP, 0, 0, 0)))
 					{
 						drop(env->disc, e);
-						return 0;
+						return NULL;
 					}
 					if (--parno < elementsof(env->paren))
 						env->paren[parno] = f;
@@ -2789,7 +2779,7 @@ seq(Cenv_t* env)
 				if (!(e = grp(env, env->parno + 1)))
 				{
 					if (env->error)
-						return 0;
+						return NULL;
 					if (env->literal == env->pattern && env->literal == p)
 						env->literal = env->cursor;
 					continue;
@@ -2862,7 +2852,7 @@ seq(Cenv_t* env)
 				break;
 			default:
 				env->error = REG_BADRPT;
-				return 0;
+				return NULL;
 			}
 		if (e && *env->cursor != 0 && *env->cursor != env->delimiter && *env->cursor != env->terminator)
 			e = cat(env, e, seq(env));
@@ -2883,13 +2873,13 @@ con(Cenv_t* env)
 	if (!(f = con(env)))
 	{
 		drop(env->disc, e);
-		return 0;
+		return NULL;
 	}
 	if (!(g = node(env, REX_CONJ, 0, 0, 0)))
 	{
 		drop(env->disc, e);
 		drop(env->disc, f);
-		return 0;
+		return NULL;
 	}
 	g->re.group.expr.binary.left = e;
 	g->re.group.expr.binary.right = f;
@@ -2904,7 +2894,7 @@ alt(Cenv_t* env, int number, int cond)
 	Rex_t*	g;
 
 	if (!(e = con(env)))
-		return 0;
+		return NULL;
 	else if (token(env) != T_BAR)
 	{
 		if (!cond)
@@ -2919,7 +2909,7 @@ alt(Cenv_t* env, int number, int cond)
 		if (!(f = alt(env, number, 0)))
 		{
 			drop(env->disc, e);
-			return 0;
+			return NULL;
 		}
 		if ((e->type == REX_NULL || f->type == REX_NULL) && !(env->flags & (REG_NULL|REG_REGEXP)))
 			goto bad;
@@ -2941,7 +2931,7 @@ alt(Cenv_t* env, int number, int cond)
 	drop(env->disc, f);
 	if (!env->error)
 		env->error = REG_ENULL;
-	return 0;
+	return NULL;
 }
 
 /*
@@ -2949,7 +2939,7 @@ alt(Cenv_t* env, int number, int cond)
  */
 
 static void
-bmstr(Cenv_t* env, register Rex_t* a, unsigned char* v, int n, Bm_mask_t b)
+bmstr(Cenv_t* env, Rex_t* a, unsigned char* v, int n, Bm_mask_t b)
 {
 	int	c;
 	int	m;
@@ -3269,7 +3259,7 @@ regcomp(regex_t* p, const char* pattern, regflags_t flags)
 			return fatal(disc, REG_ESPACE, pattern);
 		for (i = 0; i <= UCHAR_MAX; i++)
 			fold[i] = toupper(i);
-		LCINFO(AST_LC_CTYPE)->data = (void*)fold;
+		LCINFO(AST_LC_CTYPE)->data = fold;
 	}
  again:
 	if (!(p->env = (Env_t*)alloc(disc, 0, sizeof(Env_t))))
@@ -3467,7 +3457,7 @@ regcomb(regex_t* p, regex_t* q)
 	Cenv_t	env;
 
 	if (!e || !f)
-		return fatal(p->env->disc, REG_BADPAT, NiL);
+		return fatal(p->env->disc, REG_BADPAT, NULL);
 	if (p->env->separate || q->env->separate)
 		return REG_ESUBREG;
 	memset(&env, 0, sizeof(env));
@@ -3509,7 +3499,7 @@ regcomb(regex_t* p, regex_t* q)
 		h->next = 0;
 	}
 	if (!(g = trie(&env, f, e)))
-		return fatal(p->env->disc, REG_BADPAT, NiL);
+		return fatal(p->env->disc, REG_BADPAT, NULL);
 	p->env->rex = g;
 	if (!q->env->once)
 		p->env->once = 0;
@@ -3519,7 +3509,7 @@ regcomb(regex_t* p, regex_t* q)
 		if (!(e = node(&env, REX_BEG, 0, 0, 0)))
 		{
 			regfree(p);
-			return fatal(p->env->disc, REG_ESPACE, NiL);
+			return fatal(p->env->disc, REG_ESPACE, NULL);
 		}
 		e->next = p->env->rex;
 		p->env->rex = e;
@@ -3533,7 +3523,7 @@ regcomb(regex_t* p, regex_t* q)
 			if (!(e = node(&env, REX_END, 0, 0, 0)))
 			{
 				regfree(p);
-				return fatal(p->env->disc, REG_ESPACE, NiL);
+				return fatal(p->env->disc, REG_ESPACE, NULL);
 			}
 			f->next = e;
 		}
@@ -3544,12 +3534,12 @@ regcomb(regex_t* p, regex_t* q)
 	if (stats(&env, p->env->rex))
 	{
 		regfree(p);
-		return fatal(p->env->disc, env.error ? env.error : REG_ECOUNT, NiL);
+		return fatal(p->env->disc, env.error ? env.error : REG_ECOUNT, NULL);
 	}
 	if (special(&env, p))
 	{
 		regfree(p);
-		return fatal(p->env->disc, env.error ? env.error : REG_ESPACE, NiL);
+		return fatal(p->env->disc, env.error ? env.error : REG_ESPACE, NULL);
 	}
 	p->env->min = g->re.trie.min;
 	return 0;

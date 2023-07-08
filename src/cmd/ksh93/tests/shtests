@@ -8,12 +8,13 @@ valgrindflags='--xml=yes --log-file=/dev/null --track-origins=yes --read-var-inf
 
 USAGE=$'
 [-s8?
-@(#)$Id: shtests (ksh 93u+m) 2021-12-28 $
+@(#)$Id: shtests (ksh 93u+m) 2023-05-18 $
 ]
 [-author?David Korn <dgk@research.att.com>]
 [-author?Glenn Fowler <gsf@research.att.com>]
+[-author?Contributors to https://github.com/ksh93/ksh]
 [-copyright?(c) 2000-2012 AT&T Intellectual Property]
-[-copyright?(c) 2020-2022 Contributors to https://github.com/ksh93/ksh]
+[-copyright?(c) 2020-2023 Contributors to ksh 93u+m]
 [-license?https://www.eclipse.org/org/documents/epl-2.0/EPL-2.0.html]
 [+NAME?shtests - ksh regression test harness]
 [+DESCRIPTION?\bshtests\b is the \bksh\b(1) regression test harness for
@@ -264,6 +265,7 @@ case $SHELL in
 */*)	SHELL=$d/$SHELL;;
 *)	SHELL=$(whence $SHELL);;
 esac
+export userPATH=$PATH  # in case test scripts need it
 PATH=$(
 	builtin getconf 2>/dev/null || PATH=/run/current-system/sw/bin:/usr/xpg7/bin:/usr/xpg6/bin:/usr/xpg4/bin:/bin:/usr/bin:$PATH
 	getconf PATH 2>/dev/null
@@ -346,6 +348,7 @@ do	[[ $i == *.sh ]] || i+='.sh'
 	t=$(	case $i in
 		glob.sh)	grep -c '^[[:blank:]]*test_[a-z]\{3,\}' $i ;;
 		leaks.sh)	grep -c ^TEST $i ;;
+		printf.sh)	grep -c '^[[:blank:]]*T ' $i ;;
 		pty.sh)		grep -c 'tst ' $i ;;
 		*)		grep -c err_exit $i ;;
 		esac	)

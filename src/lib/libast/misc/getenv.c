@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -24,7 +24,6 @@
  * NOTE: the "intercepts" definition is here instead of astintercept.c because some
  *	 static linkers miss lone references to "intercepts" without "astintercept()"
  * ALSO: { 0 } definition required by some dynamic linkers averse to common symbols
- * UWIN: no _ast_getenv macro map to maintain AST54 compatibility
  */
 
 Intercepts_t	intercepts

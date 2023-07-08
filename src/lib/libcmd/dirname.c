@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -60,9 +60,9 @@ static const char usage[] =
 
 #include <cmd.h>
 
-static void l_dirname(register Sfio_t *outfile, register const char *pathname)
+static void l_dirname(Sfio_t *outfile, const char *pathname)
 {
-	register const char  *last;
+	const char  *last;
 	/* go to end of path */
 	for(last=pathname; *last; last++);
 	/* back over trailing '/' */
@@ -85,7 +85,7 @@ static void l_dirname(register Sfio_t *outfile, register const char *pathname)
 	{
 		while(pathname[2]=='/' && pathname<last)
 			pathname++;
-		if(last!=pathname && pathname[0]=='/' && pathname[1]=='/' && *astconf("PATH_LEADING_SLASHES",NiL,NiL)!='1')
+		if(last!=pathname && pathname[0]=='/' && pathname[1]=='/' && *astconf("PATH_LEADING_SLASHES",NULL,NULL)!='1')
 			pathname++;
 	}
 	sfwrite(outfile,pathname,last+1-pathname);
@@ -126,7 +126,7 @@ b_dirname(int argc, char** argv, Shbltin_t* context)
 	argc -= opt_info.index;
 	if(error_info.errors || argc != 1)
 	{
-		error(ERROR_usage(2),"%s", optusage(NiL));
+		error(ERROR_usage(2),"%s", optusage(NULL));
 		UNREACHABLE();
 	}
 	if(!mode)

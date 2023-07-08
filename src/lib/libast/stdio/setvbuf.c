@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -29,14 +29,14 @@ setvbuf(Sfio_t* f, char* buf, int type, size_t size)
 	else if (type == _IONBF)
 	{	
 		sfsync(f);
-		sfsetbuf(f, NiL, 0);
+		sfsetbuf(f, NULL, 0);
 	}
 	else if (type == _IOFBF)
 	{	
 		if (size == 0)
 			size = SF_BUFSIZE;
 		sfsync(f);
-		sfsetbuf(f, (void*)buf, size);
+		sfsetbuf(f, buf, size);
 	}
 	return 0;
 }

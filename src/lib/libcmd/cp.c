@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -227,11 +227,11 @@ preserve(State_t* state, const char* path, struct stat* ns, struct stat* os)
  */
 
 static int
-visit(State_t* state, register FTSENT* ent)
+visit(State_t* state, FTSENT* ent)
 {
-	register char*	base;
-	register int	n;
-	register int	len;
+	char*		base;
+	int		n;
+	int		len;
 	int		rm;
 	int		rfd;
 	int		wfd;
@@ -249,7 +249,7 @@ visit(State_t* state, register FTSENT* ent)
 	if (ent->fts_info == FTS_DC)
 	{
 		error(2, "%s: directory causes cycle", ent->fts_path);
-		fts_set(NiL, ent, FTS_SKIP);
+		fts_set(NULL, ent, FTS_SKIP);
 		return 0;
 	}
 	if (ent->fts_level == 0)
@@ -309,7 +309,7 @@ visit(State_t* state, register FTSENT* ent)
 					if (mkdir(state->path, st.st_mode & S_IPERM))
 					{
 						error(ERROR_SYSTEM|2, "%s: cannot create directory -- %s ignored", state->path, ent->fts_path);
-						fts_set(NiL, ent, FTS_SKIP);
+						fts_set(NULL, ent, FTS_SKIP);
 						return 0;
 					}
 				}
@@ -343,7 +343,7 @@ visit(State_t* state, register FTSENT* ent)
 	case FTS_D:
 		if (!state->recursive)
 		{
-			fts_set(NiL, ent, FTS_SKIP);
+			fts_set(NULL, ent, FTS_SKIP);
 			if (state->op == CP)
 				error(1, "%s: directory -- copying as plain file", ent->fts_path);
 			else if (state->link == link && !state->force)
@@ -359,7 +359,7 @@ visit(State_t* state, register FTSENT* ent)
 			return 0;
 		case FTS_DNX:
 			error(2, "%s: cannot search directory", ent->fts_path);
-			fts_set(NiL, ent, FTS_SKIP);
+			fts_set(NULL, ent, FTS_SKIP);
 
 			/* FALLTHROUGH */
 		case FTS_D:
@@ -376,7 +376,7 @@ visit(State_t* state, register FTSENT* ent)
 			else if (mkdir(state->path, (ent->fts_statp->st_mode & S_IPERM)|(ent->fts_info == FTS_D ? S_IRWXU : 0)))
 			{
 				error(ERROR_SYSTEM|2, "%s: cannot create directory -- %s ignored", state->path, ent->fts_path);
-				fts_set(NiL, ent, FTS_SKIP);
+				fts_set(NULL, ent, FTS_SKIP);
 			}
 			if (!state->directory)
 			{
@@ -403,7 +403,7 @@ visit(State_t* state, register FTSENT* ent)
 		st.st_mode = 0;
 	else if (state->update && !S_ISDIR(st.st_mode) && (unsigned long)ent->fts_statp->st_mtime < (unsigned long)st.st_mtime)
 	{
-		fts_set(NiL, ent, FTS_SKIP);
+		fts_set(NULL, ent, FTS_SKIP);
 		return 0;
 	}
 	else
@@ -493,14 +493,14 @@ visit(State_t* state, register FTSENT* ent)
 				s = state->path;
 			}
 			n = strlen(s);
-			if (fts = fts_open((char**)e, FTS_NOCHDIR|FTS_ONEPATH|FTS_PHYSICAL|FTS_NOPOSTORDER|FTS_NOSTAT|FTS_NOSEEDOTDIR, NiL))
+			if (fts = fts_open((char**)e, FTS_NOCHDIR|FTS_ONEPATH|FTS_PHYSICAL|FTS_NOPOSTORDER|FTS_NOSTAT|FTS_NOSEEDOTDIR, NULL))
 			{
 				while (sub = fts_read(fts))
 				{
 					if (strneq(s, sub->fts_name, n) && sub->fts_name[n] == '.' && strneq(sub->fts_name + n + 1, state->suffix, state->suflen) && (m = strtol(sub->fts_name + n + state->suflen + 1, &e, 10)) && streq(e, state->suffix) && m > v)
 						v = m;
 					if (sub->fts_level)
-						fts_set(NiL, sub, FTS_SKIP);
+						fts_set(NULL, sub, FTS_SKIP);
 				}
 				fts_close(fts);
 			}
@@ -590,14 +590,14 @@ visit(State_t* state, register FTSENT* ent)
 			}
 			else if (ent->fts_statp->st_size > 0)
 			{
-				if (!(ip = sfnew(NiL, NiL, SF_UNBOUND, rfd, SF_READ)))
+				if (!(ip = sfnew(NULL, NULL, SF_UNBOUND, rfd, SF_READ)))
 				{
 					error(ERROR_SYSTEM|2, "%s: %s read stream error", ent->fts_path, state->path);
 					close(rfd);
 					close(wfd);
 					return 0;
 				}
-				if (!(op = sfnew(NiL, NiL, SF_UNBOUND, wfd, SF_WRITE)))
+				if (!(op = sfnew(NULL, NULL, SF_UNBOUND, wfd, SF_WRITE)))
 				{
 					error(ERROR_SYSTEM|2, "%s: %s write stream error", ent->fts_path, state->path);
 					close(wfd);
@@ -662,10 +662,10 @@ visit(State_t* state, register FTSENT* ent)
 }
 
 int
-b_cp(int argc, register char** argv, Shbltin_t* context)
+b_cp(int argc, char** argv, Shbltin_t* context)
 {
-	register char*	file;
-	register char*	s;
+	char*		file;
+	char*		s;
 	char**		v;
 	char*		backup_type;
 	FTS*		fts;
@@ -945,7 +945,7 @@ b_cp(int argc, register char** argv, Shbltin_t* context)
 	}
 	if (argc <= 0 || error_info.errors)
 	{
-		error(ERROR_usage(2), "%s", optusage(NiL));
+		error(ERROR_usage(2), "%s", optusage(NULL));
 		UNREACHABLE();
 	}
 	if (!path_resolve)
@@ -963,7 +963,7 @@ b_cp(int argc, register char** argv, Shbltin_t* context)
 		pathcanon(file, 0, 0);
 	if (!(state->directory = !stat(file, &st) && S_ISDIR(st.st_mode)) && argc > 1)
 	{
-		error(ERROR_usage(2), "%s", optusage(NiL));
+		error(ERROR_usage(2), "%s", optusage(NULL));
 		UNREACHABLE();
 	}
 	if (s && !state->directory)
@@ -986,7 +986,7 @@ b_cp(int argc, register char** argv, Shbltin_t* context)
 	state->perm = state->uid ? S_IPERM : (S_IPERM & ~S_ISVTX);
 	if (!state->recursive)
 		state->flags |= FTS_TOP;
-	if (fts = fts_open(argv, state->flags, NiL))
+	if (fts = fts_open(argv, state->flags, NULL))
 	{
 		while (!sh_checksig(context) && (ent = fts_read(fts)) && !visit(state, ent));
 		fts_close(fts);

@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -52,12 +52,12 @@ getdate(const char* s)
 
 	static struct tm	ts;
 
-	t = tmscan(s, &e, NiL, &f, NiL, TM_PEDANTIC);
+	t = tmscan(s, &e, NULL, &f, NULL, TM_PEDANTIC);
 	if (*e || *f)
 	{
 		/* of course we all know what 7 means */
 		getdate_err = 7;
-		return 0;
+		return NULL;
 	}
 	tm = tmmake(&t);
 	ts.tm_sec = tm->tm_sec;

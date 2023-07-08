@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2022 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -28,9 +28,9 @@
  */
 
 static int
-subold(register Sfio_t* dp, const char* op, register const char* sp, size_t nmatch, register regmatch_t* match, register regflags_t flags, int sre)
+subold(Sfio_t* dp, const char* op, const char* sp, size_t nmatch, regmatch_t* match, regflags_t flags, int sre)
 {
-	register int	c;
+	int		c;
 	char*		s;
 	char*		e;
 	const char*	b;
@@ -242,7 +242,7 @@ regsub(const regex_t* p, Sfio_t* dp, const char* op, const char* sp, size_t nmat
 	int	sre;
 
 	if ((p->env->flags & REG_NOSUB) || !nmatch)
-		return fatal(p->env->disc, REG_BADPAT, NiL);
+		return fatal(p->env->disc, REG_BADPAT, NULL);
 	m = (flags >> 16) & 0x3fff;
 	sre = !!(p->env->flags & REG_SHELL);
 	r = 0;
@@ -254,12 +254,12 @@ regsub(const regex_t* p, Sfio_t* dp, const char* op, const char* sp, size_t nmat
 		{
 			sfwrite(dp, op, match->rm_so);
 			if (r = subold(dp, op, sp, nmatch, match, flags, sre))
-				return fatal(p->env->disc, r, NiL);
+				return fatal(p->env->disc, r, NULL);
 		}
 		op += match->rm_eo;
 	} while ((m > 0 || (flags & REG_SUB_ALL)) && !(r = regexec(p, op, nmatch, match, p->env->flags|(match->rm_so == match->rm_eo ? REG_ADVANCE : 0))));
 	if (r && r != REG_NOMATCH)
-		return fatal(p->env->disc, r, NiL);
+		return fatal(p->env->disc, r, NULL);
 	sfputr(dp, op, -1);
 	return 0;
 }
