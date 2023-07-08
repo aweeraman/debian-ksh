@@ -3,6 +3,7 @@ ksh93u+m (1.0.6-1) unstable; urgency=high
   * New upstream release.
   * Removed SUID_EXEC deprecated option.
   * Removed tput path hardcoding patch as it determined now at runtime.
+  * Added lintian override for executable-not-elf-or-script for cd and mcd.
 
  -- Anuradha Weeraman <anuradha@debian.org>  Sun, 09 Jul 2023 00:19:35 +0530
 
