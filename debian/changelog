@@ -1,4 +1,4 @@
-ksh93u+m (1.0.6-1) unstable; urgency=high
+ksh93u+m (1.0.7-1) unstable; urgency=high
 
   * New upstream release.
   * Removed SUID_EXEC deprecated option.
