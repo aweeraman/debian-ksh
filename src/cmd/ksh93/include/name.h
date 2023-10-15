@@ -247,6 +247,7 @@ extern const char	e_aliname[];
 extern const char	e_badexport[];
 extern const char	e_badref[];
 extern const char	e_badsubscript[];
+extern const char	e_rmref[];
 extern const char	e_noref[];
 extern const char	e_selfref[];
 extern const char	e_staticfun[];

@@ -722,4 +722,16 @@ got=$({ "$SHELL" -c 'read -C foo=bar </dev/null'; } 2>&1)
 	"got status $e$( ((e>128)) && print -n /SIG && kill -l "$e"), $(printf %q "$got"))"
 
 # ======
+# test preservation of -C -a attributes
+# backported from ksh 93v- 2013-09-13
+unset c
+compound c
+compound -a c.c=( [4][5]=(integer i=5))
+c.c=()
+got=$(print -v c)
+exp=$'(\n\ttypeset -C -a c\n)'
+[[ $got == "$exp" ]] || err_exit 'setting compound array c.c=() does not preserve -C attribute' \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
 exit $((Errors<125?Errors:125))

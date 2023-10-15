@@ -12,6 +12,7 @@
 #                                                                      #
 #                      Phi <phi.debian@gmail.com>                      #
 #                  Martijn Dekker <martijn@inlv.org>                   #
+#               K. Eugene Carlson <kvngncrlsn@gmail.com>               #
 #                                                                      #
 ########################################################################
 
@@ -202,8 +203,6 @@ unset x f
 # Tests for printf %T with relative date spec and 'exact' keyword
 # https://github.com/ksh93/ksh/issues/182
 
-export TZ=UTC
-
 # Check printf against a string
 function do_test # 1:LINENO 2:printf-STRING 3:match-string
 {	printf -v got "%($format)T" "$2"
@@ -211,7 +210,18 @@ function do_test # 1:LINENO 2:printf-STRING 3:match-string
 		"expected $(printf %q "$3"), got $(printf %q "$got")"
 }
 
+# The first tests require a time zone with one or more historical changes.
+format='%Y-%m-%d %H:%M:%S'
+export TZ=Europe/Riga
+
+C='Historical changes (bad time)' # https://github.com/ksh93/ksh/issues/669
+T '#236961303'				'1977-07-05 17:35:03'
+
+export TZ=Europe/London
+T '#0'					'1970-01-01 01:00:00'
+
 format='%Y-%m-%d'
+export TZ=UTC
 
 C='Calendar dates'
 T '2020-01-14'				'2020-01-14'

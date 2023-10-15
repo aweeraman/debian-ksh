@@ -15,6 +15,7 @@
 *                     Phong Vo <phongvo@gmail.com>                     *
 *                  Martijn Dekker <martijn@inlv.org>                   *
 *            Johnothan King <johnothanking@protonmail.com>             *
+*               K. Eugene Carlson <kvngncrlsn@gmail.com>               *
 *                                                                      *
 ***********************************************************************/
 /*
@@ -68,6 +69,8 @@ static const Namval_t		options[] =
 
 static Tm_info_t	_tm_info_ = { 0 };
 Tm_info_t*		_tm_infop_ = &_tm_info_;
+
+static char*		tz_abbr;
 
 #if _tzset_environ
 
@@ -141,6 +144,10 @@ tzwest(time_t* clock, int* isdst)
 	 */
 
 	tp = tmlocaltime(clock);
+#if _mem_tm_zone_tm
+	if (tp->tm_zone && !tz_abbr)
+		tz_abbr = strdup(tp->tm_zone);
+#endif
 	if (n = tp->tm_yday - n)
 	{
 		if (n > 1)
@@ -186,7 +193,7 @@ tmopt(void* a, const void* p, int n, const char* v)
  */
 
 static void
-tmlocal(void)
+tmlocal(time_t now)
 {
 	Tm_zone_t*		zp;
 	int			n;
@@ -197,10 +204,12 @@ tmlocal(void)
 	int			isdst;
 	char*			t;
 	struct tm*		tp;
-	time_t			now;
 	char			buf[16];
 
 	static Tm_zone_t	local;
+
+	local.standard = 0;
+	local.daylight = 0;
 
 #if _tzset_environ
 	{
@@ -238,7 +247,6 @@ tmlocal(void)
 	 */
 
 	tm_info.zone = tm_info.local = &local;
-	time(&now);
 	n = tzwest(&now, &isdst);
 
 	/*
@@ -268,6 +276,13 @@ tmlocal(void)
 	 * now get the time zone names
 	 */
 
+	if (tz_abbr)
+	{
+		if (!isdst)
+			local.standard = strdup(tz_abbr);
+		else
+			local.daylight = strdup(tz_abbr);
+	}
 #if _dat_tzname
 	if (tzname[0])
 	{
@@ -275,8 +290,10 @@ tmlocal(void)
 		 * POSIX
 		 */
 
-		local.standard = strdup(tzname[0]);
-		local.daylight = strdup(tzname[1]);
+		if (!local.standard)
+			local.standard = strdup(tzname[0]);
+		if (!local.daylight)
+			local.daylight = strdup(tzname[1]);
 	}
 	else
 #endif
@@ -286,12 +303,16 @@ tmlocal(void)
 		 * BSD
 		 */
 
-		local.standard = s;
-		if (s = strchr(s, ','))
-			*s++ = 0;
-		else
-			s = "";
-		local.daylight = s;
+		if (!local.standard)
+			local.standard = s;
+		if (!local.daylight)
+		{
+			if (s = strchr(s, ','))
+				*s++ = 0;
+			else
+				s = "";
+			local.daylight = s;
+		}
 	}
 	else
 	{
@@ -307,7 +328,8 @@ tmlocal(void)
 			if (zp->west == n && zp->dst == m)
 			{
 				local.type = t;
-				local.standard = zp->standard;
+				if (!local.standard)
+					local.standard = zp->standard;
 				if (!(s = zp->daylight))
 				{
 					e = (s = buf) + sizeof(buf);
@@ -319,7 +341,8 @@ tmlocal(void)
 					}
 					s = strdup(buf);
 				}
-				local.daylight = s;
+				if (!local.daylight)
+					local.daylight = s;
 				break;
 			}
 		}
@@ -331,12 +354,14 @@ tmlocal(void)
 
 			e = (s = buf) + sizeof(buf);
 			s = tmpoff(s, e - s, tm_info.format[TM_UT], n, 0);
-			local.standard = strdup(buf);
+			if (!local.standard)
+				local.standard = strdup(buf);
 			if (s < e - 1)
 			{
 				*s++ = ' ';
 				tmpoff(s, e - s, tm_info.format[TM_UT], m, TM_DST);
-				local.daylight = strdup(buf);
+				if (!local.daylight)
+					local.daylight = strdup(buf);
 			}
 		}
 	}
@@ -415,10 +440,11 @@ tmlocal(void)
  */
 
 void
-tminit(Tm_zone_t* zp)
+tminit(Tm_zone_t* zp, time_t now, const char newzone)
 {
 	static uint32_t		serial = ~(uint32_t)0;
 
+	tz_abbr = 0;
 	if (serial != ast.env_serial)
 	{
 		serial = ast.env_serial;
@@ -428,9 +454,9 @@ tminit(Tm_zone_t* zp)
 			tm_info.local = 0;
 		}
 	}
-	if (!tm_info.local)
-		tmlocal();
-	if (!zp)
+	if (!tm_info.local || newzone)
+		tmlocal(now);
+	if (!zp || newzone)
 		zp = tm_info.local;
 	tm_info.zone = zp;
 }

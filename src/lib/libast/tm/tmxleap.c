@@ -14,6 +14,7 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                   Phong Vo <kpv@research.att.com>                    *
 *                  Martijn Dekker <martijn@inlv.org>                   *
+*               K. Eugene Carlson <kvngncrlsn@gmail.com>               *
 *                                                                      *
 ***********************************************************************/
 /*
@@ -36,7 +37,7 @@ tmxleap(Time_t t)
 	Tm_leap_t*	lp;
 	uint32_t		sec;
 
-	tmset(tm_info.zone);
+	tmset(tm_info.zone, time(NULL), 0);
 	if (tm_info.flags & TM_ADJUST)
 	{
 		sec = tmxsec(t);

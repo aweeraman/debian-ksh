@@ -59,7 +59,7 @@ namespace man
 
 	builtin_has_selfdoc()
 	{
-		[[ $(unset -f -- "$1"; whence -t -- "$1") == builtin ]] \
+		[[ $(unset -f -- "$1" 2>/dev/null; whence -t -- "$1") == builtin ]] \
 			&& [[ ! $1 =~ ^(:|true|false|echo)$ \
 			&& $'\n'$(builtin)$'\n' == *$'\n'"$(unset -f -- "$1"; whence -- "$1")"$'\n'* ]]
 	}

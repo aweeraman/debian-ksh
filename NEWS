@@ -2,6 +2,38 @@ This documents significant changes in the 1.0 branch of ksh 93u+m.
 For full details, see the git log at: https://github.com/ksh93/ksh/tree/1.0
 Uppercase BUG_* IDs are shell bug IDs as used by the Modernish shell library.
 
+2023-09-15:
+
+- Release 1.0.7.
+
+- Fixed a hang in command substitutions (introduced in 93u+m/1.0.0) that was
+  triggered when redirecting standard output within a command substitution,
+  in combination with other factors. E.g., the following no longer hangs:
+	{ v=$(redirect 2>&1 1>&9); } 9>&1
+
+2023-09-13:
+
+- Fixed a crash on trying to append an indexed array value to an unset name
+  reference, e.g.: nameref unsetref; unsetref+=(foo bar). This now produces
+  a "removing nameref attribute" warning before performing the assignment.
+
+- Fixed: assignments like name=(...) to arrays did not preserve the array and
+  variable types. Fix backported from ksh 93v- beta (2013-07-19, 2013-07-27).
+
+- Fixed: assigning an empty set () to a compound indexed array caused the -C
+  attribute to be lost. Fix backported from ksh 93v- beta (2013-09-13).
+
+2023-09-09:
+
+- Fixed incorrect rejection of the tab key while reading input using the `read`
+  built-in command. Bugs introduced on 2021-02-26 (emacs) and 2022-08-24 (vi).
+
+- Fixed a minor bug that could cause '/opt/ast/bin/getconf PID_MAX' to
+  return the wrong value when ksh is built with strict C99.
+
+- Fixed a bug in printf %T: when using dates and times in the past, time
+  zones for the present were incorrectly used, ignoring historical changes.
+
 2023-06-13:
 
 - Release 1.0.6.

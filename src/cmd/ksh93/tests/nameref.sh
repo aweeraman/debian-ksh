@@ -592,7 +592,9 @@ function read_c
 }
 print "( typeset -i x=36 ) " | read_c ar[5][9][2]
 exp=$'(\n\ttypeset -a [5]=(\n\t\ttypeset -a [9]=(\n\t\t\t[2]=(\n\t\t\t\ttypeset -i x=36\n\t\t\t)\n\t\t)\n\t)\n)'
-[[ $(print -v ar) == "$exp" ]] || err_exit 'read into nameref of global array instance from within a function fails'
+got=$(print -v ar)
+[[ $got == "$exp" ]] || err_exit 'read into nameref of global array instance from within a function fails' \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
 
 function read_c
 {
@@ -605,7 +607,9 @@ function main
 	nameref nar=ar
 	print "( typeset -i x=36 ) " | read_c nar[5][9][2]
 	exp=$'(\n\ttypeset -a [5]=(\n\t\ttypeset -a [9]=(\n\t\t\t[2]=(\n\t\t\t\ttypeset -i x=36\n\t\t\t)\n\t\t)\n\t)\n)'
-	[[ $(print -v nar) == "$exp" ]] || err_exit 'read from a nameref variable from calling scope fails'
+	got=$(print -v nar)
+	[[ $got == "$exp" ]] || err_exit 'read from a nameref variable from calling scope fails' \
+		"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
 }
 main
 
@@ -626,7 +630,9 @@ function main
 	nameref l4=c.l[4]
 	printf "( typeset -a ar=( 1\n2\n3\n) b=1 )\n" | rf l4
 	exp=$'(\n\ttypeset -C -A l=(\n\t\t[4]=(\n\t\t\ttypeset -a ar=(\n\t\t\t\t1\n\t\t\t\t2\n\t\t\t\t3\n\t\t\t)\n\t\t\tb=1\n\t\t)\n\t)\n)'
-	[[ $(print -v c) == "$exp" ]] || err_exit 'read -C with nameref to array element fails'
+	got=$(print -v c)
+	[[ $got == "$exp" ]] || err_exit 'read -C with nameref to array element fails' \
+		"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
 }
 main
 
@@ -683,7 +689,12 @@ typeset -n ref='arr[2]'
 
 $SHELL  2> /dev/null -c 'function x { nameref lv=gg ; compound -A lv.c=( [4]=( x=1 )) ; } ; compound gg ; x' || err_exit 'compound array assignment with nameref in a function failed'
 
-$SHELL -c 'unset -n KSH_VERSION' 2> /dev/null || err_exit 'Unable to unset nameref KSH_VERSION.'
+# ======
+exp=''
+got=$("$SHELL" -c 'unset -n KSH_VERSION; typeset -p KSH_VERSION' 2>&1)
+[[ e=$? -eq 0 && $got == "$exp" ]] || err_exit "unable to unset nameref KSH_VERSION" \
+	"(expected status 0 and $(printf %q "$exp")," \
+	"got status $e$( ((e>128)) && print -n /SIG && kill -l "$e") and $(printf %q "$got"))"
 
 # ======
 # bug introduced in ksh 93u 2010-11-22
@@ -692,6 +703,56 @@ exp=': d: invalid self reference'
 got=$(nameref a=b b=c c=d d=a 2>&1)
 [[ e=$? -eq 1 && $got == *"$exp" ]] || err_exit 'self-reference loop detection' \
 	"(expected status 1, *$(printf %q "$exp"); got status $e, $(printf %q "$got"))"
+
+# ======
+# test assigning array values to an unset nameref; this now produces a warning and should no longer crash
+# https://github.com/ksh93/ksh/issues/678
+
+exp=$': warning: unsetref: removing nameref attribute\ntypeset -C unsetref=()'
+got=$("$SHELL" -c 'nameref unsetref; unsetref+=(); typeset -p unsetref' 2>&1)
+[[ e=$? -eq 0 && $got == *"$exp" ]] || err_exit "unsetref+=() misbehaves" \
+	"(expected status 0 and match of *$(printf %q "$exp")," \
+	"got status $e$( ((e>128)) && print -n /SIG && kill -l "$e") and $(printf %q "$got"))"
+got=$("$SHELL" -c 'nameref unsetref; unsetref=(); typeset -p unsetref' 2>&1)
+[[ e=$? -eq 0 && $got == *"$exp" ]] || err_exit "unsetref=() misbehaves" \
+	"(expected status 0 and match of *$(printf %q "$exp")," \
+	"got status $e$( ((e>128)) && print -n /SIG && kill -l "$e") and $(printf %q "$got"))"
+
+exp=$': warning: unsetref: removing nameref attribute\ntypeset -a unsetref=(foo bar)'
+got=$("$SHELL" -c 'nameref unsetref; unsetref+=(foo bar); typeset -p unsetref' 2>&1)
+[[ e=$? -eq 0 && $got == *"$exp" ]] || err_exit "unsetref+=(foo bar) misbehaves" \
+	"(expected status 0 and match of *$(printf %q "$exp")," \
+	"got status $e$( ((e>128)) && print -n /SIG && kill -l "$e") and $(printf %q "$got"))"
+got=$("$SHELL" -c 'nameref unsetref; unsetref=(foo bar); typeset -p unsetref' 2>&1)
+[[ e=$? -eq 0 && $got == *"$exp" ]] || err_exit "unsetref=(foo bar) misbehaves" \
+	"(expected status 0 and match of *$(printf %q "$exp")," \
+	"got status $e$( ((e>128)) && print -n /SIG && kill -l "$e") and $(printf %q "$got"))"
+
+exp=$': warning: unsetref: removing nameref attribute\ntypeset -A unsetref=([x]=foo [y]=bar)'
+got=$("$SHELL" -c 'nameref unsetref; unsetref+=([x]=foo [y]=bar); typeset -p unsetref' 2>&1)
+[[ e=$? -eq 0 && $got == *"$exp" ]] || err_exit "unsetref+=([x]=foo [y]=bar) misbehaves" \
+	"(expected status 0 and match of *$(printf %q "$exp")," \
+	"got status $e$( ((e>128)) && print -n /SIG && kill -l "$e") and $(printf %q "$got"))"
+got=$("$SHELL" -c 'nameref unsetref; unsetref=([x]=foo [y]=bar); typeset -p unsetref' 2>&1)
+[[ e=$? -eq 0 && $got == *"$exp" ]] || err_exit "unsetref=([x]=foo [y]=bar) misbehaves" \
+	"(expected status 0 and match of *$(printf %q "$exp")," \
+	"got status $e$( ((e>128)) && print -n /SIG && kill -l "$e") and $(printf %q "$got"))"
+
+# the following cases should remain errors
+
+exp=': unsetref: no reference name'
+got=$("$SHELL" -c 'nameref unsetref; echo foo $unsetref bar' 2>&1)
+[[ e=$? -eq 1 && $got == *"$exp" ]] || err_exit "\$unsetref misbehaves" \
+	"(expected status 1 and match of *$(printf %q "$exp")," \
+	"got status $e$( ((e>128)) && print -n /SIG && kill -l "$e") and $(printf %q "$got"))"
+got=$("$SHELL" -c 'nameref unsetref; unsetref.foo=bar' 2>&1)
+[[ e=$? -eq 1 && $got == *"$exp" ]] || err_exit "unsetref.foo=bar misbehaves" \
+	"(expected status 1 and match of *$(printf %q "$exp")," \
+	"got status $e$( ((e>128)) && print -n /SIG && kill -l "$e") and $(printf %q "$got"))"
+got=$("$SHELL" -c 'nameref unsetref; unsetref[1]=bar' 2>&1)
+[[ e=$? -eq 1 && $got == *"$exp" ]] || err_exit "unsetref[1]=bar misbehaves" \
+	"(expected status 1 and match of *$(printf %q "$exp")," \
+	"got status $e$( ((e>128)) && print -n /SIG && kill -l "$e") and $(printf %q "$got"))"
 
 # ======
 exit $((Errors<125?Errors:125))

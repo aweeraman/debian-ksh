@@ -1139,6 +1139,24 @@ int	sh_redirect(struct ionod *iop, int flag)
 	{
 		iof=iop->iofile;
 		fn = (iof&IOUFD);
+		/*
+		 * A command substitution will hang on exit, writing infinite '\0', if,
+		 * within it, standard output (FD 1) is redirected for a built-in command
+		 * that calls sh_subfork(), or redirected permanently using 'exec' or
+		 * 'redirect'. This forking workaround is necessary to avoid that bug.
+		 * For shared-state comsubs, forking is incorrect, so error out then.
+		 * TODO: actually fix the bug and remove this workaround.
+		 */
+		if(fn==1 && sh.subshell && sh.comsub)
+		{
+			if(!sh.subshare)
+				sh_subfork();
+			else if(flag==1 || flag==2)  /* block stdout perma-redirects: would hang */
+			{
+				errormsg(SH_DICT,ERROR_exit(1),"cannot redirect stdout inside shared-state comsub");
+				UNREACHABLE();
+			}
+		}
 		if(sh.redir0 && fn==0 && !(iof&IOMOV))
 			sh.redir0 = 2;
 		io_op[0] = '0'+(iof&IOUFD);

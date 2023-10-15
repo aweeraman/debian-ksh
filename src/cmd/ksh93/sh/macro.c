@@ -2710,17 +2710,16 @@ static void tilde_expand2(int offset)
 	char		*cp = NULL;			/* character pointer for tilde expansion result */
 	char		*stakp = stkptr(sh.stk,0);	/* current stack object (&stakp[offset] is tilde string) */
 	int		curoff = stktell(sh.stk);	/* current offset of current stack object */
-	static char	block;				/* for disallowing tilde expansion in .get/.set to change ${.sh.tilde} */
 	/*
 	 * Allow overriding tilde expansion with a .sh.tilde.set or .get discipline function.
 	 */
-	if(!block && SH_TILDENOD->nvfun && SH_TILDENOD->nvfun->disc)
+	if(!sh.tilde_block && SH_TILDENOD->nvfun && SH_TILDENOD->nvfun->disc)
 	{
 		stkfreeze(sh.stk,1);			/* terminate current stack object to avoid data corruption */
-		block++;
+		sh.tilde_block++;
 		nv_putval(SH_TILDENOD, &stakp[offset], 0);
 		cp = nv_getval(SH_TILDENOD);
-		block--;
+		sh.tilde_block--;
 		if(cp[0]=='\0' || cp[0]=='~')
 			cp = NULL;			/* do not use empty or unexpanded result */
 		stkset(sh.stk,stakp,curoff);		/* restore stack to state on function entry */
