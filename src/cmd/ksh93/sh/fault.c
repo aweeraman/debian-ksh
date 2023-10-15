@@ -630,6 +630,7 @@ void sh_exit(int xno)
 	sh.prefix = 0;
 	sh.mktype = 0;
 	sh.invoc_local = 0;
+	sh.tilde_block = 0;
 	if(job.in_critical)
 		job_unlock();
 	if(pp->mode == SH_JMPSCRIPT && !pp->prev) 

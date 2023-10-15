@@ -14,6 +14,7 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                   Phong Vo <kpv@research.att.com>                    *
 *                  Martijn Dekker <martijn@inlv.org>                   *
+*               K. Eugene Carlson <kvngncrlsn@gmail.com>               *
 *                                                                      *
 ***********************************************************************/
 /*
@@ -33,7 +34,7 @@
  */
 
 Tm_t*
-tmxtm(Tm_t* tm, Time_t t, Tm_zone_t* zone)
+tmxtm(Tm_t* tm, Time_t t, Tm_zone_t* zone, const char newzone)
 {
 	struct tm*		tp;
 	Tm_leap_t*		lp;
@@ -48,7 +49,7 @@ tmxtm(Tm_t* tm, Time_t t, Tm_zone_t* zone)
 	uint32_t		i;
 #endif
 
-	tmset(tm_info.zone);
+	tmset(tm_info.zone, tmxsec(t), newzone);
 	leapsec = 0;
 	if ((tm_info.flags & (TM_ADJUST|TM_LEAP)) == (TM_ADJUST|TM_LEAP) && (n = tmxsec(t)))
 	{
@@ -132,5 +133,5 @@ tmxmake(Time_t t)
 {
 	static Tm_t		ts;
 
-	return tmxtm(&ts, t, NULL);
+	return tmxtm(&ts, t, NULL, 0);
 }

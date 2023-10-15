@@ -871,4 +871,70 @@ got=$(i=0; typeset -a a; printf -v a\[i++] foo 2>&1; typeset -p i a)
 	"(expected status 0, $(printf %q "$exp"); got status $e, $(printf %q "$got"))"
 
 # ======
+# tests for preserving array type, backported from ksh 93v- beta
+
+# ... from 2013-07-19:
+
+unset ar
+ar=(foo bar bam)
+ar=()
+got=$(typeset -p ar)
+exp='typeset -a ar'
+[[ $got == "$exp" ]] || err_exit 'ar=() does not preserve index array type' \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+unset ar
+typeset -A ar=([0]=foo [1]=bar [2]=bam)
+ar=()
+got=$(typeset -p ar)
+exp='typeset -A ar=()'
+[[ $got == "$exp" ]] || err_exit 'ar=() does not preserve associative array type' \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+unset ar
+typeset -CA ar
+ar[1]=(foo=1; bar=2)
+ar[3]=(foo=3; bar=4)
+ar=()
+got=$(typeset -p ar)
+exp='typeset -C -A ar=()'
+[[ $got == "$exp" ]] || err_exit 'ar=() does not preserve -C attribute' \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+unset ar
+ar=(foo bar bam)
+ar=()
+got=$(typeset -p ar)
+exp='typeset -a ar'
+[[ $got == "$exp" ]] || err_exit 'ar=() for index array should preserve index array type' \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+unset ar
+typeset -A ar=([1]=foo [3]=bar)
+ar=()
+got=$(typeset -p ar)
+exp='typeset -A ar=()'
+[[ $got == "$exp" ]] || err_exit 'ar=() for associative array should preserve index array type' \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ... from 2013-07-27:
+
+unset ar
+integer -a ar=( 2 3 4 )
+ar=()
+got=$(typeset -p ar)
+exp='typeset -a -l -i ar'
+[[ $got == "$exp" ]] || err_exit 'ar=() for index array should preserve attributes' \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+unset ar
+integer -a ar=( 2 3 4 )
+integer -A ar=([1]=9 [3]=12)
+ar=()
+got=$(typeset -p ar)
+exp='typeset -A -l -i ar=()'
+[[ $got == "$exp" ]] || err_exit 'ar=() for associative array should preserve attributes' \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
 exit $((Errors<125?Errors:125))

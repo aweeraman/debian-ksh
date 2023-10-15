@@ -1302,15 +1302,14 @@ static void getline(Vi_t* vp,int mode)
 
 		case '\t':		/** command completion **/
 		{
+			if(!sh_isoption(SH_VI) || !sh.nextprompt)
+				goto fallback;
 			if(blankline(vp))
 			{
 				ed_ringbell();
 				break;
 			}
-			if(sh_isoption(SH_VI) &&
-				mode != SEARCH &&
-				last_virt >= 0 &&
-				sh.nextprompt)
+			if(mode != SEARCH && last_virt >= 0)
 			{
 				if(virtual[cur_virt]=='\\')
 				{

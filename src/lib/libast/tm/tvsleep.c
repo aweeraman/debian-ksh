@@ -20,7 +20,6 @@
 ***********************************************************************/
 
 #include <ast.h>
-#include <assert.h>
 #include <tv.h>
 #include <tm.h>
 #include <error.h>
@@ -55,8 +54,6 @@
 int
 tvsleep(const Tv_t* tv, Tv_t* rv)
 {
-	assert(tv); /* Validate argument */
-
 	/* Return immediately if asked to sleep for no duration. */
 	if (!tv->tv_sec && !tv->tv_nsec)
 		return 0;

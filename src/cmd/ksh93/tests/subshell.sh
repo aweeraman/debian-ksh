@@ -624,7 +624,7 @@ trap - USR1 ERR
 dot=$(cat <<-EOF
 		$(ls -d .)
 	EOF
-) ) & sleep 1
+) ) & "$binsleep" .1
 if      kill -0 $! 2> /dev/null
 then    err_exit  'command substitution containing here-doc with command substitution fails'
 fi
@@ -1182,6 +1182,18 @@ exp='some output'
 { got=$(eval 'print -r -- "$exp" | "$bincat"'); } >/dev/null
 [[ $got == "$exp" ]] || err_exit 'command substitution did not catch output' \
 	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
+# Command substitution hangs when redirecting standard output in combination with other redirections
+# Bug introduced in 93u+m/1.0.0-beta.2
+"$SHELL" -c '{ v=$(redirect 2>&1 1>&9); } 9>&1' &
+test_pid=$!
+(sleep 2; kill -s KILL "$test_pid" 2>/dev/null) &
+sleep_pid=$!
+{ wait "$test_pid"; } 2>/dev/null
+((!(e = $?))) || err_exit "comsub hangs on redirecting stdout & more" \
+	"(got status $e$( ((e>128)) && print -n /SIG && kill -l "$e"))"
+kill "$sleep_pid" 2>/dev/null
 
 # ======
 exit $((Errors<125?Errors:125))

@@ -14,6 +14,7 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                   Phong Vo <kpv@research.att.com>                    *
 *                  Martijn Dekker <martijn@inlv.org>                   *
+*               K. Eugene Carlson <kvngncrlsn@gmail.com>               *
 *                                                                      *
 ***********************************************************************/
 /*
@@ -54,7 +55,7 @@ tmxtime(Tm_t* tm, int west)
 	ts = *tm;
 	to = tm;
 	tm = &ts;
-	tmset(tm_info.zone);
+	tmset(tm_info.zone, time(NULL), 0);
 	tmfix(tm);
 	y = tm->tm_year;
 	if (y < 69 || y > (TMX_MAXYEAR - 1900))

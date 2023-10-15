@@ -430,8 +430,36 @@ void nv_setlist(struct argnod *arg,int flags, Namval_t *typ)
 					goto skip;
 				if(tp->tre.tretyp==0 && !tp->com.comset && !tp->com.comarg)
 				{
-					if(!(arg->argflag&ARG_APPEND) && nv_isattr(np,NV_BINARY|NV_NOFREE|NV_RAW)!=(NV_BINARY|NV_NOFREE|NV_RAW))
-						_nv_unset(np,NV_EXPORT);
+					if(!(arg->argflag&ARG_APPEND))
+					{
+						if(ap && array_elem(ap)>0)
+						{
+							nv_putsub(np, NULL, ARRAY_SCAN);
+							if(!ap->fun && !(ap->nelem&ARRAY_TREE) && !np->nvfun->next && !nv_type(np))
+							{
+								unsigned short nvflag = np->nvflag;
+								uint32_t nvsize = np->nvsize;
+								_nv_unset(np,NV_EXPORT);
+								np->nvflag = nvflag;
+								np->nvsize = nvsize;
+							}
+							else
+							{
+								ap->nelem++;
+								while(1)
+								{
+									ap->nelem &= ~ARRAY_SCAN;
+									_nv_unset(np,NV_EXPORT);
+									ap->nelem |= ARRAY_SCAN;
+									if(!nv_nextsub(np))
+										break;
+								}
+								ap->nelem--;
+							}
+						}
+						else if(nv_isattr(np,NV_BINARY|NV_NOFREE|NV_RAW)!=(NV_BINARY|NV_NOFREE|NV_RAW) && !nv_isarray(np))
+							_nv_unset(np,NV_EXPORT);
+					}
 					goto skip;
 				}
 				if(tp->tre.tretyp==TLST || !tp->com.comset || tp->com.comset->argval[0]!='[')
@@ -918,10 +946,21 @@ Namval_t *nv_create(const char *name,  Dt_t *root, int flags, Namfun_t *dp)
 					noscope = 1;
 				}
 				sh.first_root = root;
-				if(nv_isref(np) && (c=='[' || c=='.' || !(flags&NV_ASSIGN)))
+				if(nv_isref(np))
 				{
-					errormsg(SH_DICT,ERROR_exit(1),e_noref,nv_name(np));
-					UNREACHABLE();
+					/* At this point, it is known that np is an unset nameref */
+					if(c=='[' || c=='.' || !(flags&NV_ASSIGN))
+					{
+						/* unsetref[foo]=bar or unsetref.foo=bar or $unsetref: error */
+						errormsg(SH_DICT,ERROR_exit(1),e_noref,nv_name(np));
+						UNREACHABLE();
+					}
+					else if(c==0)
+					{
+						/* unsetref=(...) or unsetref+=(...): remove -n attribute */
+						errormsg(SH_DICT,ERROR_warn(0),e_rmref,nv_name(np));
+						nv_offattr(np,NV_REF);
+					}
 				}
 				if(sub && c==0)
 				{

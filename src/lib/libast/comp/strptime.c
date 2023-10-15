@@ -14,6 +14,7 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                   Phong Vo <kpv@research.att.com>                    *
 *                  Martijn Dekker <martijn@inlv.org>                   *
+*               K. Eugene Carlson <kvngncrlsn@gmail.com>               *
 *                                                                      *
 ***********************************************************************/
 /*
@@ -58,7 +59,7 @@ strptime(const char* s, const char* format, struct tm* ts)
 	t = tmscan(s, &e, format, &f, &t, 0);
 	if (e == (char*)s || *f)
 		return NULL;
-	tmxtm(&tm, tmxclock(&t), NULL);
+	tmxtm(&tm, tmxclock(&t), NULL, 0);
 	ts->tm_sec = tm.tm_sec;
 	ts->tm_min = tm.tm_min;
 	ts->tm_hour = tm.tm_hour;
