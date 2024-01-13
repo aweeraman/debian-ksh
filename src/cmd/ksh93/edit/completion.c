@@ -24,9 +24,7 @@
 #include	"shopt.h"
 #include	"defs.h"
 
-#if SHOPT_SCRIPTONLY
-NoN(completion)
-#else
+#if !SHOPT_SCRIPTONLY
 
 #include	<ast_wchar.h>
 #include	"lexstates.h"
@@ -663,4 +661,6 @@ int ed_fulledit(Edit_t *ep)
 	return 0;
 }
 
-#endif /* SHOPT_SCRIPTONLY */
+#else
+NoN(completion)
+#endif /* !SHOPT_SCRIPTONLY */

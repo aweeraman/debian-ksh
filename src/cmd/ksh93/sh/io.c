@@ -1135,28 +1135,39 @@ int	sh_redirect(struct ionod *iop, int flag)
 		clexec = 1;
 	if(iop)
 		traceon = sh_trace(NULL,0);
-	for(;iop;iop=iop->ionxt)
+	/*
+	 * A command substitution will hang on exit, writing infinite '\0', if,
+	 * within it, standard output (FD 1) is redirected for a built-in command
+	 * that calls sh_subfork(), or redirected permanently using 'exec' or
+	 * 'redirect'. This forking workaround is necessary to avoid that bug.
+	 * For shared-state comsubs, forking is incorrect, so error out then.
+	 * TODO: actually fix the bug and remove this workaround.
+	 * (Note that sh.redir0 is set to 1 in xec.c immediately before processing
+	 * redirections for any built-in command, including 'exec' and 'redirect'.)
+	 */
+	if(sh.subshell && sh.comsub && sh.redir0==1)
 	{
-		iof=iop->iofile;
-		fn = (iof&IOUFD);
-		/*
-		 * A command substitution will hang on exit, writing infinite '\0', if,
-		 * within it, standard output (FD 1) is redirected for a built-in command
-		 * that calls sh_subfork(), or redirected permanently using 'exec' or
-		 * 'redirect'. This forking workaround is necessary to avoid that bug.
-		 * For shared-state comsubs, forking is incorrect, so error out then.
-		 * TODO: actually fix the bug and remove this workaround.
-		 */
-		if(fn==1 && sh.subshell && sh.comsub)
+		struct ionod *i;
+		for(i = iop; i; i = i->ionxt)
 		{
+			if((i->iofile & IOUFD) != 1)
+				continue;
 			if(!sh.subshare)
+			{
 				sh_subfork();
-			else if(flag==1 || flag==2)  /* block stdout perma-redirects: would hang */
+				break;
+			}
+			if(flag==1 || flag==2)
 			{
 				errormsg(SH_DICT,ERROR_exit(1),"cannot redirect stdout inside shared-state comsub");
 				UNREACHABLE();
 			}
 		}
+	}
+	for(; iop; iop = iop->ionxt)
+	{
+		iof = iop->iofile;
+		fn = (iof & IOUFD);
 		if(sh.redir0 && fn==0 && !(iof&IOMOV))
 			sh.redir0 = 2;
 		io_op[0] = '0'+(iof&IOUFD);

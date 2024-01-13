@@ -1815,7 +1815,7 @@ make(Rule_t* r)
 				{
 					bindfile(q);
 					if (!(q->flags & (RULE_dontcare | RULE_exists)))
-						dont(q, 0, strict() ? state.keepgoing : 1);
+						dont(q, 0, state.keepgoing);
 				}
 			}
 			else if (*v)

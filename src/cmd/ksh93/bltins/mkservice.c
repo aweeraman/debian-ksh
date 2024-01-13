@@ -25,9 +25,7 @@
 #include	"shopt.h"
 #include	"defs.h"
 
-#if !SHOPT_MKSERVICE
-NoN(mkservice)
-#else
+#if SHOPT_MKSERVICE
 
 static const char mkservice_usage[] =
 "[-?\n@(#)$Id: mkservice (AT&T Research) 2001-06-13 $\n]"
@@ -497,4 +495,6 @@ int	b_eloop(int argc, char** argv, Shbltin_t *context)
 	return errno != 0;
 }
 
+#else
+NoN(mkservice)
 #endif /* SHOPT_MKSERVICE */

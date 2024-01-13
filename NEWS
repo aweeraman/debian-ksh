@@ -2,6 +2,33 @@ This documents significant changes in the 1.0 branch of ksh 93u+m.
 For full details, see the git log at: https://github.com/ksh93/ksh/tree/1.0
 Uppercase BUG_* IDs are shell bug IDs as used by the Modernish shell library.
 
+2024-01-01:
+
+- Release 1.0.8.
+
+2023-12-28:
+
+- Fixed intermittent incorrect behaviour (a race condition), introduced on
+  2023-09-15, that occurred on some systems when running an external command
+  with a redirection from a command substitution.
+
+- Fixed an init-time crash on failure to trim the shell command history file
+  due to a non-writable parent directory; ksh now prints a warning instead.
+
+2023-12-25:
+
+- Fixed a regression in the behavior of 'exit' in a trap action, introduced
+  on 2020-09-09. The default exit status, used when no argument is given to
+  'exit', is now once again the exit status of the last command executed
+  *before* the trap action, as expected.
+
+2023-09-16:
+
+- The 'kill' built-in command was meant to refuse to issue SIGSTOP to the
+  shell's process if the shell is a login shell (because this normally
+  causes an unrecoverable freeze of the terminal session). The code
+  prohibiting this did not work on modern systems and is now fixed.
+
 2023-09-15:
 
 - Release 1.0.7.

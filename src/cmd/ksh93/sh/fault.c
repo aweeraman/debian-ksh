@@ -664,6 +664,7 @@ noreturn void sh_done(int sig)
 	if(t=sh.st.trapcom[0])
 	{
 		sh.st.trapcom[0]=0; /* should free but not long */
+		sh.oldexit = savxit;
 		sh_trap(t,0);
 		savxit = sh.exitval;
 	}

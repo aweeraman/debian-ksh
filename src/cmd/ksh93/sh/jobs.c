@@ -986,7 +986,7 @@ int job_kill(struct process *pw,int sig)
 	{
 		if(pid==0 && job.jobcontrol)
 			r = job_walk(outfile, job_kill,sig, NULL);
-		if(sig==SIGSTOP && pid==sh.pid && sh.ppid==1)
+		if(sig==SIGSTOP && pid==sh.pid && sh_isoption(SH_LOGIN_SHELL))
 		{
 			/* can't stop login shell */
 			errno = EPERM;

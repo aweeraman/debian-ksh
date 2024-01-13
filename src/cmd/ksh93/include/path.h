@@ -37,7 +37,6 @@
 #define PATH_CDPATH		0004
 #define PATH_BFPATH		0010
 #define PATH_SKIP		0020
-#define PATH_BUILTIN_LIB	0040
 #define PATH_STD_DIR		0100	/* directory is on  $(getconf PATH) */
 
 #define PATH_OFFSET	2		/* path offset for path_join */

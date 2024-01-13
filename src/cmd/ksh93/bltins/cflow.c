@@ -76,7 +76,8 @@ done:
 	}
 	else
 	{
-		n = sh.savexit;				/* no argument: pass down $? */
+		/* no argument: pass down $? (but in a trap action, pass down the pre-trap $?) */
+		n = sh.intrap ? sh.oldexit : sh.savexit;
 		if(do_exit)
 			n &= SH_EXITMASK;
 	}

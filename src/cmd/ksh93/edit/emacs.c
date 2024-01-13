@@ -62,9 +62,7 @@ One line screen editor for any program
 #include	"shopt.h"
 #include	<ast.h>
 
-#if !SHOPT_ESH
-NoN(emacs)
-#else
+#if SHOPT_ESH
 
 #include	<releaseflags.h>
 #include	"defs.h"
@@ -1798,4 +1796,7 @@ static char blankline(Emacs_t *ep, genchar *out)
 	}
 	return 1;
 }
-#endif /* !SHOPT_ESH */
+
+#else
+NoN(emacs)
+#endif /* SHOPT_ESH */

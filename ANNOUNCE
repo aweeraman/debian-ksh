@@ -1,8 +1,10 @@
-Announcing: KornShell 93u+m/1.0.7
+Announcing: KornShell 93u+m/1.0.8
 https://github.com/ksh93/ksh
 
-Here is the seventh ksh 93u+m/1.0 bugfix release. It fixes a hang in
-command substitutions when combined with 'exec' and certain redirections.
+Here is the eighth ksh 93u+m/1.0 bugfix release. It fixes a bug that caused
+an incorrect default exit status for 'exit' within a trap action, as well as
+a race condition (introduced in 1.0.7) occurring on some systems when
+running an external command with a redirection from a command substitution.
 
 Further below is an overview of the main changes. For greater detail, see
 the NEWS file in the distribution. For complete detail, see the git(1)
@@ -67,6 +69,19 @@ Feel free to use Discussions to introduce yourself to the community.
 
 You can also join the mailing list/Google group at:
 https://groups.google.com/g/korn-shell
+
+### MAIN CHANGES between ksh 93u+m/1.0.7 and 93u+m/1.0.8 ###
+
+- Fixed a regression in the behavior of 'exit' in a trap action. The exit
+  status used when no argument is given to 'exit' is now once again the exit
+  status of the last command executed *before* the trap action.
+- Fixed a race condition, introduced in 1.0.7, that occurred on some systems
+  when running an external command with a standard output redirection from a
+  command substitution.
+- Fixed an init-time crash on failure to trim the shell command history file
+  due to a non-writable parent directory; ksh now prints a warning instead.
+- The 'kill' built-in command now correctly refuses to issue SIGSTOP to the
+  shell's own process if the shell is a login shell.
 
 ### MAIN CHANGES between ksh 93u+m/1.0.6 and 93u+m/1.0.7 ###
 

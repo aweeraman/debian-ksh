@@ -90,6 +90,7 @@ do
 	$cat |&
 	!
 	chmod +x $file
+	wait
 	sleep 1 |&
 	$file 2> /dev/null || err_exit "parent $cat coprocess prevents script coprocess"
 	exec 5<&p 6>&p
