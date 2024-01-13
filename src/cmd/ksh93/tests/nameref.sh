@@ -246,16 +246,18 @@ i=$($SHELL -c 'nameref foo=bar; bar[2]=(x=3 y=4); nameref x=foo[2].y;print -r --
 ) ==  *foo=hello* ]] || err_exit 'unable to display compound variable from name reference of local variable'
 #set -x
 for c in '=' '[' ']' '\' "'" '"' '<' '=' '('
-do	[[ $($SHELL 2> /dev/null <<- ++EOF++
+do	got=$($SHELL 2> /dev/null <<- ++EOF++
 	i=\\$c;typeset -A a; a[\$i]=foo;typeset -n x=a[\$i]; print "\$x"
 	++EOF++
-) != foo ]] && err_exit 'nameref x=a[$c] '"not working for c=$c"
+	)
+	[[ $got != foo ]] && err_exit 'nameref x=a[$c] '"not working for c=$c (expected 'foo', got $(printf %q "$got"))"
 done
 for c in '=' '[' ']' '\' "'" '"' '<' '=' '('
-do      [[ $($SHELL 2> /dev/null <<- ++EOF++
+do      got=$($SHELL 2> /dev/null <<- ++EOF++
 	i=\\$c;typeset -A a; a[\$i]=foo;b=a[\$i];typeset -n x=\$b; print "\$x"
 	++EOF++
-) != foo ]] && err_exit 'nameref x=$b with b=a[$c] '"not working for c=$c"
+	)
+	[[ $got != foo ]] && err_exit 'nameref x=$b with b=a[$c] '"not working for c=$c (expected 'foo', got $(printf %q "$got"))"
 done
 
 unset -n foo x

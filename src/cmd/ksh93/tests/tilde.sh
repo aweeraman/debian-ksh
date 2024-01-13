@@ -166,4 +166,21 @@ do	(
 done
 
 # ======
+
+got=$(
+	.sh.tilde.get()
+	{
+		case ${.sh.tilde} in
+		"~ksh") .sh.value=/usr/local/src/ksh93/ksh ;;
+		"~ers") trap -Q; .sh.value=BAD ;;	#test
+		esac
+	}
+	{ : ~ers; } 2>/dev/null
+	echo ~ksh
+)
+exp=/usr/local/src/ksh93/ksh
+[[ $got == "$exp" ]] || err_exit "error in special builtin disables .sh.tilde discipline" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
 exit $((Errors<125?Errors:125))

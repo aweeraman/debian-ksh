@@ -1437,7 +1437,6 @@ static Pathcomp_t *path_addcomp(Pathcomp_t *first, Pathcomp_t *old,const char *n
 	if(strcmp(name,SH_CMDLIB_DIR)==0)
 	{
 		pp->dev = 1;
-		pp->flags |= PATH_BUILTIN_LIB;
 		pp->blib = pp->bbuf = sh_malloc(sizeof(LIBCMD));
 		strcpy(pp->blib,LIBCMD);
 		return first;

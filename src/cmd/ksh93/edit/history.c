@@ -41,9 +41,7 @@
 #include "shopt.h"
 #include <ast.h>
 
-#if SHOPT_SCRIPTONLY
-NoN(history)
-#else
+#if !SHOPT_SCRIPTONLY
 
 #define HIST_MAX	(sizeof(int)*HIST_BSIZE)
 #define HIST_BIG	(0100000-1024)	/* 1K less than maximum short */
@@ -419,34 +417,13 @@ static History_t* hist_trim(History_t *hp, int n)
 	char *cp;
 	int incmd=1, c=0;
 	History_t *hist_new, *hist_old = hp;
-	char *buff, *endbuff, *tmpname=0;
+	char *buff, *endbuff;
 	off_t oldp,newp;
 	struct stat statb;
-	unlink(hist_old->histname);
-	if(access(hist_old->histname,F_OK) >= 0)
+	if(unlink(hist_old->histname) < 0)
 	{
-		/* The unlink can fail on Windows 95 */
-		int fd;
-		char *last, *name=hist_old->histname;
-		sh_close(sffileno(hist_old->histfp));
-		tmpname = (char*)sh_malloc(strlen(name)+14);
-		if(last = strrchr(name,'/'))
-		{
-			*last = 0;
-			pathtmp(tmpname,name,"hist",NULL);
-			*last = '/';
-		}
-		else
-			pathtmp(tmpname,e_dot,"hist",NULL);
-		if(rename(name,tmpname) < 0)
-		{
-			free(tmpname);
-			tmpname = name;
-		}
-		fd = open(tmpname,O_RDONLY|O_cloexec);
-		sfsetfd(hist_old->histfp,fd);
-		if(tmpname==name)
-			tmpname = 0;
+		errormsg(SH_DICT,ERROR_warn(0),"cannot trim history file %s; make sure parent directory is writable",hist_old->histname);
+		return hist_ptr = hist_old;
 	}
 	hist_ptr = 0;
 	if(fstat(sffileno(hist_old->histfp),&statb)>=0)
@@ -501,11 +478,6 @@ static History_t* hist_trim(History_t *hp, int n)
 	}
 	hist_cancel(hist_new);
 	sfclose(hist_old->histfp);
-	if(tmpname)
-	{
-		unlink(tmpname);
-		free(tmpname);
-	}
 	free((char*)hist_old);
 	return hist_ptr = hist_new;
 }
@@ -1161,4 +1133,6 @@ static int hist_exceptf(Sfio_t* fp, int type, void *data, Sfdisc_t *handle)
 	return 0;
 }
 
-#endif /* SHOPT_SCRIPTONLY */
+#else
+NoN(history)
+#endif /* !SHOPT_SCRIPTONLY */
