@@ -1,2 +1,2 @@
-bin/ksh93 bin/rksh93
+usr/bin/ksh93 usr/bin/rksh93
 usr/share/man/man1/ksh93.1.gz usr/share/man/man1/rksh93.1.gz
