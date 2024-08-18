@@ -1,0 +1,40 @@
+Fix format specifier for time_t on 32bit archs with 64bit time_t.
+
+Test failure manifests like this:
+
+test basic begins at 2024-08-14+07:12:34
+basic.sh[604]: FAIL: The time keyword ignores the locale's radix point (both are )
+test basic failed at 2024-08-14+07:12:46 with exit code 1 [ 147 tests 1 error ]
+
+Author: Chris Hofstaedtler <zeha@debian.org>
+Last-Update: 2024-08-15
+
+Index: ksh93u+m-1.0.8/src/cmd/ksh93/sh/xec.c
+===================================================================
+--- ksh93u+m-1.0.8.orig/src/cmd/ksh93/sh/xec.c
++++ ksh93u+m-1.0.8/src/cmd/ksh93/sh/xec.c
+@@ -74,6 +74,12 @@ struct funenv
+ 	Namval_t	**nref;
+ };
+ 
++#if defined(_TIME_BITS) && _TIME_BITS == 64
++#define TIME_T_FORMAT "%lld"
++#else
++#define TIME_T_FORMAT "%d"
++#endif
++
+ /* ========	command execution	======== */
+ 
+ #if !SHOPT_DEVFD
+@@ -290,9 +296,9 @@ static void p_time(Sfio_t *out, const ch
+ 			for(n = 3 + (3 - precision); n > 0; --n)
+ 				frac /= 10;
+ 			if(precision)
+-				sfprintf(sh.stk, "%d%c%0*d", tvp->tv_sec, sh.radixpoint, precision, frac);
++				sfprintf(sh.stk, TIME_T_FORMAT "%c%0*d", tvp->tv_sec, sh.radixpoint, precision, frac);
+ 			else
+-				sfprintf(sh.stk, "%d", tvp->tv_sec);
++				sfprintf(sh.stk, TIME_T_FORMAT, tvp->tv_sec);
+ 		}
+ #else
+ 		if(c=='R')
