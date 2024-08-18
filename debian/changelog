@@ -1,6 +1,7 @@
 ksh93u+m (1.0.10-1) unstable; urgency=high
 
-  * New upstream release. 
+  * New upstream release.
+  * Bumped up standards version.
 
  -- Anuradha Weeraman <anuradha@debian.org>  Sun, 18 Aug 2024 15:24:52 +0530
 
