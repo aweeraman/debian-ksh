@@ -2,6 +2,7 @@ ksh93u+m (1.0.10-1) unstable; urgency=high
 
   * New upstream release.
   * Bumped up standards version.
+  * Reverted patch for time test failure, as it is fixed in newer upstream.
 
  -- Anuradha Weeraman <anuradha@debian.org>  Sun, 18 Aug 2024 15:24:52 +0530
 
