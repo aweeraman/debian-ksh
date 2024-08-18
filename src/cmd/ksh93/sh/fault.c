@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2014 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2024 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -39,21 +39,6 @@
 
 static char	indone;
 static int	cursig = -1;
-
-#if !_std_malloc
-#   include	<vmalloc.h>
-#endif
-#if  defined(VMFL)
-    /*
-     * This exception handler is called after vmalloc() unlocks the region
-     */
-    static int malloc_done(Vmalloc_t* vm, int type, void* val, Vmdisc_t* dp)
-    {
-	dp->exceptf = 0;
-	sh_exit(SH_EXITSIG);
-	return 0;
-    }
-#endif
 
 /*
  * Most signals caught or ignored by the shell come here
@@ -128,7 +113,7 @@ void	sh_fault(int sig)
 			sigrelease(sig);
 			if(pp->mode != SH_JMPSUB)
 			{
-				if(pp->mode < SH_JMPSUB)
+				if(pp->mode < SH_JMPSUB && !sh_isstate(SH_INTERACTIVE))
 					pp->mode = sh.subshell?SH_JMPSUB:SH_JMPFUN;
 				else
 					pp->mode = SH_JMPEXIT;
@@ -145,16 +130,6 @@ void	sh_fault(int sig)
 			sh.trapnote |= SH_SIGSET;
 			if(sig <= sh.sigmax)
 				sh.sigflag[sig] |= SH_SIGSET;
-#if  defined(VMFL)
-			if(abortsig(sig))
-			{
-				/* abort inside malloc, process when malloc returns */
-				/* VMFL defined when using vmalloc() */
-				Vmdisc_t* dp = vmdisc(Vmregion,0);
-				if(dp)
-					dp->exceptf = malloc_done;
-			}
-#endif
 			goto done;
 		}
 	}
@@ -495,7 +470,7 @@ int sh_trap(const char *trap, int mode)
 	char	was_no_trapdontexec = !sh.st.trapdontexec;
 	char	save_chldexitsig = sh.chldexitsig;
 	int	staktop = stktell(sh.stk);
-	char	*savptr = stkfreeze(sh.stk,0);
+	void	*savptr = stkfreeze(sh.stk,0);
 	struct	checkpt buff;
 	Fcin_t	savefc;
 	fcsave(&savefc);
@@ -526,11 +501,7 @@ int sh_trap(const char *trap, int mode)
 		if(jmpval==SH_JMPSCRIPT)
 			indone=0;
 		else
-		{
-			if(jmpval==SH_JMPEXIT)
-				savxit = sh.exitval;
 			jmpval=SH_JMPTRAP;
-		}
 	}
 	sh_popcontext(&buff);
 	/* re-allow last-command exec optimisation unless the command we executed set a trap */
@@ -539,8 +510,10 @@ int sh_trap(const char *trap, int mode)
 	sh.intrap--;
 	sfsync(sh.outpool);
 	savxit_return = sh.exitval;
-	if(jmpval!=SH_JMPEXIT && jmpval!=SH_JMPFUN)
-		sh.exitval=savxit;
+	if(sh.intrap_exit_n)
+		sh.intrap_exit_n = 0;
+	else
+		sh.exitval = savxit;
 	stkset(sh.stk,savptr,staktop);
 	fcrestore(&savefc);
 	if(was_history)
@@ -571,6 +544,7 @@ void sh_exit(int xno)
 		sh.exitval |= (sig=sh.lastsig);
 	if(pp && pp->mode>1)
 		cursig = -1;
+	sh_offstate(SH_EXEC);
 	if((sh.trapnote&SH_SIGTSTP) && job.jobcontrol)
 	{
 		/* ^Z detected by the shell */
@@ -617,7 +591,7 @@ void sh_exit(int xno)
 	}
 	/* unlock output pool */
 	sh_offstate(SH_NOTRACK);
-	if(!(pool=sfpool(NULL,sh.outpool,SF_WRITE)))
+	if(!(pool=sfpool(NULL,sh.outpool,SFIO_WRITE)))
 		pool = sh.outpool; /* can't happen? */
 	sfclrlock(pool);
 	if(sh.lastsig==SIGPIPE)
@@ -664,7 +638,6 @@ noreturn void sh_done(int sig)
 	if(t=sh.st.trapcom[0])
 	{
 		sh.st.trapcom[0]=0; /* should free but not long */
-		sh.oldexit = savxit;
 		sh_trap(t,0);
 		savxit = sh.exitval;
 	}
@@ -694,7 +667,7 @@ noreturn void sh_done(int sig)
 		/* generate fault termination code */
 		if(RLIMIT_CORE!=RLIMIT_UNKNOWN)
 		{
-#ifdef _lib_getrlimit
+#if _lib_getrlimit
 			struct rlimit rlp;
 			getrlimit(RLIMIT_CORE,&rlp);
 			rlp.rlim_cur = 0;

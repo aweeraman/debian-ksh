@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2024 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -31,7 +31,8 @@
 #include <debug.h>
 #include <ccode.h>
 #include <ctype.h>
-#include <errno.h>
+
+#define OPTGET_VERSION	"optget (ksh 93u+m) 2024-03-05"
 
 #define KEEP		"*[A-Za-z][A-Za-z]*"
 #define OMIT		"*@(\\[[-+]*\\?*\\]|\\@\\(#\\)|Copyright \\(c\\)|\\$\\I\\d\\: )*"
@@ -206,8 +207,9 @@ static const List_t	help_head[] =
 		C("\b-?\b and \b--?\b* options are the same \
 for all \bAST\b commands. For any \aitem\a below, if \b--\b\aitem\a is not \
 supported by a given command then it is equivalent to \b--\?\?\b\aitem\a. The \
-\b--\?\?\b form should be used for portability. All output is written to the \
-standard error."),
+\b--\?\?\b form should be used for portability. \
+All output is written to the standard error. \
+Note that question marks should be quoted to avoid pathanme expansion."),
 };
 
 static const Help_t	styles[] =
@@ -255,8 +257,11 @@ static const List_t	help_tail[] =
 the \aoption\a output in the \aitem\a style. Otherwise print \
 \bversion=\b\an\a where \an\a>0 if \b--\?\?\b\aitem\a is supported, \b0\b \
 if not."),
+	':',	C("\?\?\?\?\?\?EMPHASIS"),
+		C("Equivalent to \b--\?\?\?ESC\b."),
 	':',	C("\?\?\?\?\?\?ESC"),
-		C("Emit escape codes even if output is not a terminal."),
+		C("Emit ANSI escape codes for emphasis even if standard error is not on a terminal. \
+Use \b--\?\?noESC\b to emit no escape codes even if standard error is on a terminal."),
 	':',	C("\?\?\?\?\?\?MAN[=\asection\a]]"),
 		C("List the \bman\b(1) section title for \asection\a [the \
 current command]]."),
@@ -902,13 +907,15 @@ init(char* s, Optpass_t* p)
 
 	if (!state.localized)
 	{
+		unsigned char	*opts = (unsigned char*)OPT_FLAGS;
+		unsigned char	*o;
 		state.localized = 1;
 		if (!ast.locale.serial)
 			setlocale(LC_ALL, "");
 		state.xp = sfstropen();
-		if (!map[OPT_FLAGS[0]])
-			for (n = 0, t = OPT_FLAGS; *t; t++)
-				map[*t] = ++n;
+		if (!map[opts[0]])
+			for (n = 0, o = opts; *o; o++)
+				map[*o] = ++n;
 	}
 #if _BLD_DEBUG
 	error(-2, "optget debug");
@@ -1584,7 +1591,7 @@ args(Sfio_t* sp, char* p, int n, int flags, int style, Sfio_t* ip, int version, 
 	char*	t;
 	char*	o;
 	char*	a = 0;
-	char*	b;
+	char*	b = style == STYLE_nroff ? "\\ " : " ";
 	int	sep;
 
 	if (flags & OPT_functions)
@@ -1593,7 +1600,6 @@ args(Sfio_t* sp, char* p, int n, int flags, int style, Sfio_t* ip, int version, 
 	{
 		sep = ' ';
 		o = T(NULL, ID, "options");
-		b = style == STYLE_nroff ? "\\ " : " ";
 		for (;;)
 		{
 			t = (char*)memchr(p, '\n', n);
@@ -2354,10 +2360,10 @@ opthelp(const char* oopts, const char* what)
 	char*		s;
 	char*		d;
 	char*		v;
-	char*		cb;
-	char*		dt;
+	char*		cb = NULL;
+	char*		dt = NULL;
 	char*		ov;
-	char*		pp;
+	char*		pp = NULL;
 	char*		rb;
 	char*		re;
 	int		f;
@@ -2415,7 +2421,7 @@ opthelp(const char* oopts, const char* what)
 	Sfio_t*		sp_misc = 0;
 
 	if (!(mp = state.mp) && !(mp = state.mp = sfstropen()))
-		goto nospace;
+		goto outofmemory;
 	if (!what)
 		style = state.style;
 	else if (!*what)
@@ -2435,7 +2441,7 @@ opthelp(const char* oopts, const char* what)
 		if ((style = state.force) < STYLE_man)
 			style = STYLE_man;
 		if (!(sp_help = sfstropen()))
-			goto nospace;
+			goto outofmemory;
 		for (i = 0; i < elementsof(help_head); i++)
 			list(sp_help, &help_head[i]);
 		for (i = 0; i < elementsof(styles); i++)
@@ -2443,7 +2449,7 @@ opthelp(const char* oopts, const char* what)
 		for (i = 0; i < elementsof(help_tail); i++)
 			list(sp_help, &help_tail[i]);
 		if (!(opts = sfstruse(sp_help)))
-			goto nospace;
+			goto outofmemory;
 	}
 
 	/*
@@ -2469,7 +2475,7 @@ opthelp(const char* oopts, const char* what)
 		{
 			o = &one;
 			if (init((char*)opts, o))
-				goto nospace;
+				goto outofmemory;
 		}
 		e = o + 1;
 	}
@@ -2492,9 +2498,9 @@ opthelp(const char* oopts, const char* what)
 	if (style <= STYLE_usage)
 	{
 		if (!(sp_text = sfstropen()) || !(sp_info = sfstropen()))
-			goto nospace;
+			goto outofmemory;
 		if (style >= STYLE_match && style < STYLE_keys && !(sp_body = sfstropen()))
-			goto nospace;
+			goto outofmemory;
 	}
 	switch (style)
 	{
@@ -2513,21 +2519,22 @@ opthelp(const char* oopts, const char* what)
 		sfputc(mp, '\f');
 		break;
 	default:
-		state.emphasis = 0;
-		if (x = getenv("ERROR_OPTIONS"))
+		if (!state.emphasis)
 		{
-			if (strmatch(x, "*noemphasi*"))
-				break;
-			if (strmatch(x, "*emphasi*"))
+			if (x = getenv("ERROR_OPTIONS"))
 			{
-				state.emphasis = 1;
-				break;
+				if (strmatch(x, "*noemphasi*"))
+					break;
+				if (strmatch(x, "*emphasi*"))
+				{
+					state.emphasis = 1;
+					break;
+				}
 			}
+			if (isatty(sffileno(sfstderr)) && (x = getenv("TERM"))
+			&& strmatch(x, "(ansi|cons|dtterm|linux|qansi|rxvt|screen|sun|vt[1-5][0-4][0125]|wsvt|xterm)*"))
+				state.emphasis = 1;
 		}
-		if (isatty(sffileno(sfstderr))
-		&& (x = getenv("TERM"))
-		&& strmatch(x, "(ansi|cons|dtterm|linux|screen|sun|vt???|wsvt|xterm)*"))
-			state.emphasis = 1;
 		break;
 	}
 	x = "";
@@ -2898,7 +2905,7 @@ opthelp(const char* oopts, const char* what)
 		{
 			p++;
 			if (!(sp = sp_plus) && !(sp = sp_plus = sfstropen()))
-				goto nospace;
+				goto outofmemory;
 		}
 		else if (style >= STYLE_match)
 			sp = sp_body;
@@ -2959,6 +2966,7 @@ opthelp(const char* oopts, const char* what)
 			rb = re = 0;
 			sl = 0;
 			vl = 0;
+			cl = 0;
 			if (*p == '[')
 			{
 				if ((c = *(p = next(p + 1, version))) == '(')
@@ -2976,7 +2984,7 @@ opthelp(const char* oopts, const char* what)
 						if (*(p + 1) != '-')
 						{
 							if (!sp_misc && !(sp_misc = sfstropen()))
-								goto nospace;
+								goto outofmemory;
 							else
 								p = textout(sp_misc, p, cb, cl, style, 1, 3, sp_info, version, id, catalog, &hflags);
 							continue;
@@ -3018,7 +3026,7 @@ opthelp(const char* oopts, const char* what)
 							sp_head = sp_body;
 							hflags = dflags = bflags;
 							if (!(sp_body = sfstropen()))
-								goto nospace;
+								goto outofmemory;
 						}
 						continue;
 					}
@@ -3279,7 +3287,7 @@ opthelp(const char* oopts, const char* what)
 						if (sp_body)
 							sfputc(sp_body, ' ');
 						else if (!(sp_body = sfstropen()))
-							goto nospace;
+							goto outofmemory;
 						if (mutex)
 						{
 							if (mutex & 1)
@@ -3429,7 +3437,7 @@ opthelp(const char* oopts, const char* what)
 							else
 								sfprintf(sp_info, " %s %s\bno%-.*s\b %s.", T(NULL, ID, "On by default; use"), "--"+2-prefix, u - w, w, T(NULL, ID, "to turn off"));
 							if (!(t = sfstruse(sp_info)))
-								goto nospace;
+								goto outofmemory;
 							textout(sp_body, t, 0, 0, style, 0, 0, sp_info, version, NULL, NULL, &bflags);
 						}
 						if (*p == GO)
@@ -3456,7 +3464,7 @@ opthelp(const char* oopts, const char* what)
 							else
 								sfprintf(sp_info, "%s%s", y, T(NULL, ID, "The option value may be omitted."));
 							if (!(t = sfstruse(sp_info)))
-								goto nospace;
+								goto outofmemory;
 							textout(sp_body, t, 0, 0, style, 4, 0, sp_info, version, NULL, NULL, &bflags);
 							y = " ";
 						}
@@ -3473,7 +3481,7 @@ opthelp(const char* oopts, const char* what)
 							sfputc(sp_info, '\b');
 							sfputc(sp_info, '.');
 							if (!(t = sfstruse(sp_info)))
-								goto nospace;
+								goto outofmemory;
 							textout(sp_body, t, 0, 0, style, 4, 0, sp_info, version, NULL, NULL, &bflags);
 						}
 					}
@@ -3495,7 +3503,7 @@ opthelp(const char* oopts, const char* what)
 		if (sp_misc)
 		{
 			if (!(p = sfstruse(sp_misc)))
-				goto nospace;
+				goto outofmemory;
 			for (t = p; *t == '\t' || *t == '\n'; t++);
 			if (*t)
 			{
@@ -3516,7 +3524,7 @@ opthelp(const char* oopts, const char* what)
 		if (style == STYLE_keys && sfstrtell(mp) > 1)
 			sfstrseek(mp, -1, SEEK_CUR);
 		if (!(p = sfstruse(mp)))
-			goto nospace;
+			goto outofmemory;
 		return opt_info.msg = p;
 	}
 	sp = sp_text;
@@ -3635,10 +3643,10 @@ opthelp(const char* oopts, const char* what)
 			if (hp = (Help_t*)search(styles, elementsof(styles), sizeof(styles[0]), (char*)what))
 			{
 				if (!sp_help && !(sp_help = sfstropen()))
-					goto nospace;
+					goto outofmemory;
 				sfprintf(sp_help, "[-][:%s?%s]", hp->match, hp->text);
 				if (!(opts = sfstruse(sp_help)))
-					goto nospace;
+					goto outofmemory;
 				goto again;
 			}
 			s = (char*)unknown;
@@ -3654,7 +3662,7 @@ opthelp(const char* oopts, const char* what)
 			if (sfstrtell(sp))
 				sfputc(sp, ' ');
 			if (!(t = sfstruse(sp_plus)))
-				goto nospace;
+				goto outofmemory;
 			sfputr(sp, t, ']');
 		}
 		sfclose(sp_plus);
@@ -3664,7 +3672,7 @@ opthelp(const char* oopts, const char* what)
 		if (sp_head)
 		{
 			if (!(t = sfstruse(sp_head)))
-				goto nospace;
+				goto outofmemory;
 			for (; *t == '\n'; t++);
 			sfputr(sp, t, '\n');
 			sfclose(sp_head);
@@ -3705,7 +3713,7 @@ opthelp(const char* oopts, const char* what)
 			if (style < STYLE_match && sfstrtell(sp))
 				sfputc(sp, ' ');
 			if (!(t = sfstruse(sp_body)))
-				goto nospace;
+				goto outofmemory;
 			if (style == STYLE_html && !(dflags & HELP_head) && (bflags & HELP_head))
 				sfputr(sp, "\n</DIV>", '\n');
 			sfputr(sp, t, -1);
@@ -3726,7 +3734,7 @@ opthelp(const char* oopts, const char* what)
 		sp_misc = 0;
 	}
 	if (!(p = sfstruse(sp)))
-		goto nospace;
+		goto outofmemory;
 	astwinsize(1, NULL, &state.width);
 	if (state.width < 20)
 		state.width = OPT_WIDTH;
@@ -3754,7 +3762,7 @@ opthelp(const char* oopts, const char* what)
 				*t++ = c;
 			}
 			*t = 0;
-			sfprintf(mp, "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML//EN\">\n<HTML>\n<HEAD>\n<META name=\"generator\" content=\"optget (AT&T Research) 2011-11-11\">\n%s<TITLE>%s man document</TITLE>\n<STYLE type=\"text/css\">\ndiv.SH { padding-left:2em; text-indent:0em; }\ndiv.SY { padding-left:4em; text-indent:-2em; }\ndt { float:left; clear:both; }\ndd { margin-left:3em; }\n</STYLE>\n</HEAD>\n<BODY bgcolor=white>\n", (state.flags & OPT_proprietary) ? "<!--INTERNAL-->\n" : "", id);
+			sfprintf(mp, "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML//EN\">\n<HTML>\n<HEAD>\n<META name=\"generator\" content=\"" OPTGET_VERSION "\">\n%s<TITLE>%s man document</TITLE>\n<STYLE type=\"text/css\">\ndiv.SH { padding-left:2em; text-indent:0em; }\ndiv.SY { padding-left:4em; text-indent:-2em; }\ndt { float:left; clear:both; }\ndd { margin-left:3em; }\n</STYLE>\n</HEAD>\n<BODY bgcolor=white>\n", (state.flags & OPT_proprietary) ? "<!--INTERNAL-->\n" : "", id);
 			sfprintf(mp, "<H4><TABLE width=100%%><TR><TH align=left>%s&nbsp;(&nbsp;%s&nbsp;)&nbsp;<TH align=center><A href=\".\" title=\"Index\">%s</A><TH align=right>%s&nbsp;(&nbsp;%s&nbsp;)</TR></TABLE></H4>\n<HR>\n", ud, section, T(NULL, ID, secname(section)), ud, section);
 			co = 2;
 			pt = ptstk;
@@ -4072,12 +4080,12 @@ opthelp(const char* oopts, const char* what)
 	else
 		sfputr(mp, p, 0);
 	if (!(p = sfstruse(mp)))
-		goto nospace;
+		goto outofmemory;
 	if (sp)
 		sfclose(sp);
 	return opt_info.msg = p;
- nospace:
-	s = T(NULL, ID, "[* out of space *]");
+ outofmemory:
+	s = T(NULL, ID, "[* out of memory *]");
  nope:
 	if (psp)
 		pop(psp);
@@ -4114,21 +4122,27 @@ optusage(const char* opts)
  * i.e., it looks octal but isn't, to meet
  * POSIX Utility Argument Syntax -- use
  * 0x.* or <base>#* for alternate bases
+ *
+ * NOTE: none of the pointer arguments may be NULL
  */
 
 static intmax_t     
 optnumber(const char* s, char** t, int* e)
 {
 	intmax_t	n;
-	int		oerrno;
+	const int	oerrno = errno;
+	char		lastbase = 0;
 
-	while (*s == '0' && isdigit(*(s + 1)))
-		s++;
-	oerrno = errno;
 	errno = 0;
-	n = strtonll(s, t, NULL, 0);
-	if (e)
-		*e = errno;
+	n = strtonll(s, t, &lastbase, 0);
+	if (lastbase == 8 && *s == '0')
+	{
+		/* disable leading-0 octal by reparsing as decimal */
+		lastbase = 10;
+		errno = 0;
+		n = strtonll(s, t, &lastbase, 0);
+	}
+	*e = errno;
 	errno = oerrno;
 	return n;
 }
@@ -4150,7 +4164,7 @@ opterror(char* p, int err, int version, char* id, char* catalog)
 	if (opt_info.num != LONG_MIN)
 		opt_info.num = (long)(opt_info.number = 0);
 	if (!p || !(mp = state.mp) && !(mp = state.mp = sfstropen()))
-		goto nospace;
+		goto outofmemory;
 	s = *p == '-' ? p : opt_info.name;
 	if (*p == '!')
 	{
@@ -4183,7 +4197,7 @@ opterror(char* p, int err, int version, char* id, char* catalog)
 			else if (p = sfstruse(tp))
 				sfputr(mp, T(id, catalog, p), ' ');
 			else
-				goto nospace;
+				goto outofmemory;
 		}
 		p = opt_info.name[2] ? C("value expected") : C("argument expected");
 	}
@@ -4211,8 +4225,8 @@ opterror(char* p, int err, int version, char* id, char* catalog)
 		sfputr(mp, " -- out of range", -1);
 	if (opt_info.arg = sfstruse(mp))
 		return ':';
- nospace:
-	opt_info.arg = T(NULL, ID, "[* out of space *]");
+ outofmemory:
+	opt_info.arg = T(NULL, ID, "[* out of memory *]");
 	return ':';
 }
 
@@ -4285,7 +4299,7 @@ optget(char** argv, const char* oopts)
 	int		no;
 	int		nov;
 	int		num;
-	int		numchr;
+	int		numchr = 0;
 	int		prefix;
 	int		version;
 	Help_t*		hp;
@@ -4299,6 +4313,7 @@ optget(char** argv, const char* oopts)
 
 	if (!oopts)
 		return 0;
+	state.emphasis = 0;
 	state.pindex = opt_info.index;
 	state.poffset = opt_info.offset;
 	if (!opt_info.index)
@@ -4749,13 +4764,13 @@ optget(char** argv, const char* oopts)
 			else if (*s == '[')
 			{
 				s = next(s + 1, version);
+				k = *(f = s);
 				if (*s == '(')
 				{
 					s = nest(f = s);
 					if (!conformance(f, s - f))
 						goto disable;
 				}
-				k = *(f = s);
 				if (k == '+' || k == '-')
 					/* ignore */;
 				else if (k == '[' || version < 1)
@@ -4795,7 +4810,7 @@ optget(char** argv, const char* oopts)
 							{
 								sfprintf(xp, ":%s|%s?", g, e);
 								if (!(s = sfstruse(xp)))
-									goto nospace;
+									goto outofmemory;
 							}
 						}
 						else
@@ -5027,7 +5042,7 @@ optget(char** argv, const char* oopts)
 							else if (*(f + 1) == '=')
 								break;
 							else
-								cache->flags[map[*f]] = m;
+								cache->flags[map[*((unsigned char*)f)]] = m;
 							j = 0;
 							/*
 							 * parse and cache short option equivalents,
@@ -5146,7 +5161,7 @@ optget(char** argv, const char* oopts)
 						if (*(s + 2) == '?')
 							m |= OPT_cache_optional;
 					}
-					cache->flags[map[*s]] = m;
+					cache->flags[map[*((unsigned char*)s)]] = m;
 				}
 				s++;
 				continue;
@@ -5384,7 +5399,7 @@ optget(char** argv, const char* oopts)
 								{
 									sfprintf(xp, ":%s|%s?", b, e);
 									if (!(s = sfstruse(xp)))
-										goto nospace;
+										goto outofmemory;
 								}
 							}
 							else
@@ -5576,7 +5591,7 @@ optget(char** argv, const char* oopts)
 	}
 	pop(psp);
 	return '?';
- nospace:
+ outofmemory:
 	pop(psp);
 	return opterror(NULL, 0, 0, NULL, NULL);
 }
@@ -5608,9 +5623,6 @@ optstr(const char* str, const char* opts)
 	char*		s = (char*)str;
 	Sfio_t*		mp;
 	int		c;
-	int		ql;
-	int		qr;
-	int		qc;
 	int		v;
 	char*		e;
 
@@ -5660,7 +5672,7 @@ optstr(const char* str, const char* opts)
 				opt_info.index = 1;
 				opt_info.offset = ++s - (char*)str;
 				if (!(s = sfstruse(mp)))
-					goto nospace;
+					goto outofmemory;
 				s += 2;
 				e = opt_info.name;
 				while (e < &opt_info.name[sizeof(opt_info.name)-1] && (*e++ = *s++));
@@ -5672,8 +5684,10 @@ optstr(const char* str, const char* opts)
 			}
 			if (c == ':' || c == '=')
 			{
+				int	ql = 0;
+				int	qr = 0;
+				int	qc = 0;
 				sfputc(mp, c);
-				ql = qr = 0;
 				while (c = *++s)
 				{
 					if (c == '\\')
@@ -5724,7 +5738,7 @@ optstr(const char* str, const char* opts)
 		opt_info.argv = state.strv;
 		state.strv[0] = T(NULL, ID, "option");
 		if (!(state.strv[1] = sfstruse(mp)))
-			goto nospace;
+			goto outofmemory;
 		state.strv[2] = 0;
 		opt_info.offset = s - (char*)str;
 	}
@@ -5758,6 +5772,6 @@ optstr(const char* str, const char* opts)
 	else
 		c = '-';
 	return c;
- nospace:
+ outofmemory:
 	return opterror(NULL, 0, 0, NULL, NULL);
 }

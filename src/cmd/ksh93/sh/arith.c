@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2024 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -182,7 +182,7 @@ static Namval_t *scope(Namval_t *np,struct lval *lvalue,int assign)
 				if(ap && !ap->table)
 					ap->table = dtopen(&_Nvdisc,Dtoset);
 				if(ap && ap->table && (nq=nv_search(nv_getsub(np),ap->table,NV_ADD)))
-					nq->nvenv = (char*)np;
+					nq->nvmeta = np;
 				if(nq && nv_isnull(nq))
 					np = nv_arraychild(np,nq,0);
 			}
@@ -227,6 +227,7 @@ static Sfdouble_t arith(const char **ptr, struct lval *lvalue, int type, Sfdoubl
 	    case ASSIGN:
 	    {
 		Namval_t *np;
+		unsigned short attr;
 		if (lvalue->sub && lvalue->nosub > 0) /* indexed array ARITH_ASSIGNOP */
 		{
 			np = (Namval_t*)lvalue->sub; /* use saved subscript reference instead of last worked value */
@@ -253,8 +254,39 @@ static Sfdouble_t arith(const char **ptr, struct lval *lvalue, int type, Sfdoubl
 		if(lvalue->eflag)
 			lvalue->ptr = nv_hasdisc(np,&ENUM_disc);
 		lvalue->eflag = 0;
-		r=nv_getnum(np);
 		lvalue->value = (char*)np;
+		/*
+		 * The result (r) of an assignment is its value (n), cast to the type of the variable
+		 * assigned to. We cannot simply reobtain the value with nv_getnum() to effectuate the
+		 * typecast, because that may trigger a getnum discipline function with side effects.
+		 * The order of checks below is essential due to how the bit masks work (see nval.h).
+		 */
+		attr = nv_isnum(np);
+		if(!attr || (attr & NV_LDOUBLE)==NV_LDOUBLE)	/* long float */
+			r = n;
+		else if((attr & NV_FLOAT)==NV_FLOAT)		/* short float */
+			r = (float)n;
+		else if((attr & NV_DOUBLE)==NV_DOUBLE)		/* normal float */
+			r = (double)n;
+		/* Avoid typecasting a negative float (Sfdouble_t) to an
+		 * unsigned integer (uint*_t), which is undefined behaviour */
+		else if((attr & NV_UINT64)==NV_UINT64)		/* long unsigned integer */
+			r = n < 0 ? -((uintmax_t)(-n)) : (uintmax_t)n;
+		else if((attr & NV_UINT16)==NV_UINT16)		/* short unsigned integer */
+			r = n < 0 ? -((uint16_t)(-n)) : (uint16_t)n;
+		else if((attr & NV_UINT32)==NV_UINT32)		/* normal unsigned integer */
+			r = n < 0 ? -((uint32_t)(-n)) : (uint32_t)n;
+		else if((attr & NV_INT64)==NV_INT64)		/* long signed integer */
+			r = (intmax_t)n;
+		else if((attr & NV_INT16)==NV_INT16)		/* short signed integer */
+			r = (int16_t)((intmax_t)n);
+		else if((attr & NV_INT32)==NV_INT32)		/* normal signed integer */
+			r = (int32_t)((intmax_t)n);
+#if _AST_release
+		else	r = n;					/* should never happen */
+#else
+		else	abort();
+#endif
 		break;
 	    }
 	    case LOOKUP:
@@ -405,15 +437,10 @@ static Sfdouble_t arith(const char **ptr, struct lval *lvalue, int type, Sfdoubl
 			char	lastbase=0, *val = xp, oerrno = errno;
 			lvalue->eflag = 0;
 			errno = 0;
-			if(!sh_isoption(sh.bltinfun==b_let ? SH_LETOCTAL : SH_POSIX))
-			{
-				/* Skip leading zeros to avoid parsing as octal */
-				while(*val=='0' && isdigit(val[1]))
-					val++;
-			}
 			r = strtonll(val,&str, &lastbase,-1);
-			if(*str=='8' || *str=='9')
+			if(lastbase==8 && *val=='0' && !sh_isoption(sh.bltinfun==b_let ? SH_LETOCTAL : SH_POSIX))
 			{
+				/* disable leading-0 octal by reparsing as decimal */
 				lastbase=10;
 				errno = 0;
 				r = strtonll(val,&str, &lastbase,-1);

@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2024 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -27,14 +27,12 @@
  * the sum of the hacks {s5,v10,planix} is _____ than the parts
  */
 
-static const char id[] = "\n@(#)$Id: magic library (AT&T Research) 2011-03-09 $\0\n";
-
 static const char lib[] = "libast:magic";
 
 #include <ast.h>
 #include <ctype.h>
 #include <ccode.h>
-#include <dt.h>
+#include <cdt.h>
 #include <modex.h>
 #include <error.h>
 #include <regex.h>
@@ -148,13 +146,12 @@ typedef unsigned long Cctype_t;
 
 #define _MAGIC_PRIVATE_ \
 	Magicdisc_t*	disc;			/* discipline		*/ \
-	Vmalloc_t*	vm;			/* vmalloc region	*/ \
 	Entry_t*	magic;			/* parsed magic table	*/ \
 	Entry_t*	magiclast;		/* last entry in magic	*/ \
 	char*		mime;			/* MIME type		*/ \
 	unsigned char*	x2n;			/* CC_ALIEN=>CC_NATIVE	*/ \
-	char		fbuf[SF_BUFSIZE + 1];	/* file data		*/ \
-	char		xbuf[SF_BUFSIZE + 1];	/* indirect file data	*/ \
+	char		fbuf[SFIO_BUFSIZE + 1];	/* file data		*/ \
+	char		xbuf[SFIO_BUFSIZE + 1];	/* indirect file data	*/ \
 	char		nbuf[256];		/* !CC_NATIVE data	*/ \
 	char		mbuf[64];		/* mime string		*/ \
 	char		sbuf[64];		/* type suffix string	*/ \
@@ -293,7 +290,7 @@ getdata(Magic_t* mp, long off, int siz)
 	{
 		if (off + siz > mp->fbmx)
 			return NULL;
-		n = (off / (SF_BUFSIZE / 2)) * (SF_BUFSIZE / 2);
+		n = (off / (SFIO_BUFSIZE / 2)) * (SFIO_BUFSIZE / 2);
 		if (sfseek(mp->fp, n, SEEK_SET) != n)
 			return NULL;
 		if ((mp->xbsz = sfread(mp->fp, mp->xbuf, sizeof(mp->xbuf) - 1)) < 0)
@@ -935,7 +932,7 @@ ckmagic(Magic_t* mp, const char* file, char* buf, char* end, struct stat* st, un
 static int
 ckenglish(Magic_t* mp, int pun, int badpun)
 {
-	char*	s;
+	unsigned char* s;
 	int	vowl = 0;
 	int	freq = 0;
 	int	rare = 0;
@@ -946,11 +943,11 @@ ckenglish(Magic_t* mp, int pun, int badpun)
 		return 0;
 	if ((mp->count['>'] + mp->count['<'] + mp->count['/']) > mp->count['E'] + mp->count['e'])
 		return 0;
-	for (s = "aeiou"; *s; s++)
+	for (s = (unsigned char*)"aeiou"; *s; s++)
 		vowl += mp->count[toupper(*s)] + mp->count[*s];
-	for (s = "etaion"; *s; s++)
+	for (s = (unsigned char*)"etaion"; *s; s++)
 		freq += mp->count[toupper(*s)] + mp->count[*s];
-	for (s = "vjkqxz"; *s; s++)
+	for (s = (unsigned char*)"vjkqxz"; *s; s++)
 		rare += mp->count[toupper(*s)] + mp->count[*s];
 	return 5 * vowl >= mp->fbsz - mp->count[' '] && freq >= 10 * rare;
 }
@@ -974,9 +971,9 @@ cklang(Magic_t* mp, const char* file, char* buf, char* end, struct stat* st)
 	char*		t2;
 	char*		t3;
 	int		n;
-	int		badpun;
+	int		badpun = 0;
 	int		code;
-	int		pun;
+	int		pun = 0;
 	Cctype_t	flags;
 	Info_t*		ip;
 
@@ -1057,8 +1054,6 @@ cklang(Magic_t* mp, const char* file, char* buf, char* end, struct stat* st)
 			*b = c;
 			b = (unsigned char*)mp->fbuf;
 		}
-		badpun = 0;
-		pun = 0;
 		q = 0;
 		s = 0;
 		t = 0;
@@ -1110,7 +1105,7 @@ cklang(Magic_t* mp, const char* file, char* buf, char* end, struct stat* st)
 							}
 						if (!mp->idtab)
 						{
-							if (mp->idtab = dtnew(mp->vm, &mp->dtdisc, Dtset))
+							if (mp->idtab = dtopen(&mp->dtdisc, Dtset))
 								for (q = 0; q < elementsof(dict); q++)
 									dtinsert(mp->idtab, &dict[q]);
 							else if (mp->disc->errorf)
@@ -1245,11 +1240,11 @@ cklang(Magic_t* mp, const char* file, char* buf, char* end, struct stat* st)
 			mp->mime = "application/x-tex";
 			goto qualify;
 		}
-		if (mp->fbsz < SF_BUFSIZE &&
+		if (mp->fbsz < SFIO_BUFSIZE &&
 		    (mp->multi['('] == mp->multi[')'] &&
 		     mp->multi['{'] == mp->multi['}'] &&
 		     mp->multi['['] == mp->multi[']']) ||
-		    mp->fbsz >= SF_BUFSIZE &&
+		    mp->fbsz >= SFIO_BUFSIZE &&
 		    (mp->multi['('] >= mp->multi[')'] &&
 		     mp->multi['{'] >= mp->multi['}'] &&
 		     mp->multi['['] >= mp->multi[']']))
@@ -1299,8 +1294,8 @@ cklang(Magic_t* mp, const char* file, char* buf, char* end, struct stat* st)
 			}
 		}
 		if (mp->identifier[ID_MAM1] >= 2 && mp->identifier[ID_MAM3] >= 2 &&
-		    (mp->fbsz < SF_BUFSIZE && mp->identifier[ID_MAM1] == mp->identifier[ID_MAM2] ||
-		     mp->fbsz >= SF_BUFSIZE && mp->identifier[ID_MAM1] >= mp->identifier[ID_MAM2]))
+		    (mp->fbsz < SFIO_BUFSIZE && mp->identifier[ID_MAM1] == mp->identifier[ID_MAM2] ||
+		     mp->fbsz >= SFIO_BUFSIZE && mp->identifier[ID_MAM1] >= mp->identifier[ID_MAM2]))
 		{
 		id_mam:
 			s = T("mam program");
@@ -1617,7 +1612,7 @@ load(Magic_t* mp, char* file, Sfio_t* fp)
 	ret = 0;
 	error_info.file = file;
 	error_info.line = 0;
-	first = ep = vmnewof(mp->vm, 0, Entry_t, 1, 0);
+	first = ep = calloc(1, sizeof(Entry_t));
 	while (p = sfgetr(fp, '\n', 1))
 	{
 		error_info.line++;
@@ -1655,7 +1650,7 @@ load(Magic_t* mp, char* file, Sfio_t* fp)
 				ep->op = ' ';
 				ep->desc = "[RETURN]";
 				last = ep;
-				ep = ret->next = vmnewof(mp->vm, 0, Entry_t, 1, 0);
+				ep = ret->next = calloc(1, sizeof(Entry_t));
 				ret = 0;
 			}
 			else
@@ -1693,7 +1688,7 @@ load(Magic_t* mp, char* file, Sfio_t* fp)
 				ep->type = ' ';
 				ep->op = ' ';
 				last = ep;
-				ep = ep->next = vmnewof(mp->vm, 0, Entry_t, 1, 0);
+				ep = ep->next = calloc(1, sizeof(Entry_t));
 				if (ret)
 					fun[n] = last->value.lab = ep;
 				else if (!(last->value.lab = fun[n]) && mp->disc->errorf)
@@ -1793,7 +1788,7 @@ load(Magic_t* mp, char* file, Sfio_t* fp)
 			 */
 
 			*p2++ = 0;
-			ep->expr = vmstrdup(mp->vm, p);
+			ep->expr = strdup(p);
 			if (isalpha(*p))
 				ep->offset = (ip = (Info_t*)dtmatch(mp->infotab, p)) ? ip->value : 0;
 			else if (*p == '(' && ep->cont == '>')
@@ -1988,7 +1983,7 @@ load(Magic_t* mp, char* file, Sfio_t* fp)
 		{
 			if (ep->type == 'e')
 			{
-				if (ep->value.sub = vmnewof(mp->vm, 0, regex_t, 1, 0))
+				if (ep->value.sub = calloc(1, sizeof(regex_t)))
 				{
 					ep->value.sub->re_disc = &mp->redisc;
 					if (!(n = regcomp(ep->value.sub, p, REG_DELIMITED|REG_LENIENT|REG_NULL|REG_DISCIPLINE)))
@@ -2009,7 +2004,7 @@ load(Magic_t* mp, char* file, Sfio_t* fp)
 			else if (ep->type == 'm')
 			{
 				ep->mask = stresc(p) + 1;
-				ep->value.str = vmnewof(mp->vm, 0, char, ep->mask + 1, 0);
+				ep->value.str = calloc(ep->mask + 1, sizeof(char));
 				memcpy(ep->value.str, p, ep->mask);
 				if ((!ep->expr || !ep->offset) && !strmatch(ep->value.str, "\\!\\(*\\)"))
 					ep->value.str[ep->mask - 1] = '*';
@@ -2017,7 +2012,7 @@ load(Magic_t* mp, char* file, Sfio_t* fp)
 			else if (ep->type == 's')
 			{
 				ep->mask = stresc(p);
-				ep->value.str = vmnewof(mp->vm, 0, char, ep->mask, 0);
+				ep->value.str = calloc(ep->mask, sizeof(char));
 				memcpy(ep->value.str, p, ep->mask);
 			}
 			else if (*p == '\'')
@@ -2049,7 +2044,7 @@ load(Magic_t* mp, char* file, Sfio_t* fp)
 					}
 					else
 					{
-						ep->value.loop = vmnewof(mp->vm, 0, Loop_t, 1, 0);
+						ep->value.loop = calloc(1, sizeof(Loop_t));
 						ep->value.loop->lab = fun[n];
 						while (*p && *p++ != ',');
 						ep->value.loop->start = strton(p, &t, NULL, 0);
@@ -2059,8 +2054,8 @@ load(Magic_t* mp, char* file, Sfio_t* fp)
 					break;
 				case 'm':
 				case 'r':
-					ep->desc = vmnewof(mp->vm, 0, char, 32, 0);
-					ep->mime = vmnewof(mp->vm, 0, char, 32, 0);
+					ep->desc = calloc(32, sizeof(char));
+					ep->mime = calloc(32, sizeof(char));
 					break;
 				case 'v':
 					break;
@@ -2108,12 +2103,12 @@ load(Magic_t* mp, char* file, Sfio_t* fp)
 				}
 			}
 			stresc(p2);
-			ep->desc = vmstrdup(mp->vm, p2);
+			ep->desc = strdup(p2);
 			if (p)
 			{
 				for (; isspace(*p); p++);
 				if (*p)
-					ep->mime = vmstrdup(mp->vm, p);
+					ep->mime = strdup(p);
 			}
 		}
 		else
@@ -2124,7 +2119,7 @@ load(Magic_t* mp, char* file, Sfio_t* fp)
 		 */
 
 		last = ep;
-		ep = ep->next = vmnewof(mp->vm, 0, Entry_t, 1, 0);
+		ep = ep->next = calloc(1, sizeof(Entry_t));
 	}
 	if (last)
 	{
@@ -2135,7 +2130,7 @@ load(Magic_t* mp, char* file, Sfio_t* fp)
 			mp->magic = first;
 		mp->magiclast = last;
 	}
-	vmfree(mp->vm, ep);
+	free(ep);
 	if ((mp->flags & MAGIC_VERBOSE) && mp->disc->errorf)
 	{
 		if (lev < 0)
@@ -2255,28 +2250,21 @@ magicopen(Magicdisc_t* disc)
 	int		n;
 	int		f;
 	int		c;
-	Vmalloc_t*	vm;
 	unsigned char*	map[CC_MAPS + 1];
 
-	if (!(vm = vmopen(Vmdcheap, Vmbest, 0)))
+	if (!(mp = calloc(1, sizeof(Magic_t))))
 		return NULL;
-	if (!(mp = vmnewof(vm, 0, Magic_t, 1, 0)))
-	{
-		vmclose(vm);
-		return NULL;
-	}
 	mp->id = lib;
 	mp->disc = disc;
-	mp->vm = vm;
 	mp->flags = disc->flags;
 	mp->redisc.re_version = REG_VERSION;
 	mp->redisc.re_flags = REG_NOFREE;
 	mp->redisc.re_errorf = (regerror_t)disc->errorf;
-	mp->redisc.re_resizef = (regresize_t)vmgetmem;
-	mp->redisc.re_resizehandle = mp->vm;
+	mp->redisc.re_resizef = 0;
+	mp->redisc.re_resizehandle = 0;
 	mp->dtdisc.key = offsetof(Info_t, name);
 	mp->dtdisc.link = offsetof(Info_t, link);
-	if (!(mp->tmp = sfstropen()) || !(mp->infotab = dtnew(mp->vm, &mp->dtdisc, Dtoset)))
+	if (!(mp->tmp = sfstropen()) || !(mp->infotab = dtopen(&mp->dtdisc, Dtoset)))
 		goto bad;
 	for (n = 0; n < elementsof(info); n++)
 		dtinsert(mp->infotab, &info[n]);
@@ -2311,8 +2299,6 @@ magicclose(Magic_t* mp)
 		return -1;
 	if (mp->tmp)
 		sfstrclose(mp->tmp);
-	if (mp->vm)
-		vmclose(mp->vm);
 	return 0;
 }
 
@@ -2323,7 +2309,6 @@ magicclose(Magic_t* mp)
 char*
 magictype(Magic_t* mp, Sfio_t* fp, const char* file, struct stat* st)
 {
-	off_t	off;
 	char*	s;
 
 	mp->flags = mp->disc->flags;
@@ -2332,6 +2317,7 @@ magictype(Magic_t* mp, Sfio_t* fp, const char* file, struct stat* st)
 		s = T("cannot stat");
 	else
 	{
+		off_t	off = 0;
 		if (mp->fp = fp)
 			off = sfseek(mp->fp, 0, SEEK_CUR);
 		s = type(mp, file, st, mp->tbuf, &mp->tbuf[sizeof(mp->tbuf)-1]);

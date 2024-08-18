@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2024 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -119,7 +119,7 @@ const struct shtable3 shtab_builtins[] =
 	"times",	NV_BLTIN|BLT_ENV|BLT_SPC,	bltin(times),
 	"ulimit",	NV_BLTIN|BLT_ENV,		bltin(ulimit),
 	"umask",	NV_BLTIN|BLT_ENV,		bltin(umask),
-#ifdef _cmd_universe
+#if _cmd_universe
 	"universe",	NV_BLTIN|BLT_ENV,		bltin(universe),
 #endif /* _cmd_universe */
 	"wait",		NV_BLTIN|BLT_ENV|BLT_EXIT,	bltin(wait),
@@ -173,9 +173,6 @@ const struct shtable3 shtab_builtins[] =
 	CMDLIST(ln)
 	CMDLIST(mktemp)
 	CMDLIST(mv)
-#if !_std_malloc && !_AST_std_malloc
-	CMDLIST(vmstate)  /* vmstate only works with vmalloc */
-#endif
 #endif
 #if SHOPT_REGRESS
 	"__regress__",		NV_BLTIN|BLT_ENV,	bltin(__regress__),
@@ -393,7 +390,7 @@ const char sh_optalias[] =
 "[+NAME?alias - define or display aliases]"
 "[+DESCRIPTION?\balias\b creates or redefines alias definitions "
 	"or writes the existing alias definitions to standard output. "
-	"An alias definitions provides a string value that will replace "
+	"An alias definition provides a string value that will replace "
 	"a command name when the command is read. Alias names can "
 	"contain any printable character which is not special to the shell. "
 	"If an alias value ends in a space or tab, then the word "
@@ -410,9 +407,7 @@ const char sh_optalias[] =
 	"be executed before the command that references the alias is read.]"
 "[p?Causes the output to be in the form of alias commands that can be used "
 	"as input to the shell to recreate the current aliases.]"
-"[t?Each \aname\a is looked up as a command in \b$PATH\b and its path is "
-	"added to the hash table as a 'tracked alias'. If no \aname\a is "
-	"given, this prints the hash table. See \bhash(1)\b.]"
+"[t?Same as \bhash\b(1).]"
 "[x?This option is obsolete. In most contexts the \b-x\b option is ignored, "
 	"although when it's combined with \b-t\b it will make \balias\b do "
 	"nothing.]"
@@ -654,13 +649,14 @@ const char sh_opteval[] =
 ;
 
 const char sh_optexec[] =
-"[-1c?\n@(#)$Id: exec (ksh 93u+m) 2020-06-11 $\n]"
+"[-1c?\n@(#)$Id: exec (ksh 93u+m) 2024-03-04 $\n]"
 "[--catalog?" SH_DICT "]"
 "[+NAME?exec - execute command, open/close and duplicate file descriptors]"
 "[+DESCRIPTION?\bexec\b is a special built-in command that can be used to "
 	"manipulate file descriptors or to replace the current shell "
 	"with a new command.]"
-"[+?If \acommand\a is specified, then the current shell process will be "
+"[+?If \acommand\a is specified, then \acommand\a is searched on PATH as "
+	"an external command and the current shell process will be "
 	"replaced by \acommand\a rather than running \acommand\a and waiting "
 	"for it to complete. Note that there is no need to use "
 	"\bexec\b to enhance performance since the shell implicitly "
@@ -994,14 +990,15 @@ _JOB_
 ;
 
 const char sh_opthash[] =
-"[-1c?\n@(#)$Id: hash (ksh 93u+m) 2021-01-07 $\n]"
+"[-1c?\n@(#)$Id: hash (ksh 93u+m) 2024-06-30 $\n]"
 "[--catalog?" SH_DICT "]"
 "[+NAME?hash - display the locations of recently used programs]"
 "[+DESCRIPTION?\bhash\b displays or modifies the hash table with the "
 	"locations of recently used programs. If given no arguments, it lists "
 	"all command/path associations (a.k.a. 'tracked aliases') in the hash "
 	"table. Otherwise, \bhash\b performs a \bPATH\b search for each "
-	"\autility\a supplied and adds the result to the hash table.]"
+	"\autility\a supplied and adds the result to the hash table. "
+	"Any \autility\a that is not found is silently ignored.]"
 "[r?Empty the hash table. This can also be achieved by resetting \bPATH\b.]"
 "\n"
 "\n[utility...]\n"
@@ -1252,28 +1249,25 @@ const char sh_optprint[] =
 ;
 
 const char sh_optprintf[] =
-"[-1c?\n@(#)$Id: printf (ksh 93u+m) 2023-03-23 $\n]"
+"[-1c?\n@(#)$Id: printf (ksh 93u+m) 2024-07-31 $\n]"
 "[--catalog?" SH_DICT "]"
 "[+NAME?printf - write formatted output]"
 "[+DESCRIPTION?\bprintf\b writes each \astring\a operand to "
 	"standard output using \aformat\a to control the output format.]"  
-"[+?The \aformat\a operands supports the full range of ANSI C formatting "
+#if SHOPT_PRINTF_LEGACY
+"[+?For backward compatibility with this system's external \bprintf\b(1) "
+	"command, this built-in version allows the \aformat\a operand to "
+	"start with a \b-\b without a prior \b--\b options terminator "
+	"argument, provided no \aoptions\a are given. "
+	"This is not portable and should be avoided in new scripts.]"
+#else
+"[+?Note that the \aformat\a operand cannot start with a \b-\b unless it is "
+	"preceded by a \b--\b options terminator argument.]"
+#endif
+"[+?The \aformat\a operand supports the full range of ANSI C formatting "
 	"specifiers plus the following additional specifiers:]{"
 	"[+%b?Each character in the \astring\a operand is processed "
-		"specially as follows:]{"
-			"[+\\a?Alert character.]"
-			"[+\\b?Backspace character.]"
-			"[+\\c?Terminate output without appending newline. "
-			    "The remaining \astring\a operands are ignored.]"
-			"[+\\f?Formfeed character.]"
-			"[+\\n?Newline character.]"
-			"[+\\t?Tab character.]"
-			"[+\\v?Vertical tab character.]"
-			"[+\\\\?Backslash character.]"
-			"[+\\E?Escape character (ASCII octal 033).]"
-			"[+\\0\ax\a?The 8-bit character whose ASCII code is "
-				"the 1-, 2-, or 3-digit octal number \ax\a.]"
-		"}"
+		"for \b\\\b codes as in \bprint\b(1).]"
 	"[+%q?Output \astring\a quoted in a manner that it can be read in "
 		"by the shell to get back the same string. However, empty "
 		"strings resulting from missing \astring\a operands will "
@@ -1415,8 +1409,8 @@ const char sh_optprintf[] =
 	"specifiers will be treated as if empty strings were supplied, "
 	"numeric conversions will be treated as if 0 were supplied, and "
 	"time conversions will be treated as if \bnow\b were supplied.]"
-"[+?\bprintf\b is equivalent to \bprint -f\b which allows additional "
-	"options to be specified.]"
+"[+?Except for the \b-v\b option, \bprintf\b is equivalent to \bprint -f\b "
+	"which allows additional options to be specified.]"
 "[v]:[name?Put the output in the variable \aname\a instead of writing to "
 	"standard output. \aname\a may include an array subscript (note that "
 	"the square brackets should be quoted to avoid pathname expansion).]"
@@ -1679,12 +1673,14 @@ const char sh_optksh[] =
         "the following:]{"
         "[+0?The script or command line to be executed consists entirely "
 		"of zero or more blank lines or comments.]"
-        "[+>1-125?A noninteractive shell detected a syntax error, a variable "
+        "[+1-125?A noninteractive shell detected a syntax error, a variable "
 		"assignment error, or an error in a special built-in.]"
 	"[+126?\b-c\b and \b-s\b were not specified and the command script "
 		"was found on \bPATH\b but was not executable.]"
 	"[+127?\b-c\b and \b-s\b were not specified and the command script "
 		"corresponding to \aarg\a could not be found.]"
+	"[+128?An unrecoverable system or internal error occurred.]"
+	"[+>128?The shell was terminated by a signal.]"
 "}"
 
 "[+SEE ALSO?\bset\b(1), \bbuiltin\b(1)]"
@@ -1740,7 +1736,7 @@ const char sh_optshift[] =
 	"positional parameters remaining will be reduced by the "
 	"number of places that are shifted.]" 
 "[+?If \an\a is given, it will be evaluated as an arithmetic expression "
-	"to determinate the number of places to shift. It is an error "
+	"to determine the number of places to shift. It is an error "
 	"to shift more than the number of positional parameters or a "
 	"negative number of places.]"
 "\n"
@@ -1846,10 +1842,10 @@ const char sh_opttypeset[] =
 "[+NAME?typeset - declare or display variables with attributes]"
 "[+DESCRIPTION?Without the \b-f\b option, \btypeset\b sets, unsets, "
 	"or displays attributes of variables as specified with the "
-	"options. If the first option is specified with a \b-\b "
+	"options. If the first option is specified with a \b-\b, "
 	"then the attributes are set for each of the given \aname\as. "
 	"If the first option is specified with a \b+\b, then the specified "
-	"attributes are unset. If \b=\b\avalue\a is specified value is "
+	"attributes are unset. If \b=\b\avalue\a is specified, \avalue\a is "
 	"assigned before the attributes are set.]"
 "[+?When \btypeset\b is called inside a function defined with the "
 	"\bfunction\b reserved word, and \aname\a does not contain a "
@@ -1866,9 +1862,9 @@ const char sh_opttypeset[] =
 	"[+integer?\btypeset -li\b]"
 	"[+nameref?\btypeset -n\b]"
 "}"
-"[+?If no \aname\as are specified then variables that have the specified "
+"[+?If no \aname\as are specified, then variables that have the specified "
 	"options are displayed. If the first option is specified with "
-	"a leading \b-\b then the name and value of each variable is "
+	"a leading \b-\b, then the name and value of each variable is "
 	"written to standard output. Otherwise, only the names are "
 	"written. If no options are specified or just \b-p\b is "
 	"specified, then the names and attributes of all variables that have "
@@ -1938,14 +1934,14 @@ const char sh_opttypeset[] =
 	"UNIX format pathname will cause it to be converted to a pathname "
 	"suitable for the current host. This has no effect when the "
 	"native system is UNIX.]"
-"[L]#?[n?Left justify. If \an\a is given it represents the field width. If "
+"[L]#?[n?Left justify. If \an\a is given, it represents the field width. If "
 	"the \b-Z\b attribute is also specified, then leading zeros are "
 	"stripped.]"
 "[M]:?[mapping?\amapping\a is the name of a character mapping known by "
 	"\bwctrans\b(3) such as \btolower\b or \btoupper\b. When the option "
 	"value \bmapping\b is omitted and there are no operands, all mapped "
 	"variables are displayed.]"
-"[R]#?[n?Right justify. If \an\a is given it represents the field width. If "
+"[R]#?[n?Right justify. If \an\a is given, it represents the field width. If "
 	"the \b-Z\b attribute is also specified, then zeros will "
 	"be used as the fill character. Otherwise, spaces are used.]"
 "[X]#?[n:=2*sizeof(long long)?Floating point number represented in hexadecimal "
@@ -1959,7 +1955,7 @@ const char sh_opttypeset[] =
 	"will have function static scope. Otherwise, the variable is "
 	"unset prior to processing the assignment list.]"
 "[T]:?[tname?\atname\a is the name of a type name given to each \aname\a.]"
-"[Z]#?[n?Zero fill. If \an\a is given it represents the field width.]"
+"[Z]#?[n?Zero fill. If \an\a is given, it represents the field width.]"
 "\n"
 "\n[name[=value]...]\n"
 " -f [-tu] [name...]\n"

@@ -69,8 +69,6 @@
  * SUCH DAMAGE.
  */
 
-static const char id[] = "\n@(#)$Id: fastfind (AT&T Research) 2002-10-02 $\0\n";
-
 static const char lib[] = "libast:fastfind";
 
 #include "findlib.h"
@@ -139,7 +137,7 @@ typefix(char* buf, size_t n, const char* t)
 Find_t*
 findopen(const char* file, const char* pattern, const char* type, Finddisc_t* disc)
 {
-	Find_t*		fp;
+	Find_t*		fp = NULL;
 	char*		p;
 	char*		s;
 	char*		b;
@@ -152,13 +150,9 @@ findopen(const char* file, const char* pattern, const char* type, Finddisc_t* di
 	int		q;
 	int		fd;
 	int		uid;
-	Vmalloc_t*	vm;
 	Type_t*		tp;
 	struct stat	st;
 
-
-	if (!(vm = vmopen(Vmdcheap, Vmbest, 0)))
-		goto nomemory;
 
 	/*
 	 * NOTE: searching for FIND_CODES would be much simpler if we
@@ -171,9 +165,8 @@ findopen(const char* file, const char* pattern, const char* type, Finddisc_t* di
 		findcodes[1] = getenv(FIND_CODES_ENV);
 	if (disc->flags & FIND_GENERATE)
 	{
-		if (!(fp = (Find_t*)vmnewof(vm, 0, Find_t, 1, sizeof(Encode_t) - sizeof(Code_t))))
+		if (!(fp = calloc(1, sizeof(Find_t) + sizeof(Encode_t) - sizeof(Code_t))))
 			goto nomemory;
-		fp->vm = vm;
 		fp->id = lib;
 		fp->disc = disc;
 		fp->generate = 1;
@@ -301,7 +294,7 @@ findopen(const char* file, const char* pattern, const char* type, Finddisc_t* di
 			}
 			if (s)
 				*s = '/';
-			if (!(fp->fp = sfnew(NULL, NULL, (size_t)SF_UNBOUND, fd, SF_WRITE)))
+			if (!(fp->fp = sfnew(NULL, NULL, (size_t)SFIO_UNBOUND, fd, SFIO_WRITE)))
 			{
 				if (fp->disc->errorf)
 					(*fp->disc->errorf)(fp, fp->disc, ERROR_SYSTEM|2, "%s: cannot open tmp file", fp->encode.temp);
@@ -355,12 +348,8 @@ findopen(const char* file, const char* pattern, const char* type, Finddisc_t* di
 		if (!pattern || !*pattern)
 			pattern = "*";
 		i += (j = 2 * (strlen(pattern) + 1));
-		if (!(fp = (Find_t*)vmnewof(vm, 0, Find_t, 1, i)))
-		{
-			vmclose(vm);
+		if (!(fp = (Find_t*)calloc(1, sizeof(Find_t) + i)))
 			return NULL;
-		}
-		fp->vm = vm;
 		fp->id = lib;
 		fp->disc = disc;
 		if (disc->flags & FIND_ICASE)
@@ -498,9 +487,9 @@ findopen(const char* file, const char* pattern, const char* type, Finddisc_t* di
 					k = 0;
 				if (k)
 				{
-					if (!(fp->dirs = vmnewof(fp->vm, 0, char*, 2 * k + 1, 0)))
+					if (!(fp->dirs = calloc(2 * k + 1, sizeof(char*))))
 						goto drop;
-					if (!(fp->lens = vmnewof(fp->vm, 0, int, 2 * k, 0)))
+					if (!(fp->lens = calloc(2 * k, sizeof(int))))
 						goto drop;
 					p = 0;
 					b = fp->decode.temp;
@@ -524,7 +513,7 @@ findopen(const char* file, const char* pattern, const char* type, Finddisc_t* di
 						s = pathcanon(b, sizeof(fp->decode.temp), 0);
 						*s = '/';
 						*(s + 1) = 0;
-						if (!(fp->dirs[q] = vmstrdup(fp->vm, b)))
+						if (!(fp->dirs[q] = strdup(b)))
 							goto nomemory;
 						if (j)
 							(fp->dirs[q])[s - b] = 0;
@@ -535,7 +524,7 @@ findopen(const char* file, const char* pattern, const char* type, Finddisc_t* di
 						*(s + 1) = 0;
 						if (!strneq(b, fp->dirs[q - 1], s - b))
 						{
-							if (!(fp->dirs[q] = vmstrdup(fp->vm, b)))
+							if (!(fp->dirs[q] = strdup(b)))
 								goto nomemory;
 							if (j)
 								(fp->dirs[q])[s - b] = 0;
@@ -649,13 +638,8 @@ findopen(const char* file, const char* pattern, const char* type, Finddisc_t* di
  nomemory:
 	if (disc->errorf)
 		(*fp->disc->errorf)(fp, fp->disc, 2, "out of memory");
-	if (!vm)
-		return NULL;
 	if (!fp)
-	{
-		vmclose(vm);
 		return NULL;
-	}
 	goto drop;
  invalid:
 	if (fp->disc->errorf)
@@ -665,7 +649,6 @@ findopen(const char* file, const char* pattern, const char* type, Finddisc_t* di
 		regfree(&fp->decode.re);
 	if (fp->fp)
 		sfclose(fp->fp);
-	vmclose(fp->vm);
 	return NULL;
 }
 
@@ -677,7 +660,7 @@ findopen(const char* file, const char* pattern, const char* type, Finddisc_t* di
 char*
 findread(Find_t* fp)
 {
-	char*		p;
+	char*		p = NULL;
 	char*		q;
 	char*		s;
 	char*		b;
@@ -686,7 +669,7 @@ findread(Find_t* fp)
 	int		n;
 	int		m;
 	int		ignorecase;
-	int		t;
+	int		t = 0;
 	unsigned char	w[4];
 	struct stat	st;
 
@@ -802,7 +785,7 @@ findread(Find_t* fp)
 		if (fp->dirs)
 			for (;;)
 			{
-				if (!*fp->dirs)
+				if (!*fp->dirs || !p)
 					return NULL;
 
 				/*
@@ -1221,7 +1204,7 @@ findsync(Find_t* fp)
 		 * append the front compressed strings
 		 */
 
-		if (sfmove(fp->fp, sp, SF_UNBOUND, -1) < 0 || !sfeof(fp->fp))
+		if (sfmove(fp->fp, sp, SFIO_UNBOUND, -1) < 0 || !sfeof(fp->fp))
 		{
 			sfclose(sp);
 			if (fp->disc->errorf)
@@ -1276,6 +1259,5 @@ findclose(Find_t* fp)
 	}
 	if (fp->fp)
 		sfclose(fp->fp);
-	vmclose(fp->vm);
 	return n;
 }

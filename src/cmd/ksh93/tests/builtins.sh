@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2023 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2024 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 2.0                  #
 #                                                                      #
@@ -384,7 +384,7 @@ wait $pid1
 (( $? == 1 )) || err_exit "wait not saving exit value"
 wait $pid2
 (( $? == 127 )) || err_exit "subshell job known to parent"
-env=
+env='LD_LIBRARY_PATH=$LD_LIBRARY_PATH LIBPATH=$LIBPATH SHLIB_PATH=$SHLIB_PATH DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH'
 if builtin getconf 2> /dev/null; then
 	v=$(getconf LIBPATH)
 	for v in ${v//,/ }
@@ -1206,6 +1206,8 @@ function test_usage
 	do	case $bltin in
 		fc | hist )
 			((SHOPT_SCRIPTONLY)) && continue ;;
+		printf )
+			((SHOPT_PRINTF_LEGACY)) && continue ;;
 		echo | test | true | false | \[ | : | expr | */expr | getconf | */getconf | uname | */uname | catclose | catgets | catopen | Dt* | _Dt* | X* | login | newgrp )
 			continue ;;
 		/*/*)	expect="Usage: ${bltin##*/} "
@@ -1288,10 +1290,10 @@ got=$(OLDPWD=$tmp/oldpwd cd -)
 
 function fn
 {
-	typeset OLDPWD=/tmp
+	typeset OLDPWD=/dev
 	cd -
 }
-exp='/tmp'
+exp='/dev'
 got=$(OLDPWD=/bin fn)
 [[ $got == "$exp" ]] ||
 	err_exit "cd - doesn't recognize overridden OLDPWD variable if it is overridden in function scope" \
@@ -1300,10 +1302,10 @@ got=$(OLDPWD=/bin fn)
 function fn
 {
 	typeset PWD=bug
-	cd /tmp
+	cd /dev
 	echo "$PWD"
 }
-exp='/tmp'
+exp='/dev'
 got=$(fn)
 [[ $got == "$exp" ]] ||
 	err_exit "PWD isn't set after cd if already set in function scope" \
@@ -1312,7 +1314,7 @@ got=$(fn)
 # $PWD should be set correctly after cd
 exp="$PWD
 $PWD"
-got=$(echo $PWD; PWD=/tmp cd /dev; echo $PWD)
+got=$(echo $PWD; PWD=/bin cd /dev; echo $PWD)
 [[ $got == "$exp" ]] ||
 	err_exit "PWD is incorrect after cd" \
 	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
@@ -1382,7 +1384,7 @@ exp='ok1ok2ok3ok4ok5ok6ok7ok8ok9ok10ok11ok12end'
 got=$(	readonly v=foo
 	exec 2>/dev/null
 	# All the "special builtins" below should fail, and not exit, so 'print end' is reached.
-	# Ref.: http://pubs.opengroup.org/onlinepubs/9699919799/utilities/contents.html
+	# Ref.: https://pubs.opengroup.org/onlinepubs/9699919799/utilities/contents.html
 	# Left out are 'command exec /dev/null/nonexistent', where no shell follows the standard,
 	# as well as 'command exit' and 'command return', because, well, obviously.
 	command : </dev/null/no		|| print -n ok1
@@ -1586,7 +1588,13 @@ do	case $bltin in
 	fc | hist )
 		((SHOPT_SCRIPTONLY)) && continue ;;
 	esac
-	got=$({ "$bltin" --version; } 2>&1)  # the extra { } are needed for 'redirect'
+	got=$(set +x; { "$bltin" --\?-version; } 2>&1)  # the extra { } are needed for 'redirect'
+	[[ $got == "  version  "* ]] || err_exit "$bltin does not support --\\?-version (got $(printf %q "$got"))"
+	case $bltin in
+	uname | */uname )
+		continue ;;
+	esac
+	got=$(set +x; { "$bltin" --version; } 2>&1)  # the extra { } are needed for 'redirect'
 	[[ $got == "  version  "* ]] || err_exit "$bltin does not support --version (got $(printf %q "$got"))"
 done 3< <(builtin)
 
@@ -1602,12 +1610,12 @@ HOME=/dev cd
 
 function fn
 {
-	typeset HOME=/tmp
+	typeset HOME=/dev
 	cd
 }
 fn
 unset -f fn
-[[ $PWD == /tmp ]] || err_exit "'cd' does not chdir to \$HOME (local assignment)"
+[[ $PWD == /dev ]] || err_exit "'cd' does not chdir to \$HOME (local assignment)"
 
 # ======
 # Double evaluation of arithmetic expression passed to float conversion operators in printf
@@ -1660,6 +1668,11 @@ got=${ printf '%b %1$s\n' '\\\\'; }
 exp='\\ \\\\'
 [[ $got == "$exp" ]] || err_exit "printf '%b %1$s'" \
 	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
+case $(PATH=/opt/ast/bin:$PATH; exec cat '--???SECTION' </dev/null 2>&1) in
+1)	err_exit "'exec' runs non-external command" ;;
+esac
 
 # ======
 exit $((Errors<125?Errors:125))

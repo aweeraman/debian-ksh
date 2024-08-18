@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2024 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -197,7 +197,7 @@ int hist_expand(const char *ln, char **xp)
 		if((*cp != hc[0] && *cp != hc[1] && *cp != hc[2]) 
 		   || (*cp == hc[1] && cp != ln))
 		{
-			if(*cp == '\\')	/* skip escaped designators */
+			if(*cp == '\\' || (cp > ln && cp[-1]=='$' && *cp == '{')) /* skip escaped designators */
 				sfputc(sh.stk,*cp++);
 			else if(*cp == '\'') /* skip quoted designators */
 			{

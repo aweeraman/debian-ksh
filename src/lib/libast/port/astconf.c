@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2024 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -22,8 +22,6 @@
  * string interface to confstr(),pathconf(),sysconf(),sysinfo()
  * extended to allow some features to be set per-process
  */
-
-static const char id[] = "\n@(#)$Id: getconf (AT&T Research) 2012-05-01 $\0\n";
 
 #include "univlib.h"
 
@@ -792,10 +790,10 @@ feature(Feature_t* fp, const char* name, const char* path, const char* value, un
 static int
 lookup(Lookup_t* look, const char* name, unsigned int flags)
 {
-	Conf_t*		mid = (Conf_t*)conf;
-	Conf_t*		lo = mid;
-	Conf_t*		hi = mid + conf_elements;
-	int		v;
+	Conf_t*		lo = (Conf_t*)conf;
+	Conf_t*		mid = lo;
+	Conf_t*		hi = lo + conf_elements - 1;
+	int		v = 0;
 	int		c;
 	char*		e;
 	const Prefix_t*	p;
@@ -1316,9 +1314,9 @@ nativeconf(Proc_t** pp, const char* operand)
 	ops[1] = 0;
 	if (*pp = procopen(_pth_getconf, cmd, environ, ops, PROC_READ))
 	{
-		if (sp = sfnew(NULL, NULL, SF_UNBOUND, (*pp)->rfd, SF_READ))
+		if (sp = sfnew(NULL, NULL, SFIO_UNBOUND, (*pp)->rfd, SFIO_READ))
 		{
-			sfdisc(sp, SF_POPDISC);
+			sfdisc(sp, SFIO_POPDISC);
 			return sp;
 		}
 		procclose(*pp);

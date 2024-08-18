@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2022 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2024 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 2.0                  #
 #                                                                      #
@@ -117,8 +117,6 @@ fi
 ((.sh.version >= 20210316)) &&
 for disc in get set
 do	(
-		ulimit -t unlimited 2>/dev/null  # fork subshell to cope with a possible crash
-
 		eval ".sh.tilde.$disc()
 		{
 			case \${.sh.${ [[ $disc == get ]] && print tilde || print value; }} in
@@ -180,6 +178,19 @@ got=$(
 )
 exp=/usr/local/src/ksh93/ksh
 [[ $got == "$exp" ]] || err_exit "error in special builtin disables .sh.tilde discipline" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# ======
+
+.sh.tilde.set() { print -n BAD; }
+.sh.tilde.get() { .sh.value=' & WRONG'; }
+echo 'echo ~okay' >test.sh
+chmod +x test.sh
+./test.sh >test.out
+got=$(<test.out)
+unset .sh.tilde  # removes discipline functions
+exp=~okay
+[[ $got == "$exp" ]] || err_exit "child script inherits .sh.tilde discipline" \
 	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
 
 # ======

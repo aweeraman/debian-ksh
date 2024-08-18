@@ -1104,9 +1104,6 @@ The attributes supported by the shell are described
 later with the
 .B typeset\^
 special built-in command.
-Exported variables pass their attributes to the environment so that a newly
-invoked ksh that is a child or exec'd process of the current shell will
-automatically import them, unless the \fBposix\fR shell option is on.
 .PP
 The shell supports both indexed and associative arrays.
 An element of an array variable is referenced by a
@@ -1347,7 +1344,7 @@ The number of elements in the array
 is substituted.
 .TP
 \f3${@\fP\f2vname\^\fP\f3}\fP
-Expands to the type name (See
+Expands to the type name (see
 .I "Type Variables"\^
 below) or attributes of the variable referred to by
 .IR vname .
@@ -1943,11 +1940,16 @@ command.
 .TP
 .B
 .SM RANDOM
-Each time this variable is referenced, a random integer,
-uniformly distributed between 0 and 32767, is generated.
-The sequence of random numbers can be initialized by assigning
-a numeric value to
+Each time this variable is referenced, a pseudorandom integer is generated,
+uniformly distributed between 0 and 32767 (the 16-bit unsigned integer range)
+except that the same number is never repeated twice in a row.
+The sequence of pseudorandom numbers is reproducible
+and can be initialized to a fixed starting point by assigning
+a numeric seed value to
 .BR RANDOM .
+Each time a new shell or subshell environment is entered (see
+.I Subshells\^
+above), the sequence is automatically reset to a different point.
 .TP
 .B
 .SM REPLY
@@ -2509,19 +2511,11 @@ as well as any fields resulting from
 (see above),
 are checked to see if they contain one or more of the brace patterns
 .BR {*,*} ,
-.BI { l1 .. l2 }
-,
-.BI { n1 .. n2 }
-,
-.BI { n1 .. n2 %
-.IB fmt }
-,
-.BI { n1 .. n2
-.BI  .. n3 }
-, or
-.BI { n1 .. n2
-.BI  .. n3 % fmt }
-, where
+\f3{\fP\f2l1\fP\f3..\fP\f2l2\fP\f3}\fP,
+\f3{\fP\f2n1\fP\f3..\fP\f2n2\fP\f3}\fP,
+\f3{\fP\f2n1\fP\f3..\fP\f2n2\fP\f3%\fP\f2fmt\fP\f3}\fP,
+\f3{\fP\f2n1\fP\f3..\fP\f2n2\fP\f3..\fP\f2n3\fP\f3}\fP, or
+\f3{\fP\f2n1\fP\f3..\fP\f2n2\fP\f3..\fP\f2n3\fP\f3%\fP\f2fmt\fP\f3}\fP, where
 .B *
 represents any character,
 .IR l1\^ , l2\^
@@ -2571,7 +2565,7 @@ with
 .B *
 must be quoted.
 .PP
-In the seconds form,
+In the second form,
 .I l1\^
 and
 .I l2\^
@@ -2590,6 +2584,16 @@ incrementing
 .I n1\^
 by
 .IR n3\^ .
+The values of
+.IR n1\^ ,
+.I n2\^
+and
+.I n3\^
+are limited to the standard integer range as output by
+.B "getconf INT_MIN"
+and
+.BR "getconf INT_MAX" ;
+the behavior is undefined if this range is exceeded.
 The cases where
 .I n3\^
 is not specified behave as if
@@ -3035,7 +3039,7 @@ are quoted.
 A single quote cannot appear within the single quotes.
 A single quoted string preceded by an unquoted
 .B $
-is processed as an ANSI C string
+is processed as a C99 string
 except for the following:
 .RS
 .PD 0
@@ -3147,23 +3151,25 @@ Integer constants follow the ANSI C programming language
 integer constant conventions although only single byte
 character constants are recognized and character casts
 are not recognized.
-In addition constants can be of the form
-\*(OK\f2base\f3#\^\f1\*(CK\f2n\^\fP
+.PP
+In addition, integer constants can be of the form
+\f2base\f3#\^\f1\f2n\^\fP
+or (for negative numbers)
+\f3-\^\f2base\f3#\^\f1\f2n\^\fP,
 where
 .I base\^
 is a decimal number between two and sixty-four
-representing the arithmetic base
-and
+representing the arithmetic base, and
 .I n\^
-is a number in that base.
+is an unsigned integer in that base.
 The digits above 9 are represented
 by the lower case letters, the upper case letters,
 .BR @ ,
 and
-.B _
+.BR _ ,
 respectively.
 For bases less than or equal to 36, upper and lower case
-characters can be used interchangeably.
+letters can be used interchangeably.
 .PP
 An arithmetic expression uses the same syntax, precedence, and
 associativity of
@@ -3956,6 +3962,15 @@ or
 .B typeset \-x
 commands.
 .PP
+Exported variables pass their attributes though the environment so that a
+newly invoked ksh that is a child or exec'd process of the current shell
+will automatically import them, unless the \fBposix\fR shell option is on.
+As of ksh 93u+m/1.0, this never includes the
+.B readonly
+attribute.
+Passing attributes through the environment is deprecated
+and this feature will be removed in ksh 93u+m/1.1.
+.PP
 The environment for any
 .I simple-command\^
 or function
@@ -4029,6 +4044,18 @@ syntax and called by name execute in the same process as the caller and
 share all files
 and present working directory with the
 caller.
+All changes to shell options are local to the function call.
+The
+.B errexit
+option is turned off in the function's scope.
+The same applies to the
+.B xtrace
+option, unless the
+.B functrace
+shell option is set
+or the function was tagged using
+.BR "typeset \-f \-t" .
+The state of all other shell options is inherited from the caller.
 Traps caught by the caller are reset to their default action
 inside the function.
 A trap condition that is not caught or ignored by the
@@ -4064,7 +4091,7 @@ syntax and functions defined with the
 syntax that are invoked with the \f3\s+2.\s-2\fP
 special built-in
 are executed in the caller's
-environment and share all variables
+environment and share all variables, options
 and traps with the caller.
 Errors within these function executions cause the script that contains
 them to abort.
@@ -4315,9 +4342,7 @@ like:
 indicating that the job which was started asynchronously was job number
 1 and had one (top-level) process, whose process ID was 1234.
 .PP
-This paragraph and the next require features that are
-not in all versions of UNIX and may not apply.
-If you are running a job and wish to do something else you may hit the key
+If you are running a job and wish to do something else, you may hit the key
 \fB^Z\fR (control-Z) which sends a STOP signal to the current job.
 The shell will then normally indicate that the job has been `Stopped',
 and print another prompt.
@@ -4382,6 +4407,9 @@ option of the
 command causes
 the shell to print these job change messages
 as soon as they occur.
+If this happens while you are typing a command with one of the
+built-in line editors active, the job change message appears
+above your input without disturbing your command entry.
 .PP
 When the
 .B monitor
@@ -4540,16 +4568,6 @@ file,
 it is assumed to be a file containing shell commands.
 A separate shell is spawned to read it.
 All non-exported variables are removed in this case.
-If the shell command
-file doesn't have read permission,
-or if the
-.I setuid
-and/or
-.I setgid
-bits are set on the file,
-then the shell executes an agent whose job it is to
-set up the permissions and execute the shell with the
-shell command file passed down as an open file.
 If the
 .B .paths
 contains a line of the form
@@ -4666,9 +4684,9 @@ command (see \f2Built-in Commands\fP below).
 .PP
 History expansions begin with the character \f3!\fP.
 They may begin anywhere in the input.
-The \f3!\fP may be preceded by a \f3\\\fP or enclosed in single quotes
-to prevent its special meaning.
-A \f3!\fP is also passed unchanged when it is followed by
+The \f3!\fP is passed unchanged with its special meaning disabled
+when preceded by \f3\\\fP or \f3${\fP,
+enclosed in single quotes, or followed by
 a space, tab, newline, \f3=\fP or \f3(\fP.
 History expansions do not nest.
 They are parsed separately before the shell parser is invoked,
@@ -6214,11 +6232,11 @@ causes the next word to be checked for
 alias substitution.
 With the
 .B \-t
-option, each name is looked up as a command in
-.B $PATH
-and its path is added to the hash table as a 'tracked alias'.
-If no name is given, this prints the hash table. See
-.BR hash.
+option,
+.B alias
+acts like
+.BR hash ;
+see there.
 Without the
 .B \-t
 option,
@@ -6601,7 +6619,8 @@ If
 .I arg\^
 is given,
 the command specified by
-the arguments is executed in place of this shell
+the arguments is seaerched on PATH as an external command
+and executed in place of the current shell
 without creating a new process.
 The value of the
 .SM
@@ -6827,7 +6846,7 @@ The option
 .B #
 can only be specified as the first option.
 .TP
-\f3hash\fP \*(OK \f3\-r\fP \f2\^\fP\*(CK \*(OK \f3utility\^\fP \*(CK
+\f3hash\fP \*(OK \f3\-r\fP \f2\^\fP\*(CK \*(OK \f2utility\^\fP ... \*(CK
 .B hash
 displays or modifies the hash table with the locations of recently used
 programs. If given no arguments, it lists all command/path associations
@@ -6838,6 +6857,9 @@ performs a
 search for each
 .I utility\^
 supplied and adds the result to the hash table.
+Any
+.I utility\^
+that is not found is silently ignored.
 The
 .B \-r
 option empties the hash table. This can also be achieved by resetting
@@ -6975,6 +6997,9 @@ can be omitted and the number or name placed immediately
 after the
 .BR \- .
 If the signal being sent is TERM (terminate) or HUP (hangup),
+and the
+.B posix
+shell option is off,
 then the job or process will be sent a CONT (continue) signal
 if it is stopped.
 The argument
@@ -7340,8 +7365,34 @@ command substitution and avoids the latter's stripping of final linefeed
 characters (\fB\\n\fR). The \f2vname\fP argument should be a valid variable
 name, optionally with one or more array subscripts in square brackets.
 Note that square brackets should be quoted to avoid pathname expansion.
+.PP
+On some systems, the external
+.BR printf (1)
+command
+allows the
+.I format\^
+operand to begin with a
+.B -\^
+without any preceding
+.B --\^
+option terminator argument
+for compatibility with ancient scripts,
+provided no options are given.
+On such systems,
+.if \nZ=0 .BR sh 's
+.if \nZ=1 .BR ksh 's
+.if \nZ=2 .BR ksh93 's
+built-in
+.B printf\^
+may have been built to be as compatible with
+this as possible while still allowing its options to be usable.
+However, the POSIX standard requires adding the preceding
+.B --\^
+to keep such a
+.I format\^
+operand from being misinterpreted as options.
+The obsolete syntax is not portable and should be avoided in new scripts.
 .RE
-
 .TP
 \f3pwd\fP \*(OK \f3\-LP\fP \*(CK
 Outputs the value of the current working
@@ -7912,7 +7963,12 @@ class characters in the
 .B IFS
 variable;
 .IP \[bu]
-causes file descriptors > 2 to be left open when invoking another program;
+causes
+.B redirect
+and
+.B exec
+to open file descriptors > 2 without the close-on-exec flag,
+so that they are left open when invoking another program;
 .IP \[bu]
 disables the \fB&>\fR redirection shorthand;
 .IP \[bu]
@@ -7959,6 +8015,16 @@ numerical conversion specifiers of the
 .B printf
 built-in command, causing them to print a warning for operands that are not
 valid decimal, \fB0x\fR-prefixed hexadecimal or \fB0\fR-prefixed octal numbers;
+.IP \[bu]
+stops the
+.B kill
+built-in command from automatically sending a
+.B CONT
+signal to stopped jobs or processes upon sending a
+.B HUP
+or
+.B TERM
+signal;
 .IP \[bu]
 disables the special handling of \f3/dev/fd/\fP\f2n\fP in file existence and
 access test operators in \fBtest\fR/\fB[\fR and \fB[[\fR, causing these to

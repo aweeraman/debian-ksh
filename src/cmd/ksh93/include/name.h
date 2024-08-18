@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2024 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -24,7 +24,7 @@
 #define _NV_PRIVATE	\
 	Namfun_t	*nvfun;		/* pointer to trap functions */ \
 	union Value	nvalue; 	/* value field */ \
-	char		*nvenv;		/* pointer to environment name */ 
+	void		*nvmeta;	/* pointer to any of various kinds of type-dependent data */
 
 #include	<ast.h>
 #include	<cdt.h>
@@ -116,7 +116,7 @@ struct Ufunction
 /* attributes of Namval_t items */
 
 /* The following attributes are for internal use */
-#define NV_NOCHANGE	(NV_EXPORT|NV_IMPORT|NV_RDONLY|NV_TAGGED|NV_NOFREE|NV_ARRAY)
+#define NV_NOCHANGE	(NV_EXPORT|NV_MINIMAL|NV_RDONLY|NV_TAGGED|NV_NOFREE|NV_ARRAY)
 #define NV_ATTRIBUTES	(~(NV_NOSCOPE|NV_ARRAY|NV_NOARRAY|NV_IDENT|NV_ASSIGN|NV_REF|NV_VARNAME|NV_STATIC))
 #define NV_PARAM	NV_NODISC	/* expansion use positional params */
 
@@ -130,7 +130,7 @@ struct Ufunction
 #define NV_STATICF	NV_INTEGER		/* static class function */
 
 #define NV_NOPRINT	(NV_LTOU|NV_UTOL)	/* do not print */
-#define NV_NOALIAS	(NV_NOPRINT|NV_IMPORT)
+#define NV_NOALIAS	(NV_NOPRINT|NV_MINIMAL)
 #define NV_NOEXPAND	NV_RJUST		/* do not expand alias */
 #define NV_BLTIN	(NV_NOPRINT|NV_EXPORT)
 #define BLT_ENV		(NV_RDONLY)		/* non-stoppable,
@@ -138,7 +138,7 @@ struct Ufunction
 #define BLT_SPC		(NV_LJUST)		/* special built-ins */
 #define BLT_EXIT	(NV_RJUST)		/* exit value can be > 255 or < 0 */
 #define BLT_DCL		(NV_TAGGED)		/* declaration command */
-#define BLT_NOSFIO	(NV_IMPORT)		/* doesn't use sfio */
+#define BLT_NOSFIO	(NV_MINIMAL)		/* doesn't use sfio */
 #define NV_OPTGET	(NV_BINARY)		/* function calls getopts */
 #define nv_isref(n)	(nv_isattr((n),NV_REF|NV_TAGGED|NV_FUNCT)==NV_REF)
 #define is_abuiltin(n)	(nv_isattr(n,NV_BLTIN|NV_INTEGER)==NV_BLTIN)
@@ -187,6 +187,13 @@ extern void		nv_setlist(struct argnod*, int, Namval_t*);
 #if SHOPT_OPTIMIZE
     extern void		nv_optimize(Namval_t*);
     extern void		nv_optimize_clear(Namval_t*);
+#   define nv_setoptimize(v)	(sh.argaddr=(v))
+#   define nv_getoptimize()	(sh.argaddr)
+#else
+#   define nv_optimize(np)		/* no-op */
+#   define nv_optimize_clear(np)	/* no-op */
+#   define nv_setoptimize(argaddr)	/* no-op */
+#   define nv_getoptimize()		NULL
 #endif /* SHOPT_OPTIMIZE */
 extern void		nv_outname(Sfio_t*,char*, int);
 extern void 		nv_unref(Namval_t*);

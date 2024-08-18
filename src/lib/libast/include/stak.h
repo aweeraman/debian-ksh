@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2024 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -14,60 +14,38 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                   Phong Vo <kpv@research.att.com>                    *
 *                  Martijn Dekker <martijn@inlv.org>                   *
-*            Johnothan King <johnothanking@protonmail.com>             *
 *                                                                      *
 ***********************************************************************/
-
-#include <ast.h>
-
-#if _lib_setpgid
-
-NoN(setpgid)
-
-#else
-
-#include <error.h>
-
-#if _lib_setpgrp2
-#define setpgrp		setpgrp2
-#else
-#if _lib_BSDsetpgrp
-#define _lib_setpgrp2	1
-#define setpgrp		BSDsetpgrp
-#else
-#if _lib_wait3
-#define	_lib_setpgrp2	1
-#endif
-#endif
-#endif
-
-#if _lib_setpgrp2
-extern int		setpgrp(int, int);
-#else
-extern int		setpgrp(void);
-#endif
-
 /*
- * set process group ID
+ * David Korn
+ * AT&T Research
+ *
+ * Obsolete interface definitions for a stack-like storage library.
+ * These now simply map onto the current stk(3) functions as below.
  */
 
-int
-setpgid(pid_t pid, pid_t pgid)
-{
-#if _lib_setpgrp2
-	return setpgrp(pid, pgid);
-#else
-#if _lib_setpgrp
-	int	caller = getpid();
+#ifndef _STAK_H
+#define _STAK_H
 
-	if ((pid == 0 || pid == caller) && (pgid == 0 || pgid == caller))
-		return setpgrp();
-	errno = EINVAL;
-#else
-	errno = ENOSYS;
-#endif
-	return -1;
-#endif
-}
+#include	<stk.h>
+
+#define Stak_t		Sfio_t
+#define	staksp		stkstd
+#define STAK_SMALL	STK_SMALL
+
+#define	stakptr(n)		stkptr(stkstd,n)
+#define	staktell()		stktell(stkstd)
+#define stakputc(c)		sfputc(stkstd,(c))
+#define stakwrite(b,n)		sfwrite(stkstd,(b),(n))
+#define stakputs(s)		(sfputr(stkstd,(s),0),--stkstd->_next)
+#define stakseek(n)		((char*)stkseek(stkstd,n))
+#define stakcreate(n)		stkopen(n)
+#define stakinstall(s,f)	stkinstall(s,f)
+#define stakdelete(s)		stkclose(s)
+#define staklink(s)		stklink(s)
+#define stakalloc(n)		((char*)stkalloc(stkstd,n))
+#define stakcopy(s)		stkcopy(stkstd,s)
+#define stakset(c,n)		((char*)stkset(stkstd,c,n))
+#define stakfreeze(n)		((char*)stkfreeze(stkstd,n))
 
 #endif

@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2023 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2024 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 2.0                  #
 #                                                                      #
@@ -1016,8 +1016,9 @@ set -- $(bar)
 {
 got=$(
 s=$(ulimit -s)
-if	[[ $s == +([[:digit:]]) ]] && (( s < 16384 ))
-then	ulimit -s 16384 2>/dev/null
+if	[[ $s == +([[:digit:]]) ]] && (( s < 32768 ))
+then	# stack size doubled from 16384 to make this test pass under AddressSanitizer
+	ulimit -s 32768 2>/dev/null
 fi
 $SHELL << \+++
 f()

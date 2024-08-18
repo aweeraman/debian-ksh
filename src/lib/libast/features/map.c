@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2024 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -28,9 +28,9 @@
 #include "FEATURE/lib"
 #include "FEATURE/mmap"
 #include "FEATURE/options"
-#include "FEATURE/vmalloc"
 #include "FEATURE/eaccess"
 #include "FEATURE/api"
+#include <sig.h>
 
 #if _opt_map_libc && !defined(_map_libc)
 #define _map_libc	1
@@ -70,11 +70,6 @@ main(void)
 	printf("#undef	eaccess\n");
 	printf("#define eaccess		_ast_eaccess\n");
 #endif
-#if !_lib_execvpe
-	printf("#undef	execvpe\n");
-	printf("#define execvpe		_ast_execvpe\n");
-	printf("extern int		execvpe(const char*, char* const[], char* const[]);\n");
-#endif
 	printf("#undef	fnmatch\n");
 	printf("#define fnmatch		_ast_fnmatch\n");
 	printf("#undef	fts_children\n");
@@ -102,43 +97,20 @@ main(void)
 	printf("#define getcwd		_ast_getcwd\n");
 	printf("extern char*		getcwd(char*, size_t);\n");
 #endif
-	printf("#undef	getdate\n");
-	printf("#define getdate		_ast_getdate\n");
-#endif
-	/* libast always provides its own getopt implementation */
-	printf("#undef	getopt\n");
-	printf("#define getopt		_ast_getopt\n");
-#if _map_libc
-#if _lib_getopt || _lib_getsubopt || _lib_getopt_long || _lib_getopt_long_only
-	printf("#undef	getsubopt\n");
-	printf("#define getsubopt       _ast_getsubopt\n");
-	printf("#undef	getopt_long\n");
-	printf("#define getopt_long	_ast_getopt_long\n");
-	printf("#undef	getopt_long_only\n");
-	printf("#define getopt_long_only _ast_getopt_long_only\n");
-	printf("#undef	optopt\n");
-	printf("#define optopt		_ast_optopt\n");
-	printf("#undef	optarg\n");
-	printf("#define optarg		_ast_optarg\n");
-	printf("#undef	optind\n");
-	printf("#define optind		_ast_optind\n");
-	printf("#undef	opterr\n");
-	printf("#define opterr		_ast_opterr\n");
-#endif
-	printf("#undef	getwd\n");
-	printf("#define getwd		_ast_getwd\n");
-	printf("extern char*		getwd(char*);\n");
 #endif
 	/* use the libast glob functions rather than the native versions */
 	printf("#undef	glob\n");
 	printf("#define glob		_ast_glob\n");
 	printf("#undef	globfree\n");
 	printf("#define globfree	_ast_globfree\n");
+#if _map_libc || (!_std_signal && (_lib_sigaction && defined(SA_NOCLDSTOP) || _lib_sigvec && defined(SV_INTERRUPT)))
+	/* use the libast signal() function (aka sigaction) when applicable */
+	printf("#undef	signal\n");
+	printf("#define signal      	_ast_signal\n");
+#endif
 #if _map_libc
 	printf("#undef	memdup\n");
 	printf("#define memdup		_ast_memdup\n");
-	printf("#undef	memfatal\n");
-	printf("#define memfatal	_ast_memfatal\n");
 	printf("#undef	memhash\n");
 	printf("#define memhash		_ast_memhash\n");
 	printf("#undef	memsum\n");
@@ -195,8 +167,6 @@ main(void)
 	printf("#define pathpath	_ast_pathpath\n");
 	printf("#undef	pathposix\n");
 	printf("#define pathposix	_ast_pathposix\n");
-	printf("#undef	pathprobe\n");
-	printf("#define pathprobe	_ast_pathprobe\n");
 	printf("#undef	pathprog\n");
 	printf("#define pathprog	_ast_pathprog\n");
 	printf("#undef	pathrepl\n");
@@ -225,9 +195,8 @@ main(void)
 	printf("#define re_comp		_ast_re_comp\n");
 	printf("#undef	re_exec\n");
 	printf("#define re_exec		_ast_re_exec\n");
-	printf("#undef	realpath\n");
-	printf("#define realpath	_ast_realpath\n");
-	printf("extern char*		realpath(const char*, char*);\n");
+#endif
+	/* Override the native regex library in favor of libast's regex functions */
 	printf("#undef	regaddclass\n");
 	printf("#define regaddclass	_ast_regaddclass\n");
 	printf("#undef	regalloc\n");
@@ -280,6 +249,7 @@ main(void)
 	printf("#define regsubflags	_ast_regsubflags\n");
 	printf("#undef	regsubfree\n");
 	printf("#define regsubfree	_ast_regsubfree\n");
+#if _map_libc
 	printf("#undef	remove\n");
 	printf("#define remove		_ast_remove\n");
 	printf("extern int		remove(const char*);\n");
@@ -293,8 +263,6 @@ main(void)
 	printf("#define setenviron      _ast_setenviron\n");
 	printf("#undef	sigcritical\n");
 	printf("#define sigcritical      _ast_sigcritical\n");
-	printf("#undef	signal\n");
-	printf("#define signal      	_ast_signal\n");
 	printf("#undef	sigunblock\n");
 	printf("#define sigunblock      _ast_sigunblock\n");
 	printf("#undef	stracmp\n");
@@ -400,54 +368,6 @@ main(void)
 	printf("#define wordfree	_ast_wordfree\n");
 	printf("#undef	unsetenv\n");
 	printf("#define unsetenv	_ast_unsetenv\n");
-#endif
-#if _std_malloc
-	printf("\n");
-	printf("/* no local malloc override */\n");
-	printf("#define	_std_malloc	1\n");
-#else
-#if _map_malloc
-	printf("\n");
-	printf("/* cannot override local malloc */\n");
-	printf("#define	_map_malloc	1\n");
-	printf("#undef	calloc\n");
-	printf("#define calloc		_ast_calloc\n");
-	printf("extern void*		calloc(size_t, size_t);\n");
-	printf("#undef	cfree\n");
-	printf("#define cfree		_ast_cfree\n");
-	printf("extern void		cfree(void*);\n");
-	printf("#undef	free\n");
-	printf("#define free		_ast_free\n");
-	printf("extern void		free(void*);\n");
-	printf("#undef	malloc\n");
-	printf("#define malloc		_ast_malloc\n");
-	printf("extern void*		malloc(size_t);\n");
-#if _lib_mallopt
-	printf("#undef	mallopt\n");
-	printf("#define mallopt		_ast_mallopt\n");
-#endif
-#if _lib_memalign
-	printf("#undef	memalign\n");
-	printf("#define memalign	_ast_memalign\n");
-	printf("extern void*		memalign(size_t, size_t);\n");
-#endif
-#if _lib_mstats
-	printf("#undef	mstats\n");
-	printf("#define mstats		_ast_mstats\n");
-#endif
-#if _lib_pvalloc
-	printf("#undef	pvalloc\n");
-	printf("#define pvalloc		_ast_pvalloc\n");
-#endif
-	printf("#undef	realloc\n");
-	printf("#define realloc		_ast_realloc\n");
-	printf("extern void*		realloc(void*, size_t);\n");
-#if _lib_valloc
-	printf("#undef	valloc\n");
-	printf("#define valloc		_ast_valloc\n");
-	printf("extern void*		valloc(size_t);\n");
-#endif
-#endif
 #endif
 	/* we always use the libast strdup implementation */
 	printf("#undef	strdup\n");

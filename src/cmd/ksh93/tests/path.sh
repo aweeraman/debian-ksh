@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2023 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2024 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 2.0                  #
 #                                                                      #
@@ -265,8 +265,11 @@ exp=$PWD/rm
 command -p mkdir bin
 print 'print ok' > bin/tst
 command -p chmod +x bin/tst
-if	[[ $(PATH=$PWD/bin tst 2>/dev/null) != ok ]]
-then	err_exit '(PATH=$PWD/bin foo) does not find $PWD/bin/foo'
+exp=ok
+got=$(set +x; PATH=$PWD/bin tst 2>&1)
+if	[[ $exp != "$got" ]]
+then	err_exit '"PATH=$PWD/bin tst" does not run $PWD/bin/tst' \
+	"(expected $exp, got $(printf %q "$got"))"
 fi
 cd /
 if	whence ls > /dev/null
@@ -315,6 +318,7 @@ if builtin getconf 2> /dev/null; then
 fi
 
 PATH=$path
+builtin -d /bin/getconf
 
 scr=$tmp/script
 exp=126
@@ -534,7 +538,8 @@ trap 'kill $sleep_pid; while kill -9 $pid; do :; done 2>/dev/null; trap - INT; k
 	sleep 5
 	# if it's slow, display a counter
 	for	((i=35; i>0; i--))
-	do	printf '\t%s[%d]: command -x: %2ds...\r' "$Command" LINENO i
+	do	kill -s 0 "$$" 2>/dev/null || exit  # parent shell exited
+		printf '\t%s[%d]: command -x: %2ds...\r' "$Command" LINENO i
 		sleep 1
 	done
 	# if this subshell is not killed yet, give up and kill the test by triggering the TERM trap in parent
@@ -1004,7 +1009,7 @@ then	got=$(PATH=/opt/ast/bin:$PATH "$SHELL" -c 'command -x cat /dev/null; whence
 	        "(expected $(printf %q "$exp"), got $(printf %q "$got"))"
 	# https://github.com/ksh93/ksh/issues/609
 	exp=$(builtin -d cat; whence -p cat)
-	got=$(PATH=/opt/ast/bin:$PATH "$SHELL" -c 'command -vx cat; command -x cat /dev/null' 2>&1)
+	got=$(set +x; PATH=/opt/ast/bin:$PATH "$SHELL" -c 'command -vx cat; command -x cat /dev/null' 2>&1)
 	[[ e=$? -eq 0 && $got == "$exp" ]] || err_exit "'command -vx' breakage" \
 		"(expected status 0, $(printf %q "$exp"); got status $e, $(printf %q "$got"))"
 fi
@@ -1017,6 +1022,20 @@ got=${ whence -t whence_t_test 2>&1; }
 [[ $got == "$exp" ]] || err_exit "incorrect 'whence -t' output for undefined function (expected '$exp', got '$got')"
 got=${ type -t whence_t_test 2>&1; }
 [[ $got == "$exp" ]] || err_exit "incorrect 'type -t' output for undefined function (expected '$exp', got '$got')"
+
+# ======
+(
+	builtin getconf 2>/dev/null || exit 1
+	p=$(getconf GETCONF)
+	[[ $p == /*/getconf ]] || exit 2
+	builtin -d getconf
+	builtin "$p"
+	PATH=${p%/getconf}
+	getconf some_nonexistent_config_variable  # be sure to trigger fallback to external command
+	exit 0
+) >/dev/null 2>&1
+(((e = $?) > 1)) && err_exit 'getconf builtin fails when on same path as external getconf' \
+	"(got status $e$( ((e>128)) && print -n /SIG && kill -l "$e"))"
 
 # ======
 exit $((Errors<125?Errors:125))

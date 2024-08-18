@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2024 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -94,7 +94,8 @@ static void refvar(Lex_t *lp, int type)
 	else
 	{
 		int n,offset = stktell(sh.stk);
-		char *savptr,*begin; 
+		void *savptr;
+		char *begin;
 		off = offset + (fcseek(0)-(type+1)) - fcfirst();
 		if(lp->lexd.kiaoff < offset)
 		{
@@ -152,7 +153,7 @@ static void lex_advance(Sfio_t *iop, const char *buff, int size, void *context)
 		size -= (lp->lexd.first-(char*)buff);
 		buff = lp->lexd.first;
 		if(!lp->lexd.noarg)
-			lp->arg = (struct argnod*)stkseek(sh.stk,ARGVAL);
+			lp->arg = stkseek(sh.stk,ARGVAL);
 #if SHOPT_KIA
 		lp->lexd.kiaoff += ARGVAL;
 #endif /* SHOPT_KIA */
@@ -248,6 +249,8 @@ int sh_lex(Lex_t* lp)
 	int		n, c, mode=ST_BEGIN, wordflags=0;
 	int		inlevel=lp->lexd.level, assignment=0, ingrave=0;
 	int		epatchar=0;
+	char		*varnamefirst = NULL;
+	int		varnamelength = 0;
 	SETLEN(1);
 	if(lp->lexd.paren)
 	{
@@ -477,6 +480,7 @@ int sh_lex(Lex_t* lp)
 					{
 						if(c==LPAREN)
 						{
+							int r;
 							/* Avoid misdetecting EXPRSYM in [[ ... ]] or compound assignments */
 							if(lp->lex.intest || lp->comp_assign)
 								return lp->token=c;
@@ -492,7 +496,14 @@ int sh_lex(Lex_t* lp)
 							lp->lastline = sh.inlineno;
 							lp->lexd.lex_state = ST_NESTED;
 							fcseek(1);
-							return sh_lex(lp);
+							r = sh_lex(lp);
+							if(r!=LPAREN && r!=EXPRSYM)
+							{	/* throw "`(' unmatched" error */
+								lp->lasttok = LPAREN;
+								lp->token = EOFSYM;
+								sh_syntax(lp);
+							}
+							return r;
 						}
 						c |= SYMREP;
 						/* Here document redirection operator '<<' */
@@ -639,6 +650,7 @@ int sh_lex(Lex_t* lp)
 				}
 				/* FALLTHROUGH */
 			case S_RES:
+				varnamefirst = fcseek(0) - LEN;
 				if(!lp->lexd.dolparen)
 					lp->lexd.first = fcseek(0)-LEN;
 				else if(lp->lexd.docword)
@@ -838,6 +850,8 @@ int sh_lex(Lex_t* lp)
 				poplevel(lp);
 				break;
 			case S_DOT:
+				if(varnamelength && fcpeek(-LEN - 1)==']')
+					varnamelength = 0;
 				/* make sure next character is alpha */
 				if(fcgetc(n)>0)
 				{
@@ -1102,6 +1116,12 @@ int sh_lex(Lex_t* lp)
 					goto epat;
 				continue;
 			case S_EQ:
+				if(varnamefirst && !varnamelength)
+				{
+					varnamelength = fcseek(0) - LEN - varnamefirst;
+					if(varnamelength > 0 && fcpeek(-LEN - 1) == '+')
+						varnamelength--;  /* += */
+				}
 				assignment = lp->assignok;
 				/* FALLTHROUGH */
 			case S_COLON:
@@ -1116,6 +1136,8 @@ int sh_lex(Lex_t* lp)
 				}
 				break;
 			case S_BRACT:
+				if(varnamefirst && !varnamelength && fcpeek(-LEN - 1)!='.')
+					varnamelength = fcseek(0) - LEN - varnamefirst;
 				/* check for possible subscript */
 				if((n=endchar(lp))==RBRACT || n==RPAREN || 
 					(mode==ST_BRACE) ||
@@ -1241,7 +1263,7 @@ breakloop:
 		state = fcfirst();
 	n = fcseek(0)-(char*)state;
 	if(!lp->arg)
-		lp->arg = (struct argnod*)stkseek(sh.stk,ARGVAL);
+		lp->arg = stkseek(sh.stk,ARGVAL);
 	if(n>0)
 		sfwrite(sh.stk,state,n);
 	sfputc(sh.stk,0);
@@ -1275,7 +1297,7 @@ breakloop:
 		{
 			/* Redirection of the form {varname}>file, etc. */
 			stkseek(sh.stk,stktell(sh.stk)-1);
-			lp->arg = (struct argnod*)stkfreeze(sh.stk,1);
+			lp->arg = stkfreeze(sh.stk,1);
 			return lp->token=IOVNAME;
 		}
 		c = wordflags;
@@ -1299,7 +1321,7 @@ breakloop:
 	}
 	if(c==0 || (c&(ARG_MAC|ARG_EXP|ARG_MESSAGE)))
 	{
-		lp->arg = (struct argnod*)stkfreeze(sh.stk,1);
+		lp->arg = stkfreeze(sh.stk,1);
 		lp->arg->argflag = (c?c:ARG_RAW);
 	}
 	else if(mode==ST_NONE)
@@ -1311,6 +1333,7 @@ breakloop:
 	if(assignment)
 	{
 		lp->arg->argflag |= ARG_ASSIGN;
+		lp->varnamelength = varnamelength;
 		if(sh_isoption(SH_NOEXEC))
 		{
 			char *cp = strchr(state, '=');
@@ -2107,7 +2130,7 @@ noreturn void sh_syntax(Lex_t *lp)
 		Sfio_t *top;
 		while(fcget()>0);
 		fcclose();
-		while(top=sfstack(sp,SF_POPSTACK))
+		while(top=sfstack(sp,SFIO_POPSTACK))
 			sfclose(top);
 	}
 	else
@@ -2197,7 +2220,7 @@ static struct argnod *endword(int mode)
 			stkseek(sh.stk,dp - (unsigned char*)stkptr(sh.stk,0));
 			if(mode<=0)
 			{
-				argp = (struct argnod*)stkfreeze(sh.stk,0);
+				argp = stkfreeze(sh.stk,0);
 				argp->argflag = ARG_RAW|ARG_QUOTED;
 			}
 			return argp;
@@ -2406,19 +2429,19 @@ static int alias_exceptf(Sfio_t *iop,int type,void *data, Sfdisc_t *handle)
 	Namval_t *np;
 	Lex_t	*lp;
 	NOT_USED(data);
-	if(type==0 || type==SF_ATEXIT || !ap)
+	if(type==0 || type==SFIO_ATEXIT || !ap)
 		return 0;
 	lp = ap->lp;
 	np = ap->np;
-	if(type!=SF_READ)
+	if(type!=SFIO_READ)
 	{
-		if(type==SF_CLOSING)
+		if(type==SFIO_CLOSING)
 		{
-			Sfdisc_t *dp = sfdisc(iop,SF_POPDISC);
+			Sfdisc_t *dp = sfdisc(iop,SFIO_POPDISC);
 			if(dp!=handle)
 				sfdisc(iop,dp);
 		}
-		else if(type==SF_DPOP || type==SF_FINAL)
+		else if(type==SFIO_DPOP || type==SFIO_FINAL)
 			free(ap);
 		goto done;
 	}
