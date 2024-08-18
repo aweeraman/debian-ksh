@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2024 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -13,6 +13,7 @@
 *                  David Korn <dgk@research.att.com>                   *
 *                  Martijn Dekker <martijn@inlv.org>                   *
 *            Johnothan King <johnothanking@protonmail.com>             *
+*               Vincent Mihalkovic <vmihalko@redhat.com>               *
 *                                                                      *
 ***********************************************************************/
 /*
@@ -179,23 +180,8 @@ static struct process	*job_bystring(char*);
 static struct termios	my_stty;  /* terminal state for shell */
 static char		*job_string;
 
-    static void		job_unstop(struct process*);
+    static void		job_unstop(struct process*, int);
     static void		job_fgrp(struct process*, int);
-#ifndef _lib_tcgetpgrp
-#	ifdef TIOCGPGRP
-	   static int _i_;
-#	   define tcgetpgrp(a) (ioctl(a, TIOCGPGRP, &_i_)>=0?_i_:-1)	
-#	endif /* TIOCGPGRP */
-	int tcsetpgrp(int fd,pid_t pgrp)
-	{
-		int pgid = pgrp;
-#		ifdef TIOCGPGRP
-			return ioctl(fd, TIOCSPGRP, &pgid);
-#		else
-			return -1;
-#		endif /* TIOCGPGRP */
-	}
-#endif /* _lib_tcgetpgrp */
 
 #ifndef OTTYDISC
 #   undef NTTYDISC
@@ -278,12 +264,6 @@ int job_reap(int sig)
 	int nochild = 0, oerrno = errno, wstat;
 	Waitevent_f waitevent = sh.waitevent;
 	static int wcontinued = WCONTINUED;
-	if (vmbusy())
-	{
-		errormsg(SH_DICT,ERROR_warn(0),"vmbusy() inside job_reap() -- should not happen");
-		if (getenv("_AST_KSH_VMBUSY_ABORT"))
-			abort();
-	}
 #ifdef DEBUG
 	if(sfprintf(sfstderr,"ksh: job line %4d: reap PID=%lld critical=%d signal=%d\n",__LINE__,(Sflong_t)sh.current_pid,job.in_critical,sig) <=0)
 		write(2,"waitsafe\n",9);
@@ -452,7 +432,7 @@ int job_reap(int sig)
 			pw->p_flag &= ~P_NOTIFY;
 		if(job.jobcontrol && pid==pw->p_fgrp && pid==tcgetpgrp(JOBTTY))
 		{
-			px = job_byjid((int)pw->p_job);
+			px = job_byjid(pw->p_job);
 			for(; px && (px->p_flag&P_DONE); px=px->p_nxtproc);
 			if(!px)
 				tcsetpgrp(JOBTTY,job.mypid);
@@ -504,7 +484,7 @@ int job_reap(int sig)
  */
 static void job_waitsafe(int sig)
 {
-	if(job.in_critical || vmbusy())
+	if(job.in_critical)
 	{
 		job.savesig = sig;
 		job.waitsafe++;
@@ -553,7 +533,6 @@ void job_init(int lflag)
 		/* This should have already been done by rlogin */
                 int fd;
                 char *ttynam;
-                setpgid(0,sh.pid);
 		if(job.mypgid<0 || !(ttynam=ttyname(JOBTTY)))
 			return;
 		while(close(JOBTTY)<0 && errno==EINTR)
@@ -738,7 +717,7 @@ static void job_set(struct process *pw)
 		tcsetpgrp(job.fd,pw->p_fgrp);
 	/* if job is stopped, resume it in the background */
 	if(!sh.forked)
-		job_unstop(pw);
+		job_unstop(pw,1);
 	sh.forked = 0;
 }
 
@@ -969,14 +948,24 @@ static struct process *job_bystring(char *ajob)
 }
 
 /*
+ * Helper function for job_kill().
+ * sh.1: "If the signal being sent is TERM (terminate) or HUP (hangup), then
+ * the job or process will be sent a CONT (continue) signal if it is stopped."
+ * As this is not specified anywhere in POSIX, this is disabled for POSIX mode.
+ */
+static int also_send_sigcont(struct process *pw,int sig)
+{
+	return !sh_isoption(SH_POSIX) && (sig==SIGHUP || sig==SIGTERM) && pw && (pw->p_flag & P_STOPPED);
+}
+
+/*
  * Kill a job or process
  */
 int job_kill(struct process *pw,int sig)
 {
 	pid_t pid;
-	int r;
+	int r = -1;
 	const char *msg;
-	int stopsig = (sig==SIGSTOP||sig==SIGTSTP||sig==SIGTTIN||sig==SIGTTOU);
 	job_lock();
 	errno = ECHILD;
 	if(!pw)
@@ -992,26 +981,28 @@ int job_kill(struct process *pw,int sig)
 			errno = EPERM;
 			r = -1;
 		}
+		else if(pid>=0)
+		{
+			r = kill(pid,sig);
+			if(r>=0)
+			{
+				if(also_send_sigcont(pw,sig))
+					kill(pid,sig = SIGCONT);
+				if(sig==SIGCONT && (pw->p_flag&P_STOPPED))
+					pw->p_flag &= ~(P_STOPPED|P_SIGNALLED|P_NOTIFY);
+			}
+		}
 		else
 		{
-			if(pid>=0)
+			pid = -pid;
+			pw = job_bypid(pid);
+			r = killpg(pid,sig);
+			if(r>=0)
 			{
-				if((r = kill(pid,sig))>=0 && !stopsig)
-				{
-					if(pw->p_flag&P_STOPPED)
-						pw->p_flag &= ~(P_STOPPED|P_SIGNALLED);
-					if(sig)
-						kill(pid,SIGCONT);
-				}
-			}
-			else
-			{
-				if((r = killpg(-pid,sig))>=0 && !stopsig)
-				{
-					job_unstop(job_bypid(pw->p_pid));
-					if(sig)
-						killpg(-pid,SIGCONT);
-				}
+				if(sig==SIGCONT)
+					job_unstop(pw,0);
+				else if(also_send_sigcont(pw,sig))
+					job_unstop(pw,1);
 			}
 		}
 	}
@@ -1020,15 +1011,22 @@ int job_kill(struct process *pw,int sig)
 		if(pid = pw->p_pgrp)
 		{
 			r = killpg(pid,sig);
-			if(r>=0 && (sig==SIGHUP||sig==SIGTERM || sig==SIGCONT))
-				job_unstop(pw);
 			if(r>=0)
+			{
+				if(sig==SIGCONT)
+					job_unstop(pw,0);
+				else if(also_send_sigcont(pw,sig))
+					job_unstop(pw,1);
 				sh_delay(.05,0);
+			}
 		}
 		while(pw && pw->p_pgrp==0 && (r=kill(pw->p_pid,sig))>=0) 
 		{
-			if(sig==SIGHUP || sig==SIGTERM)
+			if(also_send_sigcont(pw,sig))
+			{
 				kill(pw->p_pid,SIGCONT);
+				pw->p_flag &= ~(P_STOPPED|P_SIGNALLED|P_NOTIFY);
+			}
 			pw = pw->p_nxtproc;
 		}
 	}
@@ -1069,7 +1067,7 @@ int job_hup(struct process *pw, int sig)
 		if(!(px->p_flag & P_DONE))
 		{
 			if(killpg(pw->p_pgrp, SIGHUP) >= 0)
-				job_unstop(pw);
+				job_unstop(pw,1);
 			break;
 		}
 	}
@@ -1525,7 +1523,7 @@ int job_switch(struct process *pw,int bgflag)
 {
 	const char *msg;
 	job_lock();
-	if(!pw || !(pw=job_byjid((int)pw->p_job)))
+	if(!pw || !(pw=job_byjid(pw->p_job)))
 	{
 		job_unlock();
 		return 1;
@@ -1539,7 +1537,7 @@ int job_switch(struct process *pw,int bgflag)
 	}
 	if(bgflag=='b')
 	{
-		sfprintf(outfile,"[%d]\t",(int)pw->p_job);
+		sfprintf(outfile,"[%d]\t",pw->p_job);
 		sh.bckpid = pw->p_pid;
 		pw->p_flag |= P_BG;
 		msg = "&";
@@ -1568,7 +1566,7 @@ int job_switch(struct process *pw,int bgflag)
 		job.waitall = 0;
 	}
 	else if(pw->p_flag&P_STOPPED)
-		job_unstop(pw);
+		job_unstop(pw,1);
 	job_unlock();
 	return 0;
 }
@@ -1585,7 +1583,7 @@ static void job_fgrp(struct process *pw, int newgrp)
 /*
  * turn off STOP state of a process group and send CONT signals
  */
-static void job_unstop(struct process *px)
+static void job_unstop(struct process *px, int send_sigcont)
 {
 	struct process *pw;
 	int num = 0;
@@ -1597,7 +1595,7 @@ static void job_unstop(struct process *px)
 			pw->p_flag &= ~(P_STOPPED|P_SIGNALLED|P_NOTIFY);
 		}
 	}
-	if(num!=0)
+	if(num && send_sigcont)
 	{
 		if(px->p_fgrp != px->p_pgrp)
 			killpg(px->p_fgrp,SIGCONT);
@@ -1620,7 +1618,7 @@ static struct process *job_unpost(struct process *pwtop,int notify)
 	sfprintf(sfstderr,"ksh: job line %4d: drop PID=%lld critical=%d PID=%d env=%u\n",__LINE__,(Sflong_t)sh.current_pid,job.in_critical,pwtop->p_pid,pwtop->p_env);
 	sfsync(sfstderr);
 #endif /* DEBUG */
-	pwtop = pw = job_byjid((int)pwtop->p_job);
+	pwtop = pw = job_byjid(pwtop->p_job);
 	if(!pw)
 		return NULL;
 #if SHOPT_BGX
@@ -1636,8 +1634,13 @@ static struct process *job_unpost(struct process *pwtop,int notify)
 	job_unlink(pwtop);
 	for(pw=pwtop; pw; pw=pw->p_nxtproc)
 	{
+		/* save the exit status for the pipefail option */
 		if(pw && pw->p_exitval)
+		{
 			*pw->p_exitval = pw->p_exit;
+			if(pw->p_flag&P_SIGNALLED)
+				*pw->p_exitval |= SH_EXITSIG;
+		}	
 		/* save the exit status for background jobs */
 		if((pw->p_flag&P_EXITSAVE) ||  pw->p_pid==sh.spid)
 		{
@@ -1661,7 +1664,7 @@ static struct process *job_unpost(struct process *pwtop,int notify)
 	sfprintf(sfstderr,"ksh: job line %4d: free PID=%lld critical=%d job=%d\n",__LINE__,(Sflong_t)sh.current_pid,job.in_critical,pwtop->p_job);
 	sfsync(sfstderr);
 #endif /* DEBUG */
-	job_free((int)pwtop->p_job);
+	job_free(pwtop->p_job);
 	return NULL;
 }
 

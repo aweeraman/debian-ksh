@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2024 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -186,7 +186,7 @@ int    b_alias(int argc,char *argv[],Shbltin_t *context)
 	if(flag&NV_TAGGED)
 	{
 		if(xflag)
-			return 0;		/* do nothing for 'alias -tx' */
+			return 0;			/* do nothing for 'alias -tx' */
 		if(tdata.pflag)
 		{
 			troot = sh_subtracktree(0);	/* use existing hash table */
@@ -225,7 +225,7 @@ int    b_typeset(int argc,char *argv[],Shbltin_t *context)
 
 	memset(&tdata,0,sizeof(tdata));
 	troot = sh.var_tree;
-	if(ntp)					/* custom declaration command added using enum */
+	if(ntp)					/* type declaration command added using 'typeset -T' or 'enum' */
 	{
 		tdata.tp = ntp->tp;
 		opt_info.disc = (Optdisc_t*)ntp->optinfof;
@@ -233,7 +233,7 @@ int    b_typeset(int argc,char *argv[],Shbltin_t *context)
 	}
 	else if(argv[0][0] != 't')		/* not <t>ypeset */
 	{
-		char **new_argv = (char **)stkalloc(sh.stk, (argc + 2) * sizeof(char*));
+		char **new_argv = stkalloc(sh.stk, (argc + 2) * sizeof(char*));
 		error_info.id = new_argv[0] = SYSTYPESET->nvname;
 		if(argv[0][0] == 'a')		/* <a>utoload == typeset -fu */
 			new_argv[1] = "-fu";
@@ -249,7 +249,7 @@ int    b_typeset(int argc,char *argv[],Shbltin_t *context)
 			new_argv[1] = "-n";
 		else
 		{
-			errormsg(SH_DICT, ERROR_exit(128), "internal error");
+			errormsg(SH_DICT, ERROR_PANIC, e_internal);
 			UNREACHABLE();
 		}
 		for (n = 1; n <= argc; n++)
@@ -549,7 +549,7 @@ endargs:
 		}
 		else if(nv_isnull(tdata.tp) && sh.envlist)   /* only create a type command if there were assignment(s) */
 			nv_newtype(tdata.tp);
-		tdata.tp->nvenv = tdata.help;
+		tdata.tp->nvmeta = tdata.help;
 		flag &= ~NV_TYPE;
 		if(nv_isattr(tdata.tp,NV_TAGGED))
 		{
@@ -647,8 +647,8 @@ static int     setall(char **argv,int flag,Dt_t *troot,struct tdata *tp)
 	char *last = 0;
 	int nvflags=(flag&(NV_ARRAY|NV_NOARRAY|NV_VARNAME|NV_IDENT|NV_ASSIGN|NV_STATIC|NV_MOVE));
 	int r=0, ref=0, comvar=(flag&NV_COMVAR),iarray=(flag&NV_IARRAY);
-	Dt_t *save_vartree;
-	Namval_t *save_namespace;
+	Dt_t *save_vartree = NULL;
+	Namval_t *save_namespace = NULL;
 	if(flag&NV_GLOBAL)
 	{
 		save_vartree = sh.var_tree;
@@ -766,7 +766,7 @@ static int     setall(char **argv,int flag,Dt_t *troot,struct tdata *tp)
 			if(troot==sh.track_tree && tp->aflag=='-')
 			{
 				sh_offstate(SH_DEFPATH);  /* 'command -p hash foo' should work to create 'foo=/bin/foo' */
-				path_settrackedalias(name,path_absolute(name,NULL,0));
+				path_settrackedalias(name,path_absolute(name,NULL,2));
 				continue;
 			}
 			if(troot==sh.alias_tree && sh.subshell && !sh.subshare && strchr(name,'='))
@@ -790,7 +790,7 @@ static int     setall(char **argv,int flag,Dt_t *troot,struct tdata *tp)
 			}
 			if(nv_isnull(np) && !nv_isarray(np) && nv_isattr(np,NV_NOFREE))
 				nv_offattr(np,NV_NOFREE);
-			else if(tp->tp && !nv_isattr(np,NV_MINIMAL|NV_EXPORT) && (mp=(Namval_t*)np->nvenv) && (ap=nv_arrayptr(mp)) && (ap->nelem&ARRAY_TREE))
+			else if(tp->tp && !nv_isattr(np,NV_MINIMAL|NV_EXPORT) && (mp = np->nvmeta) && (ap = nv_arrayptr(mp)) && (ap->nelem & ARRAY_TREE))
 			{
 				errormsg(SH_DICT,ERROR_exit(1),e_typecompat,nv_name(np));
 				UNREACHABLE();
@@ -958,7 +958,7 @@ static int     setall(char **argv,int flag,Dt_t *troot,struct tdata *tp)
 			}
 			if(tp->help && !nv_isattr(np,NV_MINIMAL|NV_EXPORT))
 			{
-				np->nvenv = tp->help;
+				np->nvmeta = tp->help;
 				nv_onattr(np,NV_EXPORT);
 			}
 			if(last)
@@ -1352,13 +1352,22 @@ static int unall(int argc, char **argv, Dt_t *troot)
 		if(jmpval==0)
 		{
 #if SHOPT_NAMESPACE
-			if(sh.namespace && troot==sh.fun_tree && *name!='.')
+			if(sh.namespace && troot==sh.fun_tree && !sh.prefix && *name!='.')
 			{
+				char *nsname;
+				Namval_t *np2;
 				/* prefix the namespace name */
-				sfputr(sh.stk,nv_name(sh.namespace),'.');
-				sfputr(sh.stk,name,'\0');
-				name = stkfreeze(sh.stk,0);
+				sfputr(sh.strbuf,nv_name(sh.namespace),'.');
+				sfputr(sh.strbuf,name,'\0');
+				nsname = sfstruse(sh.strbuf);
+				np = nv_search(nsname,troot,NV_NOSCOPE);
+				if(troot!=sh.fun_base && !np && (np2=nv_search(nsname,troot,0)) && is_afunction(np2))
+				{	/* create dummy virtual subshell node without NV_FUNCTION attribute */
+					nv_open(nsname,troot,NV_NOSCOPE);
+					return r;
+				}
 			}
+			if(!np)
 #endif /* SHOPT_NAMESPACE */
 			np=nv_open(name,troot,NV_NOADD|nflag);
 		}
@@ -1421,8 +1430,8 @@ static int unall(int argc, char **argv, Dt_t *troot)
 		}
 		else if(troot==sh.alias_tree)
 			r = 1;
-		else if(troot==sh.fun_tree && troot!=sh.fun_base && (np=nv_search(name,sh.fun_tree,0)) && is_afunction(np))
-			nv_open(name,troot,NV_NOSCOPE);	/* create dummy virtual subshell node without NV_FUNCTION attribute */
+		else if(troot==sh.fun_tree && troot!=sh.fun_base && !np && (np=nv_search(name,troot,0)) && is_afunction(np))
+			nv_open(name,troot,NV_NOSCOPE); /* create dummy virtual subshell node without NV_FUNCTION attribute */
 	}
 	return r;
 }
@@ -1605,7 +1614,7 @@ static void print_scan(Sfio_t *file, int flag, Dt_t *root, int option,struct tda
 	if(flag==NV_LTOU || flag==NV_UTOL)
 		tp->scanmask |= NV_UTOL|NV_LTOU;
 	namec = nv_scan(root, nullscan, tp, tp->scanmask, flag&~NV_IARRAY);
-	argv = tp->argnam  = (char**)stkalloc(sh.stk,(namec+1)*sizeof(char*));
+	argv = tp->argnam  = stkalloc(sh.stk,(namec+1)*sizeof(char*));
 	namec = nv_scan(root, pushname, tp, tp->scanmask, flag&~NV_IARRAY);
 	if(mbcoll())
 		strsort(argv,namec,strcoll);

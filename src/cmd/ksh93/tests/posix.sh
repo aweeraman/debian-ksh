@@ -1,8 +1,7 @@
 ########################################################################
 #                                                                      #
 #              This file is part of the ksh 93u+m package              #
-#          Copyright (c) 2022-2023 Contributors to ksh 93u+m           #
-#                    <https://github.com/ksh93/ksh>                    #
+#          Copyright (c) 2022-2024 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 2.0                  #
 #                                                                      #
@@ -119,6 +118,7 @@ got=$("$SHELL" -c 'typeset -p testint')
 set --posix
 
 # disables the special handling of repeated isspace class characters in the IFS variable;
+IFS.get() { :; }  # tests if sh_invalidate_ifs() in init.c correctly gets IFS_disc
 IFS=$'x\t\ty' val=$'\tun\t\tduo\ttres\t'
 got=$(set $val; echo "$#")
 exp=3
@@ -132,6 +132,7 @@ got=$(set --default; set $val; echo "$#")
 [[ $got == "$exp" ]] || err_exit "repeated IFS whitespace char (default): incorrect number of fields" \
 	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
 IFS=$' \t\n' # default
+unset -f IFS.get
 
 # causes file descriptors > 2 to be left open when invoking another program;
 exp='ok'
@@ -201,6 +202,13 @@ test 010 -eq 10 || err_exit "'test' not ignoring leading octal zero in --posix"
 [ 010 -eq 10 ] || err_exit "'[' not ignoring leading octal zero in --posix"
 [[ 010 -eq 8 ]] || err_exit "'[[' ignoring leading octal zero in --posix"
 (set --noposix; [[ 010 -eq 10 ]]) || err_exit "'[[' not ignoring leading octal zero in --noposix"
+
+exp=': arithmetic syntax error'
+for v in 08 028 089 09 029 098 012345678
+do	got=$(eval ": \$(($v))" 2>&1)
+	[[ e=$? -eq 1 && $got == *"$exp" ]] || err_exit "invalid leading-zero octal number $v not an error" \
+		"(expected status 1 and match of *'$exp', got status $e and '$got')"
+done
 
 # disables zero-padding of seconds in the output of the time and times built-ins;
 case ${.sh.version} in

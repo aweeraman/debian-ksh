@@ -2,7 +2,7 @@
 #                                                                      #
 #               This software is part of the ast package               #
 #          Copyright (c) 1982-2012 AT&T Intellectual Property          #
-#          Copyright (c) 2020-2023 Contributors to ksh 93u+m           #
+#          Copyright (c) 2020-2024 Contributors to ksh 93u+m           #
 #                      and is licensed under the                       #
 #                 Eclipse Public License, Version 2.0                  #
 #                                                                      #
@@ -123,6 +123,12 @@ got=$(RANDOM=1; print $RANDOM; /dev/null/x 2>/dev/null; print $RANDOM)
 	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
 got=$(RANDOM=1; print $RANDOM; :& print $RANDOM)
 [[ $got == "$exp" ]] || err_exit "Background job influences reproducible $RANDOM sequence" \
+	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
+
+# Seeding with an arithmetic expression should be identical to seeding using a shell assignment
+RANDOM=12345; exp="$RANDOM $RANDOM $RANDOM $RANDOM"
+let "RANDOM = 12345"; got="$RANDOM $RANDOM $RANDOM $RANDOM"
+[[ $got == "$exp" ]] || err_exit "Seeding RANDOM using arithmetic expression fails" \
 	"(expected $(printf %q "$exp"), got $(printf %q "$got"))"
 
 # SECONDS
@@ -308,7 +314,7 @@ done
 kill -s 0 $! || err_exit '$! does not point to latest asynchronous process'
 kill $!
 unset x
-cd /tmp || exit
+cd /dev || exit
 CDPATH=/
 x=$(cd ${tmp#/})
 if	[[ $x != $tmp ]]
@@ -899,6 +905,10 @@ $SHELL -c "$cmd" 2>/dev/null || err_exit "'$cmd' exit status $?, expected 0"
 SHLVL=1
 level=$($SHELL -c $'$SHELL -c \'print -r "$SHLVL"\'')
 [[ $level  == 3 ]]  || err_exit "SHLVL should be 3 not $level"
+echo 'print -r "$SHLVL"' >script
+chmod +x script
+level=$($SHELL -c '$SHELL ./script')
+[[ $level == 3 ]] || err_exit "SHLVL should be 3 not $level"
 
 [[ $($SHELL -c '{ x=1; : ${x.};print ok;}' 2> /dev/null) == ok ]] || err_exit '${x.} where x is a simple variable causes shell to abort'
 

@@ -1028,7 +1028,7 @@ tst	- -DSCAN=1 - -lm -DSTRTO=1 - -DMAC=1 - -DDIV=1 - -DEXP=1 - -DADD=1 - -DMPY=1
 	#if _hdr_values
 	#include <values.h>
 	#endif
-	#if STRTO && _hdr_stdlib
+	#if STRTO
 	#include <stdlib.h>
 	#endif
 	#if !defined(FLT_MAX) && defined(MAXFLOAT)

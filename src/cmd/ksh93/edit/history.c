@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2014 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2024 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -15,6 +15,7 @@
 *            Johnothan King <johnothanking@protonmail.com>             *
 *         hyenias <58673227+hyenias@users.noreply.github.com>          *
 *                Govind Kamat <govind_kamat@yahoo.com>                 *
+*               Vincent Mihalkovic <vmihalko@redhat.com>               *
 *                                                                      *
 ***********************************************************************/
 /*
@@ -275,7 +276,7 @@ retry:
 	sh.hist_ptr = hist_ptr = hp;
 	hp->histsize = maxlines;
 	hp->histmask = histmask;
-	hp->histfp= sfnew(NULL,hp->histbuff,HIST_BSIZE,fd,SF_READ|SF_WRITE|SF_APPENDWR|SF_SHARE);
+	hp->histfp= sfnew(NULL,hp->histbuff,HIST_BSIZE,fd,SFIO_READ|SFIO_WRITE|SFIO_APPENDWR|SFIO_SHARE);
 	memset((char*)hp->histcmds,0,sizeof(off_t)*(hp->histmask+1));
 	hp->histind = 1;
 	hp->histcmds[1] = 2;
@@ -337,7 +338,7 @@ retry:
 #endif /* SHOPT_ACCTFILE */
 #if SHOPT_AUDIT
 	{
-		char buff[SF_BUFSIZE];
+		char buff[SFIO_BUFSIZE];
 		hp->auditfp = 0;
 		if(sh_isstate(SH_INTERACTIVE) && (hp->auditmask=sh_checkaudit(hp,SHOPT_AUDITFILE, buff, sizeof(buff))))
 		{
@@ -353,8 +354,9 @@ retry:
 			if(fd>=0)
 			{
 				fcntl(fd,F_SETFD,FD_CLOEXEC);
-				hp->tty = sh_strdup(isatty(2)?ttyname(2):"notty");
-				hp->auditfp = sfnew(NULL,NULL,-1,fd,SF_WRITE);
+				const char* tty = ttyname(2);
+				hp->tty = sh_strdup(tty?tty:"notty");
+				hp->auditfp = sfnew(NULL,NULL,-1,fd,SFIO_WRITE);
 			}
 		}
 	}
@@ -376,7 +378,7 @@ void hist_close(History_t *hp)
 		sfclose(hp->auditfp);
 	}
 #endif /* SHOPT_AUDIT */
-	free((char*)hp);
+	free(hp);
 	hist_ptr = 0;
 	sh.hist_ptr = 0;
 #if SHOPT_ACCTFILE
@@ -460,7 +462,7 @@ static History_t* hist_trim(History_t *hp, int n)
 			if(newp <=oldp)
 				break;
 		}
-		if(!(buff=(char*)sfreserve(hist_old->histfp,SF_UNBOUND,0)))
+		if(!(buff=(char*)sfreserve(hist_old->histfp,SFIO_UNBOUND,0)))
 			break;
 		*(endbuff=(cp=buff)+sfvalue(hist_old->histfp)) = 0;
 		/* copy to null byte */
@@ -478,7 +480,7 @@ static History_t* hist_trim(History_t *hp, int n)
 	}
 	hist_cancel(hist_new);
 	sfclose(hist_old->histfp);
-	free((char*)hist_old);
+	free(hist_old);
 	return hist_ptr = hist_new;
 }
 
@@ -494,7 +496,7 @@ static int hist_nearend(History_t *hp, Sfio_t *iop, off_t size)
 		goto begin;
 	/* skip to marker command and return the number */
 	/* numbering commands occur after a null and begin with HIST_CMDNO */
-        while(cp=buff=(unsigned char*)sfreserve(iop,SF_UNBOUND,SF_LOCKR))
+        while(cp=buff=(unsigned char*)sfreserve(iop,SFIO_UNBOUND,SFIO_LOCKR))
         {
 		n = sfvalue(iop);
                 *(endbuff=cp+n) = 0;
@@ -556,7 +558,7 @@ void hist_eof(History_t *hp)
 	char *cp,*first,*endbuff;
 	int incmd = 0;
 	off_t count = hp->histcnt;
-	int oldind,n,skip=0;
+	int oldind=0,n,skip=0;
 	off_t last = sfseek(hp->histfp,0,SEEK_END);
 	if(last < count)
 	{
@@ -568,7 +570,7 @@ void hist_eof(History_t *hp)
 	}
 again:
 	sfseek(hp->histfp,count,SEEK_SET);
-        while(cp=(char*)sfreserve(hp->histfp,SF_UNBOUND,0))
+        while(cp=(char*)sfreserve(hp->histfp,SFIO_UNBOUND,0))
 	{
 		n = sfvalue(hp->histfp);
 		*(endbuff = cp+n) = 0;
@@ -685,7 +687,7 @@ void hist_flush(History_t *hp)
 	char *buff;
 	if(hp)
 	{
-		if(buff=(char*)sfreserve(hp->histfp,0,SF_LOCKR))
+		if(buff=(char*)sfreserve(hp->histfp,0,SFIO_LOCKR))
 		{
 			hp->histflush = sfvalue(hp->histfp)+1;
 			sfwrite(hp->histfp,buff,0);
@@ -963,7 +965,7 @@ int hist_copy(char *s1,int size,int command,int line)
 	History_t *hp = sh.hist_ptr;
 	int count = 0;
 	char *const s1orig = s1;
-	char *const s1max = s1 + size;
+	char *const s1max = s1 ? s1 + size : NULL;
 	if(!hp)
 		return -1;
 	hist_seek(hp,command);
@@ -1102,7 +1104,7 @@ static int hist_exceptf(Sfio_t* fp, int type, void *data, Sfdisc_t *handle)
 	int newfd,oldfd;
 	History_t *hp = (History_t*)handle;
 	NOT_USED(data);
-	if(type==SF_WRITE)
+	if(type==SFIO_WRITE)
 	{
 		if(errno==ENOSPC || hp->histwfail++ >= 10)
 			return 0;

@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2024 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -14,6 +14,7 @@
 *                  Martijn Dekker <martijn@inlv.org>                   *
 *            Johnothan King <johnothanking@protonmail.com>             *
 *               Anuradha Weeraman <anuradha@debian.org>                *
+*               Vincent Mihalkovic <vmihalko@redhat.com>               *
 *                                                                      *
 ***********************************************************************/
 #ifndef JOB_NFLAG
@@ -51,7 +52,7 @@ struct process
 	pid_t		p_pid;		/* process ID */
 	pid_t		p_pgrp;		/* process group */
 	pid_t		p_fgrp;		/* process group when stopped */
-	short		p_job;		/* job number of process */
+	int		p_job;		/* job number of process */
 	unsigned short	p_exit;		/* exit value or signal number */
 	unsigned short	p_exitmin;	/* minimum exit value for xargs */
 	unsigned short	p_flag;		/* flags - see below */
@@ -94,22 +95,11 @@ struct jobs
 
 extern struct jobs job;
 
-#if !_std_malloc
-#include <vmalloc.h>
-#ifdef vmlocked
-#define vmbusy()	vmlocked(Vmregion)
-#else
-#define vmbusy()	(vmstat(0,0)!=0)
-#endif
-#else
-#define vmbusy()	0
-#endif
-
 #define job_lock()	asoincint(&job.in_critical)
 #define job_unlock()	\
 	do { \
 		int	_sig; \
-		if (asogetint(&job.in_critical) == 1 && (_sig = job.savesig) && !vmbusy()) \
+		if (asogetint(&job.in_critical) == 1 && (_sig = job.savesig)) \
 		    job_reap(_sig); \
 		asodecint(&job.in_critical); \
 	} while(0)

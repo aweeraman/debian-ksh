@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2024 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -115,7 +115,6 @@ extern char		*sh_checkid(char*,char*);
 extern void		sh_chktrap(void);
 extern int		sh_debug(const char*,const char*,const char*,char *const[],int);
 extern char 		**sh_envgen(void);
-extern void 		sh_envnolocal(Namval_t*,void*);
 extern Sfdouble_t	sh_arith(const char*);
 extern void		*sh_arithcomp(char*);
 extern pid_t 		sh_fork(int,int*);
@@ -132,7 +131,7 @@ extern int		sh_outtype(Sfio_t*);
 extern char 		*sh_mactry(char*);
 extern int		sh_mathstd(const char*);
 extern void		sh_printopts(Shopt_t,int,Shopt_t*);
-extern int 		sh_readline(char**,volatile int,int,ssize_t,long);
+extern int 		sh_readline(char**,volatile int,int,ssize_t,Sflong_t);
 extern Sfio_t		*sh_sfeval(char*[]);
 extern void		sh_setmatch(const char*,int,int,int[],int);
 extern void             sh_scope(struct argnod*, int);

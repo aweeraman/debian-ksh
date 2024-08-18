@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2024 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -232,9 +232,7 @@ visit(State_t* state, FTSENT* ent)
 	char*		base;
 	int		n;
 	int		len;
-	int		rm;
-	int		rfd;
-	int		wfd;
+	int		rm = state->remove || ent->fts_info == FTS_SL;
 	int		m;
 	int		v;
 	char*		s;
@@ -430,7 +428,6 @@ visit(State_t* state, FTSENT* ent)
 		}
 		if (state->verbose)
 			sfputr(sfstdout, state->path, '\n');
-		rm = state->remove || ent->fts_info == FTS_SL;
 		if (!rm || !state->force)
 		{
 			if (S_ISLNK(st.st_mode) && (n = -1) || (n = open(state->path, O_RDWR|O_BINARY|O_cloexec)) >= 0)
@@ -576,6 +573,8 @@ visit(State_t* state, FTSENT* ent)
 		}
 		else if (state->op == CP || S_ISREG(ent->fts_statp->st_mode) || S_ISDIR(ent->fts_statp->st_mode))
 		{
+			int	rfd = -1;
+			int	wfd = -1;
 			if (ent->fts_statp->st_size > 0 && (rfd = open(ent->fts_path, O_RDONLY|O_BINARY|O_cloexec)) < 0)
 			{
 				error(ERROR_SYSTEM|2, "%s: cannot read", ent->fts_path);
@@ -590,14 +589,14 @@ visit(State_t* state, FTSENT* ent)
 			}
 			else if (ent->fts_statp->st_size > 0)
 			{
-				if (!(ip = sfnew(NULL, NULL, SF_UNBOUND, rfd, SF_READ)))
+				if (!(ip = sfnew(NULL, NULL, SFIO_UNBOUND, rfd, SFIO_READ)))
 				{
 					error(ERROR_SYSTEM|2, "%s: %s read stream error", ent->fts_path, state->path);
 					close(rfd);
 					close(wfd);
 					return 0;
 				}
-				if (!(op = sfnew(NULL, NULL, SF_UNBOUND, wfd, SF_WRITE)))
+				if (!(op = sfnew(NULL, NULL, SFIO_UNBOUND, wfd, SFIO_WRITE)))
 				{
 					error(ERROR_SYSTEM|2, "%s: %s write stream error", ent->fts_path, state->path);
 					close(wfd);
@@ -605,7 +604,7 @@ visit(State_t* state, FTSENT* ent)
 					return 0;
 				}
 				n = 0;
-				if (sfmove(ip, op, (Sfoff_t)SF_UNBOUND, -1) < 0)
+				if (sfmove(ip, op, (Sfoff_t)SFIO_UNBOUND, -1) < 0)
 					n |= 3;
 				if (!sfeof(ip))
 					n |= 1;
@@ -671,7 +670,7 @@ b_cp(int argc, char** argv, Shbltin_t* context)
 	FTS*		fts;
 	FTSENT*		ent;
 	const char*	usage;
-	int		path_resolve;
+	int		path_resolve = 0;
 	int		standard;
 	struct stat	st;
 	State_t*	state;
@@ -873,7 +872,7 @@ b_cp(int argc, char** argv, Shbltin_t* context)
 		argc--;
 		argv++;
 	}
-	if (!(v = (char**)stkalloc(stkstd, (argc + 2) * sizeof(char*))))
+	if (!(v = stkalloc(stkstd, (argc + 2) * sizeof(char*))))
 	{
 		error(ERROR_SYSTEM|ERROR_PANIC, "out of memory");
 		UNREACHABLE();

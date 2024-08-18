@@ -1,19 +1,10 @@
-The following bugs and issues are known for ksh 93u+m 1.0.5:
+The following bugs and issues are known for ksh 93u+m 1.0.10:
 
 Memory leak when initialising associative array in subshell
 https://github.com/ksh93/ksh/issues/94
 
 command substitution botches output of non-waited-for child processes
 https://github.com/ksh93/ksh/issues/124
-
-wrong typeset -p output after unsetting multidimensional array elements
-https://github.com/ksh93/ksh/issues/148
-
-typeset -L/-R: string length breaks on multibyte characters
-https://github.com/ksh93/ksh/issues/189
-
-Unicode code points in $'...' strings should vary according to the locale
-https://github.com/ksh93/ksh/issues/193
 
 Segfault with very large extended glob patterns
 https://github.com/ksh93/ksh/issues/207
@@ -39,14 +30,30 @@ https://github.com/ksh93/ksh/issues/419
 Function autoload apparently broken on DragonFly BSD
 https://github.com/ksh93/ksh/issues/432
 
-Alias expansion loop not detected in command substitution
-https://github.com/ksh93/ksh/issues/458
-
-Make KEYBD trap handling code multibyte-aware
-https://github.com/ksh93/ksh/issues/460
-
 nameref fails with nested associative arrays
 https://github.com/ksh93/ksh/issues/594
 
 globstar fails to resolve symlink
 https://github.com/ksh93/ksh/issues/629
+
+Race condition in job notification
+https://github.com/ksh93/ksh/issues/655
+
+ksh remains in "noecho" mode forever
+https://github.com/ksh93/ksh/issues/672
+
+bogus typeset -p output for compounds with disciplines
+https://github.com/ksh93/ksh/issues/729
+
+test a = a b: undetected error
+https://github.com/ksh93/ksh/issues/739
+
+Occasional "write error" when writing to pipe
+https://github.com/ksh93/ksh/issues/741
+
+sleep 10 | read hangs interactive shell after ^Z
+https://github.com/ksh93/ksh/issues/750
+
+Shell arithmetic is broken for integer values beyond the system's maximum
+float precision
+https://github.com/ksh93/ksh/issues/771

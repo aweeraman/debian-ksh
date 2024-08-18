@@ -1,24 +1,5 @@
-lib	_fxstat,__fxstat,_lxstat,__lxstat,_xmknod,__xmknod,_xstat,__xstat,lstat,mknod,sync sys/types.h sys/stat.h
+lib	mknod,sync sys/types.h sys/stat.h
 mac	fstat,lstat,stat,mknod sys/types.h sys/stat.h
-
-lcl	xstat link{
-	#include <sys/types.h>
-	#include <sys/stat.h>
-	extern int stat(const char* path, struct stat* st)
-	{
-	#if _lib___xstat
-		return __xstat(_STAT_VER, path, st);
-	#else
-		return _xstat(_STAT_VER, path, st);
-	#endif
-	}
-	int
-	main(void)
-	{
-		struct stat	st;
-		return stat(".",&st) < 0;
-	}
-}end
 
 header	sys/stat.h
 header	sys/mkdev.h

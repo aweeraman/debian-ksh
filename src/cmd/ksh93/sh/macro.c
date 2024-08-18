@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2024 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -83,7 +83,7 @@ typedef struct  _mac_
 #define isescchar(s)	((s)>S_QUOTE)
 #define isqescchar(s)	((s)>=S_QUOTE)
 #define isbracechar(c)	((c)==RBRACE || (_c_=sh_lexstates[ST_BRACE][c])==S_MOD1 ||_c_==S_MOD2)
-#define ltos(x)		fmtbase((intmax_t)(x),0,0)
+#define ltos(x)		fmtint(x,0)
 
 /* type of macro expansions */
 #define M_BRACE		1	/* ${var}	*/
@@ -157,7 +157,7 @@ char *sh_mactrim(char *str, int mode)
 	Mac_t	savemac = *mp;
 	stkseek(stkp,0);
 	mp->arith = (mode==3);
-	sh.argaddr = 0;
+	nv_setoptimize(NULL);
 	mp->pattern = (mode==1||mode==2);
 	mp->patfound = 0;
 	mp->assign = 0;
@@ -198,7 +198,7 @@ int sh_macexpand(struct argnod *argp, struct argnod **arghead,int flag)
 	int	flags = argp->argflag;
 	char	*str = argp->argval;
 	Mac_t	*mp = (Mac_t*)sh.mac_context;
-	char	**saveargaddr = sh.argaddr;
+	char	**saveoptimize = nv_getoptimize();
 	Mac_t	savemac = *mp;
 	Stk_t	*stkp = sh.stk;
 	mp->sp = 0;
@@ -207,9 +207,9 @@ int sh_macexpand(struct argnod *argp, struct argnod **arghead,int flag)
 	else
 		mp->ifs = ' ';
 	if((flag&ARG_OPTIMIZE) && !sh.indebug && !(flags&ARG_MESSAGE))
-		sh.argaddr = (char**)&argp->argchn.ap;
+		nv_setoptimize((char**)&argp->argchn.ap);
 	else
-		sh.argaddr = 0;
+		nv_setoptimize(NULL);
 	mp->arghead = arghead;
 	mp->quoted = mp->lit = mp->quote = 0;
 	mp->arith = ((flag&ARG_ARITH)!=0);
@@ -239,17 +239,17 @@ int sh_macexpand(struct argnod *argp, struct argnod **arghead,int flag)
 	if(!arghead)
 	{
 		argp->argchn.cp = stkfreeze(stkp,1);
-		if(sh.argaddr)
+		if(nv_getoptimize())
 			argp->argflag |= ARG_MAKE;
 	}
 	else
 	{
 		endfield(mp,mp->quoted|mp->atmode);
 		flags = mp->fields;
-		if(flags==1 && sh.argaddr)
+		if(flags==1 && nv_getoptimize())
 			argp->argchn.ap = *arghead; 
 	}
-	sh.argaddr = saveargaddr;
+	nv_setoptimize(saveoptimize);
 	*mp = savemac;
 	return flags;
 }
@@ -269,7 +269,7 @@ void sh_machere(Sfio_t *infile, Sfio_t *outfile, char *string)
 	Mac_t		savemac = *mp;
 	Stk_t		*stkp = sh.stk;
 	stkseek(stkp,0);
-	sh.argaddr = 0;
+	nv_setoptimize(NULL);
 	mp->sp = outfile;
 	mp->split = mp->assign = mp->pattern = mp->patfound = mp->lit = mp->arith = 0;
 	mp->quote = 1;
@@ -1029,7 +1029,7 @@ static char *prefix(char *id)
 		{
 			int n;
 			char *sp;
-			sh.argaddr = 0;
+			nv_setoptimize(NULL);
 			while(nv_isref(np) && np->nvalue.cp)
 			{
 				sub = nv_refsub(np);
@@ -1102,7 +1102,7 @@ int sh_macfun(const char *name, int offset)
 		} d;
 		memset(&t,0,sizeof(t));
 		memset(&d,0,sizeof(d));
-		t.node.com.comarg = &d.arg;
+		t.node.com.comarg.ap = &d.arg;
 		t.node.com.comline = sh.inlineno;
 		d.dol.dolnum = 1;
 		d.dol.dolval[0] = sh_strdup(name);
@@ -1145,7 +1145,7 @@ static int varsub(Mac_t *mp)
 {
 	int		c;
 	int		type=0; /* M_xxx */
-	char		*v,*argp=0;
+	char		*v = NULL, *argp = NULL;
 	Namval_t	*np = NULL;
 	int 		dolg=0, mode=0;
 	Lex_t		*lp = (Lex_t*)sh.lex_context;
@@ -1232,7 +1232,7 @@ retry1:
 	    case S_DIG:
 		var = 0;
 		c -= '0';
-		sh.argaddr = 0;
+		nv_setoptimize(NULL);
 		if(type)
 		{
 			int d;
@@ -1288,7 +1288,7 @@ retry1:
 			while((d=c,(c=fcmbget(&LEN)),isaname(c))||type && c=='.');
 			while(c==LBRACT && (type||mp->arrayok))
 			{
-				sh.argaddr=0;
+				nv_setoptimize(NULL);
 				if((c=fcmbget(&LEN),isastchar(c)) && fcpeek(0)==RBRACT && d!='.')
 				{
 					if(type==M_VNAME)
@@ -1375,13 +1375,13 @@ retry1:
 #if  SHOPT_FILESCAN
 		else if(sh.cur_line && strcmp(id,REPLYNOD->nvname)==0)
 		{
-			sh.argaddr=0;
+			nv_setoptimize(NULL);
 			np = REPLYNOD;
 		}
 #endif  /* SHOPT_FILESCAN */
 		else
 		{
-			if(sh.argaddr)
+			if(nv_getoptimize())
 				flag &= ~NV_NOADD;
 			np = nv_open(id,sh.var_tree,flag|NV_NOFAIL);
 		}
@@ -1473,20 +1473,18 @@ retry1:
 			if(cc==0)
 				mp->assign = 1;
 		}
-		if((type==M_VNAME||type==M_SUBNAME)  && sh.argaddr && strcmp(nv_name(np),id))
-			sh.argaddr = 0;
+		if((type==M_VNAME||type==M_SUBNAME) && nv_getoptimize() && strcmp(nv_name(np),id))
+			nv_setoptimize(NULL);
 		c = (type>M_BRACE && isastchar(mode));
 		/*
 		 * Check if the parameter is set or unset.
 		 */
-#if SHOPT_OPTIMIZE
-		if(np && type==M_BRACE && sh.argaddr)
+		if(np && type==M_BRACE && nv_getoptimize())
 			nv_optimize(np);  /* needed before calling nv_isnull() */
-#endif /* SHOPT_OPTIMIZE */
 		if(np && (type==M_BRACE ? !nv_isnull(np) : (type==M_TREE || !c || !ap)))
 		{
 			/* Either the parameter is set, or it's a special type of expansion where 'unset' doesn't apply. */
-			char *savptr;
+			void *savptr;
 			c = *((unsigned char*)stkptr(stkp,offset-1));
 			savptr = stkfreeze(stkp,0);
 			if(type==M_VNAME || (type==M_SUBNAME && ap))
@@ -1558,10 +1556,8 @@ retry1:
 		if(ap)
 		{
 			ap = nv_arrayptr(np_orig); /* update */
-#if SHOPT_OPTIMIZE
-			if(sh.argaddr)
+			if(nv_getoptimize())
 				nv_optimize(np);
-#endif
 			if(isastchar(mode) && array_elem(ap)> !c)
 				dolg = -1;
 			else
@@ -1625,6 +1621,7 @@ retry1:
 		}
 		else
 		{
+			/* type==M_SIZE: ${#var} */
 			if(!isastchar(mode))
 				c = charlen(v,vsize);
 			else if(dolg>0)
@@ -1893,7 +1890,7 @@ retry2:
 	{
 		int ofs_size = 0;
 		int match[2*(MATCH_MAX+1)],index;
-		int nmatch, nmatch_prev, vsize_last, tsize;
+		int nmatch, nmatch_prev, vsize_last = 0, tsize;
 		char *vlast = NULL, *oldv;
 		while(1)
 		{
@@ -2160,7 +2157,8 @@ static void comsubst(Mac_t *mp,Shnode_t* t, int type)
 	struct slnod            *saveslp = sh.st.staklist;
 	Mac_t			savemac = *mp;
 	int			savtop = stktell(stkp);
-	char			lastc=0, *savptr = stkfreeze(stkp,0);
+	char			lastc = '\0';
+	void			*savptr = stkfreeze(stkp,0);
 	int			was_history = sh_isstate(SH_HISTORY);
 	int			was_verbose = sh_isstate(SH_VERBOSE);
 	int			was_interactive = sh_isstate(SH_INTERACTIVE);
@@ -2168,7 +2166,7 @@ static void comsubst(Mac_t *mp,Shnode_t* t, int type)
 	Sfoff_t			foff;
 	Namval_t		*np;
 	savemac.wasexpan = 1;
-	sh.argaddr = 0;
+	nv_setoptimize(NULL);
 	sh.st.staklist=0;
 	if(type)
 	{
@@ -2222,7 +2220,7 @@ static void comsubst(Mac_t *mp,Shnode_t* t, int type)
 		sh_offstate(SH_VERBOSE);
 		if(mp->sp)
 			sfsync(mp->sp);	/* flush before executing command */
-		sp = sfnew(NULL,str,c,-1,SF_STRING|SF_READ);
+		sp = sfnew(NULL,str,c,-1,SFIO_STRING|SFIO_READ);
 		c = sh.inlineno;
 		sh.inlineno = error_info.line+sh.st.firstline;
 		t = (Shnode_t*)sh_parse(sp,SH_EOF|SH_NL);
@@ -2233,7 +2231,7 @@ static void comsubst(Mac_t *mp,Shnode_t* t, int type)
 	{
 		fcsave(&save);
 		sfclose(sp);
-		if(t->tre.tretyp==0 && !t->com.comarg && !t->com.comset)
+		if(t->tre.tretyp==0 && !t->com.comarg.dp && !t->com.comset)
 		{
 			/* special case $(<file) and $(<#file) */
 			int fd;
@@ -2259,7 +2257,7 @@ static void comsubst(Mac_t *mp,Shnode_t* t, int type)
 			if(!(sp=sh.sftable[fd]))
 			{
 				char *cp = (char*)sh_malloc(IOBSIZE+1);
-				sp = sfnew(NULL,cp,IOBSIZE,fd,SF_READ|SF_MALLOC);
+				sp = sfnew(NULL,cp,IOBSIZE,fd,SFIO_READ|SFIO_MALLOC);
 			}
 		}
 		else
@@ -2287,7 +2285,7 @@ static void comsubst(Mac_t *mp,Shnode_t* t, int type)
 	sfsetbuf(sp,sp,0);
 	bufsize = sfvalue(sp);
 	/* read command substitution output and put on stack or here-doc */
-	sfpool(sp, NULL, SF_WRITE);
+	sfpool(sp, NULL, SFIO_WRITE);
 	sh_offstate(SH_INTERACTIVE);
 	if((foff = sfseek(sp,0,SEEK_END)) > 0)
 	{
@@ -2296,7 +2294,7 @@ static void comsubst(Mac_t *mp,Shnode_t* t, int type)
 		stkseek(stkp,soff+foff+64);
 		stkseek(stkp,soff);
 	}
-	while((str=(char*)sfreserve(sp,SF_UNBOUND,0)) && (c=bufsize=sfvalue(sp))>0)
+	while((str=(char*)sfreserve(sp,SFIO_UNBOUND,0)) && (c=bufsize=sfvalue(sp))>0)
 	{
 #if SHOPT_CRNL
 		/* eliminate <cr> */
@@ -2576,14 +2574,14 @@ static void endfield(Mac_t *mp,int split)
 	Stk_t		*stkp = sh.stk;
 	if(stktell(stkp) > ARGVAL || split)
 	{
-		argp = (struct argnod*)stkfreeze(stkp,1);
+		argp = stkfreeze(stkp,1);
 		argp->argnxt.cp = 0;
 		argp->argflag = 0;
 		mp->atmode = 0;
 		if(mp->patfound)
 		{
 			int musttrim = mp->wasexpan && !mp->quoted && !mp->noextpat && strchr(argp->argval,'\\');
-			sh.argaddr = 0;
+			nv_setoptimize(NULL);
 #if SHOPT_BRACEPAT
 			/* in POSIX mode, disallow brace expansion for unquoted expansions */
 			if(sh_isoption(SH_BRACEEXPAND) && !(sh_isoption(SH_POSIX) && mp->pattern==1))
@@ -2710,25 +2708,23 @@ static void tilde_expand2(int offset)
 	char		*cp = NULL;			/* character pointer for tilde expansion result */
 	char		*stakp = stkptr(sh.stk,0);	/* current stack object (&stakp[offset] is tilde string) */
 	int		curoff = stktell(sh.stk);	/* current offset of current stack object */
+	sfputc(sh.stk,0);				/* terminate current stack object to avoid data corruption */
 	/*
 	 * Allow overriding tilde expansion with a .sh.tilde.set or .get discipline function.
 	 */
 	if(!sh.tilde_block && SH_TILDENOD->nvfun && SH_TILDENOD->nvfun->disc)
 	{
-		stkfreeze(sh.stk,1);			/* terminate current stack object to avoid data corruption */
 		sh.tilde_block = 1;
 		nv_putval(SH_TILDENOD, &stakp[offset], 0);
 		cp = nv_getval(SH_TILDENOD);
 		sh.tilde_block = 0;
 		if(cp[0]=='\0' || cp[0]=='~')
 			cp = NULL;			/* do not use empty or unexpanded result */
-		stkset(sh.stk,stakp,curoff);		/* restore stack to state on function entry */
 	}
 	/*
 	 * Perform default tilde expansion unless overridden.
 	 * Write the result to the stack, if any.
 	 */
-	sfputc(sh.stk,0);
 	if(!cp)
 		cp = sh_tilde(&stakp[offset]);
 	if(cp)
@@ -2829,7 +2825,7 @@ skip:
 static char *special(int c)
 {
 	if(c!='$')
-		sh.argaddr = 0;
+		nv_setoptimize(NULL);
 	switch(c)
 	{
 	    case '@':
@@ -2892,7 +2888,7 @@ static noreturn void mac_error(void)
  */ 
 static char *mac_getstring(char *pattern)
 {
-	char	*cp=pattern, *rep=0, *dp;
+	char	*cp = pattern, *rep = NULL, *dp = NULL;
 	int	c;
 	while(c = *cp++)
 	{

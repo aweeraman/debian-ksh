@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2024 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -74,17 +74,19 @@ static int htable(Dt_t* dt)
 	}
 	memset(htbl, 0, n*sizeof(Dtlink_t*));
 
-	/* move objects into new table */
-	for(endt = (t = hash->htbl) + hash->tblz; t < endt; ++t)
-	{	for(l = *t; l; l = next)
-		{	next = l->_rght;
-			l->_rght = htbl[k = l->_hash&(n-1)];
-			htbl[k] = l;
+	if(hash->htbl)
+	{
+		/* move objects into new table */
+		for(endt = (t = hash->htbl) + hash->tblz; t < endt; ++t)
+		{	for(l = *t; l; l = next)
+			{	next = l->_rght;
+				l->_rght = htbl[k = l->_hash&(n-1)];
+				htbl[k] = l;
+			}
 		}
-	}
-
-	if(hash->htbl) /* free old table and set new table */
+		/* free old table and set new table */
 		(void)(*dt->memoryf)(dt, hash->htbl, 0, disc);
+	}
 	hash->htbl = htbl;
 	hash->tblz = n;
 

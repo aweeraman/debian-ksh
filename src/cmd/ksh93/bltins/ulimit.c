@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2024 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -68,13 +68,13 @@ int	b_ulimit(int argc,char *argv[],Shbltin_t *context)
 	char *limit;
 	int mode=0, n;
 	unsigned long hit = 0;
-#ifdef _lib_getrlimit
+#if _lib_getrlimit
 	struct rlimit rlp;
 #endif /* _lib_getrlimit */
 	const Limit_t* tp;
 	char* conf;
 	int label, unit, nosupport, ret=0;
-	rlim_t i;
+	rlim_t i=0;
 	char tmp[41];
         Optdisc_t disc;
         NOT_USED(context);
@@ -160,7 +160,7 @@ int	b_ulimit(int argc,char *argv[],Shbltin_t *context)
 			}
 			else
 			{
-#ifdef _lib_getrlimit
+#if _lib_getrlimit
 				if(getrlimit(n,&rlp) <0)
 				{
 					errormsg(SH_DICT,ERROR_system(1),e_number,limit);
@@ -188,7 +188,7 @@ int	b_ulimit(int argc,char *argv[],Shbltin_t *context)
 		{
 			if(!nosupport)
 			{
-#ifdef  _lib_getrlimit
+#if _lib_getrlimit
 				if(getrlimit(n,&rlp)<0)
 				{
 					errormsg(SH_DICT,ERROR_system(0),e_limit,tp->description);
@@ -200,7 +200,7 @@ int	b_ulimit(int argc,char *argv[],Shbltin_t *context)
 				if(mode&SOFT)
 					i = rlp.rlim_cur;
 #else
-#   ifdef _lib_ulimit
+#   if _lib_ulimit
 				n--;
 #   endif /* _lib_ulimit */
 				i = -1;

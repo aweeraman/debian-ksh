@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2024 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -40,9 +40,6 @@
 #include	"history.h"
 #include	"timeout.h"
 #include	"FEATURE/time"
-#include	"FEATURE/pstat"
-#include	"FEATURE/setproctitle"
-#include	"FEATURE/execargs"
 #include	"FEATURE/externs"
 #ifdef	_hdr_nc
 #   include	<nc.h>
@@ -67,7 +64,7 @@ static struct stat lastmail;
 static time_t	mailtime;
 static char	beenhere = 0;
 
-#ifdef _lib_sigvec
+#if _lib_sigvec
     void clearsigmask(int sig)
     {
 	struct sigvec vec;
@@ -119,7 +116,7 @@ int sh_main(int ac, char *av[], Shinit_f userinit)
 	int		i;
 	int		rshflag;	/* set for restricted shell */
 	char		*command;
-#ifdef _lib_sigvec
+#if _lib_sigvec
 	/* This is to clear mask that may be left on by rlogin */
 	clearsigmask(SIGALRM);
 	clearsigmask(SIGHUP);
@@ -136,9 +133,8 @@ int sh_main(int ac, char *av[], Shinit_f userinit)
 	if(sigsetjmp(*((sigjmp_buf*)sh.jmpbuffer),0))
 	{
 		/* begin script execution here */
-		sh_reinit(NULL);
+		sh_reinit();
 	}
-	sh.fn_depth = sh.dot_depth = 0;
 	command = error_info.id;
 	path_pwd();
 	iop = NULL;
@@ -233,7 +229,7 @@ int sh_main(int ac, char *av[], Shinit_f userinit)
 		if(sh.comdiv)
 		{
 		shell_c:
-			iop = sfnew(NULL,sh.comdiv,strlen(sh.comdiv),0,SF_STRING|SF_READ);
+			iop = sfnew(NULL,sh.comdiv,strlen(sh.comdiv),0,SFIO_STRING|SFIO_READ);
 		}
 		else
 		{
@@ -453,8 +449,22 @@ static void	exfile(Sfio_t *iop,int fno)
 		{
 			while(fcget()>0);
 			fcclose();
-			while(top=sfstack(iop,SF_POPSTACK))
+			while(top=sfstack(iop,SFIO_POPSTACK))
 				sfclose(top);
+		}
+		/*
+		 * Reset the lexer state and make sure the heredocs file is
+		 * closed and set to NULL. For now we only do this when we get
+		 * here in an interactive shell and we have a leftover heredoc.
+		 */
+		if(sh_isstate(SH_INTERACTIVE) && jmpval==SH_JMPERREXIT && sh.heredocs)
+		{
+			Lex_t *lp;
+			sfclose(sh.heredocs);
+			sh.heredocs = NULL;
+			lp = (Lex_t*)sh.lex_context;
+			lp->heredoc = NULL;
+			sh_lexopen(lp,0);
 		}
 		/* make sure that we own the terminal */
 		tcsetpgrp(job.fd,sh.pid);
@@ -553,12 +563,6 @@ static void	exfile(Sfio_t *iop,int fno)
 					else if(job_close()<0)
 						continue;
 				}
-				else if(errno)
-				{
-					/* Ctrl+C with SIGINT ignored */
-					sfputc(sfstderr,'\n');
-					continue;
-				}
 			}
 			else if(errno && sferr)
 			{
@@ -572,6 +576,7 @@ static void	exfile(Sfio_t *iop,int fno)
 				sfclrerr(iop);
 				continue;
 			}
+			sh.exitval = sh.savexit;
 			goto done;
 		}
 		sh.exitval = sh.savexit;
@@ -712,14 +717,8 @@ static void chkmail(char *files)
 	stkset(sh.stk,savstak,offset);
 }
 
-#undef EXECARGS
 #undef PSTAT
-#if defined(_hdr_execargs) && defined(pdp11)
-#   include	<execargs.h>
-#   define EXECARGS	1
-#endif
-
-#if defined(_lib_pstat) && defined(_sys_pstat)
+#if _lib_pstat && _sys_pstat
 #   include	<sys/pstat.h>
 #   define PSTAT	1
 #endif
@@ -738,11 +737,7 @@ static void chkmail(char *files)
  */
 static void fixargs(char **argv, int mode)
 {
-#   if EXECARGS
-	if(mode==0)
-		return;
-	*execargs=(char *)argv;
-#   elif PSTAT
+#   if PSTAT
 	char *cp;
 	int offset=0,size;
 	static int command_len;
@@ -808,7 +803,7 @@ static void fixargs(char **argv, int mode)
 			/* Move the environment to make space for a larger command line buffer */
 			for(i=0; environ[i]; i++)
 			{
-				buffsize += strlen(environ[i]) + 1;;
+				buffsize += strlen(environ[i]) + 1;
 				environ[i] = sh_strdup(environ[i]);
 			}
 		}

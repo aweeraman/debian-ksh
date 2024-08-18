@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2024 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -36,7 +36,7 @@
 static char *fmtx(const char *string)
 {
 	const char	*cp = string;
-	int	 	n,c;
+	int	 	n = 0, c;
 	int		pos = 0;
 	unsigned char 	*state = (unsigned char*)sh_lexstates[2];
 	int		offset = stktell(sh.stk);
@@ -277,8 +277,8 @@ int ed_expand(Edit_t *ep, char outbuff[],int *cur,int *eol,int mode, int count)
 			ep->e_nlist = 0;
 		}
 	}
-	comptr = (struct comnod*)stkalloc(sh.stk,sizeof(struct comnod));
-	ap = (struct argnod*)stkseek(sh.stk,ARGVAL);
+	comptr = stkalloc(sh.stk,sizeof(struct comnod));
+	ap = stkseek(sh.stk,ARGVAL);
 #if SHOPT_MULTIBYTE
 	{
 		int c = *cur;
@@ -311,7 +311,7 @@ int ed_expand(Edit_t *ep, char outbuff[],int *cur,int *eol,int mode, int count)
 		goto done;
 	}
 	comptr->comtyp = COMSCAN;
-	comptr->comarg = ap;
+	comptr->comarg.ap = ap;
 	ap->argflag = (ARG_MAC|ARG_EXP);
 	ap->argnxt.ap = 0;
 	ap->argchn.cp = 0;
@@ -368,7 +368,7 @@ int ed_expand(Edit_t *ep, char outbuff[],int *cur,int *eol,int mode, int count)
 		}
 		if(addstar)
 			sfputc(sh.stk,addstar);
-		ap = (struct argnod*)stkfreeze(sh.stk,1);
+		ap = stkfreeze(sh.stk,1);
 	}
 	if(mode!='*')
 		sh_onoption(SH_MARKDIRS);
@@ -589,6 +589,7 @@ int ed_expand(Edit_t *ep, char outbuff[],int *cur,int *eol,int mode, int count)
 	return rval;
 }
 
+#if SHOPT_ESH || SHOPT_VSH
 /*
  * look for edit macro named _i
  * if found, puts the macro definition into lookahead buffer and returns 1
@@ -629,6 +630,7 @@ int ed_macro(Edit_t *ep, int i)
 	} 
 	return 0;
 }
+#endif /* SHOPT_ESH || SHOPT_VSH */
 
 /*
  * Enter the fc command on the current history line
@@ -652,7 +654,7 @@ int ed_fulledit(Edit_t *ep)
 		hist_flush(sh.hist_ptr);
 	}
 	cp = strcopy((char*)ep->e_inbuf,e_runvi);
-	cp = strcopy(cp, fmtbase((intmax_t)ep->e_hline,10,0));
+	cp = strcopy(cp, fmtint(ep->e_hline,1));
 #if SHOPT_VSH
 	ep->e_eol = ((unsigned char*)cp - (unsigned char*)ep->e_inbuf)-(sh_isoption(SH_VI)!=0);
 #else

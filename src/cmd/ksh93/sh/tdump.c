@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2011 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2024 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -218,12 +218,12 @@ static int p_comarg(const struct comnod *com)
 {
 	p_redirect(com->comio);
 	p_arg(com->comset);
-	if(!com->comarg)
+	if(!com->comarg.ap)
 		sfputl(outfile,-1);
 	else if(com->comtyp&COMSCAN)
-		p_arg(com->comarg);
+		p_arg(com->comarg.ap);
 	else
-		p_comlist((struct dolnod*)com->comarg);
+		p_comlist(com->comarg.dp);
 	return sfputu(outfile,com->comline);
 }
 

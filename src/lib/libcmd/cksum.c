@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2024 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -194,7 +194,7 @@ pr(State_t* state, Sfio_t* op, Sfio_t* ip, char* file, int perm, struct stat* st
 	if (state->text)
 	{
 		peek = 0;
-		while (p = sfreserve(ip, SF_UNBOUND, 0))
+		while (p = sfreserve(ip, SFIO_UNBOUND, 0))
 		{
 			e = p + sfvalue(ip);
 			if (peek)
@@ -220,7 +220,7 @@ pr(State_t* state, Sfio_t* op, Sfio_t* ip, char* file, int perm, struct stat* st
 			sumblock(state->sum, "\r", 1);
 	}
 	else
-		while (p = sfreserve(ip, SF_UNBOUND, 0))
+		while (p = sfreserve(ip, SFIO_UNBOUND, 0))
 			sumblock(state->sum, p, sfvalue(ip));
 	if (sfvalue(ip))
 		error(ERROR_SYSTEM|2, "%s: read error", file);
@@ -259,8 +259,8 @@ verify(State_t* state, char* s, char* check, Sfio_t* rp)
 	char*		file;
 	int		attr;
 	int		mode;
-	int		uid;
-	int		gid;
+	int		uid = -1;
+	int		gid = -1;
 	Sfio_t*		sp;
 	struct stat	st;
 

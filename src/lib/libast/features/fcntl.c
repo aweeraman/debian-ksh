@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1985-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2024 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -308,8 +308,5 @@ main(void)
 	printf("extern int	open(const char*, int, ...);\n");
 #endif
 #endif
-	printf("\n");
-	printf("#include <ast_fs.h>\n");
-
 	return 0;
 }

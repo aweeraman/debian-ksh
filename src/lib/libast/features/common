@@ -4,8 +4,6 @@ sys	types
 typ	long.double,size_t,ssize_t
 typ	__va_list stdio.h
 
-mac	SF_APPEND,SF_CLOSE	sys/stat.h sys/socket.h
-
 std	noreturn note{ noreturn ok }end compile{
 	#include <stdlib.h>
 	#include <stdnoreturn.h>
@@ -14,11 +12,16 @@ std	noreturn note{ noreturn ok }end compile{
 }end
 
 cat{
+	#if __clang__
+	#pragma clang diagnostic ignored "-Wmissing-braces"
 	#pragma clang diagnostic ignored "-Wparentheses"
 	#pragma clang diagnostic ignored "-Wstring-plus-int"
 	#pragma clang diagnostic ignored "-Wunused-value"
-	#if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6)
+	#elif __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6)
+	#pragma GCC diagnostic ignored "-Wmissing-braces"
+	#pragma GCC diagnostic ignored "-Wparentheses"
 	#pragma GCC diagnostic ignored "-Wunused-result"
+	#pragma GCC diagnostic ignored "-Wunused-value"
 	#endif
 
 	/* AST backward compatibility macros */
@@ -254,7 +257,7 @@ tst	- output{
 		"pointer",	sizeof(void*),		COND * 4,
 		"float",	sizeof(float),		0,
 		"double",	sizeof(double),		0,
-	#ifdef _typ_long_double
+	#if _typ_long_double
 		"long_double",	sizeof(long double),	0,
 	#endif
 	};
@@ -305,7 +308,7 @@ tst	- -DN=1 - -DN=0 output{
 	{
 		"float",	sizeof(float),
 		"double",	sizeof(double),
-	#ifdef _typ_long_double
+	#if _typ_long_double
 		"long double",	sizeof(long double),
 	#endif
 	};
@@ -316,7 +319,7 @@ tst	- -DN=1 - -DN=0 output{
 		int	t;
 		int	m = 1;
 	
-	#ifdef _typ_long_double
+	#if _typ_long_double
 		long double	p;
 		char		buf[64];
 

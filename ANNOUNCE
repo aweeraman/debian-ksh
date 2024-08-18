@@ -1,14 +1,18 @@
-Announcing: KornShell 93u+m/1.0.8
+Announcing: KornShell 93u+m/1.0.10
 https://github.com/ksh93/ksh
 
-Here is the eighth ksh 93u+m/1.0 bugfix release. It fixes a bug that caused
-an incorrect default exit status for 'exit' within a trap action, as well as
-a race condition (introduced in 1.0.7) occurring on some systems when
-running an external command with a redirection from a command substitution.
+Here is the tenth ksh 93u+m/1.0 bugfix release -- exactly two years after
+93u+m/1.0.0 and twelve years after 93u+. Unfortunately, we're not done
+fixing bugs yet, but progress continues steadily.
 
-Further below is an overview of the main changes. For greater detail, see
-the NEWS file in the distribution. For complete detail, see the git(1)
-commit log, which has full documentation of every significant change.
+This release fixes a serious bug in the arithmetic subsystem that was
+triggered on non-Intel processors (such as ARM): any division of an integer
+by a negative integer threw a spurious "divide by zero" error. This bug has
+been in ksh since 2005. There are other bug fixes as well; see below.
+
+For greater detail, see the NEWS file in the distribution. For complete
+detail, see the git(1) commit log, which has full documentation of every
+significant change.
 
 ### HOW TO GET IT ###
 
@@ -16,7 +20,7 @@ Please download the source code tarball from our GitHub releases page:
 https://github.com/ksh93/ksh/releases
 To build, follow the instructions in README.md or src/cmd/ksh93/README.
 
-Or ask your distribution package manager to upgrade ksh to this version.
+Or ask your distribution package maintainer to upgrade ksh to this version.
 
 ### ABOUT KSH ###
 
@@ -44,8 +48,8 @@ file name completion (new in 93u+m), and much more.
 Main ksh 93u+m developers: Martijn Dekker, Johnothan King, hyenias
 
 Direct contributors: Andy Fiddaman, Anuradha Weeraman, atheik, Chase,
-Cy Schubert, Govind Kamat, Harald van Dijk, K. Eugene Carlson, Lev
-Kujawski, Marc Wilson, Phi, Ryan Schmidt, rymrg, Sterling Jensen,
+Cy Schubert, Govind Kamat, Harald van Dijk, hyousatsu, K. Eugene Carlson,
+Lev Kujawski, Marc Wilson, Phi, Ryan Schmidt, rymrg, Sterling Jensen,
 Trey Valenta, Vincent Mihalkovic
 
 Also includes backported contributions by: David Korn, Glenn Fowler,
@@ -69,6 +73,67 @@ Feel free to use Discussions to introduce yourself to the community.
 
 You can also join the mailing list/Google group at:
 https://groups.google.com/g/korn-shell
+
+### MAIN CHANGES between ksh 93u+m/1.0.9 and 93u+m/1.0.10 ###
+
+- Fixed a serious and longstanding bug in the arithmetic subsystem that was
+  triggered on non-Intel processors (such as ARM): any division of an
+  integer by a negative integer threw a spurious "divide by zero" error.
+- Fixed a regression where a broken pipe signal (SIGPIPE), when occurring in
+  a pipe construct within a subshell, caused incorrect signal handling in the
+  parent/main shell, in some cases causing a script to abort.
+- Fixed a bug where printf %T, after having printed the time in UTC once
+  with the TZ variable set to "UTC", would always print the time in UTC from
+  then on, even if the TZ variable was changed to another time zone.
+- The history expansion character ('!' by default) is now not processed when
+  immediately following '${'. This makes it psosible to use expansion syntax
+  like ${!varname} and ${!prefix@} on the interactive command line with the
+  histexpand option on; these no longer trigger an "event not found" error.
+- The shell is now capable of handling more than 32767 simultaneous
+  background jobs, subject to system limitations.
+
+### MAIN CHANGES between ksh 93u+m/1.0.8 and 93u+m/1.0.9 ###
+
+- Android/Termux is now a supported platform. Build dependencies: binutils,
+  clang, getconf. Runtime dependencies (optional): ncurses-utils, getconf.
+- Reintroduced support for building a dynamically linked ksh(1)/shcomp(1),
+  with libast, libdll, libcmd, and libshell available to other programs as
+  dynamic libraries. 'bin/package install /your/basepath' will install
+  development headers. The dynamically linked version is built in a 'dyn'
+  subdirectory; there are no changes to the statically linked version.
+  Dynamic linking is currently tested and supported on Linux, Android,
+  macOS, all the BSDs, illumos, Solaris, QNX, and Haiku.
+- On systems where the external printf(1) utility supports deprecated
+  pre-POSIX syntax for formatters starting with '-', ksh now adapts its
+  built-in printf to match, for compatibility with system scripts. However,
+  ksh's built-in printf options such as -v or --man are not affected.
+- Fixed a regression in the 'printf' built-in, introduced in 93u+m/1.0.5,
+  where each instance of '\0' or '%Z' in the format operand caused a string
+  argument to be incorrectly skipped.
+- Fixed a regression, introduced in 93u+m/1.0.5, in ordinal specifiers in
+  'printf %T' date specifications. For example,
+	printf '%(%F)T\n' '4th tuesday in march 2016'
+  wrongly printed '2016-04-09' and now again correctly prints '2016-03-22'.
+- Fixed a regression of 'return' within traps, reintroduced in 93u+m/1.0.8
+  after being fixed in 93u+m/1.0.0. The regression caused a 'return' or
+  'exit' with no arguments to assume the before-trap exit status instead of
+  that of the last-run command. This broke the shipped 'autocd' function.
+- Fixed a longstanding bug in shell arithmetic: the representation of
+  negative integers with a base other than 10 was incorrectly treated as
+  unsigned long. For example,
+	typeset -i16 n=-12; echo $n
+  now correctly outputs '-16#c' and no longer ouputs '16#fffffffffffffff4'.
+- Fixed a bug, introduced in ksh93q+ 2005-05-22, that stopped an append
+  assignment from working together with a declaration command. For example,
+  'typeset var+=value' or 'export var+=value' now again work as expected.
+- Fixed a longstanding bug where the default terminal width for typeset -L, -R,
+  or -Z, if not given, was miscalculated for multibyte or control characters.
+- Fixed: expansions of name references in loops were incorrectly treated as
+  invariant so they yielded the wrong values.
+- If a .get or .getn discipline function is set for a variable, it is no
+  longer incorrectly triggered when performing an arithmetic assignment on
+  that variable; only the .set discipline is now triggered (as documented).
+- Many other bug fixes (see the NEWS file).
 
 ### MAIN CHANGES between ksh 93u+m/1.0.7 and 93u+m/1.0.8 ###
 

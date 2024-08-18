@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1992-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2024 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -134,7 +134,7 @@ cutinit(int mode, char* str, Delim_t* wdelim, Delim_t* ldelim, size_t reclen)
 	char*	cp = str;
 	Cut_t*	cut;
 
-	if (!(cut = (Cut_t*)stkalloc(stkstd, sizeof(Cut_t) + strlen(cp) * sizeof(int))))
+	if (!(cut = stkalloc(stkstd, sizeof(Cut_t) + strlen(cp) * sizeof(int))))
 	{
 		error(ERROR_SYSTEM|ERROR_PANIC, "out of memory");
 		UNREACHABLE();
@@ -275,7 +275,7 @@ cutcols(Cut_t* cut, Sfio_t* fdin, Sfio_t* fdout)
 			bp = sfreserve(fdin, len, -1);
 		else
 			bp = sfgetr(fdin, '\n', 0);
-		if (!bp && !(bp = sfgetr(fdin, 0, SF_LASTR)))
+		if (!bp && !(bp = sfgetr(fdin, 0, SFIO_LASTR)))
 			break;
 		len = sfvalue(fdin);
 		xx = 0;
@@ -375,19 +375,19 @@ cutfields(Cut_t* cut, Sfio_t* fdin, Sfio_t* fdout)
 	unsigned char *sp = cut->space;
 	unsigned char *cp;
 	unsigned char *wp;
-	int c, nfields;
+	int c, nfields=0;
 	const int *lp = cut->list;
 	unsigned char *copy;
-	int nodelim, empty, inword=0;
+	int nodelim=0, empty=0, inword=0;
 	unsigned char *ep;
-	unsigned char *bp, *first;
+	unsigned char *bp, *first=NULL;
 	int lastchar;
 	wchar_t w;
 	Sfio_t *fdtmp = 0;
 	long offset = 0;
 	unsigned char mb[8];
 	/* process each buffer */
-	while ((bp = (unsigned char*)sfreserve(fdin, SF_UNBOUND, -1)) && (c = sfvalue(fdin)) > 0)
+	while ((bp = (unsigned char*)sfreserve(fdin, SFIO_UNBOUND, -1)) && (c = sfvalue(fdin)) > 0)
 	{
 		cp = bp;
 		ep = cp + --c;
@@ -444,7 +444,7 @@ cutfields(Cut_t* cut, Sfio_t* fdin, Sfio_t* fdout)
 									}
 									for (i = 0; i <= (ep - cp); i++)
 										mb[i] = cp[i];
-									if (!(bp = (unsigned char*)sfreserve(fdin, SF_UNBOUND, -1)) || (c = sfvalue(fdin)) <= 0)
+									if (!(bp = (unsigned char*)sfreserve(fdin, SFIO_UNBOUND, -1)) || (c = sfvalue(fdin)) <= 0)
 										goto failed;
 									cp = bp;
 									ep = cp + --c;

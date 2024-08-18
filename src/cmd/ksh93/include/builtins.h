@@ -2,7 +2,7 @@
 *                                                                      *
 *               This software is part of the ast package               *
 *          Copyright (c) 1982-2012 AT&T Intellectual Property          *
-*          Copyright (c) 2020-2023 Contributors to ksh 93u+m           *
+*          Copyright (c) 2020-2024 Contributors to ksh 93u+m           *
 *                      and is licensed under the                       *
 *                 Eclipse Public License, Version 2.0                  *
 *                                                                      *
@@ -96,7 +96,7 @@ extern int b_let(int, char*[],Shbltin_t*);
 extern int b_read(int, char*[],Shbltin_t*);
 extern int b_ulimit(int, char*[],Shbltin_t*);
 extern int b_umask(int, char*[],Shbltin_t*);
-#ifdef _cmd_universe
+#if _cmd_universe
     extern int b_universe(int, char*[],Shbltin_t*);
 #endif /* _cmd_universe */
 extern int b_wait(int, char*[],Shbltin_t*);
@@ -123,6 +123,7 @@ extern const char	e_notimp[];
 extern const char	e_nosupport[];
 extern const char	e_limit[];
 extern const char	e_overlimit[];
+extern const char	e_internal[];
 
 extern const char	e_eneedsarg[];
 extern const char	e_oneoperand[];
@@ -130,7 +131,7 @@ extern const char	e_toomanyops[];
 extern const char	e_toodeep[];
 extern const char	e_badname[];
 extern const char	e_badsyntax[];
-#ifdef _cmd_universe
+#if _cmd_universe
     extern const char	e_nouniverse[];
 #endif /* _cmd_universe */
 extern const char	e_histopen[];
@@ -190,7 +191,7 @@ extern const char sh_optulimit[];
 extern const char sh_optumask[];
 extern const char sh_optunalias[];
 extern const char sh_optwait[];
-#ifdef _cmd_universe
+#if _cmd_universe
     extern const char sh_optuniverse[];
 #endif /* _cmd_universe */
 extern const char sh_optunset[];
