@@ -1,2 +1,2 @@
 Tests: run.sh
-Depends: ksh93u+m
+Depends: ksh93u+m, build-essential

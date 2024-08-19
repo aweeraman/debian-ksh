@@ -1,6 +1,7 @@
 ksh93u+m (1.0.10-2) unstable; urgency=high
 
   * Including ksh compile time options in package for running autopkgtests.
+  * Added build-essential to autopkgtest dependencies
 
  -- Anuradha Weeraman <anuradha@debian.org>  Mon, 19 Aug 2024 09:54:27 +0530
 
