@@ -2,3 +2,4 @@ usr/bin
 usr/share/binfmts
 usr/share/ksh/functions
 usr/share/man/man1
+usr/include/ksh

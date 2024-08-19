@@ -1,0 +1,22 @@
+Description: Compile time options needed for autopkgtests
+Author: Anuradha Weeraman <anuradha@debian.org>
+Forwarded: not-needed
+
+--- a/src/cmd/ksh93/tests/shtests
++++ b/src/cmd/ksh93/tests/shtests
+@@ -308,13 +308,13 @@ SHOPT()
+ unset -f SHOPT
+ # override with probed values from shopt.h:
+ # change '#define SHOPT_foo = bar' to 'export SHOPT_foo=bar' and evaluate
+-if	[[ -f $INSTALLROOT/src/cmd/ksh93/shopt.h ]] &&
++if	[[ -f /usr/include/ksh/shopt.h ]] &&
+ 	i=$(sed -n $'/^#[ \t]*define[ \t][ \t]*SHOPT_/ {
+ 				s/.*define[ \t][ \t]*//
+ 				s/[ \t][ \t]*/=/
+ 				s/^/export /
+ 				p
+-			}' "$INSTALLROOT"/src/cmd/ksh93/shopt.h)
++			}' /usr/include/ksh/shopt.h)
+ then	eval "$i" || exit
+ else	echo "$0: cannot grep shopt.h" >&2
+ 	exit 1
