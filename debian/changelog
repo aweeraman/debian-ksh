@@ -3,8 +3,9 @@ ksh93u+m (1.0.10-3) unstable; urgency=medium
   * Make builds reproducible by hardcoding CHILD_MAX in conf.tab to
     skip conf.sh's build-host getconf probe (Closes: #1061115).
   * Bumped up standards version.
+  * Updated debian/watch to version 5 format.
 
- -- Anuradha Weeraman <anuradha@debian.org>  Sun, 03 May 2026 22:48:25 +0530
+ -- Anuradha Weeraman <anuradha@debian.org>  Mon, 04 May 2026 12:45:10 +0530
 
 ksh93u+m (1.0.10-2) unstable; urgency=high
 
