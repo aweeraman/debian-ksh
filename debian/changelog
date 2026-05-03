@@ -2,6 +2,7 @@ ksh93u+m (1.0.10-3) unstable; urgency=medium
 
   * Make builds reproducible by hardcoding CHILD_MAX in conf.tab to
     skip conf.sh's build-host getconf probe (Closes: #1061115).
+  * Bumped up standards version.
 
  -- Anuradha Weeraman <anuradha@debian.org>  Sun, 03 May 2026 22:48:25 +0530
 
