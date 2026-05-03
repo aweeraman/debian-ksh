@@ -1,0 +1,31 @@
+Description: Hard-code CHILD_MAX to make builds reproducible
+Author: Anuradha Weeraman <anuradha@debian.org>
+Bug-Debian: https://bugs.debian.org/1061115
+Forwarded: not-needed
+Last-Update: 2026-05-03
+
+--- a/src/lib/libast/comp/conf.tab
++++ b/src/lib/libast/comp/conf.tab
+@@ -65,19 +65,9 @@ CHAR_BIT			C	XX 1 L		8
+ CHAR_MAX			C	XX 1 L
+ CHAR_MIN			C	XX 1 L
+ CHAR_TERM			POSIX	SC 2 FUW
+-CHILD_MAX			POSIX	SC 1 CDLMUX	6	cc{
+-	int main(void)
+-	{
+-		int	i;
+-		int	n;
+-		for (i = 3; i < 512 && (n = fork()) >= 0; i++)
+-			if (!n) _exit(0);
+-		while (wait(NULL) > 0);
+-		for (n = 8; n < i; n <<= 1);
+-		printf("%d", n);
+-		return 0;
+-	}
+-}
++# The 1024 literal below is inert and the actual default lives in
++# src/cmd/ksh93/sh/init.c.
++CHILD_MAX			POSIX	XX 1 UX	1024
+ CHOWN_RESTRICTED		POSIX	PC 1 FUW
+ CKPT				POSIX	SC 1 FU
+ CLK_TCK				POSIX	SC 1 L		HZ 60

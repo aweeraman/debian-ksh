@@ -2,3 +2,4 @@ shell-options.patch
 man-page-tweaks.patch
 no-rpath.patch
 shopt-path-fix.patch
+reproducible-child-max.patch
