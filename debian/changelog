@@ -1,3 +1,10 @@
+ksh93u+m (1.0.10-4) unstable; urgency=medium
+
+  * Fix reproducible build failure due to future timestamp in changelog
+    (Closes: #1136276).
+
+ -- Anuradha Weeraman <anuradha@debian.org>  Mon, 11 May 2026 23:34:12 +0530
+
 ksh93u+m (1.0.10-3) unstable; urgency=medium
 
   * Make builds reproducible by hardcoding CHILD_MAX in conf.tab to
